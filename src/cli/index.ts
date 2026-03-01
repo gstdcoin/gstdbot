@@ -587,6 +587,118 @@ User: "Example request"
     console.log(chalk.gray(`  Edit it, then run: gstdbot skills scan ${skillDir}/SKILL.md\n`));
 });
 
+skillsCmd.command('update').description('Auto-update skills from the marketplace registry').action(async () => {
+    console.log(chalk.bold('\n  🔄 Skills Update\n'));
+
+    const marketplace = new SkillsMarketplace(path.join(getConfigDir(), 'skills'));
+    const installed = marketplace.list();
+
+    const spinner = ora('Fetching latest skills from registry...').start();
+
+    let registry: any[];
+    try {
+        registry = await marketplace.fetchRegistry();
+    } catch {
+        spinner.fail('Cannot reach GSTD marketplace');
+        console.log(chalk.gray('  Check internet connection and try again.\n'));
+        return;
+    }
+
+    if (registry.length === 0) {
+        spinner.warn('Registry returned 0 skills');
+        console.log(chalk.gray('  The registry may be temporarily unavailable.\n'));
+        return;
+    }
+
+    spinner.succeed(`Found ${registry.length} skills in registry`);
+
+    let updated = 0;
+    let freshInstalls = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (const remote of registry) {
+        const remoteId = (remote as any).id || (remote as any).name || '';
+        const remoteVersion = (remote as any).version || '0.0.0';
+        const remoteName = (remote as any).name || remoteId;
+
+        if (!remoteId) { skipped++; continue; }
+
+        // Check if already installed and up-to-date
+        const local = installed.find(s =>
+            s.manifest.name === remoteId || s.manifest.name === remoteName
+        );
+
+        if (local && local.manifest.version === remoteVersion) {
+            skipped++;
+            continue;
+        }
+
+        const action = local ? 'Updating' : 'Installing';
+        const actionSpinner = ora(`  ${action}: ${remoteName} v${remoteVersion}...`).start();
+
+        // Try to fetch skill content from registry
+        try {
+            const skillUrl = (remote as any).url || (remote as any).download_url;
+
+            let content: string | null = null;
+
+            // Method 1: Direct URL download
+            if (skillUrl) {
+                const resp = await fetch(skillUrl);
+                if (resp.ok) {
+                    content = await resp.text();
+                }
+            }
+
+            // Method 2: Check local built-in skills
+            if (!content) {
+                const builtinPath = path.join(process.cwd(), 'skills', remoteId, 'SKILL.md');
+                if (fs.existsSync(builtinPath)) {
+                    content = fs.readFileSync(builtinPath, 'utf-8');
+                }
+            }
+
+            if (!content) {
+                actionSpinner.warn(`${remoteName}: no download source available`);
+                skipped++;
+                continue;
+            }
+
+            // Malware scan + install
+            const result = await marketplace.install(remoteId, content);
+            if (result.success) {
+                const status = result.threats.length > 0
+                    ? chalk.yellow('(with warnings)')
+                    : chalk.green('✓ verified');
+                actionSpinner.succeed(`${action}: ${remoteName} v${remoteVersion} ${status}`);
+                if (local) updated++; else freshInstalls++;
+            } else {
+                actionSpinner.fail(`${remoteName}: blocked by security scan`);
+                for (const t of result.threats) {
+                    console.log(chalk.red(`    ${t}`));
+                }
+                errors++;
+            }
+        } catch (err: any) {
+            actionSpinner.fail(`${remoteName}: ${err.message || 'unknown error'}`);
+            errors++;
+        }
+    }
+
+    // Summary
+    console.log('');
+    console.log(chalk.bold('  Summary:'));
+    if (freshInstalls > 0) console.log(chalk.green(`    ✓ ${freshInstalls} new skill(s) installed`));
+    if (updated > 0) console.log(chalk.cyan(`    ↑ ${updated} skill(s) updated`));
+    if (skipped > 0) console.log(chalk.gray(`    — ${skipped} skill(s) already up-to-date`));
+    if (errors > 0) console.log(chalk.red(`    ✗ ${errors} skill(s) failed`));
+    if (freshInstalls === 0 && updated === 0) {
+        console.log(chalk.green('    All skills are up-to-date!'));
+    }
+    console.log('');
+});
+
 // ─── swarm ───────────────────────────────────────────────────────
 const swarmCmd = program.command('swarm').description('Swarm network');
 

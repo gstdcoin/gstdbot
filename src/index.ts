@@ -24,6 +24,8 @@ async function main(): Promise<void> {
             botToken: telegramToken,
             swarmUrl: process.env.GSTD_SWARM_URL || 'http://localhost:11434',
             cocoonEnabled: process.env.GSTD_COCOON_ENABLED !== 'false',
+            adminIds: (process.env.TELEGRAM_ADMIN_IDS || '').split(',').filter(Boolean).map(Number),
+            communityChat: process.env.TELEGRAM_COMMUNITY_CHAT ? parseInt(process.env.TELEGRAM_COMMUNITY_CHAT) : undefined,
         });
         await telegram.start();
     } else {
