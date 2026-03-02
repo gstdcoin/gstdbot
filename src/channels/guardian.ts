@@ -357,6 +357,19 @@ export class CommunityGuardian {
             const usdPaid = (totalStars * STAR_USD).toFixed(2);
             const proRequests = Math.floor(gstdAmount / 0.1);
 
+            // Check if this is a monitor signal purchase
+            const invoicePayload = (payment as any).invoice_payload || '';
+            const isMonitorLaunch = invoicePayload.startsWith('monitor_launch:');
+            let taskId = '';
+            let signalReward = 0;
+
+            if (isMonitorLaunch) {
+                const parts = invoicePayload.split(':');
+                taskId = parts[1] || '';
+                signalReward = parseFloat(parts[3]) || 0;
+                console.log(`[Guardian] Monitor signal purchase: task=${taskId} reward=${signalReward}`);
+            }
+
             try {
                 // Call backend to credit tokens (server recalculates GSTD amount)
                 const res = await fetch(`${this.config.swarmUrl}/api/v1/telegram/buy-stars`, {
@@ -372,6 +385,28 @@ export class CommunityGuardian {
                         payment_id: payment.telegram_payment_charge_id,
                     }),
                 });
+
+                // If this is a monitor signal, also launch the task
+                if (isMonitorLaunch && taskId) {
+                    try {
+                        await fetch(`${this.config.swarmUrl}/api/v1/monitor/signals/${taskId}/sponsor`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Bot-Token': process.env.TELEGRAM_BOT_TOKEN || '',
+                            },
+                            body: JSON.stringify({
+                                user_id: `tg-${userId}`,
+                                stars_paid: totalStars,
+                                gstd_reward: signalReward,
+                                gstd_gold_fee: signalReward * 0.1, // 10% platform fee
+                            }),
+                        });
+                        console.log(`[Guardian] Signal task ${taskId} launched`);
+                    } catch (e: any) {
+                        console.error('[Guardian] Signal task launch failed:', e.message);
+                    }
+                }
 
                 if (res.ok) {
                     const data: any = await res.json();
@@ -405,7 +440,15 @@ export class CommunityGuardian {
                         `💡 <i>ChatGPT Plus = $20/mo ≈ 4000 requests ($0.005/req)\nGSTD Pro: $${confirmedUSD.toFixed(2)} = ${confirmedProReqs} requests</i>\n` +
                         `📋 ID: <code>${payment.telegram_payment_charge_id}</code>`;
 
-                    await ctx.reply(msg, { parse_mode: 'HTML' });
+                    // Add signal task info if applicable
+                    if (isMonitorLaunch && taskId) {
+                        const signalNote = lang === 'ru'
+                            ? `\n\n🌍 <b>Задача анализа сигнала ${taskId} запущена!</b>\n🐝 Swarm обрабатывает аномалию.`
+                            : `\n\n🌍 <b>Signal analysis task ${taskId} launched!</b>\n🐝 Swarm is processing this anomaly.`;
+                        await ctx.reply(msg + signalNote, { parse_mode: 'HTML' });
+                    } else {
+                        await ctx.reply(msg, { parse_mode: 'HTML' });
+                    }
                 } else {
                     // Refund if backend fails
                     const errBody = await res.text().catch(() => '');
