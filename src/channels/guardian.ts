@@ -291,18 +291,35 @@ export class CommunityGuardian {
             // Parse amount: /buy_stars 100
             const args = (ctx.message?.text || '').split(' ').slice(1);
             const starsAmount = parseInt(args[0]) || 50;
-            const gstdAmount = starsAmount * 10; // 1 Star = 10 GSTD
+
+            // Real exchange rate: 1 Star ≈ $0.013 (Telegram official rate)
+            const STAR_USD = 0.013;
+            const gstdPrice = await this.fetchPrice();
+            // How many GSTD per Star at market price
+            const gstdPerStar = gstdPrice > 0 ? STAR_USD / gstdPrice : 10;
+            const gstdAmount = Math.floor(starsAmount * gstdPerStar);
+
+            // Comparison with ChatGPT: $20/mo ÷ 0.1 GSTD per request
+            const usdTotal = (starsAmount * STAR_USD).toFixed(2);
+            const proRequests = Math.floor(gstdAmount / 0.1);
+            // ChatGPT Plus: $20/mo with ~limited usage. GSTD: pay per request
+            const chatgptEquivMonths = (20 / parseFloat(usdTotal)).toFixed(0);
 
             try {
+                const title = lang === 'ru'
+                    ? `${gstdAmount} GSTD (${proRequests} Pro запросов)`
+                    : `${gstdAmount} GSTD (${proRequests} Pro requests)`;
+                const desc = lang === 'ru'
+                    ? `${starsAmount}⭐ = $${usdTotal} = ${gstdAmount} GSTD = ${proRequests} Pro запросов.\nChatGPT Plus = $20/мес. Здесь это ${chatgptEquivMonths}× дешевле!`
+                    : `${starsAmount}⭐ = $${usdTotal} = ${gstdAmount} GSTD = ${proRequests} Pro requests.\nChatGPT Plus = $20/mo. This is ${chatgptEquivMonths}× cheaper!`;
+
                 await ctx.api.sendInvoice(
                     ctx.chat!.id,
-                    lang === 'ru' ? `Покупка ${gstdAmount} GSTD` : `Buy ${gstdAmount} GSTD`,
-                    lang === 'ru'
-                        ? `Вы получите ${gstdAmount} GSTD токенов на ваш привязанный кошелёк. 1 Star = 10 GSTD.`
-                        : `You will receive ${gstdAmount} GSTD tokens to your linked wallet. 1 Star = 10 GSTD.`,
-                    `gstd_purchase_${userId}_${Date.now()}`, // unique payload
-                    'XTR', // Stars currency
-                    [{ label: `${gstdAmount} GSTD`, amount: starsAmount }],
+                    title,
+                    desc,
+                    `gstd_purchase_${userId}_${Date.now()}`,
+                    'XTR',
+                    [{ label: title, amount: starsAmount }],
                 );
             } catch (err: any) {
                 console.error('[Guardian] Invoice error:', err.message);
@@ -323,15 +340,22 @@ export class CommunityGuardian {
             }
         });
 
-        // Handle successful payment — deliver tokens
+        // Handle successful payment — deliver tokens with real rate
         bot.on('message:successful_payment', async (ctx) => {
             const payment = ctx.message?.successful_payment;
             if (!payment) return;
 
             const userId = ctx.from?.id;
-            const totalPaid = payment.total_amount; // Stars
-            const gstdAmount = totalPaid * 10; // 1 Star = 10 GSTD
-            const lang = this.detectLang('');
+            const totalStars = payment.total_amount;
+            const lang = ctx.from?.language_code?.startsWith('ru') ? 'ru' : 'en';
+
+            // Calculate real GSTD amount from market price
+            const STAR_USD = 0.013;
+            const gstdPrice = await this.fetchPrice();
+            const gstdPerStar = gstdPrice > 0 ? STAR_USD / gstdPrice : 10;
+            const gstdAmount = Math.floor(totalStars * gstdPerStar);
+            const usdPaid = (totalStars * STAR_USD).toFixed(2);
+            const proRequests = Math.floor(gstdAmount / 0.1);
 
             try {
                 // Call backend to credit tokens
@@ -340,7 +364,7 @@ export class CommunityGuardian {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         telegram_id: userId,
-                        stars_amount: totalPaid,
+                        stars_amount: totalStars,
                         gstd_amount: gstdAmount,
                         payment_id: payment.telegram_payment_charge_id,
                     }),
@@ -348,14 +372,29 @@ export class CommunityGuardian {
 
                 if (res.ok) {
                     const data: any = await res.json();
-                    await ctx.reply(
-                        `✅ *${lang === 'ru' ? 'Покупка успешна' : 'Purchase Successful'}!*\n\n` +
-                        `💰 ${gstdAmount} GSTD → ${data.wallet ? data.wallet.slice(0, 8) + '...' : lang === 'ru' ? 'ваш кошелёк' : 'your wallet'}\n` +
-                        `⭐ ${lang === 'ru' ? 'Оплачено' : 'Paid'}: ${totalPaid} Stars\n` +
-                        `📋 ID: \`${payment.telegram_payment_charge_id}\`\n\n` +
-                        `${lang === 'ru' ? 'Баланс обновлён на дашборде' : 'Balance updated on dashboard'}: [${PLATFORM_KB.website}](${PLATFORM_KB.website}/dashboard)`,
-                        { parse_mode: 'Markdown', link_preview_options: { is_disabled: true } }
-                    );
+                    const walletInfo = data.wallet
+                        ? data.wallet.slice(0, 6) + '...' + data.wallet.slice(-4)
+                        : (lang === 'ru' ? 'внутренний баланс' : 'internal balance');
+
+                    const msg = lang === 'ru'
+                        ? `✅ <b>Покупка успешна!</b>\n\n` +
+                        `💰 <b>${gstdAmount} GSTD</b> → ${walletInfo}\n` +
+                        `⭐ Оплачено: ${totalStars} Stars ($${usdPaid})\n` +
+                        `⚡ Pro запросов: <b>${proRequests}</b>\n\n` +
+                        `📊 <b>Курс:</b> 1⭐ = ${gstdPerStar.toFixed(0)} GSTD ($${STAR_USD})\n` +
+                        `📊 GSTD = $${gstdPrice.toFixed(6)}\n\n` +
+                        `💡 <i>ChatGPT Plus = $20/мес ≈ ${Math.floor(20 / 0.005)} запросов\nGSTD Pro: $${usdPaid} = ${proRequests} запросов</i>\n` +
+                        `📋 ID: <code>${payment.telegram_payment_charge_id}</code>`
+                        : `✅ <b>Purchase Successful!</b>\n\n` +
+                        `💰 <b>${gstdAmount} GSTD</b> → ${walletInfo}\n` +
+                        `⭐ Paid: ${totalStars} Stars ($${usdPaid})\n` +
+                        `⚡ Pro requests: <b>${proRequests}</b>\n\n` +
+                        `📊 <b>Rate:</b> 1⭐ = ${gstdPerStar.toFixed(0)} GSTD ($${STAR_USD})\n` +
+                        `📊 GSTD = $${gstdPrice.toFixed(6)}\n\n` +
+                        `💡 <i>ChatGPT Plus = $20/mo ≈ ${Math.floor(20 / 0.005)} requests\nGSTD Pro: $${usdPaid} = ${proRequests} requests</i>\n` +
+                        `📋 ID: <code>${payment.telegram_payment_charge_id}</code>`;
+
+                    await ctx.reply(msg, { parse_mode: 'HTML' });
                 } else {
                     // Refund if backend fails
                     console.error('[Guardian] Token delivery failed, refunding');

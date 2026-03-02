@@ -24,13 +24,13 @@ interface ChatMessage {
     content: string;
 }
 
-// Model mappings
+// Model mappings — use Go backend gateway model names, NOT raw Ollama names
 const MODEL_MAP: Record<string, string> = {
-    'auto': 'auto',
-    'gstd-flash': 'qwen2.5-coder:7b',
-    'gstd-pro': 'llama3.1:8b',
-    'gstd-ultra': 'deepseek-r1:14b',
-    'cocoon-auto': 'cocoon',
+    'auto': 'omega-auto',
+    'gstd-flash': 'omega-auto',
+    'gstd-pro': 'omega-pro',
+    'gstd-ultra': 'omega-auto',
+    'cocoon-auto': 'cocoon-auto',
 };
 
 // Simple LRU cache for response caching
@@ -90,28 +90,20 @@ export class NeuralRouter {
         }
 
         // ─── Determine target model ─────────────────────────────
-        let ollamaModel: string;
+        // Always use gateway model names — Go backend handles routing internally
+        const gatewayModel = MODEL_MAP[requestedModel] || 'omega-auto';
 
-        if (requestedModel === 'auto') {
-            ollamaModel = this.classifyIntent(messages);
-        } else if (requestedModel === 'cocoon-auto') {
-            // Route to Cocoon TEE
-            return this.routeToCocoon(messages, start);
-        } else {
-            ollamaModel = MODEL_MAP[requestedModel] || 'llama3.1:8b';
-        }
-
-        // ─── L2: Swarm (Ollama) ──────────────────────────────────
+        // ─── L2: Swarm (Go Backend) ─────────────────────────────
         try {
-            const result = await this.callOllama(ollamaModel, messages);
+            const result = await this.callSwarm(gatewayModel, messages);
             this.cache.set(cacheKey, result.content, result.model);
             return {
                 ...result,
                 tier: 'swarm',
                 latencyMs: Date.now() - start,
             };
-        } catch (err) {
-            console.warn('[Router] Swarm unavailable, trying fallbacks...');
+        } catch (err: any) {
+            console.warn('[Router] Swarm unavailable, trying fallbacks...', err?.message);
         }
 
         // ─── L3: Cocoon TEE ──────────────────────────────────────
@@ -134,28 +126,10 @@ export class NeuralRouter {
     }
 
     /**
-     * Classify user intent to select the best sovereign model
+     * Call Swarm backend (Go Gateway — OpenAI-compatible)
      */
-    private classifyIntent(messages: ChatMessage[]): string {
-        const lastUser = messages.filter(m => m.role === 'user').pop()?.content?.toLowerCase() || '';
-
-        // Code patterns
-        const codePattern = /\b(code|function|class|import|export|debug|typescript|python|javascript|rust|golang|api|endpoint|regex|refactor|implement|algorithm|compile|syntax|build|deploy|docker|git|npm|pip)\b/;
-        if (codePattern.test(lastUser)) return 'qwen2.5-coder:7b';
-
-        // Reasoning patterns
-        const reasonPattern = /\b(explain|analyze|compare|why|how does|prove|reason|logic|math|calculate|evaluate|philosophical|paradox|dilemma|trade.?off|pros.?cons)\b/;
-        if (reasonPattern.test(lastUser)) return 'deepseek-r1:14b';
-
-        // Default: general
-        return 'llama3.1:8b';
-    }
-
-    /**
-     * Call Ollama (Swarm L2)
-     */
-    private async callOllama(model: string, messages: ChatMessage[]): Promise<RouteResult> {
-        const response = await fetch(`${this.swarmUrl}/api/chat`, {
+    private async callSwarm(model: string, messages: ChatMessage[]): Promise<RouteResult> {
+        const response = await fetch(`${this.swarmUrl}/api/v1/chat/completions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -166,33 +140,36 @@ export class NeuralRouter {
         });
 
         if (!response.ok) {
-            throw new Error(`Ollama error: ${response.status} ${response.statusText}`);
+            const errBody = await response.text().catch(() => '');
+            throw new Error(`Backend ${response.status}: ${errBody.substring(0, 100)}`);
         }
 
         const data: any = await response.json();
-        const content = data.message?.content || '';
+        const content = data.choices?.[0]?.message?.content || '';
+
+        if (!content) {
+            throw new Error('Empty response from backend');
+        }
 
         return {
             content,
-            model,
+            model: data.model || model,
             tier: 'swarm',
             latencyMs: 0,
             usage: {
-                promptTokens: data.prompt_eval_count || 0,
-                completionTokens: data.eval_count || 0,
-                totalTokens: (data.prompt_eval_count || 0) + (data.eval_count || 0),
+                promptTokens: data.usage?.prompt_tokens || 0,
+                completionTokens: data.usage?.completion_tokens || 0,
+                totalTokens: data.usage?.total_tokens || 0,
             },
         };
     }
 
     /**
-     * Route to Cocoon TEE (L3)
+     * Route to Cocoon TEE (L3) — uses Go backend cocoon-auto model
      */
     private async routeToCocoon(messages: ChatMessage[], start: number): Promise<RouteResult> {
-        // TODO: Implement actual Cocoon TEE bridge
-        // For now, try Ollama with a larger model as proxy
         try {
-            const result = await this.callOllama('deepseek-r1:14b', messages);
+            const result = await this.callSwarm('cocoon-auto', messages);
             return { ...result, tier: 'cocoon', latencyMs: Date.now() - start };
         } catch {
             throw new Error('Cocoon TEE unavailable');
