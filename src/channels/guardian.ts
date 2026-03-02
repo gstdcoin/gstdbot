@@ -358,46 +358,58 @@ export class CommunityGuardian {
             const proRequests = Math.floor(gstdAmount / 0.1);
 
             try {
-                // Call backend to credit tokens
+                // Call backend to credit tokens (server recalculates GSTD amount)
                 const res = await fetch(`${this.config.swarmUrl}/api/v1/telegram/buy-stars`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Bot-Token': process.env.TELEGRAM_BOT_TOKEN || '',
+                    },
                     body: JSON.stringify({
                         telegram_id: userId,
                         stars_amount: totalStars,
-                        gstd_amount: gstdAmount,
+                        gstd_amount: gstdAmount, // hint, server will verify
                         payment_id: payment.telegram_payment_charge_id,
                     }),
                 });
 
                 if (res.ok) {
                     const data: any = await res.json();
+                    // Use server-confirmed values (not client estimates)
+                    const confirmedGSTD = data.gstd_amount || gstdAmount;
+                    const confirmedProReqs = data.pro_requests || Math.floor(confirmedGSTD / 0.1);
+                    const confirmedRate = data.rate_per_star || gstdPerStar;
+                    const confirmedPrice = data.gstd_price || gstdPrice;
+                    const confirmedUSD = data.usd_paid || parseFloat(usdPaid);
                     const walletInfo = data.wallet
                         ? data.wallet.slice(0, 6) + '...' + data.wallet.slice(-4)
                         : (lang === 'ru' ? 'внутренний баланс' : 'internal balance');
 
                     const msg = lang === 'ru'
                         ? `✅ <b>Покупка успешна!</b>\n\n` +
-                        `💰 <b>${gstdAmount} GSTD</b> → ${walletInfo}\n` +
-                        `⭐ Оплачено: ${totalStars} Stars ($${usdPaid})\n` +
-                        `⚡ Pro запросов: <b>${proRequests}</b>\n\n` +
-                        `📊 <b>Курс:</b> 1⭐ = ${gstdPerStar.toFixed(0)} GSTD ($${STAR_USD})\n` +
-                        `📊 GSTD = $${gstdPrice.toFixed(6)}\n\n` +
-                        `💡 <i>ChatGPT Plus = $20/мес ≈ ${Math.floor(20 / 0.005)} запросов\nGSTD Pro: $${usdPaid} = ${proRequests} запросов</i>\n` +
+                        `💰 <b>${confirmedGSTD} GSTD</b> → ${walletInfo}\n` +
+                        `⭐ Оплачено: ${totalStars} Stars ($${confirmedUSD.toFixed(2)})\n` +
+                        `⚡ Pro запросов: <b>${confirmedProReqs}</b>\n` +
+                        `💵 Стоимость запроса: <b>$${(confirmedUSD / confirmedProReqs).toFixed(5)}</b>\n\n` +
+                        `📊 Курс: 1⭐ = ${confirmedRate.toFixed(0)} GSTD\n` +
+                        `📊 GSTD = $${confirmedPrice.toFixed(6)}\n\n` +
+                        `💡 <i>ChatGPT Plus = $20/мес ≈ 4000 запросов ($0.005/запр)\nGSTD Pro: $${confirmedUSD.toFixed(2)} = ${confirmedProReqs} запросов</i>\n` +
                         `📋 ID: <code>${payment.telegram_payment_charge_id}</code>`
                         : `✅ <b>Purchase Successful!</b>\n\n` +
-                        `💰 <b>${gstdAmount} GSTD</b> → ${walletInfo}\n` +
-                        `⭐ Paid: ${totalStars} Stars ($${usdPaid})\n` +
-                        `⚡ Pro requests: <b>${proRequests}</b>\n\n` +
-                        `📊 <b>Rate:</b> 1⭐ = ${gstdPerStar.toFixed(0)} GSTD ($${STAR_USD})\n` +
-                        `📊 GSTD = $${gstdPrice.toFixed(6)}\n\n` +
-                        `💡 <i>ChatGPT Plus = $20/mo ≈ ${Math.floor(20 / 0.005)} requests\nGSTD Pro: $${usdPaid} = ${proRequests} requests</i>\n` +
+                        `💰 <b>${confirmedGSTD} GSTD</b> → ${walletInfo}\n` +
+                        `⭐ Paid: ${totalStars} Stars ($${confirmedUSD.toFixed(2)})\n` +
+                        `⚡ Pro requests: <b>${confirmedProReqs}</b>\n` +
+                        `💵 Cost per request: <b>$${(confirmedUSD / confirmedProReqs).toFixed(5)}</b>\n\n` +
+                        `📊 Rate: 1⭐ = ${confirmedRate.toFixed(0)} GSTD\n` +
+                        `📊 GSTD = $${confirmedPrice.toFixed(6)}\n\n` +
+                        `💡 <i>ChatGPT Plus = $20/mo ≈ 4000 requests ($0.005/req)\nGSTD Pro: $${confirmedUSD.toFixed(2)} = ${confirmedProReqs} requests</i>\n` +
                         `📋 ID: <code>${payment.telegram_payment_charge_id}</code>`;
 
                     await ctx.reply(msg, { parse_mode: 'HTML' });
                 } else {
                     // Refund if backend fails
-                    console.error('[Guardian] Token delivery failed, refunding');
+                    const errBody = await res.text().catch(() => '');
+                    console.error('[Guardian] Token delivery failed:', res.status, errBody);
                     try {
                         await ctx.api.refundStarPayment(userId!, payment.telegram_payment_charge_id);
                         await ctx.reply(
