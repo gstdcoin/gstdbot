@@ -157,10 +157,11 @@ program
                 const result = await agent.chat(input, model);
                 spinner.stop();
 
-                const tierIcon = { cache: '⚡', swarm: '🐝', cocoon: '🛡️', commercial: '🏢' }[result.tier] || '🐝';
+                const tierIcon: Record<string, string> = { cache: '⚡', swarm: '🐝', cocoon: '🛡️', groq: '🔥', openrouter: '🌐', commercial: '🏢' };
+                const icon = tierIcon[result.tier] || '🐝';
                 console.log('');
                 console.log(chalk.green('GSTD: ') + result.content);
-                console.log(chalk.gray(`  ${tierIcon} ${result.model} · ${result.latencyMs}ms · ${result.tier}`));
+                console.log(chalk.gray(`  ${icon} ${result.model} · ${result.latencyMs}ms · ${result.tier}`));
                 console.log('');
             } catch (err: any) {
                 spinner.fail(chalk.red(err.message));

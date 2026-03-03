@@ -313,10 +313,13 @@ export class OmegaGateway {
         switch (result.tier) {
             case 'cache': this.metrics.cacheHits++; break;
             case 'swarm': this.metrics.swarmRequests++; break;
-            case 'cocoon': this.metrics.cocoonRequests++; break;
+            case 'groq':
+            case 'openrouter':
+                this.metrics.swarmRequests++; break; // sovereign-tier paid APIs
             case 'commercial': this.metrics.commercialRequests++; break;
         }
     }
+
 
     private splitIntoChunks(text: string, chunkSize = 3): string[] {
         const words = text.split(' ');
