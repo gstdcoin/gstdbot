@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GSTD Bot — Sovereign AI Agent</title>
+    <title>GSTD Bot — Collective Intelligence AI Agent</title>
     <meta name="description"
         content="GSTD Bot — The AI that runs on a planetary brain. Decentralized. Private. Uncensored. Works in Telegram, WhatsApp, and any chat.">
     <meta property="og:title" content="GSTD Bot — Sovereign AI Agent">
@@ -599,6 +599,10 @@
                 grid-template-columns: 1fr;
             }
 
+            .features-grid .feature-card[style*="grid-column"] {
+                grid-column: span 1 !important;
+            }
+
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
@@ -692,7 +696,7 @@
             </div>
             <div class="links">
                 <a href="#features" data-i18n="nav_features">Features</a>
-                <a href="#install" data-i18n="nav_install" style="color:#22c55e;font-weight:700">Install</a>
+                <a href="#pricing" style="color:#22c55e;font-weight:700">Pricing</a>
                 <a href="#skills" data-i18n="nav_skills">Skills</a>
                 <a href="#compare" data-i18n="nav_compare">vs OpenClaw</a>
                 <a href="https://app.gstdtoken.com" target="_blank" data-i18n="nav_dashboard">Dashboard</a>
@@ -715,9 +719,9 @@
                 <span data-i18n="hero_h1a">The AI that runs on a</span><br><span class="gradient"
                     data-i18n="hero_h1b">planetary brain.</span>
             </h1>
-            <p class="sub fade-up delay-2" data-i18n="hero_sub">
-                Not on corporate servers. Not through API proxies. Your requests are processed by a decentralized swarm
-                of real devices — private, sovereign, and unstoppable.
+            <p class="sub fade-up delay-2">
+                8 AI models work in parallel. Consensus synthesis produces answers smarter than any single model.
+                Free to start. Pay with GSTD tokens or Telegram Stars ⭐
             </p>
             <div class="sovereignty-live fade-up delay-2">
                 Sovereignty Index:
@@ -811,8 +815,8 @@
                     <div class="label" data-i18n="stat_nodes">Active Nodes</div>
                 </div>
                 <div class="stat">
-                    <div class="num">6</div>
-                    <div class="label" data-i18n="stat_models">Sovereign Models</div>
+                    <div class="num">8</div>
+                    <div class="label" data-i18n="stat_models">AI Models</div>
                 </div>
                 <div class="stat">
                     <div class="num" id="statSov">100%</div>
@@ -829,47 +833,133 @@
     <!-- ─── Features ─── -->
     <section class="features" id="features">
         <div class="container">
-            <div class="section-title" data-i18n="feat_title">⟩ What It Does</div>
-            <h2 data-i18n="feat_h2">Everything OpenClaw does.<br>Plus a planetary brain.</h2>
+            <div class="section-title">⟩ COLLECTIVE INTELLIGENCE</div>
+            <h2>8 AI experts answer.<br><span
+                    style="background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">One
+                    superior response.</span></h2>
             <div class="features-grid">
+                <div class="feature-card"
+                    style="grid-column:span 2;background:linear-gradient(135deg,rgba(139,92,246,0.06),rgba(6,182,212,0.04));border-color:rgba(139,92,246,0.15)">
+                    <div class="icon"
+                        style="background:linear-gradient(135deg,var(--accent),var(--accent2));width:48px;height:48px;font-size:24px">
+                        🧠</div>
+                    <h3 style="font-size:20px">Collective Intelligence Engine</h3>
+                    <p style="font-size:14px;line-height:1.7">Unlike OpenClaw (single model), GSTD queries
+                        <strong>multiple AI experts in parallel</strong> and synthesizes a consensus answer. Like having
+                        a panel of expert doctors instead of one — more accurate, more reliable, more complete.
+                    </p>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
+                        <span
+                            style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.15);color:#22c55e;font-weight:700">🆓
+                            Single Expert — Free</span>
+                        <span
+                            style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.15);color:#60a5fa;font-weight:700">🔬
+                            Council of 3 — 0.05 GSTD</span>
+                        <span
+                            style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.15);color:#fbbf24;font-weight:700">🔥
+                            Panel of 5 — 0.15 GSTD</span>
+                        <span
+                            style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.15);color:#a78bfa;font-weight:700">🧠
+                            Swarm of 7 — 0.50 GSTD</span>
+                    </div>
+                </div>
                 <div class="feature-card">
-                    <div class="icon">🐝</div>
-                    <h3 data-i18n="f1_h">Runs on the Swarm</h3>
-                    <p data-i18n="f1_p">Your queries are processed by a decentralized network of nodes — not OpenAI
-                        servers. Your data never touches corporate infrastructure.</p>
+                    <div class="icon">🚀</div>
+                    <h3>8 Groq Models</h3>
+                    <p>Llama 4 Scout, Llama 4 Maverick, GPT-OSS 120B, Qwen3 32B, Kimi K2 — all free, ultra-fast on Groq
+                        infrastructure. No API keys needed.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">⭐</div>
+                    <h3>Pay with Stars or GSTD</h3>
+                    <p>Buy GSTD tokens with Telegram Stars — no crypto wallet needed. 1 Star ≈ 10 GSTD. Or connect TON
+                        wallet for direct purchase.</p>
                 </div>
                 <div class="feature-card">
                     <div class="icon">💬</div>
-                    <h3 data-i18n="f2_h">Telegram Native</h3>
-                    <p data-i18n="f2_p">Deeply integrated with Telegram. DMs, group chats, inline mode. Manage tasks,
-                        earn GSTD, and control the bot — all from one interface.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="icon">🧠</div>
-                    <h3 data-i18n="f3_h">Persistent Hive Memory</h3>
-                    <p data-i18n="f3_p">The Swarm remembers collectively. Every interaction makes the network smarter.
-                        Your context persists, and the AI evolves with use.</p>
+                    <h3>Telegram + Web</h3>
+                    <p>Chat in Telegram DMs, groups, or use the web interface. Same Collective Intelligence everywhere.
+                        History synced across platforms.</p>
                 </div>
                 <div class="feature-card">
                     <div class="icon">🛡️</div>
-                    <h3 data-i18n="f4_h">TEE Confidential Compute</h3>
-                    <p data-i18n="f4_p">Heavy tasks run in Cocoon TEE — hardware-encrypted GPU enclaves. Even the node
-                        operator can't see
+                    <h3>TEE Confidential Compute</h3>
+                    <p>Heavy tasks run in Cocoon TEE — hardware-encrypted GPU enclaves. Even the node operator can't see
                         your data. Verified on TON blockchain.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="icon">⚡</div>
-                    <h3 data-i18n="f5_h">Sovereign Neural Router</h3>
-                    <p data-i18n="f5_p">Auto-selects the best model: qwen2.5-coder for code, deepseek-r1 for reasoning,
-                        llama3.1 for
-                        general — all sovereign. Commercial APIs are a last resort.</p>
+                    <div class="icon">💰</div>
+                    <h3>Earn While You Compute</h3>
+                    <p>Connect your device as a node and earn GSTD tokens. Agent skills earn passive income. Gold-backed
+                        reserves add real value.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="icon">💰</div>
-                    <h3 data-i18n="f6_h">Earn While You Compute</h3>
-                    <p data-i18n="f6_p">Connect your device as a node and earn GSTD tokens. The more you compute, the
-                        more you earn.
-                        Gold-backed reserves add real value.</p>
+                    <div class="icon">🧬</div>
+                    <h3>Self-Improving AI</h3>
+                    <p>The Swarm learns from every interaction via DPO training. Collective Memory makes the network
+                        smarter over time. OpenClaw uses static models.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Pricing ─── -->
+    <section class="features" id="pricing" style="border-top:1px solid var(--border)">
+        <div class="container">
+            <div class="section-title">⟩ PRICING</div>
+            <h2>Pay what you need.<br>Start free, scale up.</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:8px">
+                <div class="feature-card" style="text-align:center;position:relative">
+                    <div style="font-size:28px;margin-bottom:8px">🆓</div>
+                    <h3 style="font-size:18px">Single Expert</h3>
+                    <div
+                        style="font-size:32px;font-weight:900;margin:12px 0;background:linear-gradient(135deg,#22c55e,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
+                        FREE</div>
+                    <p style="font-size:12px;line-height:1.6">1 AI model responds instantly<br>Unlimited
+                        queries<br>Llama 4 / GPT-OSS / Kimi K2<br>Web + Telegram</p>
+                </div>
+                <div class="feature-card" style="text-align:center;border-color:rgba(59,130,246,0.2)">
+                    <div style="font-size:28px;margin-bottom:8px">🔬</div>
+                    <h3 style="font-size:18px">Council of 3</h3>
+                    <div style="font-size:32px;font-weight:900;margin:12px 0;color:#60a5fa">0.05 <span
+                            style="font-size:14px;font-weight:600">GSTD</span></div>
+                    <p style="font-size:12px;line-height:1.6">3 experts reach consensus<br>Cross-verification<br>~2×
+                        more accurate<br>≈ $0.003 per query</p>
+                </div>
+                <div class="feature-card"
+                    style="text-align:center;border-color:rgba(245,158,11,0.2);background:linear-gradient(180deg,rgba(245,158,11,0.04),transparent)">
+                    <div style="font-size:28px;margin-bottom:8px">🔥</div>
+                    <h3 style="font-size:18px">Panel of 5</h3>
+                    <div style="font-size:32px;font-weight:900;margin:12px 0;color:#fbbf24">0.15 <span
+                            style="font-size:14px;font-weight:600">GSTD</span></div>
+                    <p style="font-size:12px;line-height:1.6">5 experts + deep synthesis<br>Cross-verification<br>~4×
+                        more accurate<br>≈ $0.008 per query</p>
+                    <span
+                        style="position:absolute;top:-10px;right:16px;font-size:10px;padding:3px 8px;border-radius:4px;background:var(--accent);color:white;font-weight:700">POPULAR</span>
+                </div>
+                <div class="feature-card" style="text-align:center;border-color:rgba(139,92,246,0.2)">
+                    <div style="font-size:28px;margin-bottom:8px">🧠</div>
+                    <h3 style="font-size:18px">Swarm of 7</h3>
+                    <div
+                        style="font-size:32px;font-weight:900;margin:12px 0;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">
+                        0.50 <span
+                            style="font-size:14px;font-weight:600;-webkit-text-fill-color:var(--accent)">GSTD</span>
+                    </div>
+                    <p style="font-size:12px;line-height:1.6">7 experts + reasoning chains<br>Full verification
+                        pipeline<br>Maximum reliability<br>≈ $0.025 per query</p>
+                </div>
+            </div>
+            <div style="text-align:center;margin-top:32px">
+                <div
+                    style="display:inline-flex;align-items:center;gap:16px;padding:16px 28px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid var(--border)">
+                    <span style="font-size:24px">⭐</span>
+                    <div style="text-align:left">
+                        <div style="font-size:14px;font-weight:700">Buy GSTD with Telegram Stars</div>
+                        <div style="font-size:12px;color:var(--muted)">No crypto wallet needed · Instant · 1 Star ≈ 10
+                            GSTD</div>
+                    </div>
+                    <a href="https://t.me/GstdAppBot?start=buy" class="btn-primary"
+                        style="padding:8px 16px;font-size:12px">Buy now →</a>
                 </div>
             </div>
         </div>
@@ -996,75 +1086,75 @@
     <!-- ─── Comparison ─── -->
     <section class="compare" id="compare">
         <div class="container">
-            <h2 data-i18n="compare_title">⟩ GSTD Bot vs OpenClaw</h2>
+            <h2>⟩ GSTD Bot vs OpenClaw</h2>
             <table class="compare-table">
                 <thead>
                     <tr>
-                        <th data-i18n="cmp_feature">Feature</th>
+                        <th>Feature</th>
                         <th>GSTD Bot</th>
                         <th>OpenClaw</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr class="winner">
-                        <td data-i18n="cmp_infra">Infrastructure</td>
-                        <td class="us" data-i18n="cmp_infra_us">Decentralized Swarm</td>
-                        <td class="them" data-i18n="cmp_infra_them">Your own machine</td>
+                        <td>Intelligence</td>
+                        <td class="us">Collective — up to 7 experts + consensus</td>
+                        <td class="them">Single model</td>
                     </tr>
                     <tr class="winner">
-                        <td data-i18n="cmp_models">AI Models</td>
-                        <td class="us" data-i18n="cmp_models_us">6 sovereign + commercial fallback</td>
-                        <td class="them" data-i18n="cmp_models_them">API proxy (OpenAI/Anthropic)</td>
+                        <td>AI Models</td>
+                        <td class="us">8 free models (Llama 4, GPT-OSS, Kimi K2, Qwen3)</td>
+                        <td class="them">API proxy (OpenAI/Anthropic — paid)</td>
                     </tr>
                     <tr class="winner">
-                        <td data-i18n="cmp_privacy">Privacy</td>
-                        <td class="us" data-i18n="cmp_privacy_us">TEE confidential compute</td>
-                        <td class="them" data-i18n="cmp_privacy_them">Local (data stays on machine)</td>
+                        <td>Speed</td>
+                        <td class="us">Groq inference — sub-second latency</td>
+                        <td class="them">Depends on API provider</td>
                     </tr>
                     <tr class="winner">
-                        <td data-i18n="cmp_earn">Earn money</td>
-                        <td class="us" data-i18n="cmp_earn_us">✓ Earn GSTD as node operator</td>
-                        <td class="them" data-i18n="cmp_earn_them">✗ No earning model</td>
+                        <td>Free tier</td>
+                        <td class="us">✓ Unlimited free queries</td>
+                        <td class="them">✗ You pay API costs ($5-15/mo)</td>
+                    </tr>
+                    <tr class="winner">
+                        <td>Payment</td>
+                        <td class="us">GSTD tokens + Telegram Stars ⭐</td>
+                        <td class="them">Credit card for API keys</td>
+                    </tr>
+                    <tr class="winner">
+                        <td>Infrastructure</td>
+                        <td class="us">Decentralized Swarm — no single point of failure</td>
+                        <td class="them">Your own machine (single point)</td>
+                    </tr>
+                    <tr class="winner">
+                        <td>Earn money</td>
+                        <td class="us">✓ Earn GSTD as node operator</td>
+                        <td class="them">✗ No earning model</td>
                     </tr>
                     <tr>
-                        <td data-i18n="cmp_memory">Persistent memory</td>
-                        <td class="us" data-i18n="cmp_memory_us">✓ Hive Memory (collective)</td>
-                        <td class="them" data-i18n="cmp_memory_them">✓ Local memory</td>
+                        <td>Memory</td>
+                        <td class="us">✓ Collective Hive Memory</td>
+                        <td class="them">✓ Local persistent memory</td>
                     </tr>
                     <tr class="winner">
-                        <td data-i18n="cmp_skills">Skills marketplace</td>
-                        <td class="us" data-i18n="cmp_skills_us">✓ With GSTD tokenomics</td>
-                        <td class="them" data-i18n="cmp_skills_them">✓ Community skills</td>
-                    </tr>
-                    <tr>
-                        <td data-i18n="cmp_chat">Chat apps</td>
-                        <td class="us" data-i18n="cmp_chat_us">Telegram (native)</td>
-                        <td class="them" data-i18n="cmp_chat_them">WhatsApp, Telegram, Discord, etc.</td>
+                        <td>Privacy</td>
+                        <td class="us">TEE confidential compute + on-chain verification</td>
+                        <td class="them">Local (but CVE-2026-25253 vulnerability)</td>
                     </tr>
                     <tr class="winner">
-                        <td data-i18n="cmp_scale">Scalability</td>
-                        <td class="us" data-i18n="cmp_scale_us">Planetary (247+ nodes)</td>
-                        <td class="them" data-i18n="cmp_scale_them">Single machine</td>
+                        <td>Self-improving</td>
+                        <td class="us">✓ DPO training from collective usage</td>
+                        <td class="them">✗ Static models</td>
                     </tr>
                     <tr class="winner">
-                        <td data-i18n="cmp_sov">Sovereignty</td>
-                        <td class="us" data-i18n="cmp_sov_us">100% — no corporate dependency</td>
-                        <td class="them" data-i18n="cmp_sov_them">Depends on OpenAI/Anthropic APIs</td>
+                        <td>Blockchain</td>
+                        <td class="us">✓ TON + GSTD token + on-chain settlements</td>
+                        <td class="them">✗ No blockchain</td>
                     </tr>
                     <tr class="winner">
-                        <td data-i18n="cmp_cost">Cost</td>
-                        <td class="us" data-i18n="cmp_cost_us">Free tier + GSTD micro-payments</td>
-                        <td class="them" data-i18n="cmp_cost_them">Free (but you pay API costs)</td>
-                    </tr>
-                    <tr class="winner">
-                        <td data-i18n="cmp_improve">Self-improving</td>
-                        <td class="us" data-i18n="cmp_improve_us">✓ DPO training from usage</td>
-                        <td class="them" data-i18n="cmp_improve_them">✗ Static models</td>
-                    </tr>
-                    <tr class="winner">
-                        <td data-i18n="cmp_blockchain">Blockchain verified</td>
-                        <td class="us" data-i18n="cmp_blockchain_us">✓ TON + GSTD token</td>
-                        <td class="them" data-i18n="cmp_blockchain_them">✗ No blockchain</td>
+                        <td>Cost per query</td>
+                        <td class="us">$0 (free) to $0.025 (7 experts)</td>
+                        <td class="them">$0.0005 – $0.075 (API fees)</td>
                     </tr>
                 </tbody>
             </table>
@@ -1076,19 +1166,14 @@
         <div class="container">
             <h2 data-i18n="int_title">⟩ Works With</h2>
             <div class="int-grid">
-                <div class="int-item"><span class="int-icon">📱</span> <span data-i18n="int_telegram">Telegram</span>
-                </div>
-                <div class="int-item"><span class="int-icon">🌐</span> <span data-i18n="int_web">Web Chat</span></div>
+                <div class="int-item"><span class="int-icon">📱</span> Telegram</div>
+                <div class="int-item"><span class="int-icon">🌐</span> Web Chat</div>
                 <div class="int-item"><span class="int-icon">🔗</span> OpenAI API</div>
-                <div class="int-item"><span class="int-icon">⛓️</span> <span data-i18n="int_ton">TON Blockchain</span>
-                </div>
-                <div class="int-item"><span class="int-icon">🛡️</span> Cocoon TEE</div>
-                <div class="int-item"><span class="int-icon">🐝</span> <span data-i18n="int_swarm">GSTD Swarm</span>
-                </div>
-                <div class="int-item"><span class="int-icon">📊</span> <span data-i18n="int_defi">DeFi Protocols</span>
-                </div>
-                <div class="int-item"><span class="int-icon">🔍</span> <span data-i18n="int_search">Web Search</span>
-                </div>
+                <div class="int-item"><span class="int-icon">⛓️</span> TON Blockchain</div>
+                <div class="int-item"><span class="int-icon">⭐</span> Telegram Stars</div>
+                <div class="int-item"><span class="int-icon">🐝</span> GSTD Swarm</div>
+                <div class="int-item"><span class="int-icon">🤖</span> A2A Agents</div>
+                <div class="int-item"><span class="int-icon">📊</span> DeFi Protocols</div>
             </div>
         </div>
     </section>
