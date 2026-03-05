@@ -9,11 +9,12 @@ import { cpus, totalmem, freemem, hostname, platform, arch } from 'os';
 import { getWallet, getBalance } from '../wallet/wallet.js';
 
 export interface DashboardConfig {
+    host: string;
     port: number;
     enabled: boolean;
 }
 
-export async function startDashboard(port: number = 8080): Promise<void> {
+export async function startDashboard(port: number = 8080, host: string = '0.0.0.0'): Promise<void> {
     const app = express();
 
     app.use(express.json());
@@ -112,8 +113,8 @@ export async function startDashboard(port: number = 8080): Promise<void> {
     });
 
     // Start
-    app.listen(port, () => {
-        console.log(`  📊 Dashboard: http://localhost:${port}`);
+    app.listen(port, host, () => {
+        console.log(`  📊 Dashboard: http://${host}:${port}`);
     });
 }
 

@@ -392,6 +392,7 @@ print(json.dumps(models))
     "url": "https://app.gstdtoken.com/api/v1"
   },
   "dashboard": {
+    "host": "0.0.0.0",
     "port": 8080,
     "enabled": true
   },

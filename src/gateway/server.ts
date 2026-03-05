@@ -333,7 +333,7 @@ export class OmegaGateway {
         this.setupWebSocket();
 
         return new Promise((resolve) => {
-            this.server.listen(this.config.apiPort, () => {
+            this.server.listen(this.config.apiPort, '0.0.0.0', () => {
                 console.log(`
 ╔══════════════════════════════════════════════╗
 ║           🐝 GSTD Bot — Omega Gateway        ║

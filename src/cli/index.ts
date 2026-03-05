@@ -202,6 +202,7 @@ program
     .command('gateway')
     .description('Start the Omega Gateway (API server)')
     .option('-p, --port <port>', 'API port', '8080')
+    .option('-H, --host <host>', 'Bind address (0.0.0.0 for all interfaces)', '0.0.0.0')
     .option('--swarm-url <url>', 'Ollama URL', 'http://localhost:11434')
     .option('--no-cocoon', 'Disable Cocoon TEE')
     .option('--mode <mode>', 'Sovereignty mode: full|hybrid|fallback', 'full')
