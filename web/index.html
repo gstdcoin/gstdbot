@@ -894,7 +894,7 @@
                         <div>
                             <h3>Run the installer</h3>
                             <p style="font-size:13px;color:var(--muted)">One command detects your OS, installs Ollama +
-                                GSTD Node, generates wallet keys.</p>
+                                💻 Hybrid, or 🔒 Sovereign. No Ollama needed for Cloud mode!</p>
                             <div class="code">curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash</div>
                         </div>
                     </div>
@@ -904,7 +904,7 @@
                             <h3>Configure your node</h3>
                             <p style="font-size:13px;color:var(--muted)">Interactive wizard: set node name, choose
                                 GPU/CPU mode, set resource limits.</p>
-                            <div class="code">gstd-node setup</div>
+                            <div class="code">gstdbot onboard</div>
                         </div>
                     </div>
                     <div class="step">
@@ -913,7 +913,7 @@
                             <h3>Connect wallet</h3>
                             <p style="font-size:13px;color:var(--muted)">Auto-generates TON wallet or import existing.
                                 Link Telegram for Stars payments.</p>
-                            <div class="code">gstd-node wallet init</div>
+                            <div class="code">gstdbot wallet init</div>
                         </div>
                     </div>
                     <div class="step">
@@ -922,7 +922,7 @@
                             <h3>Start earning!</h3>
                             <p style="font-size:13px;color:var(--muted)">Node joins Swarm, processes tasks, earns GSTD.
                                 Open dashboard at localhost:8080.</p>
-                            <div class="code">gstd-node start --daemon</div>
+                            <div class="code">gstdbot swarm join</div>
                         </div>
                     </div>
                 </div>
@@ -936,7 +936,7 @@
                         <h3>Docker Compose (recommended)</h3>
                         <p style="font-size:13px;color:var(--muted)">Full stack in one container: AI engine, wallet,
                             dashboard, swarm node.</p>
-                        <div class="code">git clone https://github.com/gstdcoin/gstd-node.git<br>cd gstd-node<br>cp
+                        <div class="code">git clone https://github.com/gstdcoin/gstdbot.git<br>cd gstdbot<br>cp
                             .env.example .env # edit NODE_NAME, WALLET_SEED<br>docker compose up -d</div>
                     </div>
                 </div>
@@ -945,8 +945,8 @@
                     <div style="flex:1">
                         <h3>Quick Docker Run</h3>
                         <p style="font-size:13px;color:var(--muted)">Minimal single container for quick testing.</p>
-                        <div class="code">docker run -d --name gstd-node \<br> -p 8080:8080 -p 11434:11434 \<br> -v
-                            gstd-data:/data \<br> ghcr.io/gstdcoin/gstd-node:latest</div>
+                        <div class="code">docker run -d --name gstdbot \<br> -p 8080:8080 -p 11434:11434 \<br> -v
+                            gstd-data:/data \<br> ghcr.io/gstdcoin/gstdbot:latest</div>
                     </div>
                 </div>
             </div>
@@ -965,7 +965,7 @@
                     <div class="num" style="background:rgba(6,182,212,0.1);color:var(--cyan)">2</div>
                     <div style="flex:1">
                         <h3>Clone & build</h3>
-                        <div class="code">git clone https://github.com/gstdcoin/gstd-node.git<br>cd gstd-node && pnpm
+                        <div class="code">git clone https://github.com/gstdcoin/gstdbot.git<br>cd gstdbot && pnpm
                             install && pnpm build</div>
                     </div>
                 </div>
@@ -1137,7 +1137,7 @@
             </p>
             <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
                 <a href="https://t.me/GstdAppBot" class="btn btn-emerald btn-lg">🚀 Launch in Telegram</a>
-                <a href="https://github.com/gstdcoin/gstd-node" target="_blank" class="btn btn-primary btn-lg">📦 GitHub
+                <a href="https://github.com/gstdcoin/gstdbot" target="_blank" class="btn btn-primary btn-lg">📦 GitHub
                     Repository</a>
                 <a href="https://monitor.gstdtoken.com" class="btn btn-ghost btn-lg">📡 Live Monitor</a>
             </div>

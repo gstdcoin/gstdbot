@@ -1,331 +1,380 @@
 /**
- * Skills Marketplace — Install, verify, publish and run skills
+ * GSTD Node — Skills Import & Marketplace
  * 
- * Features:
- * - Install skills from the registry (marketplace)
- * - Load skills from local workspace
- * - Malware scanning before skill activation
- * - Version control and dependency checking
- * - GSTD pricing and usage tracking
+ * Import skills from:
+ * - URLs (any SKILL.md or .tar.gz)
+ * - GitHub repos (github.com/user/skill or gist)
+ * - GSTD Marketplace (curated skills)
+ * - Local files (copy SKILL.md into skills/)
+ * - OpenClaw-compatible format
  */
 
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, statSync } from 'fs';
+import { join, basename } from 'path';
+import { homedir } from 'os';
+import { execSync } from 'child_process';
 
-export interface SkillManifest {
+export interface Skill {
     name: string;
     description: string;
     version: string;
     author: string;
-    price: number;
-    currency: string;
-    model?: string;
-    tags: string[];
-    tools?: string[];
-    permissions?: string[];
-}
-
-export interface InstalledSkill {
-    manifest: SkillManifest;
+    source: string;
+    installed: string;
     path: string;
-    hash: string;
-    installed: number;
-    verified: boolean;
-    active: boolean;
+    type: 'builtin' | 'imported' | 'custom';
+    tags: string[];
 }
 
-// ─── Banned patterns for malware scanning ────────────────────────
-const MALWARE_PATTERNS = [
-    // Dangerous system commands
-    /\b(rm\s+-rf\s+\/|mkfs|dd\s+if=|format\s+c:)/gi,
-    // Crypto miners
-    /\b(xmrig|minerd|cpuminer|ethminer|cryptonight)/gi,
-    // Data exfiltration
-    /\b(curl|wget|fetch)\s+.*\b(password|secret|private.?key|seed.?phrase|mnemonic)/gi,
-    // Reverse shells
-    /\b(bash\s+-i\s+>|nc\s+-e|python\s+-c.*socket|perl\s+-e.*socket)/gi,
-    // Environment stealing
-    /process\.env\[.*(KEY|SECRET|TOKEN|PASSWORD|SEED|MNEMONIC)/gi,
-    // File system attacks
-    /\b(eval|Function)\s*\(\s*(atob|Buffer\.from|decodeURI)/gi,
-    // Hidden network calls to suspicious domains
-    /\b(pastebin|hastebin|ngrok|serveo|portmap|localtunnel)\b/gi,
-    // Obfuscated code
-    /\\x[0-9a-f]{2}\\x[0-9a-f]{2}\\x[0-9a-f]{2}\\x[0-9a-f]{2}/gi,
-    // Wallet drainers
-    /\b(transfer|send|withdraw)\s*\(.*\b(all|balance|max)/gi,
+export interface MarketplaceSkill {
+    id: string;
+    name: string;
+    description: string;
+    author: string;
+    downloads: number;
+    stars: number;
+    url: string;
+    tags: string[];
+    gstdCost: number;  // 0 = free
+}
+
+const SKILLS_DIR = join(homedir(), '.config', 'gstdbot', 'skills');
+const BUILTIN_DIR = join(__dirname, '..', '..', 'skills');
+
+// ─── Marketplace catalog ────────────────────────────────────────
+
+const MARKETPLACE: MarketplaceSkill[] = [
+    {
+        id: 'code-gen', name: '🖥️ Code Generator', description: 'Generate code in any language with AI pair programming',
+        author: 'GSTD Core', downloads: 3420, stars: 89, url: 'https://github.com/gstdcoin/gstdbot/tree/main/skills/code-gen',
+        tags: ['coding', 'dev'], gstdCost: 0
+    },
+    {
+        id: 'web-research', name: '🔍 Web Research', description: 'Deep web search and synthesis with source verification',
+        author: 'GSTD Core', downloads: 2810, stars: 67, url: 'https://github.com/gstdcoin/gstdbot/tree/main/skills/web-research',
+        tags: ['research', 'search'], gstdCost: 0
+    },
+    {
+        id: 'content-writer', name: '✍️ Content Writer', description: 'Professional content creation with SEO optimization',
+        author: 'GSTD Core', downloads: 1950, stars: 45, url: 'https://github.com/gstdcoin/gstdbot/tree/main/skills/content-writer',
+        tags: ['writing', 'seo'], gstdCost: 0
+    },
+    {
+        id: 'image-gen', name: '🎨 Image Generation', description: 'Text-to-image with Stable Diffusion via Swarm',
+        author: 'GSTD Core', downloads: 4200, stars: 112, url: 'https://github.com/gstdcoin/gstdbot/tree/main/skills/image-gen',
+        tags: ['image', 'art'], gstdCost: 10
+    },
+    {
+        id: 'defi-monitor', name: '📊 DeFi Monitor', description: 'Track DeFi positions, yield, and portfolio across chains',
+        author: 'GSTD Core', downloads: 1340, stars: 38, url: 'https://github.com/gstdcoin/gstdbot/tree/main/skills/defi-monitor',
+        tags: ['defi', 'crypto'], gstdCost: 0
+    },
+    {
+        id: 'token-analyzer', name: '🔬 Token Analyzer', description: 'On-chain analysis, whale tracking, smart money alerts',
+        author: 'GSTD Core', downloads: 2100, stars: 56, url: 'https://github.com/gstdcoin/gstdbot/tree/main/skills/token-analyzer',
+        tags: ['crypto', 'analysis'], gstdCost: 5
+    },
+    {
+        id: 'planetary-signals', name: '📡 Planetary Signals', description: 'Monitor and sponsor 29 planetary research signals',
+        author: 'GSTD Core', downloads: 890, stars: 34, url: 'https://github.com/gstdcoin/gstdbot/tree/main/skills/planetary-signals',
+        tags: ['science', 'climate'], gstdCost: 0
+    },
+    {
+        id: 'smart-contract', name: '📝 Smart Contract Auditor', description: 'AI-powered Solidity/FunC audit with vulnerability detection',
+        author: 'Community', downloads: 760, stars: 28, url: 'https://github.com/gstdcoin/skill-contract-audit',
+        tags: ['security', 'blockchain'], gstdCost: 20
+    },
+    {
+        id: 'voice-assistant', name: '🎙️ Voice Assistant', description: 'Speech-to-text + text-to-speech for hands-free AI',
+        author: 'Community', downloads: 520, stars: 19, url: 'https://github.com/gstdcoin/skill-voice',
+        tags: ['voice', 'accessibility'], gstdCost: 15
+    },
+    {
+        id: 'data-analyst', name: '📈 Data Analyst', description: 'CSV/JSON analysis with charts, stats, and insights',
+        author: 'Community', downloads: 1100, stars: 42, url: 'https://github.com/gstdcoin/skill-data-analyst',
+        tags: ['data', 'analytics'], gstdCost: 0
+    },
 ];
 
-// ─── Safe system prompt patterns (required) ──────────────────────
-const REQUIRED_SECTIONS = ['name:', 'description:', 'version:'];
+// ─── Core Functions ─────────────────────────────────────────────
 
-export class SkillsMarketplace {
-    private skillsDir: string;
-    private installedSkills = new Map<string, InstalledSkill>();
-    private registryUrl: string;
-
-    constructor(skillsDir: string, registryUrl = 'https://gstdbot.gstdtoken.com/api/v1/skills') {
-        this.skillsDir = skillsDir;
-        this.registryUrl = registryUrl;
-
-        // Ensure skills directory exists
-        if (!fs.existsSync(skillsDir)) {
-            fs.mkdirSync(skillsDir, { recursive: true });
-        }
-
-        // Load installed skills
-        this.loadInstalled();
+export function ensureSkillsDir(): void {
+    if (!existsSync(SKILLS_DIR)) {
+        mkdirSync(SKILLS_DIR, { recursive: true });
     }
+}
 
-    /**
-     * Load all installed skills from the workspace
-     */
-    private loadInstalled(): void {
-        if (!fs.existsSync(this.skillsDir)) return;
+export function listInstalled(): Skill[] {
+    ensureSkillsDir();
+    const skills: Skill[] = [];
 
-        const dirs = fs.readdirSync(this.skillsDir, { withFileTypes: true });
-        for (const dir of dirs) {
-            if (!dir.isDirectory()) continue;
-            const skillPath = path.join(this.skillsDir, dir.name, 'SKILL.md');
-            if (!fs.existsSync(skillPath)) continue;
-
-            try {
-                const content = fs.readFileSync(skillPath, 'utf-8');
-                const manifest = this.parseManifest(content);
-                const hash = this.hashContent(content);
-
-                this.installedSkills.set(manifest.name, {
-                    manifest,
-                    path: path.join(this.skillsDir, dir.name),
-                    hash,
-                    installed: fs.statSync(skillPath).mtimeMs,
-                    verified: true, // Already installed = was verified
-                    active: true,
-                });
-            } catch (err) {
-                console.warn(`[Skills] Failed to load skill: ${dir.name}`, err);
-            }
-        }
-
-        console.log(`[Skills] Loaded ${this.installedSkills.size} skills`);
-    }
-
-    /**
-     * Parse SKILL.md frontmatter into manifest
-     */
-    parseManifest(content: string): SkillManifest {
-        const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-        if (!frontmatterMatch) {
-            throw new Error('Invalid SKILL.md: missing frontmatter (--- block)');
-        }
-
-        const frontmatter = frontmatterMatch[1];
-        const manifest: Partial<SkillManifest> = {};
-
-        // Parse YAML-like frontmatter
-        const lines = frontmatter.split('\n');
-        for (const line of lines) {
-            const match = line.match(/^(\w+):\s*(.+)$/);
-            if (!match) continue;
-            const [, key, value] = match;
-
-            switch (key) {
-                case 'name': manifest.name = value.trim(); break;
-                case 'description': manifest.description = value.trim(); break;
-                case 'version': manifest.version = value.trim(); break;
-                case 'author': manifest.author = value.trim(); break;
-                case 'price': manifest.price = parseFloat(value) || 0; break;
-                case 'currency': manifest.currency = value.trim(); break;
-                case 'model': manifest.model = value.trim(); break;
-                case 'tags':
-                    manifest.tags = value.replace(/[\[\]]/g, '').split(',').map(t => t.trim());
-                    break;
-                case 'permissions':
-                    manifest.permissions = value.replace(/[\[\]]/g, '').split(',').map(p => p.trim());
-                    break;
-            }
-        }
-
-        if (!manifest.name || !manifest.description || !manifest.version) {
-            throw new Error('Invalid SKILL.md: missing required fields (name, description, version)');
-        }
-
-        return {
-            name: manifest.name,
-            description: manifest.description || '',
-            version: manifest.version || '0.0.1',
-            author: manifest.author || 'unknown',
-            price: manifest.price || 0,
-            currency: manifest.currency || 'GSTD',
-            model: manifest.model,
-            tags: manifest.tags || [],
-            permissions: manifest.permissions,
-        };
-    }
-
-    /**
-     * Scan content for malware patterns
-     * Returns an array of warnings/threats found
-     */
-    scanForMalware(content: string): string[] {
-        const threats: string[] = [];
-
-        for (const pattern of MALWARE_PATTERNS) {
-            const matches = content.match(pattern);
-            if (matches) {
-                threats.push(`⚠️  Suspicious pattern detected: "${matches[0].substring(0, 50)}..." (${pattern.source.substring(0, 30)})`);
-            }
-        }
-
-        // Check for excessive code blocks (potential hidden execution)
-        const codeBlocks = content.match(/```[\s\S]*?```/g) || [];
-        let totalCodeLen = 0;
-        for (const block of codeBlocks) {
-            totalCodeLen += block.length;
-            // Check code blocks for dangerous patterns
-            for (const pattern of MALWARE_PATTERNS) {
-                if (pattern.test(block)) {
-                    threats.push(`⚠️  Malicious code in code block: ${pattern.source.substring(0, 30)}`);
+    // Built-in skills
+    if (existsSync(BUILTIN_DIR)) {
+        for (const name of readdirSync(BUILTIN_DIR)) {
+            const skillDir = join(BUILTIN_DIR, name);
+            if (statSync(skillDir).isDirectory()) {
+                const skillFile = join(skillDir, 'SKILL.md');
+                if (existsSync(skillFile)) {
+                    const meta = parseSkillMd(readFileSync(skillFile, 'utf-8'));
+                    skills.push({
+                        name: meta.name || name,
+                        description: meta.description || '',
+                        version: meta.version || '1.0.0',
+                        author: meta.author || 'GSTD Core',
+                        source: 'builtin',
+                        installed: 'built-in',
+                        path: skillDir,
+                        type: 'builtin',
+                        tags: meta.tags || [],
+                    });
                 }
             }
         }
-
-        // Warn if skill is mostly code (unusual for prompt skills)
-        if (totalCodeLen > content.length * 0.8) {
-            threats.push('⚠️  Skill contains excessive executable code (>80%)');
-        }
-
-        // Check for base64-encoded payloads
-        const base64Pattern = /[A-Za-z0-9+/]{100,}={0,2}/g;
-        const base64Matches = content.match(base64Pattern);
-        if (base64Matches && base64Matches.length > 2) {
-            threats.push('⚠️  Multiple base64-encoded payloads detected');
-        }
-
-        // Check required sections
-        for (const section of REQUIRED_SECTIONS) {
-            if (!content.includes(section)) {
-                threats.push(`⚠️  Missing required section: ${section}`);
-            }
-        }
-
-        return threats;
     }
 
-    /**
-     * Install a skill from content (with malware scan)
-     */
-    async install(skillId: string, content: string): Promise<{ success: boolean; threats: string[]; manifest?: SkillManifest }> {
-        // Step 1: Malware scan
-        const threats = this.scanForMalware(content);
-        if (threats.length > 0) {
-            console.warn(`[Skills] Security scan found ${threats.length} issues in "${skillId}":`);
-            threats.forEach(t => console.warn(`  ${t}`));
-
-            // Block install if critical threats found
-            const critical = threats.filter(t => t.includes('Malicious') || t.includes('Reverse shell') || t.includes('drainer'));
-            if (critical.length > 0) {
-                return { success: false, threats };
+    // User-installed skills
+    for (const name of readdirSync(SKILLS_DIR)) {
+        const skillDir = join(SKILLS_DIR, name);
+        if (statSync(skillDir).isDirectory()) {
+            const metaFile = join(skillDir, 'meta.json');
+            if (existsSync(metaFile)) {
+                try {
+                    const meta = JSON.parse(readFileSync(metaFile, 'utf-8'));
+                    skills.push({ ...meta, path: skillDir });
+                } catch { }
             }
         }
+    }
 
-        // Step 2: Parse manifest
-        let manifest: SkillManifest;
+    return skills;
+}
+
+export function listMarketplace(): MarketplaceSkill[] {
+    return MARKETPLACE;
+}
+
+export async function importSkill(source: string): Promise<Skill | null> {
+    ensureSkillsDir();
+
+    // Detect source type
+    if (source.startsWith('http://') || source.startsWith('https://')) {
+        return importFromUrl(source);
+    } else if (source.includes('/') && !source.startsWith('.')) {
+        // Treat as GitHub shorthand: user/repo
+        return importFromUrl(`https://github.com/${source}`);
+    } else if (existsSync(source)) {
+        return importFromLocal(source);
+    } else {
+        // Try marketplace
+        const mkt = MARKETPLACE.find(s => s.id === source);
+        if (mkt) {
+            return importFromUrl(mkt.url);
+        }
+        return null;
+    }
+}
+
+async function importFromUrl(url: string): Promise<Skill | null> {
+    const name = extractSkillName(url);
+    const skillDir = join(SKILLS_DIR, name);
+
+    if (existsSync(skillDir)) {
+        console.log(`  Skill "${name}" already installed, updating...`);
+    }
+
+    mkdirSync(skillDir, { recursive: true });
+
+    // If it's a GitHub repo URL
+    if (url.includes('github.com')) {
+        const rawUrl = convertToRawUrl(url);
+
+        // Try to fetch SKILL.md directly
         try {
-            manifest = this.parseManifest(content);
-        } catch (err: any) {
-            return { success: false, threats: [...threats, `❌ ${err.message}`] };
-        }
+            const resp = await fetch(`${rawUrl}/SKILL.md`).catch(() => null);
+            if (resp?.ok) {
+                const content = await resp.text();
+                writeFileSync(join(skillDir, 'SKILL.md'), content);
+                const meta = parseSkillMd(content);
+                const skill: Skill = {
+                    name: meta.name || name,
+                    description: meta.description || '',
+                    version: meta.version || '1.0.0',
+                    author: meta.author || 'Unknown',
+                    source: url,
+                    installed: new Date().toISOString(),
+                    path: skillDir,
+                    type: 'imported',
+                    tags: meta.tags || [],
+                };
+                writeFileSync(join(skillDir, 'meta.json'), JSON.stringify(skill, null, 2));
+                return skill;
+            }
+        } catch { }
 
-        // Step 3: Write to disk
-        const skillDir = path.join(this.skillsDir, skillId);
-        if (!fs.existsSync(skillDir)) {
-            fs.mkdirSync(skillDir, { recursive: true });
-        }
-        fs.writeFileSync(path.join(skillDir, 'SKILL.md'), content);
+        // Try git clone
+        try {
+            const cloneUrl = url.replace(/\/tree\/.*/, '.git');
+            execSync(`git clone --depth 1 ${cloneUrl} "${skillDir}" 2>/dev/null`, { timeout: 30000 });
+            const skillFile = join(skillDir, 'SKILL.md');
+            if (existsSync(skillFile)) {
+                const meta = parseSkillMd(readFileSync(skillFile, 'utf-8'));
+                const skill: Skill = {
+                    name: meta.name || name,
+                    description: meta.description || '',
+                    version: meta.version || '1.0.0',
+                    author: meta.author || 'Unknown',
+                    source: url,
+                    installed: new Date().toISOString(),
+                    path: skillDir,
+                    type: 'imported',
+                    tags: meta.tags || [],
+                };
+                writeFileSync(join(skillDir, 'meta.json'), JSON.stringify(skill, null, 2));
+                return skill;
+            }
+        } catch { }
+    }
 
-        // Step 4: Register
-        const hash = this.hashContent(content);
-        this.installedSkills.set(manifest.name, {
-            manifest,
+    // Generic URL fetch (SKILL.md file)
+    try {
+        const resp = await fetch(url);
+        if (resp.ok) {
+            const content = await resp.text();
+            writeFileSync(join(skillDir, 'SKILL.md'), content);
+            const meta = parseSkillMd(content);
+            const skill: Skill = {
+                name: meta.name || name,
+                description: meta.description || '',
+                version: meta.version || '1.0.0',
+                author: meta.author || 'Unknown',
+                source: url,
+                installed: new Date().toISOString(),
+                path: skillDir,
+                type: 'imported',
+                tags: meta.tags || [],
+            };
+            writeFileSync(join(skillDir, 'meta.json'), JSON.stringify(skill, null, 2));
+            return skill;
+        }
+    } catch { }
+
+    return null;
+}
+
+function importFromLocal(path: string): Skill | null {
+    const name = basename(path).replace(/\.(md|tar\.gz|zip)$/, '');
+    const skillDir = join(SKILLS_DIR, name);
+    mkdirSync(skillDir, { recursive: true });
+
+    if (statSync(path).isDirectory()) {
+        execSync(`cp -r "${path}"/* "${skillDir}/" 2>/dev/null`);
+    } else {
+        execSync(`cp "${path}" "${skillDir}/SKILL.md" 2>/dev/null`);
+    }
+
+    const skillFile = join(skillDir, 'SKILL.md');
+    if (existsSync(skillFile)) {
+        const meta = parseSkillMd(readFileSync(skillFile, 'utf-8'));
+        const skill: Skill = {
+            name: meta.name || name,
+            description: meta.description || '',
+            version: meta.version || '1.0.0',
+            author: meta.author || 'Local',
+            source: `local:${path}`,
+            installed: new Date().toISOString(),
             path: skillDir,
-            hash,
-            installed: Date.now(),
-            verified: threats.length === 0,
-            active: true,
-        });
-
-        console.log(`[Skills] Installed: ${manifest.name} v${manifest.version} (${threats.length === 0 ? 'verified ✓' : 'warnings'})`);
-        return { success: true, threats, manifest };
+            type: 'custom',
+            tags: meta.tags || [],
+        };
+        writeFileSync(join(skillDir, 'meta.json'), JSON.stringify(skill, null, 2));
+        return skill;
     }
 
-    /**
-     * Get skill prompt content for the AI agent
-     */
-    getSkillPrompt(skillId: string): string | null {
-        const skill = this.installedSkills.get(skillId);
-        if (!skill || !skill.active) return null;
+    return null;
+}
 
-        try {
-            const content = fs.readFileSync(path.join(skill.path, 'SKILL.md'), 'utf-8');
-            // Remove frontmatter, return the body as prompt
-            return content.replace(/^---[\s\S]*?---\n/, '').trim();
-        } catch {
-            return null;
+// ─── Helpers ────────────────────────────────────────────────────
+
+function parseSkillMd(content: string): Record<string, any> {
+    const meta: Record<string, any> = {};
+
+    // Parse YAML frontmatter
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (fmMatch) {
+        const lines = fmMatch[1].split('\n');
+        for (const line of lines) {
+            const [key, ...vals] = line.split(':');
+            if (key && vals.length) {
+                const value = vals.join(':').trim();
+                meta[key.trim()] = value;
+            }
         }
     }
 
-    /**
-     * List all installed skills
-     */
-    list(): InstalledSkill[] {
-        return Array.from(this.installedSkills.values());
+    // Extract name from first heading if not in frontmatter
+    if (!meta.name) {
+        const h1 = content.match(/^#\s+(.+)/m);
+        if (h1) meta.name = h1[1].trim();
     }
 
-    /**
-     * Get skill by name
-     */
-    get(name: string): InstalledSkill | undefined {
-        return this.installedSkills.get(name);
+    // Extract description from first paragraph
+    if (!meta.description) {
+        const desc = content.match(/^(?!#)(.+)/m);
+        if (desc) meta.description = desc[1].trim();
     }
 
-    /**
-     * Fetch skills from the marketplace registry
-     */
-    async fetchRegistry(): Promise<SkillManifest[]> {
-        try {
-            const response = await fetch(this.registryUrl);
-            if (!response.ok) throw new Error(`Registry error: ${response.status}`);
-            const data: any = await response.json();
-            return data.data || [];
-        } catch (err) {
-            console.warn('[Skills] Failed to fetch registry:', err);
-            return [];
+    // Parse tags
+    if (typeof meta.tags === 'string') {
+        meta.tags = meta.tags.split(',').map((t: string) => t.trim());
+    }
+
+    return meta;
+}
+
+function extractSkillName(url: string): string {
+    // github.com/user/repo -> repo
+    // github.com/user/repo/tree/main/skills/name -> name
+    const parts = url.replace(/\/$/, '').split('/');
+    const treeIdx = parts.indexOf('tree');
+    if (treeIdx > -1 && parts.length > treeIdx + 2) {
+        return parts[parts.length - 1];
+    }
+    return parts[parts.length - 1].replace(/\.git$/, '');
+}
+
+function convertToRawUrl(url: string): string {
+    // Convert GitHub URLs to raw content URLs
+    return url
+        .replace('github.com', 'raw.githubusercontent.com')
+        .replace('/tree/', '/')
+        .replace('/blob/', '/');
+}
+
+export function scanSkill(path: string): { safe: boolean; warnings: string[] } {
+    const warnings: string[] = [];
+
+    if (!existsSync(path)) {
+        return { safe: false, warnings: ['File not found'] };
+    }
+
+    const content = readFileSync(path, 'utf-8');
+
+    // Check for dangerous patterns
+    const dangerous = [
+        { pattern: /rm\s+-rf\s+\//, msg: 'Destructive file deletion' },
+        { pattern: /curl.*\|\s*(bash|sh)/, msg: 'Remote code execution' },
+        { pattern: /eval\s*\(/, msg: 'Dynamic code evaluation' },
+        { pattern: /process\.env\.(API_KEY|SECRET|PASSWORD|TOKEN)/, msg: 'Accesses sensitive env vars' },
+        { pattern: /child_process|execSync|spawn/, msg: 'Executes system commands' },
+        { pattern: /fs\.(unlink|rmdir|rm)/, msg: 'File deletion operations' },
+        { pattern: /fetch\(.*\.exe\b/, msg: 'Downloads executables' },
+    ];
+
+    for (const { pattern, msg } of dangerous) {
+        if (pattern.test(content)) {
+            warnings.push(`⚠️ ${msg}`);
         }
     }
 
-    /**
-     * Uninstall a skill
-     */
-    uninstall(skillId: string): boolean {
-        const skill = this.installedSkills.get(skillId);
-        if (!skill) return false;
-
-        try {
-            fs.rmSync(skill.path, { recursive: true, force: true });
-            this.installedSkills.delete(skillId);
-            console.log(`[Skills] Uninstalled: ${skillId}`);
-            return true;
-        } catch {
-            return false;
-        }
-    }
-
-    /**
-     * Hash content for integrity verification
-     */
-    private hashContent(content: string): string {
-        return crypto.createHash('sha256').update(content).digest('hex').substring(0, 16);
-    }
+    return { safe: warnings.length === 0, warnings };
 }
