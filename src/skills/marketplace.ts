@@ -62,7 +62,7 @@ const MARKETPLACE: MarketplaceSkill[] = [
     {
         id: 'image-gen', name: '🎨 Image Generation', description: 'Text-to-image with Stable Diffusion via Swarm',
         author: 'GSTD Core', downloads: 4200, stars: 112, url: 'https://github.com/gstdcoin/gstdbot/tree/main/skills/image-gen',
-        tags: ['image', 'art'], gstdCost: 10
+        tags: ['image', 'art'], gstdCost: 1
     },
     {
         id: 'defi-monitor', name: '📊 DeFi Monitor', description: 'Track DeFi positions, yield, and portfolio across chains',
@@ -72,7 +72,7 @@ const MARKETPLACE: MarketplaceSkill[] = [
     {
         id: 'token-analyzer', name: '🔬 Token Analyzer', description: 'On-chain analysis, whale tracking, smart money alerts',
         author: 'GSTD Core', downloads: 2100, stars: 56, url: 'https://github.com/gstdcoin/gstdbot/tree/main/skills/token-analyzer',
-        tags: ['crypto', 'analysis'], gstdCost: 5
+        tags: ['crypto', 'analysis'], gstdCost: 0
     },
     {
         id: 'planetary-signals', name: '📡 Planetary Signals', description: 'Monitor and sponsor 29 planetary research signals',
@@ -82,12 +82,12 @@ const MARKETPLACE: MarketplaceSkill[] = [
     {
         id: 'smart-contract', name: '📝 Smart Contract Auditor', description: 'AI-powered Solidity/FunC audit with vulnerability detection',
         author: 'Community', downloads: 760, stars: 28, url: 'https://github.com/gstdcoin/skill-contract-audit',
-        tags: ['security', 'blockchain'], gstdCost: 20
+        tags: ['security', 'blockchain'], gstdCost: 2
     },
     {
         id: 'voice-assistant', name: '🎙️ Voice Assistant', description: 'Speech-to-text + text-to-speech for hands-free AI',
         author: 'Community', downloads: 520, stars: 19, url: 'https://github.com/gstdcoin/skill-voice',
-        tags: ['voice', 'accessibility'], gstdCost: 15
+        tags: ['voice', 'accessibility'], gstdCost: 1
     },
     {
         id: 'data-analyst', name: '📈 Data Analyst', description: 'CSV/JSON analysis with charts, stats, and insights',
