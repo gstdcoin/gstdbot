@@ -1,458 +1,320 @@
-# 🐝 GSTD Bot — Sovereign Decentralized AI Assistant
+# 🐝 GSTD Node — Your Device is the Supercomputer
 
-**Your personal AI agent. Runs on a planetary brain. Not on corporate servers.**
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20WSL%20%7C%20Docker-lightgrey.svg)]()
 
-GSTD Bot is an AI assistant that runs **on your machine** using sovereign open-source models via [Ollama](https://ollama.com). Unlike corporate AI services — your conversations stay private, your data never leaves your device, and you become part of a decentralized network that earns you GSTD tokens.
+**GSTD Node** is a complete platform client that transforms any device into a sovereign AI node. One command install. Built-in wallet, chat, dashboard, and Swarm networking. Earn GSTD tokens by sharing your compute power.
 
-**Think OpenClaw, but decentralized and with an actual economy.**
+> **Not just a bot — a full platform client.** Install once, get everything: AI chat with 8 models, TON wallet, local dashboard, signal monitor, and swarm node engine.
 
-[Website](https://gstdbot.gstdtoken.com) · [Web Chat](https://chat.gstdtoken.com) · [Telegram](https://t.me/GstdAppBot) · [Dashboard](https://app.gstdtoken.com) · [Monitor](https://monitor.gstdtoken.com)
+🌐 **Website:** [gstdbot.gstdtoken.com](https://gstdbot.gstdtoken.com)
+📡 **Monitor:** [monitor.gstdtoken.com](https://monitor.gstdtoken.com)
+🤖 **Telegram:** [@GstdAppBot](https://t.me/GstdAppBot)
+📊 **Dashboard:** [app.gstdtoken.com](https://app.gstdtoken.com)
 
 ---
 
-## Why GSTD Bot?
+## ⚡ One-Line Install
 
-| Feature | GSTD Bot | OpenClaw |
-|---------|----------|----------|
-| **Runs on your PC** | ✓ | ✓ |
-| **Privacy** | 100% local + TEE | Local only |
-| **Decentralized** | ✓ Swarm network | ✗ Single machine |
-| **Earn money** | ✓ GSTD tokens | ✗ |
-| **Skills marketplace** | ✓ With malware scanning | ✓ |
-| **Self-improving** | ✓ DPO training | ✗ |
-| **Blockchain verified** | ✓ TON | ✗ |
-| **Free** | ✓ | ✓ |
-
-## Quick Start (3 minutes)
-
-### 1. Install Ollama (your local AI brain)
 ```bash
-# macOS / Linux
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Pull a model
-ollama pull llama3.1:8b
+curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
 ```
 
-### 2. Install GSTD Bot
+Supports: 🐧 Linux · 🍎 macOS · 🪟 Windows (WSL) · 🐳 Docker · 🔧 ARM / Raspberry Pi
+
+---
+
+## 📦 What's Inside
+
+| Component | Description |
+|---|---|
+| 🤖 **AI Chat** | 8 Groq models in parallel. Consensus synthesis. Web + terminal |
+| 💰 **Wallet** | TON wallet auto-generated. Receive/send GSTD tokens |
+| 📊 **Dashboard** | Real-time system monitor at `localhost:8080` |
+| 🌐 **Swarm Node** | Auto-joins network, processes tasks, earns 24/7 |
+| 🔒 **TEE Compute** | Hardware-encrypted GPU enclaves for privacy |
+| 📡 **Signal Monitor** | Track 29 planetary signals, sponsor research |
+| 🛠️ **Skills** | Extensible skill marketplace |
+| 🔌 **API Server** | OpenAI-compatible API gateway |
+
+---
+
+## 🚀 Quick Start
+
+### Option A: Auto Installer (recommended)
 ```bash
-# Option A: npm (recommended)
+curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
+```
+
+### Option B: npm
+```bash
 npm install -g gstdbot
-
-# Option B: From source
-git clone https://github.com/gstdcoin/gstdbot.git
-cd gstdbot
-npm install
-npm run build
-npm link
-```
-
-### 3. Setup
-```bash
 gstdbot onboard
 ```
 
-### 4. Start chatting!
+### Option C: From Source
 ```bash
-gstdbot
+git clone https://github.com/gstdcoin/gstdbot.git
+cd gstdbot && npm install && npm run build && npm link
+gstdbot onboard
 ```
 
-That's it. You now have a sovereign AI assistant on your PC. No API keys. No subscriptions. No corporate surveillance.
-
----
-
-## How It Works
-
-```
-You type a message
-        │
-        ▼
-┌──────────────────────┐
-│   GSTD Bot (local)   │      ← runs on YOUR machine
-│   Neural Router       │
-└──────────┬───────────┘
-           │
-   ┌───────┼───────────┐
-   │       │           │
-   ▼       ▼           ▼
-L1 Cache  L2 Ollama   L3 TEE Compute      ← all sovereign
-(instant) (local GPU) (encrypted GPU)
-                       │
-                       ▼
-              L4 Commercial fallback     ← last resort only
-              (disabled by default)
-```
-
-### Routing Priority (Sovereign-First)
-1. **L1 Cache** — instant response for repeated queries
-2. **L2 Swarm (Ollama)** — your local sovereign models
-3. **L3 TEE Compute** — hardware-encrypted GPU enclaves (optional)
-4. **L4 Commercial** — OpenAI/Anthropic fallback (disabled by default)
-
-The Neural Router automatically selects the best model for your task:
-- **Code** → `qwen2.5-coder:7b` (fast, specialized)
-- **Reasoning** → `deepseek-r1:14b` (deep analysis)
-- **General** → `llama3.1:8b` (balanced)
-
----
-
-## Interactive Chat
-
+### Option D: Docker
 ```bash
-gstdbot
+git clone https://github.com/gstdcoin/gstdbot.git
+cd gstdbot
+cp .env.example .env   # edit NODE_NAME, WALLET_SEED
+docker compose up -d
 ```
 
-```
-╔═══════════════════════════════════════════╗
-║   🐝 GSTD Bot — Sovereign AI Assistant   ║
-║   Decentralized · Private · Unstoppable   ║
-╚═══════════════════════════════════════════╝
-  Type your message. Commands: /new /model /skills /status /exit
-
-You: Write a Python fibonacci function
-
-GSTD: Here's an efficient fibonacci implementation:
-
-def fibonacci(n: int) -> int:
-    if n <= 1:
-        return n
-    a, b = 0, 1
-    for _ in range(2, n + 1):
-        a, b = b, a + b
-    return b
-
-  🐝 qwen2.5-coder:7b · 1247ms · swarm
-```
-
-### Chat Commands
-| Command | Description |
-|---------|-------------|
-| `/new` | Reset conversation |
-| `/model auto\|flash\|pro\|ultra` | Switch model |
-| `/skills` | List active skills |
-| `/status` | Session info |
-| `/exit` | Quit |
-
----
-
-## CLI Reference
-
+### Option E: Quick Docker
 ```bash
-gstdbot                    # Interactive chat (default)
-gstdbot send "Hello"       # One-shot message
-gstdbot gateway            # Start the API server
-gstdbot onboard            # Setup wizard
-gstdbot status             # System status
-gstdbot doctor             # Diagnose issues
-gstdbot sovereignty        # Show sovereignty index
-gstdbot skills list        # Browse skills
-gstdbot skills install X   # Install a skill
-gstdbot skills scan file   # Security scan a skill
-gstdbot skills create name # Create a new skill
-gstdbot swarm join         # Join as compute node (earn GSTD)
-gstdbot swarm status       # Network status
+docker run -d --name gstd-node \
+  -p 8080:8080 -p 11434:11434 \
+  -v gstd-data:/data \
+  ghcr.io/gstdcoin/gstd-node:latest
 ```
 
 ---
 
-## Skills Marketplace
+## 🖥️ CLI Reference
 
-Skills extend your bot's capabilities. Each skill is a `SKILL.md` file with instructions for the AI agent.
-
-### Built-in Skills
-
-| Skill | Description | Price |
-|-------|-------------|-------|
-| 💻 Code Generator | Write, review, debug code in any language | Free |
-| 🔍 Web Researcher | Deep research with source verification | 0.02 GSTD |
-| 📊 DeFi Monitor | Real-time DeFi signals across TON, ETH, SOL | 0.01 GSTD |
-| 📝 Content Writer | SEO-optimized multilingual writing | 0.01 GSTD |
-| 📈 Token Analyzer | On-chain analysis & smart money tracking | 0.03 GSTD |
-| 🌍 Planetary Signals | 30+ global threat signals monitoring | 0.05 GSTD |
-| 🎨 Image Generator | Text-to-image on Swarm GPUs (beta) | 0.1 GSTD |
-
-### Create Your Own Skill
-
-```bash
-gstdbot skills create my-skill
 ```
+gstdbot                  # Interactive chat (default)
+gstdbot send "message"   # One-shot message
+gstdbot onboard          # Setup wizard (node name, wallet, resources)
+gstdbot gateway          # Start API server + dashboard (localhost:8080)
+gstdbot status           # System status
+gstdbot doctor           # Diagnose issues
 
-This creates `~/.gstdbot/skills/my-skill/SKILL.md`:
+# Wallet
+gstdbot wallet init      # Create or import TON wallet
+gstdbot wallet balance   # Check GSTD & TON balance
+gstdbot wallet send      # Send GSTD tokens
+gstdbot wallet link      # Link Telegram for Stars payments
 
-```yaml
----
-name: my-skill
-description: What this skill does
-version: 0.1.0
-author: you
-price: 0
-currency: GSTD
-tags: [custom]
----
+# Swarm Node
+gstdbot swarm join       # Join as compute node (earn GSTD)
+gstdbot swarm status     # Network status & earnings
+gstdbot swarm stop       # Pause node
 
-# My Skill
-Instructions for the AI on how to use this skill.
+# Skills
+gstdbot skills list      # Browse marketplace
+gstdbot skills install X # Install a skill
+gstdbot skills scan file # Security scan
+gstdbot skills create N  # Create a new skill
 
-## Examples
-User: "Example request"
-→ Expected behavior
-```
-
-### Security Scanning
-
-**Every skill is scanned for malware before activation.** The scanner checks for:
-
-- 🔴 Reverse shells and backdoors
-- 🔴 Crypto miners
-- 🔴 Wallet drainers
-- 🔴 Data exfiltration attempts
-- 🔴 Obfuscated malicious code
-- 🟡 Environment variable theft
-- 🟡 Suspicious network calls
-- 🟡 Base64-encoded payloads
-
-```bash
-# Scan before installing
-gstdbot skills scan path/to/SKILL.md
-
-# Output:
-#   ✓ No threats detected — skill is safe
-#   Name:    my-skill
-#   Version: 0.1.0
-#   Author:  you
-```
-
-### Publish to Marketplace
-
-Skills can be published to the GSTD Marketplace for others to install:
-
-```bash
-# Coming in v1.1
-gstdbot skills publish ./my-skill
+# Advanced
+gstdbot sovereignty      # Show sovereignty index
+gstdbot config           # Edit configuration
+gstdbot logs             # View node logs
 ```
 
 ---
 
-## Earn GSTD Tokens (Swarm Node)
+## 💰 Earn GSTD Tokens
 
-Turn your PC into a compute node and earn GSTD tokens for processing AI requests from the network.
+Turn your device into a compute node and earn GSTD tokens for processing AI tasks.
 
 ```bash
-# Join the swarm
 gstdbot swarm join
 ```
 
 ```
 ╔═══════════════════════════════════════════╗
-║   🐝 GSTD Bot — Sovereign AI Assistant   ║
+║   🐝 GSTD Node — Sovereign AI Client     ║
 ╚═══════════════════════════════════════════╝
 
   ✓ Hardware detected
-  CPU:      Apple M2 Pro (10 cores)
-  RAM:      16.0 GB
-  GPU:      ✓ Detected
-  Ollama:   ✓ Running
-  Models:   llama3.1:8b, qwen2.5-coder:7b
-  Node ID:  a3b8d1b6-...
-
+    CPU:    AMD Ryzen 9 (16 cores)
+    RAM:    64.0 GB
+    GPU:    ✓ NVIDIA RTX 4090 (24GB)
+    Ollama: ✓ Running
+    Models: llama3.1:8b, qwen2.5-coder:7b
+  
+  ✓ Wallet: UQ...a3b8 (142.5 GSTD)
+  ✓ Node ID: a3b8d1b6-...
   ✓ Registered with GSTD network
-
+  
   🐝 You are now part of the Swarm!
-  Your node will process AI requests and earn GSTD tokens.
-  Keep this process running to stay active.
+     Dashboard: http://localhost:8080
+     Earning:   ~500 GSTD/day (estimated)
 ```
 
-### How Earnings Work
-- Each processed inference task earns GSTD tokens
-- Tokens are credited to your linked TON wallet
-- Gold-backed reserves ensure real value
-- The more powerful your hardware, the more you earn
-- GPU nodes earn 5-10x more than CPU-only nodes
+### Earnings by Hardware
 
-### Link Your Wallet
-Open [@GstdAppBot](https://t.me/GstdAppBot) in Telegram to link your TON wallet and track earnings.
+| Tier | Hardware | Estimated |
+|---|---|---|
+| 🟢 Minimum | 2 cores / 4 GB / no GPU | ~50 GSTD/day |
+| 🔵 Recommended | 4+ cores / 16 GB / 8GB GPU | ~500 GSTD/day |
+| 🟣 Power Node | 8+ cores / 64 GB / 24GB GPU | ~5,000+ GSTD/day |
 
 ---
 
-## API Server (OpenAI-compatible)
+## 📊 Dashboard
 
-Run a local API that's compatible with any OpenAI client:
+The built-in dashboard runs at `http://localhost:8080` and provides:
+
+- **System Monitor**: CPU/GPU/RAM usage in real-time
+- **Task Queue**: Active and completed AI tasks
+- **Earnings Tracker**: GSTD earned, pending, sent
+- **Wallet Manager**: Balance, transactions, staking
+- **Network Stats**: Swarm health, peers, sovereignty index
+- **Signal Feed**: 29 planetary signals with live progress
+
+---
+
+## 🔌 API Server (OpenAI-compatible)
 
 ```bash
 gstdbot gateway --port 8080
 ```
 
+### Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/v1/models` | List available models |
+| POST | `/v1/chat/completions` | Chat (OpenAI format) |
+| GET | `/health` | Health check |
+| GET | `/sovereignty` | Sovereignty index |
+| GET | `/v1/node/status` | Node status + earnings |
+| GET | `/v1/wallet/balance` | Wallet balance |
+
+### Example
+
 ```bash
-# Use with any OpenAI client
 curl http://localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "auto",
-    "messages": [{"role": "user", "content": "Hello!"}],
-    "stream": true
+    "model": "gstd-flash",
+    "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
 
-### API Endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `POST /v1/chat/completions` | Chat (streaming & non-streaming) |
-| `GET /v1/models` | List available models |
-| `GET /v1/sovereignty` | Sovereignty index |
-| `GET /v1/skills` | Skills marketplace |
-| `GET /v1/swarm/status` | Swarm network status |
-| `GET /health` | Service health |
-| `WS /ws` | WebSocket real-time |
-
 ---
 
-## Configuration
-
-Config at `~/.gstdbot/config.json`:
-
-```json
-{
-  "agent": {
-    "model": "auto",
-    "sovereignty": "full"
-  },
-  "swarm": {
-    "enabled": true,
-    "contribute": true,
-    "ollama_url": "http://localhost:11434"
-  },
-  "channels": {
-    "telegram": {
-      "enabled": false,
-      "bot_token": ""
-    }
-  },
-  "gateway": {
-    "port": 18789,
-    "api_port": 8080
-  }
-}
-```
-
-### SOUL.md — Customize Your Bot
-
-Edit `~/.gstdbot/workspace/SOUL.md` to change the bot's personality:
-
-```markdown
-# My Custom GSTD Bot
-
-You are my personal AI assistant.
-You speak casually and use emojis.
-You are an expert in Python and blockchain.
-```
-
----
-
-## Architecture
+## 🏗️ Architecture
 
 ```
 gstdbot/
 ├── src/
-│   ├── index.ts              # Main entry point
+│   ├── index.ts            # Main entry point
 │   ├── agent/
-│   │   └── agent.ts          # Core agent runtime (SOUL, memory, skills)
+│   │   └── agent.ts        # Core agent runtime (SOUL, memory, skills)
 │   ├── gateway/
-│   │   ├── server.ts         # Omega Gateway (API + WebSocket)
-│   │   ├── router.ts         # Neural Router (4-tier sovereign-first)
-│   │   └── sessions.ts       # Session management
+│   │   ├── server.ts       # Omega Gateway (API + WebSocket + Dashboard)
+│   │   ├── router.ts       # Neural Router (sovereign-first)
+│   │   └── sessions.ts     # Session management
+│   ├── wallet/
+│   │   └── wallet.ts       # TON wallet integration
+│   ├── dashboard/
+│   │   └── server.ts       # Local dashboard web server
 │   ├── channels/
-│   │   └── telegram.ts       # Telegram bot integration
+│   │   └── telegram.ts     # Telegram bot integration
 │   ├── skills/
-│   │   └── marketplace.ts    # Skills engine + malware scanner
+│   │   └── marketplace.ts  # Skills engine + malware scanner
 │   ├── swarm/
-│   │   └── client.ts         # Swarm network client
+│   │   └── client.ts       # Swarm network client + earnings
+│   ├── config/
+│   │   └── index.ts        # Configuration management
 │   └── cli/
-│       └── index.ts          # CLI interface
-├── skills/                   # Built-in skills (7)
-├── web/                      # Landing page
+│       └── index.ts        # CLI interface
+├── skills/                  # Built-in skills (7)
+├── web/                     # Landing page
 ├── scripts/
-│   └── install.sh            # One-line installer
+│   └── install.sh           # One-line installer
+├── docker-compose.yml       # Full-stack Docker setup
 ├── Dockerfile
-└── README.md                 # This file
+└── README.md
 ```
 
-### Key Components
+---
 
-| Component | Description |
-|-----------|-------------|
-| **Agent** | Core AI runtime with SOUL.md identity, memory, and skill activation |
-| **Neural Router** | 4-tier routing: Cache → Swarm → TEE Compute → Commercial |
-| **Skills Marketplace** | Install, scan, create, and manage skills with malware protection |
-| **Swarm Client** | Hardware detection, node registration, heartbeat, task processing |
-| **Omega Gateway** | OpenAI-compatible REST API + WebSocket server |
-| **Telegram Channel** | Full Telegram bot with grammY |
-| **CLI** | Interactive chat, diagnostics, and management |
+## ⚙️ Configuration
+
+Config is stored in `~/.config/gstdbot/config.json`:
+
+```json
+{
+  "nodeName": "my-node",
+  "wallet": {
+    "address": "UQ...",
+    "seed": "encrypted:..."
+  },
+  "swarm": {
+    "enabled": true,
+    "maxCPU": 80,
+    "maxRAM": 70,
+    "gpuMode": "auto"
+  },
+  "models": ["llama3.1:8b"],
+  "dashboard": {
+    "port": 8080,
+    "enabled": true
+  },
+  "telegram": {
+    "linkedUserId": null
+  }
+}
+```
 
 ---
 
-## Security
+## 💻 System Requirements
 
-### Threat Model
-- **Your data stays local** — Ollama runs on your machine
-- **No API keys required** — sovereign models are free
-- **No telemetry** — zero data sent to GSTD servers unless you opt-in to Swarm
-- **Skills are sandboxed** — malware-scanned before activation
-- **Swarm tasks are isolated** — each inference runs in its own context
-- **TEE compute** — hardware enclaves for sensitive tasks
+| | Minimum | Recommended | Power Node |
+|---|---|---|---|
+| **CPU** | 2 cores | 4+ cores | 8+ cores |
+| **RAM** | 4 GB | 16 GB | 64 GB |
+| **Disk** | 20 GB | 100 GB SSD | 500 GB NVMe |
+| **GPU** | Not required | NVIDIA 8GB+ | NVIDIA 24GB+ |
+| **OS** | Ubuntu 20.04+ | Ubuntu 22.04+ | Any Linux |
+
+**Supported**: Intel/AMD/ARM · Ubuntu/Debian/Fedora/macOS/Windows WSL · Raspberry Pi 4+ · NVIDIA CUDA 11.7+
+
+---
+
+## 🔐 Security
+
+- All local data encrypted at rest
+- Wallet seed protected with OS keychain
+- Skills sandboxed + malware scanned
+- TEE (Trusted Execution Environment) for confidential compute
+- No data leaves device without explicit consent
+- Open source — verify everything
 
 ### Responsible Disclosure
-Found a security issue? Email security@gstdtoken.com or open a private issue on GitHub.
+Security issues → security@gstdtoken.com
 
 ---
 
-## Development
+## 🛠️ Development
 
 ```bash
 git clone https://github.com/gstdcoin/gstdbot.git
 cd gstdbot
-npm install --legacy-peer-deps
-npm run dev     # Development mode (auto-reload)
-npm run build   # Production build
-npm test        # Run tests
+npm install
+npm run dev          # Watch mode
+npm run build        # Production build
+npm test             # Run tests
+npm run lint         # Lint
 ```
 
 ---
 
-## Comparison with OpenClaw
+## 🔗 Links
 
-| Feature | GSTD Bot 🐝 | OpenClaw 🦞 |
-|---------|:----------:|:---------:|
-| Custom skills | ✓ | ✓ |
-| Skill marketplace | ✓ | ✓ |
-| Malware scanning | ✓ | ✗ |
-| Interactive CLI | ✓ | ✓ |
-| OpenAI-compatible API | ✓ | ✓ |
-| Decentralized network | ✓ | ✗ |
-| Earn tokens | ✓ | ✗ |
-| Collective memory | ✓ | ✗ |
-| TEE confidential compute | ✓ | ✗ |
-| Self-improving models | ✓ | ✗ |
-| Blockchain verification | ✓ | ✗ |
-| Telegram integration | ✓ | ✗ |
-| Multi-language (RU/EN) | ✓ | English only |
-| Web dashboard | ✓ | Desktop app |
+- 🌐 [Website](https://gstdbot.gstdtoken.com)
+- 📡 [Signal Monitor](https://monitor.gstdtoken.com)
+- 📊 [Dashboard](https://app.gstdtoken.com)
+- 💬 [Web Chat](https://chat.gstdtoken.com)
+- 🤖 [Telegram Bot](https://t.me/GstdAppBot)
+- 📖 [API Docs](https://gstdbot.gstdtoken.com/v1/models)
 
 ---
 
-## Links
+## 📄 License
 
-- 🌐 Website: [gstdbot.gstdtoken.com](https://gstdbot.gstdtoken.com)
-- 💬 Web Chat: [chat.gstdtoken.com](https://chat.gstdtoken.com)
-- 🤖 Telegram: [@GstdAppBot](https://t.me/GstdAppBot)
-- 📊 Monitor: [monitor.gstdtoken.com](https://monitor.gstdtoken.com)
-- 🎛️ Dashboard: [app.gstdtoken.com](https://app.gstdtoken.com)
-- 📦 npm: `npm install -g gstdbot`
-
-## License
-
-Apache-2.0
-
----
-
-*Built by the GSTD Swarm 🐝 — Sovereign. Decentralized. Unstoppable.*
+Apache 2.0 — see [LICENSE](LICENSE)

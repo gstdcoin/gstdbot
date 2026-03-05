@@ -1,0 +1,49 @@
+version: '3.8'
+
+# GSTD Node — Full Stack Docker Setup
+# cp .env.example .env && docker compose up -d
+
+services:
+  gstd-node:
+    build: .
+    container_name: gstd-node
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NODE_NAME=${NODE_NAME:-my-gstd-node}
+      - WALLET_SEED=${WALLET_SEED:-}
+      - SWARM_ENABLED=${SWARM_ENABLED:-true}
+      - GPU_MODE=${GPU_MODE:-auto}
+      - MAX_CPU=${MAX_CPU:-80}
+      - MAX_RAM=${MAX_RAM:-70}
+      - DASHBOARD_PORT=8080
+      - GSTD_SWARM_URL=${GSTD_SWARM_URL:-https://app.gstdtoken.com/api/v1}
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
+    ports:
+      - "${DASHBOARD_PORT:-8080}:8080"    # Dashboard + API
+    volumes:
+      - gstd-data:/app/data
+      - gstd-config:/root/.config/gstdbot
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: gstd-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  gstd-data:
+  gstd-config:
+  ollama-data:

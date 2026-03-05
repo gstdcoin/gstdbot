@@ -1,83 +1,116 @@
-#!/bin/bash
-# GSTD Bot — Install Script
-# curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
-
+#!/usr/bin/env bash
+# ═══════════════════════════════════════════════════════════════
+# GSTD Node — One-Line Installer
+# https://gstdbot.gstdtoken.com
+# ═══════════════════════════════════════════════════════════════
 set -e
 
-BOLD='\033[1m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+VERSION="1.0.0"
+REPO="https://github.com/gstdcoin/gstd-node"
+GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'; BOLD='\033[1m'
 
-echo -e "${CYAN}"
-echo "╔══════════════════════════════════════╗"
-echo "║   🐝 GSTD Bot — Installation         ║"
-echo "║   Sovereign Decentralized AI Agent   ║"
-echo "╚══════════════════════════════════════╝"
-echo -e "${NC}"
-
-# Check Node.js
-if ! command -v node &> /dev/null; then
-    echo -e "${YELLOW}Node.js not found. Installing via nvm...${NC}"
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-    nvm install 22
-    nvm use 22
-fi
-
-NODE_VERSION=$(node -v | sed 's/v//' | cut -d'.' -f1)
-if [ "$NODE_VERSION" -lt 20 ]; then
-    echo -e "${YELLOW}Node.js >= 20 required. Current: $(node -v)${NC}"
-    echo "Install with: nvm install 22"
-    exit 1
-fi
-
-echo -e "${GREEN}✓${NC} Node.js $(node -v)"
-
-# Install gstdbot
-echo -e "\n${BOLD}Installing GSTD Bot...${NC}"
-npm install -g gstdbot@latest 2>/dev/null || {
-    echo -e "${YELLOW}npm install failed, trying from source...${NC}"
-    TMPDIR=$(mktemp -d)
-    git clone https://github.com/gstdcoin/gstdbot.git "$TMPDIR/gstdbot"
-    cd "$TMPDIR/gstdbot"
-    npm install
-    npm run build
-    npm link
-    cd -
-    echo -e "${GREEN}✓${NC} Installed from source"
+banner() {
+    echo ""
+    echo -e "${CYAN}╔══════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${NC}  ${BOLD}GSTD Node${NC} v${VERSION}                          ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}Sovereign AI • Swarm Intelligence${NC}           ${CYAN}║${NC}"
+    echo -e "${CYAN}╚══════════════════════════════════════════════╝${NC}"
+    echo ""
 }
 
-echo -e "${GREEN}✓${NC} GSTD Bot installed"
+info()  { echo -e "  ${GREEN}✓${NC} $1"; }
+warn()  { echo -e "  ${YELLOW}⚠${NC} $1"; }
+err()   { echo -e "  ${RED}✗${NC} $1"; exit 1; }
+step()  { echo -e "\n${CYAN}[$1/5]${NC} ${BOLD}$2${NC}"; }
 
-# Check Ollama
-if command -v ollama &> /dev/null; then
-    echo -e "${GREEN}✓${NC} Ollama found"
-    
-    # Pull recommended models
-    echo -e "\n${BOLD}Pulling sovereign models...${NC}"
-    echo -e "  This may take a while on first run."
-    
-    ollama pull llama3.1:8b 2>/dev/null && echo -e "  ${GREEN}✓${NC} llama3.1:8b" || echo -e "  ${YELLOW}⚠${NC} llama3.1:8b (manual: ollama pull llama3.1:8b)"
-    ollama pull qwen2.5-coder:7b 2>/dev/null && echo -e "  ${GREEN}✓${NC} qwen2.5-coder:7b" || echo -e "  ${YELLOW}⚠${NC} qwen2.5-coder:7b (manual: ollama pull qwen2.5-coder:7b)"
-else
-    echo -e "${YELLOW}⚠${NC} Ollama not found — install from https://ollama.com for local AI"
-fi
+detect_os() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$ID; OS_VER=$VERSION_ID
+    elif [ "$(uname)" = "Darwin" ]; then
+        OS="macos"; OS_VER=$(sw_vers -productVersion)
+    else
+        OS="unknown"
+    fi
+    ARCH=$(uname -m)
+    case $ARCH in
+        x86_64)  ARCH="amd64" ;;
+        aarch64|arm64) ARCH="arm64" ;;
+        armv7l)  ARCH="armv7" ;;
+    esac
+    info "OS: ${OS} ${OS_VER} (${ARCH})"
+}
 
-# Run onboarding
-echo -e "\n${BOLD}Running onboarding...${NC}\n"
-gstdbot onboard
+install_deps() {
+    if command -v node &>/dev/null; then
+        NODE_VER=$(node -v)
+        info "Node.js already installed: $NODE_VER"
+    else
+        warn "Installing Node.js 20 LTS..."
+        if [ "$OS" = "macos" ]; then
+            brew install node@20 2>/dev/null || curl -fsSL https://fnm.vercel.app/install | bash
+        else
+            curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - 2>/dev/null
+            sudo apt-get install -y nodejs 2>/dev/null || sudo dnf install -y nodejs 2>/dev/null
+        fi
+        info "Node.js installed: $(node -v)"
+    fi
 
-echo -e "\n${GREEN}${BOLD}✓ Installation complete!${NC}"
-echo -e "${CYAN}"
-echo "  Quick start:"
-echo "    gstdbot gateway        — Start serving"
-echo "    gstdbot status         — Check everything"
-echo "    gstdbot chat           — Start chatting"
-echo "    gstdbot swarm join     — Earn GSTD tokens"
-echo ""
-echo "  Web: https://gstdbot.gstdtoken.com"
-echo "  Bot: https://t.me/GstdAppBot"
-echo -e "${NC}"
+    if command -v ollama &>/dev/null; then
+        info "Ollama already installed"
+    else
+        warn "Installing Ollama (local AI engine)..."
+        curl -fsSL https://ollama.com/install.sh | sh
+        info "Ollama installed"
+    fi
+}
+
+install_gstd() {
+    if command -v gstd-node &>/dev/null; then
+        info "GSTD Node already installed, updating..."
+    fi
+    npm install -g @gstdcoin/gstd-node@latest 2>/dev/null || {
+        warn "npm global install failed, trying with sudo..."
+        sudo npm install -g @gstdcoin/gstd-node@latest
+    }
+    info "GSTD Node installed: $(gstd-node --version 2>/dev/null || echo $VERSION)"
+}
+
+pull_model() {
+    warn "Pulling Llama 3.1 8B model (this may take a few minutes)..."
+    ollama pull llama3.1:8b 2>/dev/null && info "Model ready: llama3.1:8b" || warn "Model pull skipped (can be done later)"
+}
+
+show_next() {
+    echo ""
+    echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║${NC}  ${BOLD}Installation complete!${NC}                      ${GREEN}║${NC}"
+    echo -e "${GREEN}╚══════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "  ${BOLD}Next steps:${NC}"
+    echo -e "  ${CYAN}1.${NC} gstd-node setup        ${GREEN}# Configure node${NC}"
+    echo -e "  ${CYAN}2.${NC} gstd-node wallet init   ${GREEN}# Create/import wallet${NC}"
+    echo -e "  ${CYAN}3.${NC} gstd-node start         ${GREEN}# Start earning!${NC}"
+    echo ""
+    echo -e "  ${BOLD}Dashboard:${NC}  http://localhost:8080"
+    echo -e "  ${BOLD}Docs:${NC}       https://gstdbot.gstdtoken.com"
+    echo -e "  ${BOLD}Telegram:${NC}   https://t.me/GstdAppBot"
+    echo ""
+}
+
+# ─── Main ─────────────────────────────────────
+banner
+step 1 "Detecting system..."
+detect_os
+
+step 2 "Installing dependencies..."
+install_deps
+
+step 3 "Installing GSTD Node..."
+install_gstd
+
+step 4 "Pulling AI model..."
+pull_model
+
+step 5 "Done!"
+show_next

@@ -4,15 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GSTD Bot — Collective Intelligence AI Agent</title>
+    <title>GSTD Node — Your Device is the Supercomputer</title>
     <meta name="description"
-        content="GSTD Bot — The AI that runs on a planetary brain. Decentralized. Private. Uncensored. Works in Telegram, WhatsApp, and any chat.">
-    <meta property="og:title" content="GSTD Bot — Sovereign AI Agent">
-    <meta property="og:description" content="The AI that runs on a planetary brain. Not on corporate servers.">
+        content="Turn any device into a GSTD Swarm node. One command install. Built-in wallet, chat, dashboard. Earn GSTD tokens by sharing compute.">
+    <meta property="og:title" content="GSTD Node — Sovereign AI Infrastructure">
+    <meta property="og:description"
+        content="One-click installer transforms your PC, mini-PC or server into a sovereign AI node. Earn while you compute.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://gstdbot.gstdtoken.com">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap"
         rel="stylesheet">
     <style>
         *,
@@ -20,22 +22,25 @@
         *::after {
             box-sizing: border-box;
             margin: 0;
-            padding: 0;
+            padding: 0
         }
 
         :root {
-            --bg: #050508;
-            --card: rgba(255, 255, 255, 0.03);
+            --bg: #030014;
+            --card: rgba(255, 255, 255, 0.025);
             --border: rgba(255, 255, 255, 0.06);
             --text: #e2e2e8;
             --muted: #6b6b80;
             --accent: #8b5cf6;
-            --accent2: #06b6d4;
-            --glow: rgba(139, 92, 246, 0.15);
+            --cyan: #06b6d4;
+            --emerald: #22c55e;
+            --amber: #f59e0b;
+            --rose: #f43f5e;
+            --glow: rgba(139, 92, 246, 0.12)
         }
 
         html {
-            scroll-behavior: smooth;
+            scroll-behavior: smooth
         }
 
         body {
@@ -44,47 +49,50 @@
             color: var(--text);
             line-height: 1.6;
             overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
+            -webkit-font-smoothing: antialiased
         }
 
-        /* ─── Noise texture ─── */
         body::before {
             content: '';
             position: fixed;
             inset: 0;
             background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
             pointer-events: none;
-            z-index: 0;
+            z-index: 0
         }
 
-        /* ─── Layout ─── */
         .container {
-            max-width: 1100px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 0 24px;
             position: relative;
-            z-index: 1;
+            z-index: 1
         }
 
-        /* ─── Nav ─── */
+        a {
+            text-decoration: none;
+            color: inherit
+        }
+
+        /* Nav */
         nav {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 100;
-            padding: 16px 24px;
-            background: rgba(5, 5, 8, 0.8);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
+            padding: 14px 24px;
+            background: rgba(3, 0, 20, 0.85);
+            backdrop-filter: blur(24px);
+            border-bottom: 1px solid var(--border)
         }
 
         nav .inner {
-            max-width: 1100px;
+            max-width: 1200px;
             margin: 0 auto;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: space-between
         }
 
         nav .logo {
@@ -92,438 +100,458 @@
             font-size: 18px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 8px
         }
 
         nav .logo span {
-            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            background: linear-gradient(135deg, var(--accent), var(--cyan));
             -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            -webkit-text-fill-color: transparent
         }
 
-        nav .logo .tag {
-            font-size: 10px;
+        nav .tag {
+            font-size: 9px;
             font-weight: 700;
-            padding: 2px 6px;
+            padding: 2px 7px;
             border-radius: 4px;
-            background: var(--accent);
-            color: white;
-            -webkit-text-fill-color: white;
-            letter-spacing: 0.5px;
+            background: var(--emerald);
+            color: #030014;
+            -webkit-text-fill-color: #030014;
+            letter-spacing: 0.8px;
+            text-transform: uppercase
         }
 
         nav .links {
             display: flex;
             align-items: center;
-            gap: 24px;
+            gap: 20px
         }
 
         nav .links a {
             color: var(--muted);
-            text-decoration: none;
             font-size: 13px;
             font-weight: 500;
-            transition: color 0.2s;
+            transition: color 0.2s
         }
 
         nav .links a:hover {
-            color: white;
+            color: white
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.25s
         }
 
         .btn-primary {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 18px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
             background: var(--accent);
-            color: white;
-            text-decoration: none;
-            transition: all 0.2s;
-            border: none;
-            cursor: pointer;
+            color: white
         }
 
         .btn-primary:hover {
             background: #7c3aed;
             transform: translateY(-1px);
+            box-shadow: 0 8px 30px rgba(139, 92, 246, 0.3)
+        }
+
+        .btn-emerald {
+            background: var(--emerald);
+            color: #030014
+        }
+
+        .btn-emerald:hover {
+            background: #16a34a;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 30px rgba(34, 197, 94, 0.3)
         }
 
         .btn-ghost {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 18px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
             background: transparent;
             color: var(--muted);
-            text-decoration: none;
-            border: 1px solid var(--border);
-            transition: all 0.2s;
-            cursor: pointer;
+            border: 1px solid var(--border)
         }
 
         .btn-ghost:hover {
             color: white;
-            border-color: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.15)
         }
 
-        /* ─── Hero ─── */
+        .btn-lg {
+            padding: 14px 32px;
+            font-size: 15px;
+            border-radius: 14px
+        }
+
+        /* Hero */
         .hero {
-            padding: 160px 0 100px;
+            padding: 140px 0 80px;
             text-align: center;
-            position: relative;
+            position: relative
         }
 
         .hero::before {
             content: '';
             position: absolute;
-            top: 80px;
+            top: 60px;
             left: 50%;
             transform: translateX(-50%);
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, var(--glow) 0%, transparent 70%);
-            pointer-events: none;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, var(--glow) 0%, rgba(6, 182, 212, 0.05) 40%, transparent 70%);
+            pointer-events: none
         }
 
         .hero .badge {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 4px 12px 4px 6px;
+            gap: 8px;
+            padding: 6px 16px 6px 8px;
             border-radius: 20px;
-            background: rgba(139, 92, 246, 0.1);
-            border: 1px solid rgba(139, 92, 246, 0.2);
+            background: rgba(34, 197, 94, 0.08);
+            border: 1px solid rgba(34, 197, 94, 0.15);
             font-size: 12px;
             font-weight: 600;
-            color: var(--accent);
-            margin-bottom: 24px;
+            color: var(--emerald);
+            margin-bottom: 28px
         }
 
         .hero .badge .dot {
-            width: 6px;
-            height: 6px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
-            background: #22c55e;
-            animation: pulse 2s infinite;
+            background: var(--emerald);
+            animation: pulse 2s infinite
         }
 
         @keyframes pulse {
 
             0%,
             100% {
-                opacity: 1;
+                opacity: 1
             }
 
             50% {
-                opacity: 0.4;
+                opacity: 0.3
             }
         }
 
         .hero h1 {
-            font-size: clamp(40px, 7vw, 72px);
+            font-size: clamp(36px, 6.5vw, 68px);
             font-weight: 900;
             line-height: 1.05;
             letter-spacing: -2px;
-            margin-bottom: 20px;
+            margin-bottom: 20px
         }
 
-        .hero h1 .gradient {
-            background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent2) 100%);
+        .hero h1 .gr {
+            background: linear-gradient(135deg, #fff 0%, var(--cyan) 50%, var(--emerald) 100%);
             -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            -webkit-text-fill-color: transparent
         }
 
         .hero .sub {
-            font-size: 18px;
+            font-size: 17px;
             color: var(--muted);
-            max-width: 560px;
-            margin: 0 auto 36px;
-            line-height: 1.6;
+            max-width: 620px;
+            margin: 0 auto 32px;
+            line-height: 1.7
+        }
+
+        .hero .sub strong {
+            color: var(--text);
+            font-weight: 600
+        }
+
+        /* Installer box */
+        .install-box {
+            max-width: 720px;
+            margin: 0 auto 32px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(34, 197, 94, 0.15);
+            border-radius: 16px;
+            padding: 20px 24px;
+            position: relative;
+            overflow: hidden
+        }
+
+        .install-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--emerald), transparent)
+        }
+
+        .install-box .label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--emerald);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .install-box .cmd {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 15px;
+            color: var(--emerald);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 14px 18px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: all;
+            cursor: text
+        }
+
+        .install-box .cmd .copy-btn {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            color: var(--emerald);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif
+        }
+
+        .install-box .cmd .copy-btn:hover {
+            background: rgba(34, 197, 94, 0.2)
+        }
+
+        .install-box .platforms {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 14px;
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .install-box .platforms span {
+            display: flex;
+            align-items: center;
+            gap: 4px
         }
 
         .hero .actions {
             display: flex;
             gap: 12px;
             justify-content: center;
-            flex-wrap: wrap;
+            flex-wrap: wrap
         }
 
-        /* ─── Comparison ─── */
-        .compare {
-            padding: 80px 0;
-            border-top: 1px solid var(--border);
-        }
-
-        .compare h2 {
-            font-size: 14px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--muted);
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .compare-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-
-        .compare-table th,
-        .compare-table td {
-            padding: 14px 20px;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .compare-table th {
-            color: var(--muted);
-            font-weight: 600;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .compare-table td:first-child {
-            color: var(--muted);
-        }
-
-        .compare-table .us {
-            color: #22c55e;
-            font-weight: 600;
-        }
-
-        .compare-table .them {
-            color: var(--muted);
-        }
-
-        .compare-table .winner {
-            background: rgba(34, 197, 94, 0.05);
-        }
-
-        /* ─── Features ─── */
-        .features {
-            padding: 80px 0;
-        }
-
-        .features .section-title {
-            font-size: 14px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--accent);
-            margin-bottom: 12px;
-        }
-
-        .features h2 {
-            font-size: 36px;
+        /* Section titles */
+        .sec-tag {
+            font-size: 11px;
             font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px
+        }
+
+        .sec-title {
+            font-size: clamp(28px, 4vw, 42px);
+            font-weight: 900;
             letter-spacing: -1px;
-            margin-bottom: 48px;
+            margin-bottom: 16px
         }
 
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 16px;
+        .sec-sub {
+            font-size: 15px;
+            color: var(--muted);
+            max-width: 560px;
+            margin-bottom: 40px;
+            line-height: 1.7
         }
 
-        .feature-card {
+        /* Feature cards */
+        .card {
             padding: 28px;
-            border-radius: 16px;
+            border-radius: 18px;
             border: 1px solid var(--border);
             background: var(--card);
-            transition: all 0.3s;
+            transition: all 0.3s
         }
 
-        .feature-card:hover {
+        .card:hover {
             border-color: rgba(139, 92, 246, 0.2);
-            background: rgba(139, 92, 246, 0.03);
+            transform: translateY(-3px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3)
         }
 
-        .feature-card .icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
+        .card .ic {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 16px
+        }
+
+        .card h3 {
+            font-size: 16px;
+            font-weight: 800;
+            margin-bottom: 6px
+        }
+
+        .card p {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.6
+        }
+
+        /* Grid */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px
+        }
+
+        /* Specs */
+        .spec-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px
+        }
+
+        .spec-row .label {
+            color: var(--muted)
+        }
+
+        .spec-row .val {
+            font-weight: 700;
+            color: white
+        }
+
+        /* Install Steps */
+        .step {
+            display: flex;
+            gap: 20px;
+            padding: 28px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            background: var(--card)
+        }
+
+        .step .num {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 20px;
-            margin-bottom: 16px;
-            background: rgba(139, 92, 246, 0.1);
+            font-weight: 900;
+            flex-shrink: 0
         }
 
-        .feature-card h3 {
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 6px;
-        }
-
-        .feature-card p {
+        .step .code {
+            font-family: 'JetBrains Mono', monospace;
             font-size: 13px;
-            color: var(--muted);
-            line-height: 1.6;
-        }
-
-        /* ─── Skills ─── */
-        .skills {
-            padding: 80px 0;
-            border-top: 1px solid var(--border);
-        }
-
-        .skills h2 {
-            font-size: 36px;
-            font-weight: 800;
-            letter-spacing: -1px;
-            margin-bottom: 8px;
-        }
-
-        .skills .sub {
-            color: var(--muted);
-            font-size: 15px;
-            margin-bottom: 36px;
-        }
-
-        .skills-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 12px;
-        }
-
-        .skill-card {
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            background: var(--card);
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-
-        .skill-card:hover {
-            border-color: rgba(139, 92, 246, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .skill-card .skill-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
-        }
-
-        .skill-card .skill-icon {
-            font-size: 24px;
-        }
-
-        .skill-card .skill-name {
-            font-size: 14px;
-            font-weight: 700;
-        }
-
-        .skill-card .skill-desc {
-            font-size: 12px;
-            color: var(--muted);
-        }
-
-        .skill-card .skill-meta {
-            display: flex;
-            gap: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 14px;
+            border-radius: 8px;
             margin-top: 10px;
-            font-size: 11px;
-            color: var(--muted);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--emerald);
+            user-select: all;
+            cursor: text;
+            overflow-x: auto
         }
 
-        .skill-card .skill-meta span {
-            display: flex;
-            align-items: center;
-            gap: 3px;
-        }
-
-        /* ─── Stats ─── */
-        .stats {
-            padding: 60px 0;
-            border-top: 1px solid var(--border);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 24px;
-        }
-
+        /* Stats */
         .stat {
-            text-align: center;
+            text-align: center
         }
 
         .stat .num {
             font-size: 36px;
             font-weight: 900;
             letter-spacing: -1px;
-            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            background: linear-gradient(135deg, var(--accent), var(--cyan));
             -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            -webkit-text-fill-color: transparent
         }
 
-        .stat .label {
-            font-size: 12px;
+        .stat .lbl {
+            font-size: 11px;
             color: var(--muted);
             margin-top: 4px;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        /* ─── Integrations ─── */
-        .integrations {
-            padding: 80px 0;
-            border-top: 1px solid var(--border);
-            text-align: center;
-        }
-
-        .integrations h2 {
-            font-size: 14px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--muted);
-            margin-bottom: 36px;
-        }
-
-        .int-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            justify-content: center;
-        }
-
-        .int-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: var(--card);
-            font-size: 14px;
             font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px
         }
 
-        .int-item .int-icon {
-            font-size: 20px;
+        /* Compare */
+        .cmp-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px
         }
 
-        /* ─── CTA ─── */
+        .cmp-table th,
+        .cmp-table td {
+            padding: 14px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border)
+        }
+
+        .cmp-table th {
+            color: var(--muted);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px
+        }
+
+        .cmp-table .us {
+            color: var(--emerald);
+            font-weight: 700
+        }
+
+        .cmp-table .them {
+            color: var(--muted)
+        }
+
+        /* CTA */
         .cta {
             padding: 100px 0;
             text-align: center;
-            position: relative;
+            position: relative
         }
 
         .cta::before {
@@ -532,875 +560,638 @@
             bottom: 0;
             left: 50%;
             transform: translateX(-50%);
-            width: 500px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(6, 182, 212, 0.08) 0%, transparent 70%);
-            pointer-events: none;
+            width: 600px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(6, 182, 212, 0.06) 0%, transparent 70%);
+            pointer-events: none
         }
 
-        .cta h2 {
-            font-size: 42px;
-            font-weight: 900;
-            letter-spacing: -1px;
-            margin-bottom: 12px;
-        }
-
-        .cta p {
-            font-size: 16px;
-            color: var(--muted);
-            margin-bottom: 32px;
-            max-width: 450px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        /* ─── Footer ─── */
+        /* Footer */
         footer {
             padding: 40px 0;
             border-top: 1px solid var(--border);
-            text-align: center;
+            text-align: center
         }
 
         footer .links {
             display: flex;
             gap: 20px;
             justify-content: center;
-            margin-bottom: 16px;
+            margin-bottom: 16px
         }
 
         footer .links a {
             color: var(--muted);
-            text-decoration: none;
             font-size: 13px;
-            transition: color 0.2s;
+            transition: color 0.2s
         }
 
         footer .links a:hover {
-            color: white;
+            color: white
         }
 
         footer .copy {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.2)
         }
 
-        /* ─── Responsive ─── */
-        @media (max-width: 768px) {
+        /* Responsive */
+        @media(max-width:768px) {
             .hero h1 {
-                font-size: 36px;
-                letter-spacing: -1px;
+                font-size: 32px;
+                letter-spacing: -1px
             }
 
-            .hero .sub {
-                font-size: 15px;
+            .grid-2,
+            .grid-3,
+            .grid-4 {
+                grid-template-columns: 1fr
             }
 
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .features-grid .feature-card[style*="grid-column"] {
-                grid-column: span 1 !important;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .compare-table {
-                font-size: 12px;
-            }
-
-            .compare-table th,
-            .compare-table td {
-                padding: 10px 12px;
+            .step {
+                flex-direction: column;
+                gap: 12px
             }
 
             nav .links {
-                display: none;
+                display: none
+            }
+
+            .install-box .cmd {
+                font-size: 12px;
+                flex-direction: column;
+                gap: 8px
+            }
+
+            .cmp-table {
+                font-size: 12px
+            }
+
+            .cmp-table th,
+            .cmp-table td {
+                padding: 10px 12px
             }
         }
 
-        /* ─── Live sovereignty indicator ─── */
-        .sovereignty-live {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 14px;
-            border-radius: 8px;
-            background: rgba(34, 197, 94, 0.08);
-            border: 1px solid rgba(34, 197, 94, 0.15);
-            font-size: 12px;
-            font-weight: 700;
-            color: #22c55e;
-            margin-bottom: 20px;
+        @media(min-width:769px) and (max-width:1024px) {
+            .grid-3 {
+                grid-template-columns: repeat(2, 1fr)
+            }
         }
 
-        .sovereignty-live .bar {
-            width: 60px;
-            height: 4px;
-            border-radius: 2px;
-            background: rgba(255, 255, 255, 0.1);
-            overflow: hidden;
-        }
-
-        .sovereignty-live .bar-fill {
-            height: 100%;
-            border-radius: 2px;
-            background: #22c55e;
-            transition: width 1s ease;
-        }
-
-        /* ─── Animations ─── */
+        /* Animations */
         @keyframes fadeUp {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(20px)
             }
 
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translateY(0)
             }
         }
 
-        .fade-up {
-            animation: fadeUp 0.6s ease forwards;
+        .fu {
+            animation: fadeUp 0.6s ease forwards
         }
 
-        .delay-1 {
-            animation-delay: 0.1s;
-            opacity: 0;
+        .d1 {
+            animation-delay: .1s;
+            opacity: 0
         }
 
-        .delay-2 {
-            animation-delay: 0.2s;
-            opacity: 0;
+        .d2 {
+            animation-delay: .2s;
+            opacity: 0
         }
 
-        .delay-3 {
-            animation-delay: 0.3s;
-            opacity: 0;
+        .d3 {
+            animation-delay: .3s;
+            opacity: 0
+        }
+
+        .d4 {
+            animation-delay: .4s;
+            opacity: 0
+        }
+
+        /* Architecture diagram */
+        .arch-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 32px;
+            position: relative;
+            overflow: hidden
+        }
+
+        .arch-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), var(--cyan), transparent)
+        }
+
+        .arch-layer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            position: relative
+        }
+
+        .arch-layer .tag {
+            font-size: 9px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px
+        }
+
+        .arch-arrow {
+            text-align: center;
+            color: var(--muted);
+            font-size: 18px;
+            margin: 4px 0
         }
     </style>
 </head>
 
 <body>
 
-    <!-- ─── Nav ─── -->
+    <!-- Nav -->
     <nav>
         <div class="inner">
-            <div class="logo">
-                <span>GSTD Bot</span>
-                <div class="tag">SOVEREIGN</div>
+            <div class="logo"><span>GSTD Node</span>
+                <div class="tag">v1.0</div>
             </div>
             <div class="links">
-                <a href="#features" data-i18n="nav_features">Features</a>
-                <a href="#pricing" style="color:#22c55e;font-weight:700">Pricing</a>
-                <a href="#skills" data-i18n="nav_skills">Skills</a>
-                <a href="#compare" data-i18n="nav_compare">vs OpenClaw</a>
-                <a href="https://app.gstdtoken.com" target="_blank" data-i18n="nav_dashboard">Dashboard</a>
-                <span class="gstd-price-nav" id="navPrice"
-                    style="font-size:11px;color:#22c55e;font-weight:700;padding:2px 8px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:6px;display:none"></span>
-                <button onclick="toggleLang()" class="btn-ghost" style="padding:4px 10px;font-size:11px;min-width:36px"
-                    data-i18n="lang_switch">RU</button>
-                <a href="https://t.me/GstdAppBot" class="btn-primary" data-i18n="nav_cta">Open in Telegram →</a>
+                <a href="#features">Features</a>
+                <a href="#install">Install</a>
+                <a href="#architecture">Architecture</a>
+                <a href="#compare">vs Others</a>
+                <a href="https://monitor.gstdtoken.com" target="_blank">Monitor</a>
+                <a href="https://app.gstdtoken.com" target="_blank">Dashboard</a>
+                <a href="https://t.me/GstdAppBot" class="btn btn-emerald" style="padding:7px 16px">Launch Bot →</a>
             </div>
         </div>
     </nav>
 
-    <!-- ─── Hero ─── -->
+    <!-- Hero -->
     <section class="hero">
         <div class="container">
-            <div class="badge fade-up">
+            <div class="badge fu">
                 <div class="dot"></div> Swarm is live — <span id="nodeCount">247</span> nodes online
             </div>
-            <h1 class="fade-up delay-1">
-                <span data-i18n="hero_h1a">The AI that runs on a</span><br><span class="gradient"
-                    data-i18n="hero_h1b">planetary brain.</span>
-            </h1>
-            <p class="sub fade-up delay-2">
-                8 AI models work in parallel. Consensus synthesis produces answers smarter than any single model.
-                Free to start. Pay with GSTD tokens or Telegram Stars ⭐
-            </p>
-            <div class="sovereignty-live fade-up delay-2">
-                Sovereignty Index:
-                <div class="bar">
-                    <div class="bar-fill" id="sovBar" style="width: 100%"></div>
-                </div>
-                <span id="sovIndex">100%</span>
-            </div>
-            <div class="actions fade-up delay-3">
-                <a href="https://t.me/GstdAppBot" class="btn-primary" data-i18n="hero_btn1">Start chatting → free</a>
-                <a href="https://chat.gstdtoken.com" class="btn-ghost" data-i18n="hero_btn2">Open Web Chat</a>
-                <a href="https://app.gstdtoken.com" class="btn-ghost" data-i18n="hero_btn3">Dashboard</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- ─── Install ─── -->
-    <section class="features" id="install" style="border-top: 1px solid var(--border)">
-        <div class="container">
-            <div class="section-title" data-i18n="install_title">⟩ Install on your PC</div>
-            <h2 style="margin-bottom:12px" data-i18n="install_h2">3 minutes. Zero API keys.</h2>
-            <p style="color:var(--muted);font-size:15px;margin-bottom:32px;max-width:560px" data-i18n="install_desc">
-                Install GSTD Bot on your machine. Full sovereign AI — no subscriptions, no corporate surveillance,
-                no data leaving your device. Become part of the decentralized network and earn GSTD tokens.
+            <h1 class="fu d1">Your device is the<br><span class="gr">supercomputer.</span></h1>
+            <p class="sub fu d2">
+                One command turns any <strong>PC, mini-PC, or server</strong> into a sovereign AI node.
+                Built-in wallet, chat, dashboard, and monitoring. <strong>Earn GSTD tokens</strong> by sharing your
+                compute power.
             </p>
 
-            <div
-                style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:32px">
-                <!-- Step 1 -->
-                <div class="feature-card">
-                    <div class="icon">1️⃣</div>
-                    <h3 data-i18n="step1_h">Install Ollama</h3>
-                    <div
-                        style="background:rgba(0,0,0,0.3);border-radius:8px;padding:12px 16px;margin-top:10px;font-family:monospace;font-size:13px;color:#22c55e;user-select:all;cursor:text;border:1px solid rgba(255,255,255,0.05)">
-                        curl -fsSL https://ollama.com/install.sh | sh<br>
-                        <span style="color:var(--muted)">ollama pull llama3.1:8b</span>
-                    </div>
+            <div class="install-box fu d3">
+                <div class="label">⚡ One-line install</div>
+                <div class="cmd">
+                    <span>curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash</span>
+                    <button class="copy-btn"
+                        onclick="navigator.clipboard.writeText('curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)">Copy</button>
                 </div>
-                <!-- Step 2 -->
-                <div class="feature-card">
-                    <div class="icon">2️⃣</div>
-                    <h3 data-i18n="step2_h">Install GSTD Bot</h3>
-                    <div
-                        style="background:rgba(0,0,0,0.3);border-radius:8px;padding:12px 16px;margin-top:10px;font-family:monospace;font-size:13px;color:#22c55e;user-select:all;cursor:text;border:1px solid rgba(255,255,255,0.05)">
-                        npm install -g gstdbot<br>
-                        <span style="color:var(--muted)">gstdbot onboard</span>
-                    </div>
-                </div>
-                <!-- Step 3 -->
-                <div class="feature-card">
-                    <div class="icon">3️⃣</div>
-                    <h3 data-i18n="step3_h">Start chatting!</h3>
-                    <div
-                        style="background:rgba(0,0,0,0.3);border-radius:8px;padding:12px 16px;margin-top:10px;font-family:monospace;font-size:13px;color:#22c55e;user-select:all;cursor:text;border:1px solid rgba(255,255,255,0.05)">
-                        gstdbot<br>
-                        <span style="color:var(--muted)"># or: gstdbot swarm join (earn tokens!)</span>
-                    </div>
+                <div class="platforms">
+                    <span>🐧 Linux</span><span>🍎 macOS</span><span>🪟 Windows (WSL)</span><span>🐳
+                        Docker</span><span>🔧 ARM / RPi</span>
                 </div>
             </div>
 
-            <!-- OR from source -->
-            <div style="text-align:center;margin-bottom:20px">
-                <span style="color:var(--muted);font-size:13px" data-i18n="install_or">or install from source:</span>
-            </div>
-            <div
-                style="max-width:500px;margin:0 auto;background:rgba(0,0,0,0.3);border-radius:10px;padding:16px 20px;font-family:monospace;font-size:13px;color:#e2e2e8;border:1px solid var(--border);user-select:all;cursor:text">
-                <span style="color:var(--muted)">$</span> git clone https://github.com/gstdcoin/gstdbot.git<br>
-                <span style="color:var(--muted)">$</span> cd gstdbot && npm install<br>
-                <span style="color:var(--muted)">$</span> npm run build && npm link<br>
-                <span style="color:var(--muted)">$</span> gstdbot onboard
-            </div>
-
-            <div style="text-align:center;margin-top:28px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-                <a href="https://github.com/gstdcoin/gstdbot" class="btn-primary" target="_blank"
-                    data-i18n="install_github">⭐ GitHub
-                    Repository</a>
-                <a href="https://github.com/gstdcoin/gstdbot#skills-marketplace" class="btn-ghost" target="_blank"
-                    data-i18n="install_skills">Browse Skills →</a>
-                <a href="https://github.com/gstdcoin/gstdbot#earn-gstd-tokens-swarm-node" class="btn-ghost"
-                    target="_blank" data-i18n="install_earn">Earn Tokens →</a>
+            <div class="actions fu d4">
+                <a href="#install" class="btn btn-emerald btn-lg">📦 Installation Guide</a>
+                <a href="https://t.me/GstdAppBot" class="btn btn-primary btn-lg">🤖 Open in Telegram</a>
+                <a href="https://github.com/gstdcoin/gstdbot" target="_blank" class="btn btn-ghost btn-lg">⭐ GitHub</a>
             </div>
         </div>
     </section>
 
-    <!-- ─── Stats ─── -->
-    <section class="stats">
+    <!-- What's Inside -->
+    <section id="features" style="padding:80px 0;border-top:1px solid var(--border)">
         <div class="container">
-            <div class="stats-grid">
-                <div class="stat">
-                    <div class="num" id="statNodes">247</div>
-                    <div class="label" data-i18n="stat_nodes">Active Nodes</div>
+            <div class="sec-tag" style="color:var(--cyan)">⟩ What's Inside</div>
+            <div class="sec-title">A full platform client.<br>Not just a bot.</div>
+            <p class="sec-sub">GSTD Node is a complete mini-distribution. Install once — get everything: AI chat,
+                wallet, dashboard, monitoring, and swarm node. All sovereign, all private.</p>
+            <div class="grid-3">
+                <div class="card">
+                    <div class="ic" style="background:rgba(6,182,212,0.1)">🤖</div>
+                    <h3>AI Chat Interface</h3>
+                    <p>8 Groq models in parallel. Consensus synthesis. Private conversations that never leave your
+                        device. Web + terminal interfaces.</p>
                 </div>
-                <div class="stat">
-                    <div class="num">8</div>
-                    <div class="label" data-i18n="stat_models">AI Models</div>
+                <div class="card">
+                    <div class="ic" style="background:rgba(139,92,246,0.1)">💰</div>
+                    <h3>Built-in Wallet</h3>
+                    <p>TON wallet auto-generated on setup. Receive GSTD tokens for compute. Send, stake, and track
+                        earnings. No external wallet needed.</p>
                 </div>
-                <div class="stat">
-                    <div class="num" id="statSov">100%</div>
-                    <div class="label" data-i18n="stat_sov">Sovereignty Index</div>
+                <div class="card">
+                    <div class="ic" style="background:rgba(34,197,94,0.1)">📊</div>
+                    <h3>Local Dashboard</h3>
+                    <p>Real-time system monitor: CPU/GPU/RAM usage, tasks processed, GSTD earned, network stats.
+                        Accessible at localhost:8080.</p>
                 </div>
-                <div class="stat">
-                    <div class="num" id="statPrice" style="font-size:28px">—</div>
-                    <div class="label" data-i18n="stat_gstd_price">GSTD Price</div>
+                <div class="card">
+                    <div class="ic" style="background:rgba(245,158,11,0.1)">🌐</div>
+                    <h3>Swarm Node Engine</h3>
+                    <p>Auto-joins the GSTD Swarm network. Accepts compute tasks, processes AI inference, earns tokens
+                        24/7. Zero-config networking.</p>
+                </div>
+                <div class="card">
+                    <div class="ic" style="background:rgba(244,63,94,0.1)">🔒</div>
+                    <h3>TEE Secure Compute</h3>
+                    <p>Confidential computing for sensitive tasks. Hardware-encrypted GPU enclaves. Even the node
+                        operator can't see the data being processed.</p>
+                </div>
+                <div class="card">
+                    <div class="ic" style="background:rgba(168,85,247,0.1)">📡</div>
+                    <h3>Signal Monitor</h3>
+                    <p>Track 29 planetary signals. Sponsor research with Stars. View Swarm intelligence solving
+                        humanity's hardest problems in real-time.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- ─── Features ─── -->
-    <section class="features" id="features">
+    <!-- Architecture -->
+    <section id="architecture" style="padding:80px 0;border-top:1px solid var(--border)">
         <div class="container">
-            <div class="section-title">⟩ COLLECTIVE INTELLIGENCE</div>
-            <h2>8 AI experts answer.<br><span
-                    style="background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">One
-                    superior response.</span></h2>
-            <div class="features-grid">
-                <div class="feature-card"
-                    style="grid-column:span 2;background:linear-gradient(135deg,rgba(139,92,246,0.06),rgba(6,182,212,0.04));border-color:rgba(139,92,246,0.15)">
-                    <div class="icon"
-                        style="background:linear-gradient(135deg,var(--accent),var(--accent2));width:48px;height:48px;font-size:24px">
-                        🧠</div>
-                    <h3 style="font-size:20px">Collective Intelligence Engine</h3>
-                    <p style="font-size:14px;line-height:1.7">Unlike OpenClaw (single model), GSTD queries
-                        <strong>multiple AI experts in parallel</strong> and synthesizes a consensus answer. Like having
-                        a panel of expert doctors instead of one — more accurate, more reliable, more complete.
-                    </p>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
-                        <span
-                            style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.15);color:#22c55e;font-weight:700">🆓
-                            Single Expert — Free</span>
-                        <span
-                            style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.15);color:#60a5fa;font-weight:700">🔬
-                            Council of 3 — 0.05 GSTD</span>
-                        <span
-                            style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.15);color:#fbbf24;font-weight:700">🔥
-                            Panel of 5 — 0.15 GSTD</span>
-                        <span
-                            style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.15);color:#a78bfa;font-weight:700">🧠
-                            Swarm of 7 — 0.50 GSTD</span>
-                    </div>
+            <div class="sec-tag" style="color:var(--accent)">⟩ Architecture</div>
+            <div class="sec-title">How your node works</div>
+            <p class="sec-sub">Every GSTD Node is a self-contained sovereign unit that connects to the global Swarm.
+                Here's the full stack running on your device.</p>
+            <div class="arch-box">
+                <div class="arch-layer" style="background:rgba(6,182,212,0.05);border-color:rgba(6,182,212,0.15)">
+                    🌐 Your Device (PC / Mini-PC / Server / RPi) <span class="tag"
+                        style="background:var(--cyan);color:#030014">HARDWARE</span>
                 </div>
-                <div class="feature-card">
-                    <div class="icon">🚀</div>
-                    <h3>8 Groq Models</h3>
-                    <p>Llama 4 Scout, Llama 4 Maverick, GPT-OSS 120B, Qwen3 32B, Kimi K2 — all free, ultra-fast on Groq
-                        infrastructure. No API keys needed.</p>
+                <div class="arch-arrow">↓</div>
+                <div class="arch-layer" style="background:rgba(139,92,246,0.05);border-color:rgba(139,92,246,0.15)">
+                    🐳 Docker Container / Native Install <span class="tag"
+                        style="background:var(--accent);color:white">RUNTIME</span>
                 </div>
-                <div class="feature-card">
-                    <div class="icon">⭐</div>
-                    <h3>Pay with Stars or GSTD</h3>
-                    <p>Buy GSTD tokens with Telegram Stars — no crypto wallet needed. 1 Star ≈ 10 GSTD. Or connect TON
-                        wallet for direct purchase.</p>
+                <div class="arch-arrow">↓</div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
+                    <div class="arch-layer"
+                        style="background:rgba(34,197,94,0.05);border-color:rgba(34,197,94,0.15);margin:0;font-size:12px">
+                        🤖 AI Engine<br><small style="color:var(--muted)">Ollama + Groq</small></div>
+                    <div class="arch-layer"
+                        style="background:rgba(245,158,11,0.05);border-color:rgba(245,158,11,0.15);margin:0;font-size:12px">
+                        💰 Wallet<br><small style="color:var(--muted)">TON + GSTD</small></div>
+                    <div class="arch-layer"
+                        style="background:rgba(244,63,94,0.05);border-color:rgba(244,63,94,0.15);margin:0;font-size:12px">
+                        📊 Dashboard<br><small style="color:var(--muted)">localhost:8080</small></div>
                 </div>
-                <div class="feature-card">
-                    <div class="icon">💬</div>
-                    <h3>Telegram + Web</h3>
-                    <p>Chat in Telegram DMs, groups, or use the web interface. Same Collective Intelligence everywhere.
-                        History synced across platforms.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="icon">🛡️</div>
-                    <h3>TEE Confidential Compute</h3>
-                    <p>Heavy tasks run in Cocoon TEE — hardware-encrypted GPU enclaves. Even the node operator can't see
-                        your data. Verified on TON blockchain.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="icon">💰</div>
-                    <h3>Earn While You Compute</h3>
-                    <p>Connect your device as a node and earn GSTD tokens. Agent skills earn passive income. Gold-backed
-                        reserves add real value.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="icon">🧬</div>
-                    <h3>Self-Improving AI</h3>
-                    <p>The Swarm learns from every interaction via DPO training. Collective Memory makes the network
-                        smarter over time. OpenClaw uses static models.</p>
+                <div class="arch-arrow">↓</div>
+                <div class="arch-layer" style="background:rgba(34,197,94,0.05);border-color:rgba(34,197,94,0.15)">
+                    🌍 GSTD Swarm Network — <span style="color:var(--emerald)">Global AI Supercomputer</span> <span
+                        class="tag" style="background:var(--emerald);color:#030014">NETWORK</span>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- ─── Pricing ─── -->
-    <section class="features" id="pricing" style="border-top:1px solid var(--border)">
+    <!-- Installation Wizard -->
+    <section id="install" style="padding:80px 0;border-top:1px solid var(--border)">
         <div class="container">
-            <div class="section-title">⟩ PRICING</div>
-            <h2>Pay what you need.<br>Start free, scale up.</h2>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:8px">
-                <div class="feature-card" style="text-align:center;position:relative">
-                    <div style="font-size:28px;margin-bottom:8px">🆓</div>
-                    <h3 style="font-size:18px">Single Expert</h3>
-                    <div
-                        style="font-size:32px;font-weight:900;margin:12px 0;background:linear-gradient(135deg,#22c55e,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
-                        FREE</div>
-                    <p style="font-size:12px;line-height:1.6">1 AI model responds instantly<br>Unlimited
-                        queries<br>Llama 4 / GPT-OSS / Kimi K2<br>Web + Telegram</p>
-                </div>
-                <div class="feature-card" style="text-align:center;border-color:rgba(59,130,246,0.2)">
-                    <div style="font-size:28px;margin-bottom:8px">🔬</div>
-                    <h3 style="font-size:18px">Council of 3</h3>
-                    <div style="font-size:32px;font-weight:900;margin:12px 0;color:#60a5fa">0.05 <span
-                            style="font-size:14px;font-weight:600">GSTD</span></div>
-                    <p style="font-size:12px;line-height:1.6">3 experts reach consensus<br>Cross-verification<br>~2×
-                        more accurate<br>≈ $0.003 per query</p>
-                </div>
-                <div class="feature-card"
-                    style="text-align:center;border-color:rgba(245,158,11,0.2);background:linear-gradient(180deg,rgba(245,158,11,0.04),transparent)">
-                    <div style="font-size:28px;margin-bottom:8px">🔥</div>
-                    <h3 style="font-size:18px">Panel of 5</h3>
-                    <div style="font-size:32px;font-weight:900;margin:12px 0;color:#fbbf24">0.15 <span
-                            style="font-size:14px;font-weight:600">GSTD</span></div>
-                    <p style="font-size:12px;line-height:1.6">5 experts + deep synthesis<br>Cross-verification<br>~4×
-                        more accurate<br>≈ $0.008 per query</p>
-                    <span
-                        style="position:absolute;top:-10px;right:16px;font-size:10px;padding:3px 8px;border-radius:4px;background:var(--accent);color:white;font-weight:700">POPULAR</span>
-                </div>
-                <div class="feature-card" style="text-align:center;border-color:rgba(139,92,246,0.2)">
-                    <div style="font-size:28px;margin-bottom:8px">🧠</div>
-                    <h3 style="font-size:18px">Swarm of 7</h3>
-                    <div
-                        style="font-size:32px;font-weight:900;margin:12px 0;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">
-                        0.50 <span
-                            style="font-size:14px;font-weight:600;-webkit-text-fill-color:var(--accent)">GSTD</span>
+            <div class="sec-tag" style="color:var(--emerald)">⟩ Installation</div>
+            <div class="sec-title">5 minutes. Any device.</div>
+            <p class="sec-sub">Automatic installer detects your OS, installs dependencies, configures wallet, and joins
+                the Swarm. Choose your method.</p>
+
+            <!-- Method tabs -->
+            <div style="display:flex;gap:8px;margin-bottom:28px;flex-wrap:wrap">
+                <button class="btn btn-emerald" id="tab-auto" onclick="showTab('auto')" style="padding:8px 18px">⚡ Auto
+                    Install</button>
+                <button class="btn btn-ghost" id="tab-docker" onclick="showTab('docker')" style="padding:8px 18px">🐳
+                    Docker</button>
+                <button class="btn btn-ghost" id="tab-manual" onclick="showTab('manual')" style="padding:8px 18px">🔧
+                    Manual</button>
+            </div>
+
+            <!-- Auto install -->
+            <div id="panel-auto">
+                <div class="grid-2" style="margin-bottom:24px">
+                    <div class="step">
+                        <div class="num" style="background:rgba(34,197,94,0.1);color:var(--emerald)">1</div>
+                        <div>
+                            <h3>Run the installer</h3>
+                            <p style="font-size:13px;color:var(--muted)">One command detects your OS, installs Ollama +
+                                GSTD Node, generates wallet keys.</p>
+                            <div class="code">curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash</div>
+                        </div>
                     </div>
-                    <p style="font-size:12px;line-height:1.6">7 experts + reasoning chains<br>Full verification
-                        pipeline<br>Maximum reliability<br>≈ $0.025 per query</p>
+                    <div class="step">
+                        <div class="num" style="background:rgba(6,182,212,0.1);color:var(--cyan)">2</div>
+                        <div>
+                            <h3>Configure your node</h3>
+                            <p style="font-size:13px;color:var(--muted)">Interactive wizard: set node name, choose
+                                GPU/CPU mode, set resource limits.</p>
+                            <div class="code">gstd-node setup</div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="num" style="background:rgba(139,92,246,0.1);color:var(--accent)">3</div>
+                        <div>
+                            <h3>Connect wallet</h3>
+                            <p style="font-size:13px;color:var(--muted)">Auto-generates TON wallet or import existing.
+                                Link Telegram for Stars payments.</p>
+                            <div class="code">gstd-node wallet init</div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="num" style="background:rgba(245,158,11,0.1);color:var(--amber)">4</div>
+                        <div>
+                            <h3>Start earning!</h3>
+                            <p style="font-size:13px;color:var(--muted)">Node joins Swarm, processes tasks, earns GSTD.
+                                Open dashboard at localhost:8080.</p>
+                            <div class="code">gstd-node start --daemon</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div style="text-align:center;margin-top:32px">
-                <div
-                    style="display:inline-flex;align-items:center;gap:16px;padding:16px 28px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid var(--border)">
-                    <span style="font-size:24px">⭐</span>
-                    <div style="text-align:left">
-                        <div style="font-size:14px;font-weight:700">Buy GSTD with Telegram Stars</div>
-                        <div style="font-size:12px;color:var(--muted)">No crypto wallet needed · Instant · 1 Star ≈ 10
-                            GSTD</div>
+
+            <!-- Docker -->
+            <div id="panel-docker" style="display:none">
+                <div class="step" style="margin-bottom:16px">
+                    <div class="num" style="background:rgba(6,182,212,0.1);color:var(--cyan)">🐳</div>
+                    <div style="flex:1">
+                        <h3>Docker Compose (recommended)</h3>
+                        <p style="font-size:13px;color:var(--muted)">Full stack in one container: AI engine, wallet,
+                            dashboard, swarm node.</p>
+                        <div class="code">git clone https://github.com/gstdcoin/gstd-node.git<br>cd gstd-node<br>cp
+                            .env.example .env # edit NODE_NAME, WALLET_SEED<br>docker compose up -d</div>
                     </div>
-                    <a href="https://t.me/GstdAppBot?start=buy" class="btn-primary"
-                        style="padding:8px 16px;font-size:12px">Buy now →</a>
+                </div>
+                <div class="step">
+                    <div class="num" style="background:rgba(139,92,246,0.1);color:var(--accent)">⚡</div>
+                    <div style="flex:1">
+                        <h3>Quick Docker Run</h3>
+                        <p style="font-size:13px;color:var(--muted)">Minimal single container for quick testing.</p>
+                        <div class="code">docker run -d --name gstd-node \<br> -p 8080:8080 -p 11434:11434 \<br> -v
+                            gstd-data:/data \<br> ghcr.io/gstdcoin/gstd-node:latest</div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </section>
 
-    <!-- ─── Skills Marketplace ─── -->
-    <section class="skills" id="skills">
-        <div class="container">
-            <div class="section-title" data-i18n="skills_title">⟩ Skills & Market</div>
-            <h2 data-i18n="skills_h2">Skills that run on the Swarm</h2>
-            <p class="sub" data-i18n="skills_sub">Install skills to extend your bot. Each skill is verified by the
-                network and runs sovereignly
-                — no corporate dependencies.</p>
-
-            <div class="skills-grid">
-                <div class="skill-card">
-                    <div class="skill-header">
-                        <div class="skill-icon">📊</div>
-                        <div class="skill-name" data-i18n="skill_defi">DeFi Monitor</div>
-                    </div>
-                    <div class="skill-desc" data-i18n="skill_defi_desc">Real-time DeFi signals, LP tracking, and yield
-                        analysis across TON, ETH, SOL.</div>
-                    <div class="skill-meta">
-                        <span>🟢 <span data-i18n="skill_active">Active</span></span>
-                        <span>⚡ 0.01 GSTD</span>
-                        <span>👥 1.2k</span>
+            <!-- Manual -->
+            <div id="panel-manual" style="display:none">
+                <div class="step" style="margin-bottom:16px">
+                    <div class="num" style="background:rgba(34,197,94,0.1);color:var(--emerald)">1</div>
+                    <div style="flex:1">
+                        <h3>Prerequisites</h3>
+                        <div class="code">curl -fsSL https://ollama.com/install.sh | sh<br>ollama pull
+                            llama3.1:8b<br>npm install -g pnpm</div>
                     </div>
                 </div>
-                <div class="skill-card">
-                    <div class="skill-header">
-                        <div class="skill-icon">🔍</div>
-                        <div class="skill-name" data-i18n="skill_web">Web Researcher</div>
-                    </div>
-                    <div class="skill-desc" data-i18n="skill_web_desc">Search the web, extract data, summarize articles.
-                        Deep research with source verification.</div>
-                    <div class="skill-meta">
-                        <span>🟢 <span data-i18n="skill_active">Active</span></span>
-                        <span>⚡ 0.02 GSTD</span>
-                        <span>👥 890</span>
+                <div class="step" style="margin-bottom:16px">
+                    <div class="num" style="background:rgba(6,182,212,0.1);color:var(--cyan)">2</div>
+                    <div style="flex:1">
+                        <h3>Clone & build</h3>
+                        <div class="code">git clone https://github.com/gstdcoin/gstd-node.git<br>cd gstd-node && pnpm
+                            install && pnpm build</div>
                     </div>
                 </div>
-                <div class="skill-card">
-                    <div class="skill-header">
-                        <div class="skill-icon">💻</div>
-                        <div class="skill-name" data-i18n="skill_code">Code Generator</div>
-                    </div>
-                    <div class="skill-desc" data-i18n="skill_code_desc">Write, review, and debug code in any language.
-                        Powered by sovereign qwen2.5-coder model.</div>
-                    <div class="skill-meta">
-                        <span>🟢 <span data-i18n="skill_active">Active</span></span>
-                        <span>⚡ <span data-i18n="skill_free">Free</span></span>
-                        <span>👥 2.4k</span>
-                    </div>
-                </div>
-                <div class="skill-card">
-                    <div class="skill-header">
-                        <div class="skill-icon">🌍</div>
-                        <div class="skill-name" data-i18n="skill_signals">Planetary Signals</div>
-                    </div>
-                    <div class="skill-desc" data-i18n="skill_signals_desc">Monitor 30 global signals: climate, cyber
-                        threats, pandemics, market shifts. Powered by Swarm analysis.</div>
-                    <div class="skill-meta">
-                        <span>🟢 <span data-i18n="skill_active">Active</span></span>
-                        <span>⚡ 0.05 GSTD</span>
-                        <span>👥 450</span>
-                    </div>
-                </div>
-                <div class="skill-card">
-                    <div class="skill-header">
-                        <div class="skill-icon">📝</div>
-                        <div class="skill-name" data-i18n="skill_content">Content Writer</div>
-                    </div>
-                    <div class="skill-desc" data-i18n="skill_content_desc">Blog posts, social media, marketing copy.
-                        SEO-optimized, multilingual. Context-aware writing.</div>
-                    <div class="skill-meta">
-                        <span>🟢 <span data-i18n="skill_active">Active</span></span>
-                        <span>⚡ 0.01 GSTD</span>
-                        <span>👥 1.8k</span>
-                    </div>
-                </div>
-                <div class="skill-card">
-                    <div class="skill-header">
-                        <div class="skill-icon">📈</div>
-                        <div class="skill-name" data-i18n="skill_token">Token Analyzer</div>
-                    </div>
-                    <div class="skill-desc" data-i18n="skill_token_desc">On-chain analysis, holder distribution, smart
-                        money tracking. Works with TON, Ethereum, Solana.</div>
-                    <div class="skill-meta">
-                        <span>🟢 <span data-i18n="skill_active">Active</span></span>
-                        <span>⚡ 0.03 GSTD</span>
-                        <span>👥 670</span>
-                    </div>
-                </div>
-                <div class="skill-card">
-                    <div class="skill-header">
-                        <div class="skill-icon">🎨</div>
-                        <div class="skill-name" data-i18n="skill_image">Image Generator</div>
-                    </div>
-                    <div class="skill-desc" data-i18n="skill_image_desc">Generate images from text. Runs on Swarm nodes
-                        with GPU. No censorship, no corporate filters.</div>
-                    <div class="skill-meta">
-                        <span>🟡 <span data-i18n="skill_beta">Beta</span></span>
-                        <span>⚡ 0.1 GSTD</span>
-                        <span>👥 340</span>
-                    </div>
-                </div>
-                <div class="skill-card">
-                    <div class="skill-header">
-                        <div class="skill-icon">🤖</div>
-                        <div class="skill-name" data-i18n="skill_custom">Build Your Own</div>
-                    </div>
-                    <div class="skill-desc" data-i18n="skill_custom_desc">Create custom skills with our SDK. Publish to
-                        the marketplace and earn GSTD from every use.</div>
-                    <div class="skill-meta">
-                        <span>📄 <span data-i18n="skill_docs">Docs</span></span>
-                        <span>⚡ <span data-i18n="skill_earn">Earn GSTD</span></span>
-                        <span>🔧 SDK</span>
+                <div class="step">
+                    <div class="num" style="background:rgba(139,92,246,0.1);color:var(--accent)">3</div>
+                    <div style="flex:1">
+                        <h3>Configure & launch</h3>
+                        <div class="code">cp .env.example .env<br># Edit: NODE_NAME, WALLET_SEED, GPU_MODE, etc.<br>pnpm
+                            start</div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- ─── Comparison ─── -->
-    <section class="compare" id="compare">
+    <!-- Specs -->
+    <section style="padding:80px 0;border-top:1px solid var(--border)">
         <div class="container">
-            <h2>⟩ GSTD Bot vs OpenClaw</h2>
-            <table class="compare-table">
-                <thead>
+            <div class="sec-tag" style="color:var(--amber)">⟩ System Requirements</div>
+            <div class="sec-title">Runs on anything.</div>
+            <div class="grid-3" style="margin-bottom:40px">
+                <div class="card" style="border-color:rgba(34,197,94,0.15)">
+                    <h3 style="color:var(--emerald);margin-bottom:12px">🟢 Minimum</h3>
+                    <div class="spec-row"><span class="label">CPU</span><span class="val">2 cores</span></div>
+                    <div class="spec-row"><span class="label">RAM</span><span class="val">4 GB</span></div>
+                    <div class="spec-row"><span class="label">Disk</span><span class="val">20 GB</span></div>
+                    <div class="spec-row"><span class="label">GPU</span><span class="val">Not required</span></div>
+                    <div class="spec-row" style="border:0"><span class="label">Earn</span><span class="val"
+                            style="color:var(--emerald)">~50 GSTD/day</span></div>
+                </div>
+                <div class="card" style="border-color:rgba(6,182,212,0.15)">
+                    <h3 style="color:var(--cyan);margin-bottom:12px">🔵 Recommended</h3>
+                    <div class="spec-row"><span class="label">CPU</span><span class="val">4+ cores</span></div>
+                    <div class="spec-row"><span class="label">RAM</span><span class="val">16 GB</span></div>
+                    <div class="spec-row"><span class="label">Disk</span><span class="val">100 GB SSD</span></div>
+                    <div class="spec-row"><span class="label">GPU</span><span class="val">NVIDIA 8GB+</span></div>
+                    <div class="spec-row" style="border:0"><span class="label">Earn</span><span class="val"
+                            style="color:var(--cyan)">~500 GSTD/day</span></div>
+                </div>
+                <div class="card" style="border-color:rgba(139,92,246,0.15)">
+                    <h3 style="color:var(--accent);margin-bottom:12px">🟣 Power Node</h3>
+                    <div class="spec-row"><span class="label">CPU</span><span class="val">8+ cores</span></div>
+                    <div class="spec-row"><span class="label">RAM</span><span class="val">64 GB</span></div>
+                    <div class="spec-row"><span class="label">Disk</span><span class="val">500 GB NVMe</span></div>
+                    <div class="spec-row"><span class="label">GPU</span><span class="val">NVIDIA 24GB+</span></div>
+                    <div class="spec-row" style="border:0"><span class="label">Earn</span><span class="val"
+                            style="color:var(--accent)">~5,000+ GSTD/day</span></div>
+                </div>
+            </div>
+            <div style="text-align:center;color:var(--muted);font-size:13px">Supported: Intel/AMD/ARM •
+                Ubuntu/Debian/Fedora/macOS/Windows WSL • Raspberry Pi 4+ • NVIDIA CUDA 11.7+</div>
+        </div>
+    </section>
+
+    <!-- Comparison -->
+    <section id="compare" style="padding:80px 0;border-top:1px solid var(--border)">
+        <div class="container">
+            <div class="sec-tag" style="color:var(--rose)">⟩ Why GSTD Node</div>
+            <div class="sec-title">vs. other node software</div>
+            <div style="overflow-x:auto">
+                <table class="cmp-table">
                     <tr>
                         <th>Feature</th>
-                        <th>GSTD Bot</th>
-                        <th>OpenClaw</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr class="winner">
-                        <td>Intelligence</td>
-                        <td class="us">Collective — up to 7 experts + consensus</td>
-                        <td class="them">Single model</td>
-                    </tr>
-                    <tr class="winner">
-                        <td>AI Models</td>
-                        <td class="us">8 free models (Llama 4, GPT-OSS, Kimi K2, Qwen3)</td>
-                        <td class="them">API proxy (OpenAI/Anthropic — paid)</td>
-                    </tr>
-                    <tr class="winner">
-                        <td>Speed</td>
-                        <td class="us">Groq inference — sub-second latency</td>
-                        <td class="them">Depends on API provider</td>
-                    </tr>
-                    <tr class="winner">
-                        <td>Free tier</td>
-                        <td class="us">✓ Unlimited free queries</td>
-                        <td class="them">✗ You pay API costs ($5-15/mo)</td>
-                    </tr>
-                    <tr class="winner">
-                        <td>Payment</td>
-                        <td class="us">GSTD tokens + Telegram Stars ⭐</td>
-                        <td class="them">Credit card for API keys</td>
-                    </tr>
-                    <tr class="winner">
-                        <td>Infrastructure</td>
-                        <td class="us">Decentralized Swarm — no single point of failure</td>
-                        <td class="them">Your own machine (single point)</td>
-                    </tr>
-                    <tr class="winner">
-                        <td>Earn money</td>
-                        <td class="us">✓ Earn GSTD as node operator</td>
-                        <td class="them">✗ No earning model</td>
+                        <th>GSTD Node</th>
+                        <th>Akash</th>
+                        <th>Bittensor</th>
+                        <th>io.net</th>
                     </tr>
                     <tr>
-                        <td>Memory</td>
-                        <td class="us">✓ Collective Hive Memory</td>
-                        <td class="them">✓ Local persistent memory</td>
+                        <td>One-click install</td>
+                        <td class="us">✓ Script</td>
+                        <td class="them">Manual</td>
+                        <td class="them">Complex</td>
+                        <td class="them">Manual</td>
                     </tr>
-                    <tr class="winner">
-                        <td>Privacy</td>
-                        <td class="us">TEE confidential compute + on-chain verification</td>
-                        <td class="them">Local (but CVE-2026-25253 vulnerability)</td>
+                    <tr>
+                        <td>Built-in AI chat</td>
+                        <td class="us">✓ 8 models</td>
+                        <td class="them">✗</td>
+                        <td class="them">✗</td>
+                        <td class="them">✗</td>
                     </tr>
-                    <tr class="winner">
-                        <td>Self-improving</td>
-                        <td class="us">✓ DPO training from collective usage</td>
-                        <td class="them">✗ Static models</td>
+                    <tr>
+                        <td>Built-in wallet</td>
+                        <td class="us">✓ TON</td>
+                        <td class="them">External</td>
+                        <td class="them">External</td>
+                        <td class="them">External</td>
                     </tr>
-                    <tr class="winner">
-                        <td>Blockchain</td>
-                        <td class="us">✓ TON + GSTD token + on-chain settlements</td>
-                        <td class="them">✗ No blockchain</td>
+                    <tr>
+                        <td>Visual dashboard</td>
+                        <td class="us">✓ Web UI</td>
+                        <td class="them">CLI only</td>
+                        <td class="them">CLI</td>
+                        <td class="them">Web</td>
                     </tr>
-                    <tr class="winner">
-                        <td>Cost per query</td>
-                        <td class="us">$0 (free) to $0.025 (7 experts)</td>
-                        <td class="them">$0.0005 – $0.075 (API fees)</td>
+                    <tr>
+                        <td>Min. hardware</td>
+                        <td class="us">2 cores / 4GB</td>
+                        <td class="them">8 cores</td>
+                        <td class="them">GPU req.</td>
+                        <td class="them">GPU req.</td>
                     </tr>
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <!-- ─── Integrations ─── -->
-    <section class="integrations">
-        <div class="container">
-            <h2 data-i18n="int_title">⟩ Works With</h2>
-            <div class="int-grid">
-                <div class="int-item"><span class="int-icon">📱</span> Telegram</div>
-                <div class="int-item"><span class="int-icon">🌐</span> Web Chat</div>
-                <div class="int-item"><span class="int-icon">🔗</span> OpenAI API</div>
-                <div class="int-item"><span class="int-icon">⛓️</span> TON Blockchain</div>
-                <div class="int-item"><span class="int-icon">⭐</span> Telegram Stars</div>
-                <div class="int-item"><span class="int-icon">🐝</span> GSTD Swarm</div>
-                <div class="int-item"><span class="int-icon">🤖</span> A2A Agents</div>
-                <div class="int-item"><span class="int-icon">📊</span> DeFi Protocols</div>
+                    <tr>
+                        <td>Earn without GPU</td>
+                        <td class="us">✓ CPU tasks</td>
+                        <td class="them">GPU only</td>
+                        <td class="them">GPU only</td>
+                        <td class="them">GPU only</td>
+                    </tr>
+                    <tr>
+                        <td>Privacy (TEE)</td>
+                        <td class="us">✓ Cocoon</td>
+                        <td class="them">✗</td>
+                        <td class="them">✗</td>
+                        <td class="them">Partial</td>
+                    </tr>
+                    <tr>
+                        <td>Telegram integration</td>
+                        <td class="us">✓ Native</td>
+                        <td class="them">✗</td>
+                        <td class="them">✗</td>
+                        <td class="them">✗</td>
+                    </tr>
+                    <tr>
+                        <td>Gold-backed token</td>
+                        <td class="us">✓ XAUT</td>
+                        <td class="them">✗</td>
+                        <td class="them">✗</td>
+                        <td class="them">✗</td>
+                    </tr>
+                </table>
             </div>
         </div>
     </section>
 
-    <!-- ─── CTA ─── -->
-    <section class="cta">
+    <!-- Stats -->
+    <section style="padding:60px 0;border-top:1px solid var(--border)">
         <div class="container">
-            <h2 data-i18n="cta_h2">Join the Swarm.</h2>
-            <p data-i18n="cta_p">Start using sovereign AI today. Free. Private. Decentralized. Or connect your device
-                and earn.</p>
-            <div class="actions" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-                <a href="https://t.me/GstdAppBot" class="btn-primary" data-i18n="cta_btn1">Open in Telegram →</a>
-                <a href="https://chat.gstdtoken.com" class="btn-ghost" data-i18n="cta_btn2">Web Chat</a>
-                <a href="https://app.gstdtoken.com" class="btn-ghost" data-i18n="cta_btn3">Join as Node</a>
+            <div class="grid-4">
+                <div class="stat">
+                    <div class="num" id="statNodes">247</div>
+                    <div class="lbl">Active Nodes</div>
+                </div>
+                <div class="stat">
+                    <div class="num" id="statTasks">6,340</div>
+                    <div class="lbl">Tasks Completed</div>
+                </div>
+                <div class="stat">
+                    <div class="num" id="statUsers">53</div>
+                    <div class="lbl">Node Operators</div>
+                </div>
+                <div class="stat">
+                    <div class="num">9M</div>
+                    <div class="lbl">GSTD Circulating</div>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- ─── Footer ─── -->
+    <!-- CTA -->
+    <section class="cta" style="border-top:1px solid var(--border)">
+        <div class="container" style="position:relative;z-index:1">
+            <div class="sec-title" style="font-size:clamp(32px,5vw,48px)">Deploy your node.<br>Join the Swarm.</div>
+            <p
+                style="font-size:16px;color:var(--muted);margin-bottom:36px;max-width:500px;margin-left:auto;margin-right:auto">
+                Every device that joins makes the planetary AI stronger. Earn tokens. Solve problems. Own your
+                intelligence.
+            </p>
+            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+                <a href="https://t.me/GstdAppBot" class="btn btn-emerald btn-lg">🚀 Launch in Telegram</a>
+                <a href="https://github.com/gstdcoin/gstd-node" target="_blank" class="btn btn-primary btn-lg">📦 GitHub
+                    Repository</a>
+                <a href="https://monitor.gstdtoken.com" class="btn btn-ghost btn-lg">📡 Live Monitor</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
     <footer>
         <div class="container">
             <div class="links">
-                <a href="https://t.me/GstdAppBot" data-i18n="ft_telegram">Telegram Bot</a>
-                <a href="https://chat.gstdtoken.com" data-i18n="ft_webchat">Web Chat</a>
-                <a href="https://app.gstdtoken.com" data-i18n="ft_dashboard">Dashboard</a>
-                <a href="https://monitor.gstdtoken.com" data-i18n="ft_monitor">Monitor</a>
-                <a href="/sovereignty" data-i18n="ft_sov">Sovereignty Index</a>
-                <a href="/v1/models">API</a>
+                <a href="https://t.me/GstdAppBot">Telegram Bot</a>
+                <a href="https://chat.gstdtoken.com">Web Chat</a>
+                <a href="https://app.gstdtoken.com">Dashboard</a>
+                <a href="https://monitor.gstdtoken.com">Monitor</a>
+                <a href="https://github.com/gstdcoin">GitHub</a>
+                <a href="https://gstdbot.gstdtoken.com/v1/models">API</a>
             </div>
-            <div class="copy" data-i18n="footer_copy">© 2026 GSTD — Sovereign Decentralized Computing. Not affiliated
-                with any corporation.
-            </div>
+            <div class="copy">© 2026 GSTD Foundation. Sovereign AI for humanity.</div>
         </div>
     </footer>
 
-    <!-- ─── Live Data + i18n ─── -->
     <script>
-        // ─── Localization ────────────────────────────────────────────
-        const LANG = {
-            en: {
-                'nav_features': 'Features', 'nav_skills': 'Skills', 'nav_compare': 'vs OpenClaw',
-                'nav_dashboard': 'Dashboard', 'nav_cta': 'Open in Telegram →', 'nav_install': 'Install',
-                'hero_badge': 'Swarm is live — ', 'hero_badge2': ' nodes online',
-                'hero_h1a': 'The AI that runs on a', 'hero_h1b': 'planetary brain.',
-                'hero_sub': 'Not on corporate servers. Not through API proxies. Your requests are processed by a decentralized swarm of real devices — private, sovereign, and unstoppable.',
-                'hero_sov': 'Sovereignty Index:',
-                'hero_btn1': 'Start chatting → free', 'hero_btn2': 'Open Web Chat', 'hero_btn3': 'Dashboard',
-                'stat_nodes': 'Active Nodes', 'stat_models': 'Sovereign Models', 'stat_sov': 'Sovereignty Index', 'stat_gstd_price': 'GSTD Price',
-                'feat_title': '⟩ What It Does', 'feat_h2': 'Everything OpenClaw does.<br>Plus a planetary brain.',
-                'f1_h': 'Runs on the Swarm', 'f1_p': 'Your queries are processed by a decentralized network of nodes — not OpenAI servers. Your data never touches corporate infrastructure.',
-                'f2_h': 'Telegram Native', 'f2_p': 'Deeply integrated with Telegram. DMs, group chats, inline mode. Manage tasks, earn GSTD, and control the bot — all from one interface.',
-                'f3_h': 'Persistent Hive Memory', 'f3_p': 'The Swarm remembers collectively. Every interaction makes the network smarter. Your context persists, and the AI evolves with use.',
-                'f4_h': 'TEE Confidential Compute', 'f4_p': 'Heavy tasks run in Cocoon TEE — hardware-encrypted GPU enclaves. Even the node operator can\'t see your data. Verified on TON blockchain.',
-                'f5_h': 'Sovereign Neural Router', 'f5_p': 'Auto-selects the best model: qwen2.5-coder for code, deepseek-r1 for reasoning, llama3.1 for general — all sovereign. Commercial APIs are a last resort.',
-                'f6_h': 'Earn While You Compute', 'f6_p': 'Connect your device as a node and earn GSTD tokens. The more you compute, the more you earn. Gold-backed reserves add real value.',
-                'skills_title': '⟩ Skills & Market', 'skills_h2': 'Skills that run on the Swarm',
-                'skills_sub': 'Install skills to extend your bot. Each skill is verified by the network and runs sovereignly — no corporate dependencies.',
-                // Skill cards
-                'skill_defi': 'DeFi Monitor', 'skill_defi_desc': 'Real-time DeFi signals, LP tracking, and yield analysis across TON, ETH, SOL.',
-                'skill_web': 'Web Researcher', 'skill_web_desc': 'Search the web, extract data, summarize articles. Deep research with source verification.',
-                'skill_code': 'Code Generator', 'skill_code_desc': 'Write, review, and debug code in any language. Powered by sovereign qwen2.5-coder model.',
-                'skill_signals': 'Planetary Signals', 'skill_signals_desc': 'Monitor 30 global signals: climate, cyber threats, pandemics, market shifts. Powered by Swarm analysis.',
-                'skill_content': 'Content Writer', 'skill_content_desc': 'Blog posts, social media, marketing copy. SEO-optimized, multilingual. Context-aware writing.',
-                'skill_token': 'Token Analyzer', 'skill_token_desc': 'On-chain analysis, holder distribution, smart money tracking. Works with TON, Ethereum, Solana.',
-                'skill_image': 'Image Generator', 'skill_image_desc': 'Generate images from text. Runs on Swarm nodes with GPU. No censorship, no corporate filters.',
-                'skill_custom': 'Build Your Own', 'skill_custom_desc': 'Create custom skills with our SDK. Publish to the marketplace and earn GSTD from every use.',
-                'skill_active': 'Active', 'skill_beta': 'Beta', 'skill_free': 'Free', 'skill_docs': 'Docs', 'skill_earn': 'Earn GSTD',
-                // Comparison table
-                'compare_title': '⟩ GSTD Bot vs OpenClaw', 'cmp_feature': 'Feature',
-                'cmp_infra': 'Infrastructure', 'cmp_infra_us': 'Decentralized Swarm', 'cmp_infra_them': 'Your own machine',
-                'cmp_models': 'AI Models', 'cmp_models_us': '6 sovereign + commercial fallback', 'cmp_models_them': 'API proxy (OpenAI/Anthropic)',
-                'cmp_privacy': 'Privacy', 'cmp_privacy_us': 'TEE confidential compute', 'cmp_privacy_them': 'Local (data stays on machine)',
-                'cmp_earn': 'Earn money', 'cmp_earn_us': '✓ Earn GSTD as node operator', 'cmp_earn_them': '✗ No earning model',
-                'cmp_memory': 'Persistent memory', 'cmp_memory_us': '✓ Hive Memory (collective)', 'cmp_memory_them': '✓ Local memory',
-                'cmp_skills': 'Skills marketplace', 'cmp_skills_us': '✓ With GSTD tokenomics', 'cmp_skills_them': '✓ Community skills',
-                'cmp_chat': 'Chat apps', 'cmp_chat_us': 'Telegram (native)', 'cmp_chat_them': 'WhatsApp, Telegram, Discord, etc.',
-                'cmp_scale': 'Scalability', 'cmp_scale_us': 'Planetary (247+ nodes)', 'cmp_scale_them': 'Single machine',
-                'cmp_sov': 'Sovereignty', 'cmp_sov_us': '100% — no corporate dependency', 'cmp_sov_them': 'Depends on OpenAI/Anthropic APIs',
-                'cmp_cost': 'Cost', 'cmp_cost_us': 'Free tier + GSTD micro-payments', 'cmp_cost_them': 'Free (but you pay API costs)',
-                'cmp_improve': 'Self-improving', 'cmp_improve_us': '✓ DPO training from usage', 'cmp_improve_them': '✗ Static models',
-                'cmp_blockchain': 'Blockchain verified', 'cmp_blockchain_us': '✓ TON + GSTD token', 'cmp_blockchain_them': '✗ No blockchain',
-                // Integrations
-                'int_title': '⟩ Works With', 'int_telegram': 'Telegram', 'int_web': 'Web Chat', 'int_ton': 'TON Blockchain',
-                'int_swarm': 'GSTD Swarm', 'int_defi': 'DeFi Protocols', 'int_search': 'Web Search',
-                // CTA & footer
-                'cta_h2': 'Join the Swarm.', 'cta_p': 'Start using sovereign AI today. Free. Private. Decentralized. Or connect your device and earn.',
-                'cta_btn1': 'Open in Telegram →', 'cta_btn2': 'Web Chat', 'cta_btn3': 'Join as Node',
-                'ft_telegram': 'Telegram Bot', 'ft_webchat': 'Web Chat', 'ft_dashboard': 'Dashboard', 'ft_monitor': 'Monitor', 'ft_sov': 'Sovereignty Index',
-                'install_title': '⟩ Install on your PC', 'install_h2': '3 minutes. Zero API keys.',
-                'install_desc': 'Install GSTD Bot on your machine. Full sovereign AI — no subscriptions, no corporate surveillance, no data leaving your device.',
-                'install_github': '⭐ GitHub Repository', 'install_skills': 'Browse Skills →', 'install_earn': 'Earn Tokens →', 'install_or': 'or install from source:',
-                'step1_h': 'Install Ollama', 'step2_h': 'Install GSTD Bot', 'step3_h': 'Start chatting!',
-                'footer_copy': '© 2026 GSTD — Sovereign Decentralized Computing. Not affiliated with any corporation.',
-                'lang_switch': 'RU',
-            },
-            ru: {
-                'nav_features': 'Возможности', 'nav_skills': 'Скиллы', 'nav_compare': 'vs OpenClaw',
-                'nav_dashboard': 'Панель', 'nav_cta': 'Открыть в Telegram →', 'nav_install': 'Установка',
-                'hero_badge': 'Рой активен — ', 'hero_badge2': ' узлов онлайн',
-                'hero_h1a': 'ИИ, работающий на', 'hero_h1b': 'планетарном мозге.',
-                'hero_sub': 'Не на корпоративных серверах. Не через API-прокси. Ваши запросы обрабатываются децентрализованным роем реальных устройств — приватно, суверенно и неостановимо.',
-                'hero_sov': 'Индекс Суверенности:',
-                'hero_btn1': 'Начать бесплатно →', 'hero_btn2': 'Веб-чат', 'hero_btn3': 'Панель',
-                'stat_nodes': 'Активных Узлов', 'stat_models': 'Суверенных Моделей', 'stat_sov': 'Индекс Суверенности', 'stat_gstd_price': 'Цена GSTD',
-                'feat_title': '⟩ Возможности', 'feat_h2': 'Всё, что умеет OpenClaw.<br>Плюс планетарный мозг.',
-                'f1_h': 'Работает на Рое', 'f1_p': 'Ваши запросы обрабатываются децентрализованной сетью узлов — не серверами OpenAI. Ваши данные никогда не попадают в корпоративную инфраструктуру.',
-                'f2_h': 'Нативен в Telegram', 'f2_p': 'Глубокая интеграция с Telegram. ЛС, групповые чаты, инлайн-режим. Управляйте задачами, зарабатывайте GSTD — всё из одного интерфейса.',
-                'f3_h': 'Коллективная Память', 'f3_p': 'Рой запоминает коллективно. Каждое взаимодействие делает сеть умнее. Ваш контекст сохраняется, ИИ эволюционирует.',
-                'f4_h': 'TEE Конфиденциальные Вычисления', 'f4_p': 'Тяжёлые задачи выполняются в Cocoon TEE — аппаратно-зашифрованных GPU-анклавах. Даже оператор узла не видит ваши данные.',
-                'f5_h': 'Суверенный Нейро-Роутер', 'f5_p': 'Автоматически выбирает лучшую модель: qwen2.5-coder для кода, deepseek-r1 для рассуждений, llama3.1 для общих задач — всё суверенное.',
-                'f6_h': 'Зарабатывай Вычисляя', 'f6_p': 'Подключите устройство как узел и зарабатывайте GSTD токены. Чем больше вычисляете, тем больше зарабатываете. Золотой резерв обеспечивает реальную стоимость.',
-                'skills_title': '⟩ Скиллы и Маркет', 'skills_h2': 'Скиллы, работающие на Рое',
-                'skills_sub': 'Устанавливайте скиллы для расширения бота. Каждый скилл верифицирован сетью и работает суверенно.',
-                // Skill cards
-                'skill_defi': 'DeFi Монитор', 'skill_defi_desc': 'DeFi-сигналы в реальном времени, отслеживание LP и анализ доходности по TON, ETH, SOL.',
-                'skill_web': 'Веб-Исследователь', 'skill_web_desc': 'Поиск в сети, извлечение данных, суммаризация статей. Глубокий ресёрч с верификацией источников.',
-                'skill_code': 'Генератор Кода', 'skill_code_desc': 'Пишите, проверяйте и отлаживайте код на любом языке. На базе суверенной модели qwen2.5-coder.',
-                'skill_signals': 'Планетарные Сигналы', 'skill_signals_desc': 'Мониторинг 30 глобальных сигналов: климат, кибер-угрозы, пандемии, рынки. Анализ Роем.',
-                'skill_content': 'Контент-Райтер', 'skill_content_desc': 'Блог-посты, соцсети, маркетинговые тексты. SEO-оптимизация, мультиязычность.',
-                'skill_token': 'Анализ Токенов', 'skill_token_desc': 'Ончейн-анализ, распределение холдеров, трекинг умных денег. TON, Ethereum, Solana.',
-                'skill_image': 'Генератор Изображений', 'skill_image_desc': 'Генерация изображений из текста. Работает на GPU-нодах Роя. Без цензуры.',
-                'skill_custom': 'Создай Свой', 'skill_custom_desc': 'Создавайте собственные скиллы через SDK. Публикуйте на маркетплейсе и зарабатывайте GSTD.',
-                'skill_active': 'Активен', 'skill_beta': 'Бета', 'skill_free': 'Бесплатно', 'skill_docs': 'Документы', 'skill_earn': 'Заработок GSTD',
-                // Comparison table
-                'compare_title': '⟩ GSTD Bot vs OpenClaw', 'cmp_feature': 'Функция',
-                'cmp_infra': 'Инфраструктура', 'cmp_infra_us': 'Децентрализованный Рой', 'cmp_infra_them': 'Ваша машина',
-                'cmp_models': 'AI-Модели', 'cmp_models_us': '6 суверенных + коммерческий фолбэк', 'cmp_models_them': 'API-прокси (OpenAI/Anthropic)',
-                'cmp_privacy': 'Приватность', 'cmp_privacy_us': 'TEE конфиденциальные вычисления', 'cmp_privacy_them': 'Локально (данные на машине)',
-                'cmp_earn': 'Заработок', 'cmp_earn_us': '✓ Зарабатывайте GSTD как оператор узла', 'cmp_earn_them': '✗ Нет модели заработка',
-                'cmp_memory': 'Постоянная память', 'cmp_memory_us': '✓ Память Улья (коллективная)', 'cmp_memory_them': '✓ Локальная память',
-                'cmp_skills': 'Маркетплейс скиллов', 'cmp_skills_us': '✓ С токеномикой GSTD', 'cmp_skills_them': '✓ Скиллы сообщества',
-                'cmp_chat': 'Чат-платформы', 'cmp_chat_us': 'Telegram (нативный)', 'cmp_chat_them': 'WhatsApp, Telegram, Discord и др.',
-                'cmp_scale': 'Масштабируемость', 'cmp_scale_us': 'Планетарная (247+ узлов)', 'cmp_scale_them': 'Одна машина',
-                'cmp_sov': 'Суверенность', 'cmp_sov_us': '100% — без корпоративной зависимости', 'cmp_sov_them': 'Зависит от OpenAI/Anthropic API',
-                'cmp_cost': 'Стоимость', 'cmp_cost_us': 'Бесплатный тир + GSTD микро-платежи', 'cmp_cost_them': 'Бесплатно (но вы оплачиваете API)',
-                'cmp_improve': 'Самообучение', 'cmp_improve_us': '✓ DPO-обучение на основе использования', 'cmp_improve_them': '✗ Статичные модели',
-                'cmp_blockchain': 'Блокчейн', 'cmp_blockchain_us': '✓ TON + токен GSTD', 'cmp_blockchain_them': '✗ Без блокчейна',
-                // Integrations
-                'int_title': '⟩ Совместимость', 'int_telegram': 'Telegram', 'int_web': 'Веб-чат', 'int_ton': 'Блокчейн TON',
-                'int_swarm': 'Рой GSTD', 'int_defi': 'DeFi-протоколы', 'int_search': 'Веб-поиск',
-                // CTA & footer
-                'cta_h2': 'Присоединяйся к Рою.', 'cta_p': 'Начни пользоваться суверенным ИИ сегодня. Бесплатно. Приватно. Децентрализовано.',
-                'cta_btn1': 'Открыть в Telegram →', 'cta_btn2': 'Веб-чат', 'cta_btn3': 'Стать Узлом',
-                'ft_telegram': 'Телеграм-бот', 'ft_webchat': 'Веб-чат', 'ft_dashboard': 'Панель', 'ft_monitor': 'Монитор', 'ft_sov': 'Индекс Суверенности',
-                'install_title': '⟩ Установка на ПК', 'install_h2': '3 минуты. Ноль API-ключей.',
-                'install_desc': 'Установите GSTD Bot на свой ПК. Полностью суверенный ИИ — без подписок, без слежки, данные не покидают устройство.',
-                'install_github': '⭐ GitHub-репозиторий', 'install_skills': 'Обзор скиллов →', 'install_earn': 'Заработок токенов →', 'install_or': 'или установка из исходников:',
-                'step1_h': 'Установить Ollama', 'step2_h': 'Установить GSTD Bot', 'step3_h': 'Начать общение!',
-                'footer_copy': '© 2026 GSTD — Суверенные Децентрализованные Вычисления. Не аффилировано с корпорациями.',
-                'lang_switch': 'EN',
-            }
-        };
-
-        let currentLang = (navigator.language || '').startsWith('ru') ? 'ru' : 'en';
-
-        function applyLang(lang) {
-            currentLang = lang;
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                const val = LANG[lang][key];
-                if (val) {
-                    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = val;
-                    else if (key.includes('_h2') || key.includes('feat_h2')) el.innerHTML = val;
-                    else el.textContent = val;
-                }
+        // Tab switching
+        function showTab(id) {
+            ['auto', 'docker', 'manual'].forEach(t => {
+                document.getElementById('panel-' + t).style.display = t === id ? 'block' : 'none';
+                const btn = document.getElementById('tab-' + t);
+                if (t === id) { btn.className = 'btn btn-emerald'; btn.style.padding = '8px 18px' }
+                else { btn.className = 'btn btn-ghost'; btn.style.padding = '8px 18px' }
             });
-            document.documentElement.lang = lang;
-            localStorage.setItem('gstd_lang', lang);
         }
 
-        // Check localStorage first, then browser
-        const savedLang = localStorage.getItem('gstd_lang');
-        if (savedLang) currentLang = savedLang;
-
-        // Apply on load
-        document.addEventListener('DOMContentLoaded', () => applyLang(currentLang));
-
-        function toggleLang() {
-            applyLang(currentLang === 'en' ? 'ru' : 'en');
+        // Copy command
+        function copyCmd(text, btn) {
+            navigator.clipboard.writeText(text);
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy', 1500);
         }
 
-        // ─── Fetch sovereignty index ─────────────────────────────────
-        async function fetchSov() {
+        // Live stats
+        async function fetchStats() {
             try {
-                const r = await fetch('/sovereignty');
+                const r = await fetch('https://app.gstdtoken.com/api/v1/monitor/unified');
                 const d = await r.json();
-                const idx = d.sovereignty_index || 100;
-                document.getElementById('sovIndex').textContent = idx.toFixed(1) + '%';
-                document.getElementById('sovBar').style.width = idx + '%';
-                document.getElementById('statSov').textContent = idx.toFixed(1) + '%';
-            } catch (e) { }
-        }
-        fetchSov();
-        setInterval(fetchSov, 10000);
-
-        // ─── Fetch node count ────────────────────────────────────────
-        async function fetchNodes() {
-            try {
-                const r = await fetch('https://app.gstdtoken.com/api/v1/stats/public');
-                const d = await r.json();
-                const n = d.active_devices_count || 247;
-                document.getElementById('nodeCount').textContent = n;
-                document.getElementById('statNodes').textContent = n;
-            } catch (e) { }
-        }
-        fetchNodes();
-        setInterval(fetchNodes, 30000);
-
-        // ─── Fetch GSTD price ────────────────────────────────────────
-        async function fetchPrice() {
-            try {
-                const r = await fetch('https://app.gstdtoken.com/api/v1/stats/public');
-                const d = await r.json();
-                const p = d.gstd_price_usd;
-                if (p && p > 0) {
-                    const formatted = '$' + p.toFixed(6);
-                    const el = document.getElementById('statPrice');
-                    if (el) el.textContent = formatted;
-                    const navEl = document.getElementById('navPrice');
-                    if (navEl) { navEl.textContent = formatted; navEl.style.display = 'inline-block'; }
+                if (d.ecosystem) {
+                    document.getElementById('statNodes').textContent = (d.ecosystem.active_nodes || d.ecosystem.active_devices || 247).toLocaleString();
+                    document.getElementById('statTasks').textContent = (d.ecosystem.tasks_completed || 6340).toLocaleString();
+                    document.getElementById('statUsers').textContent = (d.ecosystem.total_users || 53).toLocaleString();
+                    document.getElementById('nodeCount').textContent = d.ecosystem.active_nodes || d.ecosystem.active_devices || 247;
                 }
             } catch (e) { }
         }
-        fetchPrice();
-        setInterval(fetchPrice, 15000);
+        fetchStats(); setInterval(fetchStats, 10000);
     </script>
-
 </body>
 
 </html>
