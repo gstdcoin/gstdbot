@@ -24,7 +24,7 @@ CYAN='\033[0;36m'; BOLD='\033[1m'; DIM='\033[2m'; NC='\033[0m'
 info()    { echo -e "  ${GREEN}✓${NC} $1"; }
 warn()    { echo -e "  ${YELLOW}⚠${NC} $1"; }
 err()     { echo -e "  ${RED}✗${NC} $1"; }
-step()    { echo -e "\n${CYAN}[$1/5]${NC} ${BOLD}$2${NC}"; }
+step()    { echo -e "\n${CYAN}[$1/6]${NC} ${BOLD}$2${NC}"; }
 log()     { echo "[$(date +%H:%M:%S)] $1" >> "$LOG_FILE"; }
 
 # State management — tracks completed steps for idempotent re-runs
@@ -405,6 +405,84 @@ CONF
     mark_done "config"
 else
     info "Config (already exists)"
+fi
+
+# ═══════════════════════════════════════════════════════════════
+# STEP 6: Open Dashboard Port in Firewall
+# ═══════════════════════════════════════════════════════════════
+step 6 "Configuring firewall for dashboard (port 8080)..."
+
+open_firewall_port() {
+    local PORT=8080
+    log "Opening firewall port $PORT..."
+
+    # ─── ufw (Ubuntu/Debian) ─────────────────────────────────
+    if command -v ufw &>/dev/null; then
+        # Check if ufw is active
+        if sudo ufw status 2>/dev/null | grep -q "active"; then
+            # Check if port already open
+            if sudo ufw status 2>/dev/null | grep -q "$PORT"; then
+                info "Port $PORT already open (ufw)"
+                return 0
+            fi
+            sudo ufw allow $PORT/tcp comment 'GSTD Node Dashboard' 2>>"$LOG_FILE"
+            info "Port $PORT opened (ufw)"
+        else
+            info "ufw inactive — no firewall rules needed"
+        fi
+        return 0
+    fi
+
+    # ─── firewalld (Fedora/CentOS/RHEL) ──────────────────────
+    if command -v firewall-cmd &>/dev/null; then
+        if systemctl is-active firewalld &>/dev/null; then
+            if sudo firewall-cmd --list-ports 2>/dev/null | grep -q "$PORT/tcp"; then
+                info "Port $PORT already open (firewalld)"
+                return 0
+            fi
+            sudo firewall-cmd --permanent --add-port=$PORT/tcp 2>>"$LOG_FILE"
+            sudo firewall-cmd --reload 2>>"$LOG_FILE"
+            info "Port $PORT opened (firewalld)"
+        else
+            info "firewalld inactive — no firewall rules needed"
+        fi
+        return 0
+    fi
+
+    # ─── iptables (fallback for any Linux) ───────────────────
+    if command -v iptables &>/dev/null; then
+        # Check if rule already exists
+        if sudo iptables -C INPUT -p tcp --dport $PORT -j ACCEPT 2>/dev/null; then
+            info "Port $PORT already open (iptables)"
+            return 0
+        fi
+        sudo iptables -I INPUT -p tcp --dport $PORT -j ACCEPT 2>>"$LOG_FILE"
+        info "Port $PORT opened (iptables)"
+
+        # Persist iptables rules if possible
+        if command -v netfilter-persistent &>/dev/null; then
+            sudo netfilter-persistent save 2>>"$LOG_FILE" || true
+        elif command -v iptables-save &>/dev/null; then
+            sudo iptables-save | sudo tee /etc/iptables.rules >/dev/null 2>>"$LOG_FILE" || true
+        fi
+        return 0
+    fi
+
+    # ─── macOS (pf) ──────────────────────────────────────────
+    if [ "$(uname)" = "Darwin" ]; then
+        info "macOS — port $PORT accessible by default"
+        return 0
+    fi
+
+    info "No firewall detected — port $PORT should be accessible"
+    return 0
+}
+
+if is_done "firewall"; then
+    info "Firewall port 8080 (already configured)"
+else
+    open_firewall_port
+    mark_done "firewall"
 fi
 
 # ─── Verify everything ──────────────────────────────────────────
