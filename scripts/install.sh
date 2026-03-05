@@ -1,182 +1,453 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
-# GSTD Node — One-Line Installer
+# GSTD Node — Idempotent Installer
 # curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
+#
+# Features:
+#  • Safe to re-run after crash/abort — picks up where it left off
+#  • Detects already-installed components and skips them
+#  • 3 modes: Cloud (instant), Hybrid, Sovereign
+#  • Works on Linux (Debian/Ubuntu/Fedora/Arch), macOS, WSL, ARM/RPi
 # ═══════════════════════════════════════════════════════════════
-set -e
+set -euo pipefail
 
-VERSION="2.0.0"
-GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'
-RED='\033[0;31m'; NC='\033[0m'; BOLD='\033[1m'; DIM='\033[2m'
+VERSION="2.1.0"
+CONFIG_DIR="$HOME/.config/gstdbot"
+STATE_FILE="$CONFIG_DIR/.install_state"
+LOG_FILE="$CONFIG_DIR/install.log"
 
+# ─── Colors ──────────────────────────────────────────────────────
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+CYAN='\033[0;36m'; BOLD='\033[1m'; DIM='\033[2m'; NC='\033[0m'
+
+# ─── Helpers ─────────────────────────────────────────────────────
+info()    { echo -e "  ${GREEN}✓${NC} $1"; }
+warn()    { echo -e "  ${YELLOW}⚠${NC} $1"; }
+err()     { echo -e "  ${RED}✗${NC} $1"; }
+step()    { echo -e "\n${CYAN}[$1/5]${NC} ${BOLD}$2${NC}"; }
+log()     { echo "[$(date +%H:%M:%S)] $1" >> "$LOG_FILE"; }
+
+# State management — tracks completed steps for idempotent re-runs
+mark_done()  { echo "$1" >> "$STATE_FILE"; log "DONE: $1"; }
+is_done()    { [ -f "$STATE_FILE" ] && grep -qx "$1" "$STATE_FILE" 2>/dev/null; }
+reset_step() { [ -f "$STATE_FILE" ] && sed -i "/$1/d" "$STATE_FILE" 2>/dev/null; true; }
+
+# Ensure config dir exists
+mkdir -p "$CONFIG_DIR/skills"
+echo "" >> "$LOG_FILE"
+log "=== GSTD Node Installer v${VERSION} ==="
+
+# ─── Banner ──────────────────────────────────────────────────────
 echo -e "${CYAN}"
-echo "╔══════════════════════════════════════════════╗"
-echo "║   🐝 GSTD Node v${VERSION}                        ║"
-echo "║   Your Device is the Supercomputer           ║"
-echo "╚══════════════════════════════════════════════╝"
+cat << 'BANNER'
+╔══════════════════════════════════════════════╗
+║   🐝 GSTD Node — Your Device is the         ║
+║      Supercomputer                           ║
+╚══════════════════════════════════════════════╝
+BANNER
 echo -e "${NC}"
 
-info()  { echo -e "  ${GREEN}✓${NC} $1"; }
-warn()  { echo -e "  ${YELLOW}⚠${NC} $1"; }
-err()   { echo -e "  ${RED}✗${NC} $1"; exit 1; }
-step()  { echo -e "\n${CYAN}[$1/$TOTAL_STEPS]${NC} ${BOLD}$2${NC}"; }
+# ─── Check for previous partial install ──────────────────────────
+if [ -f "$STATE_FILE" ]; then
+    COMPLETED=$(wc -l < "$STATE_FILE" | tr -d ' ')
+    if [ "$COMPLETED" -gt 0 ] 2>/dev/null; then
+        echo -e "  ${YELLOW}↻ Resuming previous install ($COMPLETED steps done)${NC}"
+        echo -e "  ${DIM}To start fresh: rm $STATE_FILE${NC}"
+        echo ""
+    fi
+fi
 
-# ─── Step 1: Detect system ──────────────────────────────────────
-TOTAL_STEPS=4
+# ═══════════════════════════════════════════════════════════════
+# STEP 1: System Detection
+# ═══════════════════════════════════════════════════════════════
 step 1 "Detecting system..."
 
-OS="unknown"; ARCH=$(uname -m)
+OS="unknown"; ARCH=$(uname -m); PKG=""
 if [ -f /etc/os-release ]; then
     . /etc/os-release; OS=$ID
+    case $ID in
+        ubuntu|debian|pop|linuxmint|raspbian) PKG="apt";;
+        fedora|centos|rhel|rocky|alma) PKG="dnf";;
+        arch|manjaro|endeavouros) PKG="pacman";;
+        alpine) PKG="apk";;
+    esac
 elif [ "$(uname)" = "Darwin" ]; then
-    OS="macos"
-fi
-case $ARCH in x86_64) ARCH="amd64";; aarch64|arm64) ARCH="arm64";; armv7l) ARCH="armv7";; esac
-info "OS: ${OS} (${ARCH})"
-
-# Check Node.js
-if command -v node &>/dev/null; then
-    NODE_VER=$(node -v | sed 's/v//' | cut -d'.' -f1)
-    if [ "$NODE_VER" -lt 20 ] 2>/dev/null; then
-        warn "Node.js $(node -v) is too old, need >= 20"
-        warn "Installing Node.js 22..."
-        curl -fsSL https://deb.nodesource.com/setup_22.x 2>/dev/null | sudo -E bash - 2>/dev/null
-        sudo apt-get install -y nodejs 2>/dev/null || sudo dnf install -y nodejs 2>/dev/null
-    else
-        info "Node.js $(node -v)"
-    fi
-else
-    warn "Installing Node.js 22..."
-    if [ "$OS" = "macos" ]; then
-        brew install node@22 2>/dev/null || {
-            curl -fsSL https://fnm.vercel.app/install | bash
-            export PATH="$HOME/.local/share/fnm:$PATH"
-            eval "$(fnm env)" 2>/dev/null
-            fnm install 22; fnm use 22
-        }
-    else
-        curl -fsSL https://deb.nodesource.com/setup_22.x 2>/dev/null | sudo -E bash - 2>/dev/null
-        sudo apt-get install -y nodejs 2>/dev/null || sudo dnf install -y nodejs 2>/dev/null
-    fi
-    info "Node.js $(node -v)"
+    OS="macos"; PKG="brew"
 fi
 
-# ─── Step 2: Install GSTD Node ──────────────────────────────────
-step 2 "Installing GSTD Node..."
+# Detect WSL
+if grep -qi microsoft /proc/version 2>/dev/null; then
+    OS="wsl-${OS}"
+fi
 
-npm install -g gstdbot@latest 2>/dev/null || {
-    warn "npm global failed, trying from source..."
-    TMPDIR=$(mktemp -d)
-    git clone --depth 1 https://github.com/gstdcoin/gstdbot.git "$TMPDIR/gstdbot" 2>/dev/null
-    cd "$TMPDIR/gstdbot"
-    npm install --legacy-peer-deps 2>/dev/null
-    npm run build 2>/dev/null
-    npm link 2>/dev/null
-    cd - >/dev/null
-    info "Installed from source"
+# Normalize arch
+case $ARCH in
+    x86_64)           ARCH="amd64";;
+    aarch64|arm64)    ARCH="arm64";;
+    armv7l|armv6l)    ARCH="armv7";;
+esac
+
+info "OS: ${OS} | Arch: ${ARCH} | Package: ${PKG:-none}"
+log "System: ${OS} ${ARCH} ${PKG}"
+
+# Check minimum RAM (warn if < 2GB)
+TOTAL_RAM_MB=$(free -m 2>/dev/null | awk '/Mem:/{print $2}' || sysctl -n hw.memsize 2>/dev/null | awk '{print int($1/1048576)}' || echo 0)
+if [ "$TOTAL_RAM_MB" -lt 2048 ] 2>/dev/null && [ "$TOTAL_RAM_MB" -gt 0 ] 2>/dev/null; then
+    warn "Low RAM (${TOTAL_RAM_MB}MB). Cloud mode recommended."
+fi
+
+# ═══════════════════════════════════════════════════════════════
+# STEP 2: Install / Verify Node.js
+# ═══════════════════════════════════════════════════════════════
+step 2 "Setting up Node.js..."
+
+install_nodejs() {
+    log "Installing Node.js..."
+    case $PKG in
+        apt)
+            # Check if nodesource is already set up
+            if ! node -v 2>/dev/null | grep -q "v2[0-9]"; then
+                curl -fsSL https://deb.nodesource.com/setup_22.x 2>/dev/null | sudo -E bash - 2>/dev/null
+                sudo apt-get install -y nodejs 2>/dev/null
+            fi
+            ;;
+        dnf)
+            curl -fsSL https://rpm.nodesource.com/setup_22.x 2>/dev/null | sudo -E bash - 2>/dev/null
+            sudo dnf install -y nodejs 2>/dev/null
+            ;;
+        pacman)
+            sudo pacman -S --noconfirm nodejs npm 2>/dev/null
+            ;;
+        apk)
+            sudo apk add --no-cache nodejs npm 2>/dev/null
+            ;;
+        brew)
+            brew install node@22 2>/dev/null || {
+                curl -fsSL https://fnm.vercel.app/install | bash 2>/dev/null
+                export PATH="$HOME/.local/share/fnm:$PATH"
+                eval "$(fnm env 2>/dev/null)" 2>/dev/null
+                fnm install 22 2>/dev/null && fnm use 22 2>/dev/null
+            }
+            ;;
+        *)
+            # Fallback: nvm
+            if ! command -v nvm &>/dev/null; then
+                curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash 2>/dev/null
+                export NVM_DIR="$HOME/.nvm"
+                [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            fi
+            nvm install 22 2>/dev/null && nvm use 22 2>/dev/null
+            ;;
+    esac
 }
-info "GSTD Node installed"
 
-# ─── Step 3: Choose mode ────────────────────────────────────────
-step 3 "Choosing AI engine..."
+if is_done "nodejs"; then
+    # Verify Node.js still works
+    if command -v node &>/dev/null; then
+        NODE_VER=$(node -v 2>/dev/null)
+        info "Node.js ${NODE_VER} (already installed)"
+    else
+        warn "Node.js was marked done but not found — reinstalling"
+        reset_step "nodejs"
+    fi
+fi
 
-echo ""
-echo -e "  ${BOLD}How do you want to run AI models?${NC}"
-echo ""
-echo -e "  ${GREEN}[1]${NC} ☁️  ${BOLD}Cloud Mode${NC} ${DIM}(instant, no download, uses GSTD Swarm)${NC}"
-echo -e "      ${DIM}AI runs on the Swarm network. Pay with GSTD tokens.${NC}"
-echo -e "      ${DIM}8 models available immediately. Zero setup.${NC}"
-echo ""
-echo -e "  ${CYAN}[2]${NC} 💻 ${BOLD}Hybrid Mode${NC} ${DIM}(local + cloud, recommended)${NC}"
-echo -e "      ${DIM}Simple tasks run locally (Ollama). Complex tasks → Swarm.${NC}"
-echo -e "      ${DIM}Requires ~5GB disk. Earn GSTD by sharing compute.${NC}"
-echo ""
-echo -e "  ${YELLOW}[3]${NC} 🔒 ${BOLD}Sovereign Mode${NC} ${DIM}(fully local, maximum privacy)${NC}"
-echo -e "      ${DIM}Everything runs on your device. Requires Ollama + models.${NC}"
-echo -e "      ${DIM}Requires ~10GB disk. No internet needed after setup.${NC}"
-echo ""
-
-# Default to cloud mode for fast start
-read -t 30 -p "  Choose [1/2/3] (default: 1): " MODE_CHOICE || MODE_CHOICE="1"
-echo ""
-
-case $MODE_CHOICE in
-    2)
-        MODE="hybrid"
-        info "Hybrid mode selected — installing Ollama..."
-        if command -v ollama &>/dev/null; then
-            info "Ollama already installed"
+if ! is_done "nodejs"; then
+    if command -v node &>/dev/null; then
+        NODE_VER_MAJOR=$(node -v | sed 's/v//' | cut -d'.' -f1)
+        if [ "$NODE_VER_MAJOR" -ge 20 ] 2>/dev/null; then
+            info "Node.js $(node -v) ✓"
         else
-            curl -fsSL https://ollama.com/install.sh | sh 2>/dev/null
-            info "Ollama installed"
+            warn "Node.js $(node -v) too old, upgrading to 22..."
+            install_nodejs
+            info "Node.js $(node -v)"
         fi
-        warn "Pulling lightweight model (llama3.1:8b, ~4.7GB)..."
-        ollama pull llama3.1:8b 2>/dev/null && info "Model ready" || warn "Pull later: ollama pull llama3.1:8b"
-        ;;
-    3)
-        MODE="sovereign"
-        info "Sovereign mode — installing Ollama + models..."
-        if ! command -v ollama &>/dev/null; then
-            curl -fsSL https://ollama.com/install.sh | sh 2>/dev/null
+    else
+        warn "Node.js not found, installing..."
+        install_nodejs
+        # Reload PATH
+        export PATH="/usr/local/bin:/usr/bin:$HOME/.local/share/fnm:$HOME/.nvm/versions/node/v22*/bin:$PATH"
+        if command -v node &>/dev/null; then
+            info "Node.js $(node -v) installed"
+        else
+            err "Failed to install Node.js. Install manually: https://nodejs.org"
+            exit 1
         fi
+    fi
+    mark_done "nodejs"
+fi
+
+# Verify npm
+if ! command -v npm &>/dev/null; then
+    err "npm not found. Please install Node.js manually: https://nodejs.org"
+    exit 1
+fi
+
+# ═══════════════════════════════════════════════════════════════
+# STEP 3: Install / Verify GSTD Node
+# ═══════════════════════════════════════════════════════════════
+step 3 "Installing GSTD Node..."
+
+install_gstdbot() {
+    log "Installing gstdbot package..."
+
+    # Method 1: npm global
+    if npm install -g gstdbot@latest 2>>"$LOG_FILE"; then
+        return 0
+    fi
+    warn "npm global install failed, trying with sudo..."
+
+    # Method 2: npm global with sudo
+    if sudo npm install -g gstdbot@latest 2>>"$LOG_FILE"; then
+        return 0
+    fi
+    warn "sudo npm install failed, trying from source..."
+
+    # Method 3: From source
+    local TMPDIR
+    TMPDIR=$(mktemp -d)
+    if git clone --depth 1 https://github.com/gstdcoin/gstdbot.git "$TMPDIR/gstdbot" 2>>"$LOG_FILE"; then
+        cd "$TMPDIR/gstdbot"
+        npm install --legacy-peer-deps 2>>"$LOG_FILE"
+        npm run build 2>>"$LOG_FILE"
+        sudo npm link 2>>"$LOG_FILE" || npm link 2>>"$LOG_FILE"
+        cd - >/dev/null
+        rm -rf "$TMPDIR"
+        return 0
+    fi
+
+    rm -rf "$TMPDIR"
+    return 1
+}
+
+if is_done "gstdbot"; then
+    if command -v gstdbot &>/dev/null; then
+        GSTD_VER=$(gstdbot --version 2>/dev/null || echo "installed")
+        info "GSTD Node ${GSTD_VER} (already installed)"
+    else
+        warn "gstdbot was marked done but not found — reinstalling"
+        reset_step "gstdbot"
+    fi
+fi
+
+if ! is_done "gstdbot"; then
+    if command -v gstdbot &>/dev/null; then
+        info "GSTD Node already installed, checking for updates..."
+        npm update -g gstdbot 2>>"$LOG_FILE" && info "Updated" || info "Up to date"
+    else
+        if install_gstdbot; then
+            info "GSTD Node installed"
+        else
+            err "Failed to install GSTD Node"
+            err "Try manually: npm install -g gstdbot"
+            err "Or from source: git clone https://github.com/gstdcoin/gstdbot.git"
+            exit 1
+        fi
+    fi
+    mark_done "gstdbot"
+fi
+
+# ═══════════════════════════════════════════════════════════════
+# STEP 4: Choose AI Mode
+# ═══════════════════════════════════════════════════════════════
+step 4 "Choosing AI engine..."
+
+# Read saved mode or ask
+SAVED_MODE=""
+if [ -f "$CONFIG_DIR/config.json" ]; then
+    SAVED_MODE=$(python3 -c "import json; print(json.load(open('$CONFIG_DIR/config.json')).get('mode',''))" 2>/dev/null || echo "")
+fi
+
+if is_done "mode" && [ -n "$SAVED_MODE" ]; then
+    MODE="$SAVED_MODE"
+    info "Mode: ${MODE} (previously selected)"
+else
+    echo ""
+    echo -e "  ${BOLD}How do you want to run AI models?${NC}"
+    echo ""
+    echo -e "  ${GREEN}[1]${NC} ☁️  ${BOLD}Cloud Mode${NC} ${DIM}(instant start, no download)${NC}"
+    echo -e "      ${DIM}AI runs on GSTD Swarm. 8 models available immediately.${NC}"
+    echo ""
+    echo -e "  ${CYAN}[2]${NC} 💻 ${BOLD}Hybrid Mode${NC} ${DIM}(local + cloud, recommended)${NC}"
+    echo -e "      ${DIM}Simple tasks local, complex → Swarm. ~5GB disk.${NC}"
+    echo ""
+    echo -e "  ${YELLOW}[3]${NC} 🔒 ${BOLD}Sovereign Mode${NC} ${DIM}(fully local, max privacy)${NC}"
+    echo -e "      ${DIM}Everything on device. ~10GB disk. No internet needed.${NC}"
+    echo ""
+
+    read -t 30 -p "  Choose [1/2/3] (default: 1): " MODE_CHOICE 2>/dev/null || MODE_CHOICE="1"
+    echo ""
+
+    case $MODE_CHOICE in
+        2) MODE="hybrid";;
+        3) MODE="sovereign";;
+        *) MODE="cloud";;
+    esac
+    mark_done "mode"
+fi
+
+# ─── Handle Ollama based on mode ─────────────────────────────────
+install_ollama() {
+    if command -v ollama &>/dev/null; then
+        info "Ollama already installed"
+        # Make sure it's running
+        if ! pgrep -x ollama &>/dev/null; then
+            ollama serve &>/dev/null &
+            sleep 2
+        fi
+        return 0
+    fi
+
+    log "Installing Ollama..."
+    if curl -fsSL https://ollama.com/install.sh | sh 2>>"$LOG_FILE"; then
         info "Ollama installed"
-        warn "Pulling models (this takes 10-15 min)..."
-        ollama pull llama3.1:8b 2>/dev/null && info "llama3.1:8b ✓" || warn "Failed: ollama pull llama3.1:8b"
-        ollama pull qwen2.5-coder:7b 2>/dev/null && info "qwen2.5-coder:7b ✓" || warn "Failed"
-        ;;
-    *)
-        MODE="cloud"
-        info "Cloud mode selected — no local models needed!"
+        # Start Ollama
+        if ! pgrep -x ollama &>/dev/null; then
+            ollama serve &>/dev/null &
+            sleep 3
+        fi
+        return 0
+    else
+        warn "Ollama install failed (non-fatal for Cloud mode)"
+        return 1
+    fi
+}
+
+pull_model() {
+    local model="$1"
+    if ollama list 2>/dev/null | grep -q "$model"; then
+        info "Model ${model} ✓ (already pulled)"
+        return 0
+    fi
+    warn "Pulling ${model}... (this may take a few minutes)"
+    if ollama pull "$model" 2>>"$LOG_FILE"; then
+        info "Model ${model} ✓"
+        return 0
+    else
+        warn "Failed to pull ${model}. Try later: ollama pull ${model}"
+        return 1
+    fi
+}
+
+case $MODE in
+    cloud)
+        info "Cloud mode — no local models needed!"
         info "AI powered by GSTD Swarm (8 models, instant)"
+        ;;
+    hybrid)
+        info "Hybrid mode selected"
+        if ! is_done "ollama"; then
+            install_ollama && mark_done "ollama"
+        else
+            info "Ollama (already set up)"
+        fi
+        if ! is_done "model_llama"; then
+            pull_model "llama3.1:8b" && mark_done "model_llama"
+        fi
+        ;;
+    sovereign)
+        info "Sovereign mode selected"
+        if ! is_done "ollama"; then
+            install_ollama && mark_done "ollama"
+        else
+            info "Ollama (already set up)"
+        fi
+        if ! is_done "model_llama"; then
+            pull_model "llama3.1:8b" && mark_done "model_llama"
+        fi
+        if ! is_done "model_coder"; then
+            pull_model "qwen2.5-coder:7b" && mark_done "model_coder"
+        fi
         ;;
 esac
 
-# ─── Step 4: Setup ──────────────────────────────────────────────
-step 4 "Configuring node..."
+# ═══════════════════════════════════════════════════════════════
+# STEP 5: Configure Node
+# ═══════════════════════════════════════════════════════════════
+step 5 "Configuring node..."
 
-# Create config directory
-CONFIG_DIR="$HOME/.config/gstdbot"
-mkdir -p "$CONFIG_DIR/skills"
+if ! is_done "config"; then
+    # Determine local models list
+    LOCAL_MODELS='[]'
+    if [ "$MODE" != "cloud" ] && command -v ollama &>/dev/null; then
+        LOCAL_MODELS=$(ollama list 2>/dev/null | tail -n +2 | awk '{print $1}' | head -5 | python3 -c "
+import sys,json
+models = [l.strip() for l in sys.stdin if l.strip()]
+print(json.dumps(models))
+" 2>/dev/null || echo '[]')
+    fi
 
-# Write config
-cat > "$CONFIG_DIR/config.json" << CONF
+    NODE_NAME="${HOSTNAME:-$(hostname)}-node"
+
+    cat > "$CONFIG_DIR/config.json" << CONF
 {
   "version": "${VERSION}",
   "mode": "${MODE}",
-  "nodeName": "$(hostname)-node",
-  "swarm": { "enabled": true, "maxCPU": 80, "maxRAM": 70 },
-  "dashboard": { "port": 8080, "enabled": true },
+  "nodeName": "${NODE_NAME}",
+  "installedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "swarm": {
+    "enabled": true,
+    "maxCPU": 80,
+    "maxRAM": 70,
+    "url": "https://app.gstdtoken.com/api/v1"
+  },
+  "dashboard": {
+    "port": 8080,
+    "enabled": true
+  },
   "models": {
     "cloud": ["gstd-flash", "gstd-pro", "gstd-ultra"],
-    "local": $([ "$MODE" != "cloud" ] && echo '["llama3.1:8b"]' || echo '[]')
+    "local": ${LOCAL_MODELS}
   }
 }
 CONF
-info "Config saved to $CONFIG_DIR/config.json"
+    info "Config saved: $CONFIG_DIR/config.json"
+    mark_done "config"
+else
+    info "Config (already exists)"
+fi
 
-# ─── Done! ──────────────────────────────────────────────────────
+# ─── Verify everything ──────────────────────────────────────────
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║${NC}  ${BOLD}✓ GSTD Node installed!${NC}                         ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  ${BOLD}✓ GSTD Node ready!${NC}                             ${GREEN}║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════════════╝${NC}"
+
+# Quick verification
 echo ""
-echo -e "  ${BOLD}Get started:${NC}"
+echo -e "  ${BOLD}Verification:${NC}"
+command -v node &>/dev/null && echo -e "  ${GREEN}✓${NC} Node.js $(node -v)" || echo -e "  ${RED}✗${NC} Node.js"
+command -v npm &>/dev/null && echo -e "  ${GREEN}✓${NC} npm $(npm -v)" || echo -e "  ${RED}✗${NC} npm"
+command -v gstdbot &>/dev/null && echo -e "  ${GREEN}✓${NC} gstdbot CLI" || echo -e "  ${YELLOW}⚠${NC} gstdbot (may need: source ~/.bashrc)"
+[ -f "$CONFIG_DIR/config.json" ] && echo -e "  ${GREEN}✓${NC} Config" || echo -e "  ${RED}✗${NC} Config"
+
+if [ "$MODE" != "cloud" ]; then
+    command -v ollama &>/dev/null && echo -e "  ${GREEN}✓${NC} Ollama" || echo -e "  ${YELLOW}⚠${NC} Ollama (install: curl -fsSL https://ollama.com/install.sh | sh)"
+    ollama list 2>/dev/null | grep -q "llama" && echo -e "  ${GREEN}✓${NC} AI Models" || echo -e "  ${YELLOW}⚠${NC} Models (run: ollama pull llama3.1:8b)"
+fi
+
+echo ""
+echo -e "  ${BOLD}Quick Start:${NC}"
 echo -e "  ${CYAN}gstdbot${NC}                    Start chatting"
+echo -e "  ${CYAN}gstdbot gateway${NC}            Dashboard (localhost:8080)"
 echo -e "  ${CYAN}gstdbot swarm join${NC}         Earn GSTD tokens"
-echo -e "  ${CYAN}gstdbot gateway${NC}            Start dashboard (localhost:8080)"
+echo -e "  ${CYAN}gstdbot wallet init${NC}        Create TON wallet"
 echo ""
-echo -e "  ${BOLD}Import skills:${NC}"
-echo -e "  ${CYAN}gstdbot skills import${NC} ${DIM}<url>${NC}      From URL or GitHub"
-echo -e "  ${CYAN}gstdbot skills list${NC}                Browse marketplace"
-echo -e "  ${CYAN}gstdbot skills create${NC} ${DIM}<name>${NC}     Create your own"
+echo -e "  ${BOLD}Skills:${NC}"
+echo -e "  ${CYAN}gstdbot skills list${NC}        Browse 10+ AI skills"
+echo -e "  ${CYAN}gstdbot skills import${NC} ${DIM}<url>${NC}  Import from GitHub"
+echo -e "  ${CYAN}gstdbot skills create${NC} ${DIM}<n>${NC}    Create your own"
 echo ""
-echo -e "  ${BOLD}Advanced models (with GSTD tokens):${NC}"
-echo -e "  ${DIM}gstd-flash${NC}  — Fast (1 model)        ${GREEN}Free${NC}"
-echo -e "  ${DIM}gstd-pro${NC}    — 3-expert consensus    ${YELLOW}1 GSTD${NC}"
-echo -e "  ${DIM}gstd-ultra${NC}  — 8-expert + reasoning  ${CYAN}3 GSTD${NC}"
+echo -e "  ${BOLD}AI Models (GSTD tokens):${NC}"
+echo -e "  ${DIM}gstd-flash${NC}  — 1 model        ${GREEN}Free${NC}"
+echo -e "  ${DIM}gstd-pro${NC}    — 3 experts       ${YELLOW}\$0.001${NC}"
+echo -e "  ${DIM}gstd-ultra${NC}  — 8 experts       ${CYAN}\$0.005${NC}"
 echo ""
 echo -e "  ${BOLD}Links:${NC}"
-echo -e "  🌐 https://gstdbot.gstdtoken.com"
-echo -e "  🤖 https://t.me/GstdAppBot"
-echo -e "  📡 https://monitor.gstdtoken.com"
+echo -e "  🌐 ${DIM}https://gstdbot.gstdtoken.com${NC}"
+echo -e "  🤖 ${DIM}https://t.me/GstdAppBot${NC}"
+echo -e "  📡 ${DIM}https://monitor.gstdtoken.com${NC}"
+echo ""
+echo -e "  ${DIM}Install log: $LOG_FILE${NC}"
+echo -e "  ${DIM}State file:  $STATE_FILE (delete to re-install from scratch)${NC}"
 echo ""
