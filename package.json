@@ -1,6 +1,6 @@
 {
     "name": "gstdbot",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "description": "GSTD Node — Full platform client. AI chat, wallet, dashboard, swarm node. Your device is the supercomputer.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

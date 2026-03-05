@@ -32,7 +32,7 @@ export async function startDashboard(port: number = 8080): Promise<void> {
                 platform: platform(),
                 arch: arch(),
                 uptime: process.uptime(),
-                version: '2.0.0',
+                version: '2.1.0',
             },
             hardware: {
                 cpu: {
@@ -103,7 +103,7 @@ export async function startDashboard(port: number = 8080): Promise<void> {
 
     // Health check
     app.get('/health', (_req, res) => {
-        res.json({ status: 'ok', version: '2.0.0' });
+        res.json({ status: 'ok', version: '2.1.0' });
     });
 
     // ─── Dashboard UI ────────────────────────────────────────────

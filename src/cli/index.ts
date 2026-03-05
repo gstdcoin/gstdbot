@@ -68,8 +68,8 @@ function createAgent(): Agent {
 // ─── Program Setup ───────────────────────────────────────────────
 program
     .name('gstdbot')
-    .description('Sovereign Decentralized AI Assistant — runs on the GSTD Swarm')
-    .version('1.0.0');
+    .description('GSTD Node — Full platform client — runs on the GSTD Swarm')
+    .version('2.1.0');
 
 // ─── Default: Interactive Chat ───────────────────────────────────
 program
