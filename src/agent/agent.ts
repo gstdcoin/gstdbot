@@ -12,7 +12,7 @@
 import fs from 'fs';
 import path from 'path';
 import { NeuralRouter, RouteResult } from '../gateway/router.js';
-import { SkillsMarketplace } from '../skills/marketplace.js';
+import { listInstalled, type Skill } from '../skills/marketplace.js';
 
 export interface AgentConfig {
     model: string;
@@ -31,7 +31,7 @@ interface Memory {
 
 export class Agent {
     private router: NeuralRouter;
-    private skills: SkillsMarketplace;
+    private skillsDir: string;
     private config: AgentConfig;
     private soulPrompt: string;
     private history: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
@@ -40,7 +40,7 @@ export class Agent {
     constructor(config: AgentConfig) {
         this.config = config;
         this.router = new NeuralRouter(config.ollamaUrl, true);
-        this.skills = new SkillsMarketplace(config.skillsDir || path.join(process.cwd(), 'skills'));
+        this.skillsDir = config.skillsDir || path.join(process.cwd(), 'skills');
 
         // Load soul
         this.soulPrompt = this.loadSoul();
@@ -63,7 +63,7 @@ Core principles:
 You respond in the user's language. You are multilingual.
 
 Available skills:
-${this.skills.list().map(s => `- ${s.manifest.name}: ${s.manifest.description}`).join('\n')}
+${listInstalled().map((s: Skill) => `- ${s.name}: ${s.description}`).join('\n')}
 
 When a user's request matches a skill, activate it automatically.`;
 
@@ -127,10 +127,7 @@ When a user's request matches a skill, activate it automatically.`;
         // Add relevant skill prompts
         const activeSkill = this.detectSkill(currentMessage);
         if (activeSkill) {
-            const skillPrompt = this.skills.getSkillPrompt(activeSkill);
-            if (skillPrompt) {
-                prompt += `\n\n--- ACTIVE SKILL: ${activeSkill} ---\n${skillPrompt}`;
-            }
+            prompt += `\n\n--- ACTIVE SKILL: ${activeSkill} ---`;
         }
 
         // Add relevant memories
@@ -161,8 +158,8 @@ When a user's request matches a skill, activate it automatically.`;
 
         for (const [skillId, pattern] of Object.entries(skillPatterns)) {
             if (pattern.test(lower)) {
-                const skill = this.skills.get(skillId);
-                if (skill?.active) return skillId;
+                const installed = listInstalled();
+                if (installed.some((s: Skill) => s.name === skillId)) return skillId;
             }
         }
 
@@ -209,8 +206,8 @@ When a user's request matches a skill, activate it automatically.`;
     /**
      * Get skills marketplace
      */
-    getSkills(): SkillsMarketplace {
-        return this.skills;
+    getSkills(): { list: () => Skill[] } {
+        return { list: () => listInstalled() };
     }
 
     /**
