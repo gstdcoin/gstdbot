@@ -71,7 +71,7 @@ export async function getBalance(): Promise<WalletBalance> {
             `https://app.gstdtoken.com/api/v1/wallet/${wallet.address}/balance`
         ).catch(() => null);
         if (resp?.ok) {
-            const data = await resp.json();
+            const data: any = await resp.json();
             return {
                 gstd: data.gstd || 0,
                 ton: data.ton || 0,

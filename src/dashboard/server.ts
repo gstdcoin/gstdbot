@@ -72,7 +72,7 @@ export async function startDashboard(port: number = 8080): Promise<void> {
                 `https://app.gstdtoken.com/api/v1/wallet/${wallet.address}/earnings`
             ).catch(() => null);
             if (resp?.ok) {
-                const data = await resp.json();
+                const data: any = await resp.json();
                 res.json(data);
                 return;
             }
@@ -88,7 +88,7 @@ export async function startDashboard(port: number = 8080): Promise<void> {
                 'https://app.gstdtoken.com/api/v1/monitor/unified'
             ).catch(() => null);
             if (resp?.ok) {
-                const data = await resp.json();
+                const data: any = await resp.json();
                 res.json({
                     pending: data.ecosystem?.tasks_pending || 0,
                     completed: data.ecosystem?.tasks_completed || 0,
