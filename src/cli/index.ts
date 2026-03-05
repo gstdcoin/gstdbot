@@ -157,7 +157,7 @@ program
                 const result = await agent.chat(input, model);
                 spinner.stop();
 
-                const tierIcon: Record<string, string> = { cache: '⚡', swarm: '🐝', cocoon: '🛡️', groq: '🔥', openrouter: '🌐', commercial: '🏢' };
+                const tierIcon: Record<string, string> = { cache: '⚡', swarm: '🐝', groq: '🔥', fallback: '⏳' };
                 const icon = tierIcon[result.tier] || '🐝';
                 console.log('');
                 console.log(chalk.green('GSTD: ') + result.content);

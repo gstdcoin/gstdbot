@@ -2,7 +2,7 @@
 
 **Your personal AI agent. Runs on a planetary brain. Not on corporate servers.**
 
-GSTD Bot is an AI assistant that runs **on your machine** using sovereign open-source models via [Ollama](https://ollama.com). Unlike ChatGPT, Claude, or any corporate AI — your conversations stay private, your data never leaves your device, and you become part of a decentralized network that earns you GSTD tokens.
+GSTD Bot is an AI assistant that runs **on your machine** using sovereign open-source models via [Ollama](https://ollama.com). Unlike corporate AI services — your conversations stay private, your data never leaves your device, and you become part of a decentralized network that earns you GSTD tokens.
 
 **Think OpenClaw, but decentralized and with an actual economy.**
 
@@ -12,16 +12,16 @@ GSTD Bot is an AI assistant that runs **on your machine** using sovereign open-s
 
 ## Why GSTD Bot?
 
-| Feature | GSTD Bot | OpenClaw | ChatGPT |
-|---------|----------|----------|---------|
-| **Runs on your PC** | ✓ | ✓ | ✗ |
-| **Privacy** | 100% local + TEE | Local only | ✗ Cloud |
-| **Decentralized** | ✓ Swarm network | ✗ Single machine | ✗ Corporate |
-| **Earn money** | ✓ GSTD tokens | ✗ | ✗ |
-| **Skills marketplace** | ✓ With malware scanning | ✓ | ✗ |
-| **Self-improving** | ✓ DPO training | ✗ | ✗ |
-| **Blockchain verified** | ✓ TON | ✗ | ✗ |
-| **Free** | ✓ | ✓ | ✗ $20/mo |
+| Feature | GSTD Bot | OpenClaw |
+|---------|----------|----------|
+| **Runs on your PC** | ✓ | ✓ |
+| **Privacy** | 100% local + TEE | Local only |
+| **Decentralized** | ✓ Swarm network | ✗ Single machine |
+| **Earn money** | ✓ GSTD tokens | ✗ |
+| **Skills marketplace** | ✓ With malware scanning | ✓ |
+| **Self-improving** | ✓ DPO training | ✗ |
+| **Blockchain verified** | ✓ TON | ✗ |
+| **Free** | ✓ | ✓ |
 
 ## Quick Start (3 minutes)
 
@@ -75,7 +75,7 @@ You type a message
    ┌───────┼───────────┐
    │       │           │
    ▼       ▼           ▼
-L1 Cache  L2 Ollama   L3 Cocoon TEE      ← all sovereign
+L1 Cache  L2 Ollama   L3 TEE Compute      ← all sovereign
 (instant) (local GPU) (encrypted GPU)
                        │
                        ▼
@@ -86,7 +86,7 @@ L1 Cache  L2 Ollama   L3 Cocoon TEE      ← all sovereign
 ### Routing Priority (Sovereign-First)
 1. **L1 Cache** — instant response for repeated queries
 2. **L2 Swarm (Ollama)** — your local sovereign models
-3. **L3 Cocoon TEE** — hardware-encrypted GPU enclaves (optional)
+3. **L3 TEE Compute** — hardware-encrypted GPU enclaves (optional)
 4. **L4 Commercial** — OpenAI/Anthropic fallback (disabled by default)
 
 The Neural Router automatically selects the best model for your task:
@@ -382,7 +382,7 @@ gstdbot/
 | Component | Description |
 |-----------|-------------|
 | **Agent** | Core AI runtime with SOUL.md identity, memory, and skill activation |
-| **Neural Router** | 4-tier routing: Cache → Swarm → Cocoon TEE → Commercial |
+| **Neural Router** | 4-tier routing: Cache → Swarm → TEE Compute → Commercial |
 | **Skills Marketplace** | Install, scan, create, and manage skills with malware protection |
 | **Swarm Client** | Hardware detection, node registration, heartbeat, task processing |
 | **Omega Gateway** | OpenAI-compatible REST API + WebSocket server |
@@ -399,7 +399,7 @@ gstdbot/
 - **No telemetry** — zero data sent to GSTD servers unless you opt-in to Swarm
 - **Skills are sandboxed** — malware-scanned before activation
 - **Swarm tasks are isolated** — each inference runs in its own context
-- **TEE compute** — Cocoon hardware enclaves for sensitive tasks
+- **TEE compute** — hardware enclaves for sensitive tasks
 
 ### Responsible Disclosure
 Found a security issue? Email security@gstdtoken.com or open a private issue on GitHub.

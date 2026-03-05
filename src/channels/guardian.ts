@@ -299,19 +299,17 @@ export class CommunityGuardian {
             const gstdPerStar = gstdPrice > 0 ? STAR_USD / gstdPrice : 10;
             const gstdAmount = Math.floor(starsAmount * gstdPerStar);
 
-            // Comparison with ChatGPT: $20/mo ÷ 0.1 GSTD per request
+            // Comparison removed: no external product mentions
             const usdTotal = (starsAmount * STAR_USD).toFixed(2);
             const proRequests = Math.floor(gstdAmount / 0.1);
-            // ChatGPT Plus: $20/mo with ~limited usage. GSTD: pay per request
-            const chatgptEquivMonths = (20 / parseFloat(usdTotal)).toFixed(0);
 
             try {
                 const title = lang === 'ru'
                     ? `${gstdAmount} GSTD (${proRequests} Pro запросов)`
                     : `${gstdAmount} GSTD (${proRequests} Pro requests)`;
                 const desc = lang === 'ru'
-                    ? `${starsAmount}⭐ = $${usdTotal} = ${gstdAmount} GSTD = ${proRequests} Pro запросов.\nChatGPT Plus = $20/мес. Здесь это ${chatgptEquivMonths}× дешевле!`
-                    : `${starsAmount}⭐ = $${usdTotal} = ${gstdAmount} GSTD = ${proRequests} Pro requests.\nChatGPT Plus = $20/mo. This is ${chatgptEquivMonths}× cheaper!`;
+                    ? `${starsAmount}⭐ = $${usdTotal} = ${gstdAmount} GSTD = ${proRequests} Pro запросов.`
+                    : `${starsAmount}⭐ = $${usdTotal} = ${gstdAmount} GSTD = ${proRequests} Pro requests.`;
 
                 await ctx.api.sendInvoice(
                     ctx.chat!.id,
@@ -428,7 +426,7 @@ export class CommunityGuardian {
                         `💵 Стоимость запроса: <b>$${(confirmedUSD / confirmedProReqs).toFixed(5)}</b>\n\n` +
                         `📊 Курс: 1⭐ = ${confirmedRate.toFixed(0)} GSTD\n` +
                         `📊 GSTD = $${confirmedPrice.toFixed(6)}\n\n` +
-                        `💡 <i>ChatGPT Plus = $20/мес ≈ 4000 запросов ($0.005/запр)\nGSTD Pro: $${confirmedUSD.toFixed(2)} = ${confirmedProReqs} запросов</i>\n` +
+                        `💡 <i>GSTD Pro: $${confirmedUSD.toFixed(2)} = ${confirmedProReqs} запросов ($0.005/запр)</i>\n` +
                         `📋 ID: <code>${payment.telegram_payment_charge_id}</code>`
                         : `✅ <b>Purchase Successful!</b>\n\n` +
                         `💰 <b>${confirmedGSTD} GSTD</b> → ${walletInfo}\n` +
@@ -437,7 +435,7 @@ export class CommunityGuardian {
                         `💵 Cost per request: <b>$${(confirmedUSD / confirmedProReqs).toFixed(5)}</b>\n\n` +
                         `📊 Rate: 1⭐ = ${confirmedRate.toFixed(0)} GSTD\n` +
                         `📊 GSTD = $${confirmedPrice.toFixed(6)}\n\n` +
-                        `💡 <i>ChatGPT Plus = $20/mo ≈ 4000 requests ($0.005/req)\nGSTD Pro: $${confirmedUSD.toFixed(2)} = ${confirmedProReqs} requests</i>\n` +
+                        `💡 <i>GSTD Pro: $${confirmedUSD.toFixed(2)} = ${confirmedProReqs} requests ($0.005/req)</i>\n` +
                         `📋 ID: <code>${payment.telegram_payment_charge_id}</code>`;
 
                     // Add signal task info if applicable

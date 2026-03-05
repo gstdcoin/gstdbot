@@ -313,9 +313,8 @@ export class OmegaGateway {
         switch (result.tier) {
             case 'cache': this.metrics.cacheHits++; break;
             case 'swarm': this.metrics.swarmRequests++; break;
-            case 'groq':
-            case 'openrouter':
-                this.metrics.swarmRequests++; break; // sovereign-tier paid APIs
+            case 'groq': this.metrics.swarmRequests++; break;
+            case 'fallback':
             case 'commercial': this.metrics.commercialRequests++; break;
         }
     }

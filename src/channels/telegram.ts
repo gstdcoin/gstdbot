@@ -116,7 +116,7 @@ export class TelegramChannel {
                 keyboard: [
                     [{ text: '💎 Баланс' }, { text: '⭐️ Пополнить' }],
                     [{ text: '🔗 Кошелек' }, { text: '🧠 Заработать' }],
-                    [{ text: '🔬 SmartMix' }, { text: '📖 Помощь' }],
+                    [{ text: '🧠 Интеллект' }, { text: '📖 Помощь' }],
                 ],
                 resize_keyboard: true,
                 is_persistent: true,
@@ -126,7 +126,7 @@ export class TelegramChannel {
             keyboard: [
                 [{ text: '💎 Balance' }, { text: '⭐️ Top Up' }],
                 [{ text: '🔗 Wallet' }, { text: '🧠 Earn' }],
-                [{ text: '🔬 SmartMix' }, { text: '📖 Help' }],
+                [{ text: '🧠 Intelligence' }, { text: '📖 Help' }],
             ],
             resize_keyboard: true,
             is_persistent: true,
@@ -164,18 +164,20 @@ export class TelegramChannel {
             }
 
             const msg = lang === 'ru'
-                ? `🐝 <b>GSTD — Суверенный ИИ</b>\n\n` +
-                `🆓 <b>Бесплатно навсегда:</b> просто пиши — ИИ ответит. Коллективная Память роя.\n\n` +
-                `⚡ <b>Cocoon Pro:</b> GSTD активирует лучшие модели + обучаемый ИИ.\n` +
-                `Стоимость: 0.1 GSTD/запрос ($0.005)\n` +
-                `ChatGPT Plus = $20/мес. GSTD Pro = $0.50/100 запросов — <b>40× дешевле!</b>\n\n` +
-                `💡 <i>Переключение автоматическое — есть GSTD = Pro, нет = базовая модель</i>`
-                : `🐝 <b>GSTD — Sovereign AI</b>\n\n` +
-                `🆓 <b>Free forever:</b> just type — AI responds. Collective Memory of the Swarm.\n\n` +
-                `⚡ <b>Cocoon Pro:</b> GSTD unlocks best models + learning AI.\n` +
-                `Cost: 0.1 GSTD/request ($0.005)\n` +
-                `ChatGPT Plus = $20/mo. GSTD Pro = $0.50/100 requests — <b>40× cheaper!</b>\n\n` +
-                `💡 <i>Auto-switch: have GSTD = Pro, don't = free model</i>`;
+                ? `🐝 <b>GSTD — Коллективный Интеллект</b>\n\n` +
+                `🆓 <b>Бесплатно:</b> 1 эксперт — просто пиши и ИИ ответит мгновенно.\n\n` +
+                `🧠 <b>Платные уровни (GSTD):</b>\n` +
+                `🔬 Совет из 3 (0.05 GSTD) — 3 эксперта + консенсус\n` +
+                `🔥 Панель из 5 (0.15 GSTD) — глубокий анализ\n` +
+                `🧠 Рой из 7 (0.50 GSTD) — полная верификация\n\n` +
+                `💡 <i>Нажми 🔬 SmartMix чтобы выбрать уровень.</i>`
+                : `🐝 <b>GSTD — Collective Intelligence</b>\n\n` +
+                `🆓 <b>Free:</b> 1 expert — just type and AI responds instantly.\n\n` +
+                `🧠 <b>Paid tiers (GSTD):</b>\n` +
+                `🔬 Council of 3 (0.05 GSTD) — 3 experts + consensus\n` +
+                `🔥 Panel of 5 (0.15 GSTD) — deep analysis\n` +
+                `🧠 Swarm of 7 (0.50 GSTD) — full verification\n\n` +
+                `💡 <i>Tap 🔬 SmartMix to choose your level.</i>`;
 
             await ctx.reply(msg, {
                 parse_mode: 'HTML',
@@ -236,8 +238,8 @@ export class TelegramChannel {
                 if (text === '🧠 Earn' || text === '🧠 Заработать') {
                     return this.handleEarn(ctx, lang);
                 }
-                // 🔬 SmartMix
-                if (text === '🔬 SmartMix') {
+                // 🧠 Collective Intelligence
+                if (text === '🧠 Интеллект' || text === '🧠 Intelligence' || text === '🔬 SmartMix') {
                     return this.handleSmartMixMenu(ctx, lang);
                 }
                 // 📱 App
@@ -325,25 +327,28 @@ export class TelegramChannel {
 
                 const tierLabel = result.tier === 'cache' ? '⚡' : '🆓';
                 const footer = isPrivate
-                    ? `\n\n${tierLabel} Collective Memory · ${result.latencyMs}ms`
+                    ? `\n\n${tierLabel} ${result.model} · ${result.latencyMs}ms`
                     : '';
 
                 const fullResponse = result.content + footer;
 
-                // Send as plain text to avoid Markdown parsing errors
+                // Convert Markdown → Telegram HTML for rich formatting (like Claude/ChatGPT)
+                const htmlResponse = this.markdownToTelegramHtml(fullResponse);
+
+                // Send with HTML formatting, split long messages
                 try {
-                    await ctx.reply(fullResponse, {
-                        reply_to_message_id: isGroup ? ctx.message?.message_id : undefined,
-                    });
-                    console.log('[AI] ✅ Reply sent successfully');
+                    await this.sendFormattedReply(ctx, htmlResponse, isGroup);
+                    console.log('[AI] ✅ Reply sent successfully (HTML)');
                 } catch (sendErr: any) {
-                    console.error('[AI] ❌ Send error:', sendErr.message, sendErr.description);
-                    // Truncate if too long
+                    console.error('[AI] ❌ HTML send error, trying plain:', sendErr.message);
+                    // Fallback: send as plain text
                     try {
-                        await ctx.reply(fullResponse.substring(0, 4000));
-                        console.log('[AI] ✅ Truncated reply sent');
+                        await ctx.reply(fullResponse.substring(0, 4000), {
+                            reply_to_message_id: isGroup ? ctx.message?.message_id : undefined,
+                        });
+                        console.log('[AI] ✅ Plain text fallback sent');
                     } catch (e2: any) {
-                        console.error('[AI] ❌❌ Even truncated failed:', e2.message);
+                        console.error('[AI] ❌❌ Even plain failed:', e2.message);
                     }
                 }
             } catch (err: any) {
@@ -512,10 +517,10 @@ export class TelegramChannel {
                 const msg = lang === 'ru'
                     ? `${tierInfo.emoji} <b>${tierInfo.nameRU}</b> активирован!\n\n` +
                     `${tierInfo.cost > 0 ? `💰 Стоимость: ${tierInfo.cost} GSTD/запрос` : '🆓 Бесплатно'}\n\n` +
-                    `<i>Пишите любой вопрос — я отвечу с использованием ${selectedTier === 'ultra' ? '3 моделей ИИ + синтез' : selectedTier === 'pro' ? '2 моделей + синтез' : selectedTier === 'standard' ? 'лучшей модели' : 'базовой модели'}.</i>`
+                    `<i>Пишите любой вопрос — ${tierInfo.expertCount} ${tierInfo.expertCount === 1 ? 'эксперт' : 'экспертов'} ответят${tierInfo.expertCount > 1 ? ' и синтезируют консенсус' : ''}.</i>`
                     : `${tierInfo.emoji} <b>${tierInfo.name}</b> activated!\n\n` +
                     `${tierInfo.cost > 0 ? `💰 Cost: ${tierInfo.cost} GSTD/request` : '🆓 Free'}\n\n` +
-                    `<i>Type any question — I'll answer using ${selectedTier === 'ultra' ? '3 AI models + consensus' : selectedTier === 'pro' ? '2 models + synthesis' : selectedTier === 'standard' ? 'best available model' : 'fast single model'}.</i>`;
+                    `<i>Type any question — ${tierInfo.expertCount} expert${tierInfo.expertCount > 1 ? 's' : ''} will respond${tierInfo.expertCount > 1 ? ' and synthesize consensus' : ''}.</i>`;
 
                 return ctx.reply(msg, { parse_mode: 'HTML' });
             }
@@ -531,30 +536,30 @@ export class TelegramChannel {
         const currentInfo = SMARTMIX_TIERS[currentTier];
 
         const msg = lang === 'ru'
-            ? `🔬 <b>SmartMix — Смесь Моделей</b>\n\n` +
-            `Выберите тир для ваших запросов:\n\n` +
-            `🆓 <b>Free</b> — одна быстрая модель (llama-3.3-70b)\n` +
-            `⚡ <b>Standard</b> — 0.01 GSTD — умный выбор лучшей модели\n` +
-            `🔥 <b>Pro</b> — 0.05 GSTD — 2 модели + синтез ответа\n` +
-            `🧠 <b>Ultra</b> — 0.15 GSTD — 3 эксперта + консенсус\n\n` +
+            ? `🧠 <b>Коллективный Интеллект</b>\n\n` +
+            `Выберите уровень:\n\n` +
+            `🆓 <b>Один эксперт</b> — 1 модель, бесплатно\n` +
+            `🔬 <b>Совет из 3</b> — 0.05 GSTD — 3 эксперта + консенсус\n` +
+            `🔥 <b>Панель из 5</b> — 0.15 GSTD — 5 экспертов + синтез\n` +
+            `🧠 <b>Рой из 7</b> — 0.50 GSTD — 7 экспертов + полная верификация\n\n` +
             `Текущий: ${currentInfo.emoji} <b>${currentInfo.nameRU}</b>`
-            : `🔬 <b>SmartMix — Model Mixing</b>\n\n` +
-            `Choose a tier for your queries:\n\n` +
-            `🆓 <b>Free</b> — single fast model (llama-3.3-70b)\n` +
-            `⚡ <b>Standard</b> — 0.01 GSTD — smart routing to best model\n` +
-            `🔥 <b>Pro</b> — 0.05 GSTD — 2 models + answer synthesis\n` +
-            `🧠 <b>Ultra</b> — 0.15 GSTD — 3 experts + consensus\n\n` +
+            : `🧠 <b>Collective Intelligence</b>\n\n` +
+            `Choose your level:\n\n` +
+            `🆓 <b>Single Expert</b> — 1 model, free\n` +
+            `🔬 <b>Council of 3</b> — 0.05 GSTD — 3 experts + consensus\n` +
+            `🔥 <b>Panel of 5</b> — 0.15 GSTD — 5 experts + synthesis\n` +
+            `🧠 <b>Swarm of 7</b> — 0.50 GSTD — 7 experts + full verification\n\n` +
             `Current: ${currentInfo.emoji} <b>${currentInfo.name}</b>`;
 
         const keyboard = {
             inline_keyboard: [
                 [
                     { text: `🆓 Free${currentTier === 'free' ? ' ✓' : ''}`, callback_data: 'smartmix_free' },
-                    { text: `⚡ Standard${currentTier === 'standard' ? ' ✓' : ''} (0.01)`, callback_data: 'smartmix_standard' },
+                    { text: `🔬 Council${currentTier === 'standard' ? ' ✓' : ''} (0.05)`, callback_data: 'smartmix_standard' },
                 ],
                 [
-                    { text: `🔥 Pro${currentTier === 'pro' ? ' ✓' : ''} (0.05)`, callback_data: 'smartmix_pro' },
-                    { text: `🧠 Ultra${currentTier === 'ultra' ? ' ✓' : ''} (0.15)`, callback_data: 'smartmix_ultra' },
+                    { text: `🔥 Panel${currentTier === 'pro' ? ' ✓' : ''} (0.15)`, callback_data: 'smartmix_pro' },
+                    { text: `🧠 Swarm${currentTier === 'ultra' ? ' ✓' : ''} (0.50)`, callback_data: 'smartmix_ultra' },
                 ],
             ],
         };
@@ -727,9 +732,6 @@ export class TelegramChannel {
                 : `${t.stars}⭐ = <b>${gstd} GSTD</b> = ${proReqs} Pro ($${usd})`;
         });
 
-        // ChatGPT comparison
-        const chatgptReqs = Math.floor(20 / 0.005); // $20 / $0.005 per req
-
         // Commission/TON info
         const commissionNote = lang === 'ru'
             ? `\n\n📌 <b>Важно:</b>\n• GSTD зачисляются мгновенно на привязанный кошелёк\n• Для вывода GSTD на TON-кошелёк требуется ~0.05 TON на комиссию сети\n• Без привязки кошелька — GSTD хранятся на внутреннем балансе`
@@ -741,16 +743,14 @@ export class TelegramChannel {
             `📊 <b>Курс:</b> 1⭐ = ${gstdPerStar.toFixed(0)} GSTD ($${STAR_USD})\n` +
             `📊 GSTD = $${gstdPrice > 0 ? gstdPrice.toFixed(6) : '~0.0002'}\n\n` +
             tierLines.join('\n') + '\n\n' +
-            `💡 <i>ChatGPT Plus = $20/мес ≈ ${chatgptReqs} запросов\n` +
-            `GSTD Pro: $0.005/запрос — в ${Math.floor(20 / (50 * STAR_USD))}× дешевле!</i>` +
+            `💡 <i>GSTD Pro: $0.005/запрос — от $0.50 за 100 запросов!</i>` +
             commissionNote
             : `⭐️ <b>Top Up GSTD via Stars</b>\n\n` +
             `${walletStatus}\n\n` +
             `📊 <b>Rate:</b> 1⭐ = ${gstdPerStar.toFixed(0)} GSTD ($${STAR_USD})\n` +
             `📊 GSTD = $${gstdPrice > 0 ? gstdPrice.toFixed(6) : '~0.0002'}\n\n` +
             tierLines.join('\n') + '\n\n' +
-            `💡 <i>ChatGPT Plus = $20/mo ≈ ${chatgptReqs} requests\n` +
-            `GSTD Pro: $0.005/request — ${Math.floor(20 / (50 * STAR_USD))}× cheaper!</i>` +
+            `💡 <i>GSTD Pro: $0.005/request — from $0.50 per 100 requests!</i>` +
             commissionNote;
 
         const buttons = tiers.map(t => {
@@ -848,7 +848,7 @@ export class TelegramChannel {
                 `🔗 Кошелек — привязать TON кошелек\n` +
                 `🧠 Заработать — включить майнинг\n` +
                 `📱 Приложение — открыть дашборд\n\n` +
-                `<i>40× дешевле ChatGPT Plus!</i>`
+                `<i>Лучшая цена за Pro-качество!</i>`
                 : `📖 <b>Help</b>\n\n` +
                 `🆓 <b>Free AI</b> — just type, always available (Kimi K2 · LLaMA4 · GPT-OSS-120B)\n` +
                 `⚡ <b>Sovereign Pro</b> — 0.1 GSTD/request, best swarm models\n\n` +
@@ -858,7 +858,7 @@ export class TelegramChannel {
                 `🔗 Wallet — connect TON wallet\n` +
                 `🧠 Earn — start mining\n` +
                 `📱 App — open dashboard\n\n` +
-                `<i>40× cheaper than ChatGPT Plus!</i>`;
+                `<i>Best price for Pro-quality AI!</i>`;
             await ctx.reply(msg, { parse_mode: 'HTML' });
         } else {
             await ctx.reply(
@@ -886,5 +886,104 @@ export class TelegramChannel {
 
     async stop(): Promise<void> {
         await this.bot.stop();
+    }
+
+    // ─── Markdown → Telegram HTML converter (ChatGPT/Claude level formatting) ──
+    private markdownToTelegramHtml(text: string): string {
+        let result = text;
+
+        // Escape HTML entities first (except in code blocks)
+        // We'll handle code blocks separately
+        const codeBlocks: string[] = [];
+
+        // Extract fenced code blocks ```lang\n...\n```
+        result = result.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang, code) => {
+            const idx = codeBlocks.length;
+            const langAttr = lang ? ` class="language-${lang}"` : '';
+            codeBlocks.push(`<pre><code${langAttr}>${this.escapeHtml(code.trimEnd())}</code></pre>`);
+            return `__CODEBLOCK_${idx}__`;
+        });
+
+        // Extract inline code `...`
+        result = result.replace(/`([^`]+)`/g, (_match, code) => {
+            return `<code>${this.escapeHtml(code)}</code>`;
+        });
+
+        // Now escape remaining HTML
+        result = result.replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
+        // But un-escape our HTML tags
+        result = result.replace(/&lt;(\/?(b|i|u|s|code|pre|a|blockquote)[^&]*?)&gt;/g, '<$1>');
+
+        // Bold: **text** or __text__
+        result = result.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+        result = result.replace(/__(.+?)__/g, '<b>$1</b>');
+
+        // Italic: *text* (but not inside bold)
+        result = result.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<i>$1</i>');
+
+        // Headers: # → bold
+        result = result.replace(/^#{1,6}\s+(.+)$/gm, '\n<b>$1</b>');
+
+        // Horizontal rules
+        result = result.replace(/^---+$/gm, '─────────────────');
+
+        // Lists: - item → • item
+        result = result.replace(/^[-*]\s+/gm, '• ');
+
+        // Numbered lists keep as is
+
+        // Restore code blocks
+        for (let i = 0; i < codeBlocks.length; i++) {
+            result = result.replace(`__CODEBLOCK_${i}__`, codeBlocks[i]);
+        }
+
+        // Clean up multiple blank lines
+        result = result.replace(/\n{3,}/g, '\n\n');
+
+        return result.trim();
+    }
+
+    private escapeHtml(text: string): string {
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    // Send formatted reply, splitting into chunks if needed
+    private async sendFormattedReply(ctx: any, html: string, isGroup: boolean): Promise<void> {
+        const MAX_LEN = 4000;
+
+        if (html.length <= MAX_LEN) {
+            await ctx.reply(html, {
+                parse_mode: 'HTML',
+                reply_to_message_id: isGroup ? ctx.message?.message_id : undefined,
+            });
+            return;
+        }
+
+        // Split into chunks at paragraph boundaries
+        const paragraphs = html.split('\n\n');
+        let chunk = '';
+        for (const p of paragraphs) {
+            if ((chunk + '\n\n' + p).length > MAX_LEN && chunk) {
+                await ctx.reply(chunk.trim(), {
+                    parse_mode: 'HTML',
+                    reply_to_message_id: isGroup ? ctx.message?.message_id : undefined,
+                });
+                chunk = p;
+            } else {
+                chunk = chunk ? chunk + '\n\n' + p : p;
+            }
+        }
+        if (chunk.trim()) {
+            await ctx.reply(chunk.trim(), {
+                parse_mode: 'HTML',
+                reply_to_message_id: isGroup ? ctx.message?.message_id : undefined,
+            });
+        }
     }
 }

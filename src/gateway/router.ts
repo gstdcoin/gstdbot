@@ -1,15 +1,14 @@
 /**
- * Neural Router — Sovereign-First Model Selection
+ * Neural Router — Groq-Only Model Selection
  *
  * Tier hierarchy:
  *  L1  Cache          — instant, no API call
  *  L2  Go Backend     — internal SmartRouter (tries Ollama → Phantom Nodes)
- *  L3  Groq           — best free tier: llama-3.3-70b, deepseek-r1, qwen etc.
- *  L4  OpenRouter     — best models: claude-3.5-haiku, gemini-flash, mistral
- *  L5  Fallback msg   — tell user to retry
+ *  L3  Groq           — 8 free models: Llama 4, GPT-OSS, Qwen3, Kimi K2 etc.
+ *  L4  Fallback msg   — tell user to retry
  */
 
-export type RouteTier = 'cache' | 'swarm' | 'groq' | 'openrouter' | 'commercial';
+export type RouteTier = 'cache' | 'swarm' | 'groq' | 'fallback' | 'commercial';
 
 export interface RouteResult {
     content: string;
@@ -23,25 +22,21 @@ export interface RouteResult {
     };
 }
 
-interface ChatMessage {
+export interface ChatMessage {
     role: 'system' | 'user' | 'assistant';
     content: string;
 }
 
-// Best Groq models — fast, free tier, best quality
+// Verified available Groq models
 const GROQ_MODELS = [
-    'llama-3.3-70b-versatile',   // Best general — 70B, very fast
-    'deepseek-r1-distill-llama-70b', // Best reasoning
-    'qwen-qwq-32b',              // Best math/logic
-    'llama-3.1-70b-versatile',   // Reliable fallback
-];
-
-// OpenRouter free/cheap models — backup
-const OR_MODELS = [
-    'google/gemini-2.0-flash-exp:free',
-    'meta-llama/llama-3.3-70b-instruct:free',
-    'deepseek/deepseek-r1:free',
-    'mistralai/mistral-7b-instruct:free',
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'meta-llama/llama-4-maverick-17b-128e-instruct',
+    'qwen/qwen3-32b',
+    'openai/gpt-oss-120b',
+    'openai/gpt-oss-20b',
+    'moonshotai/kimi-k2-instruct',
 ];
 
 // Simple LRU cache
@@ -74,13 +69,11 @@ class ResponseCache {
 export class NeuralRouter {
     private swarmUrl: string;
     private groqKey: string;
-    private openrouterKey: string;
     private cache = new ResponseCache();
 
     constructor(swarmUrl: string, _cocoonEnabled: boolean) {
         this.swarmUrl = swarmUrl;
         this.groqKey = process.env.GROQ_API_KEY || '';
-        this.openrouterKey = process.env.OPENROUTER_API_KEY || '';
     }
 
     async route(requestedModel: string, messages: ChatMessage[]): Promise<RouteResult> {
@@ -108,7 +101,7 @@ export class NeuralRouter {
             console.warn('[Router] Backend unavailable:', err?.message?.substring(0, 80));
         }
 
-        // ─── L3: Groq (best free: llama-3.3-70b, deepseek-r1, qwen) ─
+        // ─── L3: Groq (8 verified free models) ─────────────────────
         if (this.groqKey) {
             try {
                 const result = await this.callGroq(messages);
@@ -119,22 +112,11 @@ export class NeuralRouter {
             }
         }
 
-        // ─── L4: OpenRouter (claude-haiku, gemini-flash, mistral) ──
-        if (this.openrouterKey) {
-            try {
-                const result = await this.callOpenRouter(messages);
-                this.cache.set(key, result.content, result.model);
-                return { ...result, tier: 'openrouter', latencyMs: Date.now() - start };
-            } catch (err: any) {
-                console.warn('[Router] OpenRouter failed:', err?.message?.substring(0, 80));
-            }
-        }
-
-        // ─── L5: Fallback message ───────────────────────────────────
+        // ─── L4: Fallback message ───────────────────────────────────
         return {
             content: '⚡ Sovereign AI is loading. Please send your message again in a moment while the Swarm initialises. 🐝',
             model: 'fallback',
-            tier: 'commercial',
+            tier: 'fallback',
             latencyMs: Date.now() - start,
             usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
         };
@@ -164,7 +146,7 @@ export class NeuralRouter {
         }
     }
 
-    /* ── Groq — best free models ── */
+    /* ── Groq — 8 verified free models ── */
     private async callGroq(messages: ChatMessage[]): Promise<RouteResult> {
         let lastErr: any;
         for (const model of GROQ_MODELS) {
@@ -178,7 +160,7 @@ export class NeuralRouter {
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${this.groqKey}`,
                         },
-                        body: JSON.stringify({ model, messages, max_tokens: 1024, temperature: 0.7 }),
+                        body: JSON.stringify({ model, messages, max_tokens: 2048, temperature: 0.7 }),
                         signal: controller.signal,
                     });
                     if (!resp.ok) {
@@ -204,114 +186,109 @@ export class NeuralRouter {
         throw lastErr || new Error('All Groq models failed');
     }
 
-    /* ── OpenRouter — quality fallback ── */
-    private async callOpenRouter(messages: ChatMessage[]): Promise<RouteResult> {
-        let lastErr: any;
-        for (const model of OR_MODELS) {
-            try {
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 30_000);
-                try {
-                    const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${this.openrouterKey}`,
-                            'HTTP-Referer': 'https://app.gstdtoken.com',
-                            'X-Title': 'GSTD Sovereign AI',
-                        },
-                        body: JSON.stringify({ model, messages, max_tokens: 1024 }),
-                        signal: controller.signal,
-                    });
-                    if (!resp.ok) {
-                        const errText = await resp.text().catch(() => '');
-                        throw new Error(`OpenRouter ${resp.status}: ${errText.substring(0, 100)}`);
-                    }
-                    const data: any = await resp.json();
-                    const content = data.choices?.[0]?.message?.content || '';
-                    if (!content) throw new Error('Empty OpenRouter response');
-                    console.log(`[Router] ✅ OpenRouter: ${model}`);
-                    return {
-                        content, model, tier: 'openrouter', latencyMs: 0,
-                        usage: { promptTokens: data.usage?.prompt_tokens || 0, completionTokens: data.usage?.completion_tokens || 0, totalTokens: data.usage?.total_tokens || 0 }
-                    };
-                } finally {
-                    clearTimeout(timeout);
-                }
-            } catch (err: any) {
-                lastErr = err;
-                console.warn(`[Router] OpenRouter ${model} failed:`, err?.message?.substring(0, 60));
-            }
-        }
-        throw lastErr || new Error('All OpenRouter models failed');
-    }
-
     private mapModel(model: string): string {
         const map: Record<string, string> = {
             'auto': 'omega-auto',
             'gstd-flash': 'omega-auto',
             'gstd-pro': 'omega-pro',
             'gstd-ultra': 'omega-auto',
-            'cocoon-auto': 'omega-auto', // Cocoon disabled — route to backend
         };
         return map[model] || 'omega-auto';
     }
 
-    // ── SmartMix: Unified Model Mixing via Backend ──
-
+    // ── SmartMix: Collective Intelligence via Groq ──
     async routeSmartMix(tier: SmartMixTier, messages: ChatMessage[]): Promise<SmartMixResult> {
         const start = Date.now();
+        const tierConfig = SMARTMIX_TIERS[tier] || SMARTMIX_TIERS.free;
+        const expertCount = tierConfig.expertCount;
 
-        // Try SmartMix endpoint on Go backend
-        try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 60_000); // 60s for multi-model
-            try {
-                const resp = await fetch(`${this.swarmUrl}/api/v1/chat/smartmix`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        model: `mix-${tier}`,
-                        messages,
-                        mix_tier: tier,
-                        stream: false,
-                    }),
-                    signal: controller.signal,
-                });
-                if (!resp.ok) {
-                    const errText = await resp.text().catch(() => '');
-                    throw new Error(`SmartMix backend ${resp.status}: ${errText.substring(0, 150)}`);
-                }
-                const data: any = await resp.json();
-                const content = data.choices?.[0]?.message?.content || '';
-                if (!content) throw new Error('Empty SmartMix response');
-
-                console.log(`[SmartMix] ✅ ${tier} | strategy=${data.smart_mix?.strategy} | models=${data.smart_mix?.models_used?.join(', ')} | ${data.smart_mix?.latency_ms}ms`);
-
-                return {
-                    content,
-                    tier: data.smart_mix?.tier || tier,
-                    strategy: data.smart_mix?.strategy || 'unknown',
-                    modelsUsed: data.smart_mix?.models_used || [],
-                    latencyMs: Date.now() - start,
-                    costGstd: data.smart_mix?.cost_gstd || 0,
-                };
-            } finally {
-                clearTimeout(timeout);
-            }
-        } catch (err: any) {
-            console.warn(`[SmartMix] Backend failed for tier ${tier}:`, err?.message?.substring(0, 100));
-
-            // Fallback: use standard NeuralRouter (always works)
+        if (tier === 'free' || expertCount <= 1) {
             const result = await this.route('auto', messages);
             return {
                 content: result.content,
                 tier: 'free',
-                strategy: 'fallback-' + result.tier,
+                strategy: 'single-' + result.tier,
                 modelsUsed: [result.model],
                 latencyMs: Date.now() - start,
                 costGstd: 0,
             };
+        }
+
+        // Query N Groq experts in parallel
+        const experts = GROQ_MODELS.slice(0, expertCount);
+        console.log(`[SmartMix] ${tierConfig.emoji} ${tierConfig.name}: querying ${experts.length} Groq experts...`);
+
+        const expertPromises = experts.map(model =>
+            this.callSingleGroq(model, messages, 1500).catch(err => {
+                console.warn(`[SmartMix] Expert ${model} failed:`, err?.message?.substring(0, 60));
+                return null;
+            })
+        );
+
+        const results = (await Promise.all(expertPromises)).filter(Boolean) as Array<{ content: string; model: string }>;
+
+        if (results.length === 0) {
+            // Fallback
+            const result = await this.route('auto', messages);
+            return {
+                content: result.content, tier: 'free', strategy: 'fallback',
+                modelsUsed: [result.model], latencyMs: Date.now() - start, costGstd: 0,
+            };
+        }
+
+        console.log(`[SmartMix] ${results.length}/${experts.length} experts responded`);
+
+        // Synthesize consensus
+        const expertBlock = results.map((r, i) =>
+            `=== Expert ${i + 1}: ${r.model} ===\n${r.content}`
+        ).join('\n\n');
+
+        const userQ = messages.filter(m => m.role === 'user').pop()?.content || '';
+        const synthMessages: ChatMessage[] = [
+            { role: 'system', content: `You are a Collective Intelligence synthesizer. You have ${results.length} expert AI responses. Find consensus, identify unique insights, detect errors by cross-checking. Produce ONE superior answer. Do NOT mention experts. Use markdown. Respond in the user's language.` },
+            { role: 'user', content: `QUESTION:\n${userQ}\n\n---\n\nEXPERT RESPONSES:\n\n${expertBlock}` },
+        ];
+
+        try {
+            const synth = await this.callSingleGroq('llama-3.3-70b-versatile', synthMessages, 4096);
+            return {
+                content: synth.content,
+                tier,
+                strategy: 'consensus',
+                modelsUsed: results.map(r => r.model),
+                latencyMs: Date.now() - start,
+                costGstd: tierConfig.cost,
+            };
+        } catch {
+            // Return best expert
+            const best = results.reduce((a, b) => a.content.length > b.content.length ? a : b);
+            return {
+                content: best.content, tier, strategy: 'best-expert',
+                modelsUsed: results.map(r => r.model), latencyMs: Date.now() - start, costGstd: tierConfig.cost,
+            };
+        }
+    }
+
+    private async callSingleGroq(model: string, messages: ChatMessage[], maxTokens: number = 2048): Promise<{ content: string; model: string }> {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 25_000);
+        try {
+            const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.groqKey}`,
+                },
+                body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature: 0.7 }),
+                signal: controller.signal,
+            });
+            if (!resp.ok) throw new Error(`Groq ${resp.status}`);
+            const data: any = await resp.json();
+            const content = data.choices?.[0]?.message?.content || '';
+            if (!content) throw new Error('Empty');
+            return { content, model };
+        } finally {
+            clearTimeout(timeout);
         }
     }
 }
@@ -328,9 +305,9 @@ export interface SmartMixResult {
     costGstd: number;
 }
 
-export const SMARTMIX_TIERS = {
-    free: { name: 'Swarm Free', nameRU: 'Рой Бесплатный', cost: 0, emoji: '🆓' },
-    standard: { name: 'Swarm Standard', nameRU: 'Рой Стандарт', cost: 0.01, emoji: '⚡' },
-    pro: { name: 'Swarm Pro', nameRU: 'Рой Про', cost: 0.05, emoji: '🔥' },
-    ultra: { name: 'Swarm Ultra', nameRU: 'Рой Ультра', cost: 0.15, emoji: '🧠' },
+export const SMARTMIX_TIERS: Record<string, { name: string; nameRU: string; cost: number; emoji: string; expertCount: number }> = {
+    free: { name: 'Single Expert', nameRU: 'Один эксперт', cost: 0, emoji: '🆓', expertCount: 1 },
+    standard: { name: 'Council of 3', nameRU: 'Совет из 3', cost: 0.05, emoji: '🔬', expertCount: 3 },
+    pro: { name: 'Panel of 5', nameRU: 'Панель из 5', cost: 0.15, emoji: '🔥', expertCount: 5 },
+    ultra: { name: 'Swarm of 7', nameRU: 'Рой из 7', cost: 0.50, emoji: '🧠', expertCount: 7 },
 };

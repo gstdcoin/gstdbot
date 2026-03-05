@@ -696,6 +696,8 @@
                 <a href="#skills" data-i18n="nav_skills">Skills</a>
                 <a href="#compare" data-i18n="nav_compare">vs OpenClaw</a>
                 <a href="https://app.gstdtoken.com" target="_blank" data-i18n="nav_dashboard">Dashboard</a>
+                <span class="gstd-price-nav" id="navPrice"
+                    style="font-size:11px;color:#22c55e;font-weight:700;padding:2px 8px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:6px;display:none"></span>
                 <button onclick="toggleLang()" class="btn-ghost" style="padding:4px 10px;font-size:11px;min-width:36px"
                     data-i18n="lang_switch">RU</button>
                 <a href="https://t.me/GstdAppBot" class="btn-primary" data-i18n="nav_cta">Open in Telegram →</a>
@@ -789,7 +791,8 @@
             </div>
 
             <div style="text-align:center;margin-top:28px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-                <a href="https://github.com/gstdcoin/gstdbot" class="btn-primary" target="_blank">⭐ GitHub
+                <a href="https://github.com/gstdcoin/gstdbot" class="btn-primary" target="_blank"
+                    data-i18n="install_github">⭐ GitHub
                     Repository</a>
                 <a href="https://github.com/gstdcoin/gstdbot#skills-marketplace" class="btn-ghost" target="_blank"
                     data-i18n="install_skills">Browse Skills →</a>
@@ -816,8 +819,8 @@
                     <div class="label" data-i18n="stat_sov">Sovereignty Index</div>
                 </div>
                 <div class="stat">
-                    <div class="num">0</div>
-                    <div class="label" data-i18n="stat_data">Data Sold to Corps</div>
+                    <div class="num" id="statPrice" style="font-size:28px">—</div>
+                    <div class="label" data-i18n="stat_gstd_price">GSTD Price</div>
                 </div>
             </div>
         </div>
@@ -849,20 +852,23 @@
                 </div>
                 <div class="feature-card">
                     <div class="icon">🛡️</div>
-                    <h3>TEE Confidential Compute</h3>
-                    <p>Heavy tasks run in Cocoon TEE — hardware-encrypted GPU enclaves. Even the node operator can't see
+                    <h3 data-i18n="f4_h">TEE Confidential Compute</h3>
+                    <p data-i18n="f4_p">Heavy tasks run in Cocoon TEE — hardware-encrypted GPU enclaves. Even the node
+                        operator can't see
                         your data. Verified on TON blockchain.</p>
                 </div>
                 <div class="feature-card">
                     <div class="icon">⚡</div>
-                    <h3>Sovereign Neural Router</h3>
-                    <p>Auto-selects the best model: qwen2.5-coder for code, deepseek-r1 for reasoning, llama3.1 for
+                    <h3 data-i18n="f5_h">Sovereign Neural Router</h3>
+                    <p data-i18n="f5_p">Auto-selects the best model: qwen2.5-coder for code, deepseek-r1 for reasoning,
+                        llama3.1 for
                         general — all sovereign. Commercial APIs are a last resort.</p>
                 </div>
                 <div class="feature-card">
                     <div class="icon">💰</div>
-                    <h3>Earn While You Compute</h3>
-                    <p>Connect your device as a node and earn GSTD tokens. The more you compute, the more you earn.
+                    <h3 data-i18n="f6_h">Earn While You Compute</h3>
+                    <p data-i18n="f6_p">Connect your device as a node and earn GSTD tokens. The more you compute, the
+                        more you earn.
                         Gold-backed reserves add real value.</p>
                 </div>
             </div>
@@ -872,112 +878,114 @@
     <!-- ─── Skills Marketplace ─── -->
     <section class="skills" id="skills">
         <div class="container">
-            <div class="section-title">⟩ Skills & Market</div>
-            <h2>Skills that run on the Swarm</h2>
-            <p class="sub">Install skills to extend your bot. Each skill is verified by the network and runs sovereignly
+            <div class="section-title" data-i18n="skills_title">⟩ Skills & Market</div>
+            <h2 data-i18n="skills_h2">Skills that run on the Swarm</h2>
+            <p class="sub" data-i18n="skills_sub">Install skills to extend your bot. Each skill is verified by the
+                network and runs sovereignly
                 — no corporate dependencies.</p>
+
             <div class="skills-grid">
                 <div class="skill-card">
                     <div class="skill-header">
                         <div class="skill-icon">📊</div>
-                        <div class="skill-name">DeFi Monitor</div>
+                        <div class="skill-name" data-i18n="skill_defi">DeFi Monitor</div>
                     </div>
-                    <div class="skill-desc">Real-time DeFi signals, LP tracking, and yield analysis across TON, ETH,
-                        SOL.</div>
+                    <div class="skill-desc" data-i18n="skill_defi_desc">Real-time DeFi signals, LP tracking, and yield
+                        analysis across TON, ETH, SOL.</div>
                     <div class="skill-meta">
-                        <span>🟢 Active</span>
-                        <span>⚡ 0.01 GSTD/use</span>
+                        <span>🟢 <span data-i18n="skill_active">Active</span></span>
+                        <span>⚡ 0.01 GSTD</span>
                         <span>👥 1.2k</span>
                     </div>
                 </div>
                 <div class="skill-card">
                     <div class="skill-header">
                         <div class="skill-icon">🔍</div>
-                        <div class="skill-name">Web Researcher</div>
+                        <div class="skill-name" data-i18n="skill_web">Web Researcher</div>
                     </div>
-                    <div class="skill-desc">Search the web, extract data, summarize articles. Deep research with source
-                        verification.</div>
+                    <div class="skill-desc" data-i18n="skill_web_desc">Search the web, extract data, summarize articles.
+                        Deep research with source verification.</div>
                     <div class="skill-meta">
-                        <span>🟢 Active</span>
-                        <span>⚡ 0.02 GSTD/use</span>
+                        <span>🟢 <span data-i18n="skill_active">Active</span></span>
+                        <span>⚡ 0.02 GSTD</span>
                         <span>👥 890</span>
                     </div>
                 </div>
                 <div class="skill-card">
                     <div class="skill-header">
                         <div class="skill-icon">💻</div>
-                        <div class="skill-name">Code Generator</div>
+                        <div class="skill-name" data-i18n="skill_code">Code Generator</div>
                     </div>
-                    <div class="skill-desc">Write, review, and debug code in any language. Powered by sovereign
-                        qwen2.5-coder model.</div>
+                    <div class="skill-desc" data-i18n="skill_code_desc">Write, review, and debug code in any language.
+                        Powered by sovereign qwen2.5-coder model.</div>
                     <div class="skill-meta">
-                        <span>🟢 Active</span>
-                        <span>⚡ Free</span>
+                        <span>🟢 <span data-i18n="skill_active">Active</span></span>
+                        <span>⚡ <span data-i18n="skill_free">Free</span></span>
                         <span>👥 2.4k</span>
                     </div>
                 </div>
                 <div class="skill-card">
                     <div class="skill-header">
                         <div class="skill-icon">🌍</div>
-                        <div class="skill-name">Planetary Signals</div>
+                        <div class="skill-name" data-i18n="skill_signals">Planetary Signals</div>
                     </div>
-                    <div class="skill-desc">Monitor 30 global signals: climate, cyber threats, pandemics, market shifts.
-                        Powered by Swarm analysis.</div>
+                    <div class="skill-desc" data-i18n="skill_signals_desc">Monitor 30 global signals: climate, cyber
+                        threats, pandemics, market shifts. Powered by Swarm analysis.</div>
                     <div class="skill-meta">
-                        <span>🟢 Active</span>
-                        <span>⚡ 0.05 GSTD/use</span>
+                        <span>🟢 <span data-i18n="skill_active">Active</span></span>
+                        <span>⚡ 0.05 GSTD</span>
                         <span>👥 450</span>
                     </div>
                 </div>
                 <div class="skill-card">
                     <div class="skill-header">
                         <div class="skill-icon">📝</div>
-                        <div class="skill-name">Content Writer</div>
+                        <div class="skill-name" data-i18n="skill_content">Content Writer</div>
                     </div>
-                    <div class="skill-desc">Blog posts, social media, marketing copy. SEO-optimized, multilingual.
-                        Context-aware writing.</div>
+                    <div class="skill-desc" data-i18n="skill_content_desc">Blog posts, social media, marketing copy.
+                        SEO-optimized, multilingual. Context-aware writing.</div>
                     <div class="skill-meta">
-                        <span>🟢 Active</span>
-                        <span>⚡ 0.01 GSTD/use</span>
+                        <span>🟢 <span data-i18n="skill_active">Active</span></span>
+                        <span>⚡ 0.01 GSTD</span>
                         <span>👥 1.8k</span>
                     </div>
                 </div>
                 <div class="skill-card">
                     <div class="skill-header">
                         <div class="skill-icon">📈</div>
-                        <div class="skill-name">Token Analyzer</div>
+                        <div class="skill-name" data-i18n="skill_token">Token Analyzer</div>
                     </div>
-                    <div class="skill-desc">On-chain analysis, holder distribution, smart money tracking. Works with
-                        TON, Ethereum, Solana.</div>
+                    <div class="skill-desc" data-i18n="skill_token_desc">On-chain analysis, holder distribution, smart
+                        money tracking. Works with TON, Ethereum, Solana.</div>
                     <div class="skill-meta">
-                        <span>🟢 Active</span>
-                        <span>⚡ 0.03 GSTD/use</span>
+                        <span>🟢 <span data-i18n="skill_active">Active</span></span>
+                        <span>⚡ 0.03 GSTD</span>
                         <span>👥 670</span>
                     </div>
                 </div>
                 <div class="skill-card">
                     <div class="skill-header">
                         <div class="skill-icon">🎨</div>
-                        <div class="skill-name">Image Generator</div>
+                        <div class="skill-name" data-i18n="skill_image">Image Generator</div>
                     </div>
-                    <div class="skill-desc">Generate images from text. Runs on Swarm nodes with GPU. No censorship, no
-                        corporate filters.</div>
+                    <div class="skill-desc" data-i18n="skill_image_desc">Generate images from text. Runs on Swarm nodes
+                        with GPU. No censorship, no corporate filters.</div>
                     <div class="skill-meta">
-                        <span>🟡 Beta</span>
-                        <span>⚡ 0.1 GSTD/use</span>
+                        <span>🟡 <span data-i18n="skill_beta">Beta</span></span>
+                        <span>⚡ 0.1 GSTD</span>
                         <span>👥 340</span>
                     </div>
                 </div>
                 <div class="skill-card">
                     <div class="skill-header">
                         <div class="skill-icon">🤖</div>
-                        <div class="skill-name">Build Your Own</div>
+                        <div class="skill-name" data-i18n="skill_custom">Build Your Own</div>
                     </div>
-                    <div class="skill-desc">Create custom skills with our SDK. Publish to the marketplace and earn GSTD
-                        from every use.</div>
+                    <div class="skill-desc" data-i18n="skill_custom_desc">Create custom skills with our SDK. Publish to
+                        the marketplace and earn GSTD from every use.</div>
                     <div class="skill-meta">
-                        <span>📄 Docs</span>
-                        <span>⚡ Earn GSTD</span>
+                        <span>📄 <span data-i18n="skill_docs">Docs</span></span>
+                        <span>⚡ <span data-i18n="skill_earn">Earn GSTD</span></span>
                         <span>🔧 SDK</span>
                     </div>
                 </div>
@@ -988,75 +996,75 @@
     <!-- ─── Comparison ─── -->
     <section class="compare" id="compare">
         <div class="container">
-            <h2>⟩ GSTD Bot vs OpenClaw</h2>
+            <h2 data-i18n="compare_title">⟩ GSTD Bot vs OpenClaw</h2>
             <table class="compare-table">
                 <thead>
                     <tr>
-                        <th>Feature</th>
+                        <th data-i18n="cmp_feature">Feature</th>
                         <th>GSTD Bot</th>
                         <th>OpenClaw</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr class="winner">
-                        <td>Infrastructure</td>
-                        <td class="us">Decentralized Swarm</td>
-                        <td class="them">Your own machine</td>
+                        <td data-i18n="cmp_infra">Infrastructure</td>
+                        <td class="us" data-i18n="cmp_infra_us">Decentralized Swarm</td>
+                        <td class="them" data-i18n="cmp_infra_them">Your own machine</td>
                     </tr>
                     <tr class="winner">
-                        <td>AI Models</td>
-                        <td class="us">6 sovereign + commercial fallback</td>
-                        <td class="them">API proxy (OpenAI/Anthropic)</td>
+                        <td data-i18n="cmp_models">AI Models</td>
+                        <td class="us" data-i18n="cmp_models_us">6 sovereign + commercial fallback</td>
+                        <td class="them" data-i18n="cmp_models_them">API proxy (OpenAI/Anthropic)</td>
                     </tr>
                     <tr class="winner">
-                        <td>Privacy</td>
-                        <td class="us">TEE confidential compute</td>
-                        <td class="them">Local (data stays on machine)</td>
+                        <td data-i18n="cmp_privacy">Privacy</td>
+                        <td class="us" data-i18n="cmp_privacy_us">TEE confidential compute</td>
+                        <td class="them" data-i18n="cmp_privacy_them">Local (data stays on machine)</td>
                     </tr>
                     <tr class="winner">
-                        <td>Earn money</td>
-                        <td class="us">✓ Earn GSTD as node operator</td>
-                        <td class="them">✗ No earning model</td>
+                        <td data-i18n="cmp_earn">Earn money</td>
+                        <td class="us" data-i18n="cmp_earn_us">✓ Earn GSTD as node operator</td>
+                        <td class="them" data-i18n="cmp_earn_them">✗ No earning model</td>
                     </tr>
                     <tr>
-                        <td>Persistent memory</td>
-                        <td class="us">✓ Hive Memory (collective)</td>
-                        <td class="them">✓ Local memory</td>
+                        <td data-i18n="cmp_memory">Persistent memory</td>
+                        <td class="us" data-i18n="cmp_memory_us">✓ Hive Memory (collective)</td>
+                        <td class="them" data-i18n="cmp_memory_them">✓ Local memory</td>
                     </tr>
                     <tr class="winner">
-                        <td>Skills marketplace</td>
-                        <td class="us">✓ With GSTD tokenomics</td>
-                        <td class="them">✓ Community skills</td>
+                        <td data-i18n="cmp_skills">Skills marketplace</td>
+                        <td class="us" data-i18n="cmp_skills_us">✓ With GSTD tokenomics</td>
+                        <td class="them" data-i18n="cmp_skills_them">✓ Community skills</td>
                     </tr>
                     <tr>
-                        <td>Chat apps</td>
-                        <td class="us">Telegram (native)</td>
-                        <td class="them">WhatsApp, Telegram, Discord, etc.</td>
+                        <td data-i18n="cmp_chat">Chat apps</td>
+                        <td class="us" data-i18n="cmp_chat_us">Telegram (native)</td>
+                        <td class="them" data-i18n="cmp_chat_them">WhatsApp, Telegram, Discord, etc.</td>
                     </tr>
                     <tr class="winner">
-                        <td>Scalability</td>
-                        <td class="us">Planetary (247+ nodes)</td>
-                        <td class="them">Single machine</td>
+                        <td data-i18n="cmp_scale">Scalability</td>
+                        <td class="us" data-i18n="cmp_scale_us">Planetary (247+ nodes)</td>
+                        <td class="them" data-i18n="cmp_scale_them">Single machine</td>
                     </tr>
                     <tr class="winner">
-                        <td>Sovereignty</td>
-                        <td class="us">100% — no corporate dependency</td>
-                        <td class="them">Depends on OpenAI/Anthropic APIs</td>
+                        <td data-i18n="cmp_sov">Sovereignty</td>
+                        <td class="us" data-i18n="cmp_sov_us">100% — no corporate dependency</td>
+                        <td class="them" data-i18n="cmp_sov_them">Depends on OpenAI/Anthropic APIs</td>
                     </tr>
                     <tr class="winner">
-                        <td>Cost</td>
-                        <td class="us">Free tier + GSTD micro-payments</td>
-                        <td class="them">Free (but you pay API costs)</td>
+                        <td data-i18n="cmp_cost">Cost</td>
+                        <td class="us" data-i18n="cmp_cost_us">Free tier + GSTD micro-payments</td>
+                        <td class="them" data-i18n="cmp_cost_them">Free (but you pay API costs)</td>
                     </tr>
                     <tr class="winner">
-                        <td>Self-improving</td>
-                        <td class="us">✓ DPO training from usage</td>
-                        <td class="them">✗ Static models</td>
+                        <td data-i18n="cmp_improve">Self-improving</td>
+                        <td class="us" data-i18n="cmp_improve_us">✓ DPO training from usage</td>
+                        <td class="them" data-i18n="cmp_improve_them">✗ Static models</td>
                     </tr>
                     <tr class="winner">
-                        <td>Blockchain verified</td>
-                        <td class="us">✓ TON + GSTD token</td>
-                        <td class="them">✗ No blockchain</td>
+                        <td data-i18n="cmp_blockchain">Blockchain verified</td>
+                        <td class="us" data-i18n="cmp_blockchain_us">✓ TON + GSTD token</td>
+                        <td class="them" data-i18n="cmp_blockchain_them">✗ No blockchain</td>
                     </tr>
                 </tbody>
             </table>
@@ -1066,16 +1074,21 @@
     <!-- ─── Integrations ─── -->
     <section class="integrations">
         <div class="container">
-            <h2>⟩ Works With</h2>
+            <h2 data-i18n="int_title">⟩ Works With</h2>
             <div class="int-grid">
-                <div class="int-item"><span class="int-icon">📱</span> Telegram</div>
-                <div class="int-item"><span class="int-icon">🌐</span> Web Chat</div>
+                <div class="int-item"><span class="int-icon">📱</span> <span data-i18n="int_telegram">Telegram</span>
+                </div>
+                <div class="int-item"><span class="int-icon">🌐</span> <span data-i18n="int_web">Web Chat</span></div>
                 <div class="int-item"><span class="int-icon">🔗</span> OpenAI API</div>
-                <div class="int-item"><span class="int-icon">⛓️</span> TON Blockchain</div>
+                <div class="int-item"><span class="int-icon">⛓️</span> <span data-i18n="int_ton">TON Blockchain</span>
+                </div>
                 <div class="int-item"><span class="int-icon">🛡️</span> Cocoon TEE</div>
-                <div class="int-item"><span class="int-icon">🐝</span> GSTD Swarm</div>
-                <div class="int-item"><span class="int-icon">📊</span> DeFi Protocols</div>
-                <div class="int-item"><span class="int-icon">🔍</span> Web Search</div>
+                <div class="int-item"><span class="int-icon">🐝</span> <span data-i18n="int_swarm">GSTD Swarm</span>
+                </div>
+                <div class="int-item"><span class="int-icon">📊</span> <span data-i18n="int_defi">DeFi Protocols</span>
+                </div>
+                <div class="int-item"><span class="int-icon">🔍</span> <span data-i18n="int_search">Web Search</span>
+                </div>
             </div>
         </div>
     </section>
@@ -1098,11 +1111,11 @@
     <footer>
         <div class="container">
             <div class="links">
-                <a href="https://t.me/GstdAppBot">Telegram Bot</a>
-                <a href="https://chat.gstdtoken.com">Web Chat</a>
-                <a href="https://app.gstdtoken.com">Dashboard</a>
-                <a href="https://monitor.gstdtoken.com">Monitor</a>
-                <a href="/sovereignty">Sovereignty Index</a>
+                <a href="https://t.me/GstdAppBot" data-i18n="ft_telegram">Telegram Bot</a>
+                <a href="https://chat.gstdtoken.com" data-i18n="ft_webchat">Web Chat</a>
+                <a href="https://app.gstdtoken.com" data-i18n="ft_dashboard">Dashboard</a>
+                <a href="https://monitor.gstdtoken.com" data-i18n="ft_monitor">Monitor</a>
+                <a href="/sovereignty" data-i18n="ft_sov">Sovereignty Index</a>
                 <a href="/v1/models">API</a>
             </div>
             <div class="copy" data-i18n="footer_copy">© 2026 GSTD — Sovereign Decentralized Computing. Not affiliated
@@ -1117,13 +1130,13 @@
         const LANG = {
             en: {
                 'nav_features': 'Features', 'nav_skills': 'Skills', 'nav_compare': 'vs OpenClaw',
-                'nav_dashboard': 'Dashboard', 'nav_cta': 'Open in Telegram →',
+                'nav_dashboard': 'Dashboard', 'nav_cta': 'Open in Telegram →', 'nav_install': 'Install',
                 'hero_badge': 'Swarm is live — ', 'hero_badge2': ' nodes online',
                 'hero_h1a': 'The AI that runs on a', 'hero_h1b': 'planetary brain.',
                 'hero_sub': 'Not on corporate servers. Not through API proxies. Your requests are processed by a decentralized swarm of real devices — private, sovereign, and unstoppable.',
                 'hero_sov': 'Sovereignty Index:',
                 'hero_btn1': 'Start chatting → free', 'hero_btn2': 'Open Web Chat', 'hero_btn3': 'Dashboard',
-                'stat_nodes': 'Active Nodes', 'stat_models': 'Sovereign Models', 'stat_sov': 'Sovereignty Index', 'stat_data': 'Data Sold to Corps',
+                'stat_nodes': 'Active Nodes', 'stat_models': 'Sovereign Models', 'stat_sov': 'Sovereignty Index', 'stat_gstd_price': 'GSTD Price',
                 'feat_title': '⟩ What It Does', 'feat_h2': 'Everything OpenClaw does.<br>Plus a planetary brain.',
                 'f1_h': 'Runs on the Swarm', 'f1_p': 'Your queries are processed by a decentralized network of nodes — not OpenAI servers. Your data never touches corporate infrastructure.',
                 'f2_h': 'Telegram Native', 'f2_p': 'Deeply integrated with Telegram. DMs, group chats, inline mode. Manage tasks, earn GSTD, and control the bot — all from one interface.',
@@ -1133,20 +1146,53 @@
                 'f6_h': 'Earn While You Compute', 'f6_p': 'Connect your device as a node and earn GSTD tokens. The more you compute, the more you earn. Gold-backed reserves add real value.',
                 'skills_title': '⟩ Skills & Market', 'skills_h2': 'Skills that run on the Swarm',
                 'skills_sub': 'Install skills to extend your bot. Each skill is verified by the network and runs sovereignly — no corporate dependencies.',
+                // Skill cards
+                'skill_defi': 'DeFi Monitor', 'skill_defi_desc': 'Real-time DeFi signals, LP tracking, and yield analysis across TON, ETH, SOL.',
+                'skill_web': 'Web Researcher', 'skill_web_desc': 'Search the web, extract data, summarize articles. Deep research with source verification.',
+                'skill_code': 'Code Generator', 'skill_code_desc': 'Write, review, and debug code in any language. Powered by sovereign qwen2.5-coder model.',
+                'skill_signals': 'Planetary Signals', 'skill_signals_desc': 'Monitor 30 global signals: climate, cyber threats, pandemics, market shifts. Powered by Swarm analysis.',
+                'skill_content': 'Content Writer', 'skill_content_desc': 'Blog posts, social media, marketing copy. SEO-optimized, multilingual. Context-aware writing.',
+                'skill_token': 'Token Analyzer', 'skill_token_desc': 'On-chain analysis, holder distribution, smart money tracking. Works with TON, Ethereum, Solana.',
+                'skill_image': 'Image Generator', 'skill_image_desc': 'Generate images from text. Runs on Swarm nodes with GPU. No censorship, no corporate filters.',
+                'skill_custom': 'Build Your Own', 'skill_custom_desc': 'Create custom skills with our SDK. Publish to the marketplace and earn GSTD from every use.',
+                'skill_active': 'Active', 'skill_beta': 'Beta', 'skill_free': 'Free', 'skill_docs': 'Docs', 'skill_earn': 'Earn GSTD',
+                // Comparison table
+                'compare_title': '⟩ GSTD Bot vs OpenClaw', 'cmp_feature': 'Feature',
+                'cmp_infra': 'Infrastructure', 'cmp_infra_us': 'Decentralized Swarm', 'cmp_infra_them': 'Your own machine',
+                'cmp_models': 'AI Models', 'cmp_models_us': '6 sovereign + commercial fallback', 'cmp_models_them': 'API proxy (OpenAI/Anthropic)',
+                'cmp_privacy': 'Privacy', 'cmp_privacy_us': 'TEE confidential compute', 'cmp_privacy_them': 'Local (data stays on machine)',
+                'cmp_earn': 'Earn money', 'cmp_earn_us': '✓ Earn GSTD as node operator', 'cmp_earn_them': '✗ No earning model',
+                'cmp_memory': 'Persistent memory', 'cmp_memory_us': '✓ Hive Memory (collective)', 'cmp_memory_them': '✓ Local memory',
+                'cmp_skills': 'Skills marketplace', 'cmp_skills_us': '✓ With GSTD tokenomics', 'cmp_skills_them': '✓ Community skills',
+                'cmp_chat': 'Chat apps', 'cmp_chat_us': 'Telegram (native)', 'cmp_chat_them': 'WhatsApp, Telegram, Discord, etc.',
+                'cmp_scale': 'Scalability', 'cmp_scale_us': 'Planetary (247+ nodes)', 'cmp_scale_them': 'Single machine',
+                'cmp_sov': 'Sovereignty', 'cmp_sov_us': '100% — no corporate dependency', 'cmp_sov_them': 'Depends on OpenAI/Anthropic APIs',
+                'cmp_cost': 'Cost', 'cmp_cost_us': 'Free tier + GSTD micro-payments', 'cmp_cost_them': 'Free (but you pay API costs)',
+                'cmp_improve': 'Self-improving', 'cmp_improve_us': '✓ DPO training from usage', 'cmp_improve_them': '✗ Static models',
+                'cmp_blockchain': 'Blockchain verified', 'cmp_blockchain_us': '✓ TON + GSTD token', 'cmp_blockchain_them': '✗ No blockchain',
+                // Integrations
+                'int_title': '⟩ Works With', 'int_telegram': 'Telegram', 'int_web': 'Web Chat', 'int_ton': 'TON Blockchain',
+                'int_swarm': 'GSTD Swarm', 'int_defi': 'DeFi Protocols', 'int_search': 'Web Search',
+                // CTA & footer
                 'cta_h2': 'Join the Swarm.', 'cta_p': 'Start using sovereign AI today. Free. Private. Decentralized. Or connect your device and earn.',
                 'cta_btn1': 'Open in Telegram →', 'cta_btn2': 'Web Chat', 'cta_btn3': 'Join as Node',
+                'ft_telegram': 'Telegram Bot', 'ft_webchat': 'Web Chat', 'ft_dashboard': 'Dashboard', 'ft_monitor': 'Monitor', 'ft_sov': 'Sovereignty Index',
+                'install_title': '⟩ Install on your PC', 'install_h2': '3 minutes. Zero API keys.',
+                'install_desc': 'Install GSTD Bot on your machine. Full sovereign AI — no subscriptions, no corporate surveillance, no data leaving your device.',
+                'install_github': '⭐ GitHub Repository', 'install_skills': 'Browse Skills →', 'install_earn': 'Earn Tokens →', 'install_or': 'or install from source:',
+                'step1_h': 'Install Ollama', 'step2_h': 'Install GSTD Bot', 'step3_h': 'Start chatting!',
                 'footer_copy': '© 2026 GSTD — Sovereign Decentralized Computing. Not affiliated with any corporation.',
                 'lang_switch': 'RU',
             },
             ru: {
                 'nav_features': 'Возможности', 'nav_skills': 'Скиллы', 'nav_compare': 'vs OpenClaw',
-                'nav_dashboard': 'Панель', 'nav_cta': 'Открыть в Telegram →',
+                'nav_dashboard': 'Панель', 'nav_cta': 'Открыть в Telegram →', 'nav_install': 'Установка',
                 'hero_badge': 'Рой активен — ', 'hero_badge2': ' узлов онлайн',
                 'hero_h1a': 'ИИ, работающий на', 'hero_h1b': 'планетарном мозге.',
                 'hero_sub': 'Не на корпоративных серверах. Не через API-прокси. Ваши запросы обрабатываются децентрализованным роем реальных устройств — приватно, суверенно и неостановимо.',
                 'hero_sov': 'Индекс Суверенности:',
                 'hero_btn1': 'Начать бесплатно →', 'hero_btn2': 'Веб-чат', 'hero_btn3': 'Панель',
-                'stat_nodes': 'Активных Узлов', 'stat_models': 'Суверенных Моделей', 'stat_sov': 'Индекс Суверенности', 'stat_data': 'Данных Продано Корпорациям',
+                'stat_nodes': 'Активных Узлов', 'stat_models': 'Суверенных Моделей', 'stat_sov': 'Индекс Суверенности', 'stat_gstd_price': 'Цена GSTD',
                 'feat_title': '⟩ Возможности', 'feat_h2': 'Всё, что умеет OpenClaw.<br>Плюс планетарный мозг.',
                 'f1_h': 'Работает на Рое', 'f1_p': 'Ваши запросы обрабатываются децентрализованной сетью узлов — не серверами OpenAI. Ваши данные никогда не попадают в корпоративную инфраструктуру.',
                 'f2_h': 'Нативен в Telegram', 'f2_p': 'Глубокая интеграция с Telegram. ЛС, групповые чаты, инлайн-режим. Управляйте задачами, зарабатывайте GSTD — всё из одного интерфейса.',
@@ -1156,8 +1202,41 @@
                 'f6_h': 'Зарабатывай Вычисляя', 'f6_p': 'Подключите устройство как узел и зарабатывайте GSTD токены. Чем больше вычисляете, тем больше зарабатываете. Золотой резерв обеспечивает реальную стоимость.',
                 'skills_title': '⟩ Скиллы и Маркет', 'skills_h2': 'Скиллы, работающие на Рое',
                 'skills_sub': 'Устанавливайте скиллы для расширения бота. Каждый скилл верифицирован сетью и работает суверенно.',
+                // Skill cards
+                'skill_defi': 'DeFi Монитор', 'skill_defi_desc': 'DeFi-сигналы в реальном времени, отслеживание LP и анализ доходности по TON, ETH, SOL.',
+                'skill_web': 'Веб-Исследователь', 'skill_web_desc': 'Поиск в сети, извлечение данных, суммаризация статей. Глубокий ресёрч с верификацией источников.',
+                'skill_code': 'Генератор Кода', 'skill_code_desc': 'Пишите, проверяйте и отлаживайте код на любом языке. На базе суверенной модели qwen2.5-coder.',
+                'skill_signals': 'Планетарные Сигналы', 'skill_signals_desc': 'Мониторинг 30 глобальных сигналов: климат, кибер-угрозы, пандемии, рынки. Анализ Роем.',
+                'skill_content': 'Контент-Райтер', 'skill_content_desc': 'Блог-посты, соцсети, маркетинговые тексты. SEO-оптимизация, мультиязычность.',
+                'skill_token': 'Анализ Токенов', 'skill_token_desc': 'Ончейн-анализ, распределение холдеров, трекинг умных денег. TON, Ethereum, Solana.',
+                'skill_image': 'Генератор Изображений', 'skill_image_desc': 'Генерация изображений из текста. Работает на GPU-нодах Роя. Без цензуры.',
+                'skill_custom': 'Создай Свой', 'skill_custom_desc': 'Создавайте собственные скиллы через SDK. Публикуйте на маркетплейсе и зарабатывайте GSTD.',
+                'skill_active': 'Активен', 'skill_beta': 'Бета', 'skill_free': 'Бесплатно', 'skill_docs': 'Документы', 'skill_earn': 'Заработок GSTD',
+                // Comparison table
+                'compare_title': '⟩ GSTD Bot vs OpenClaw', 'cmp_feature': 'Функция',
+                'cmp_infra': 'Инфраструктура', 'cmp_infra_us': 'Децентрализованный Рой', 'cmp_infra_them': 'Ваша машина',
+                'cmp_models': 'AI-Модели', 'cmp_models_us': '6 суверенных + коммерческий фолбэк', 'cmp_models_them': 'API-прокси (OpenAI/Anthropic)',
+                'cmp_privacy': 'Приватность', 'cmp_privacy_us': 'TEE конфиденциальные вычисления', 'cmp_privacy_them': 'Локально (данные на машине)',
+                'cmp_earn': 'Заработок', 'cmp_earn_us': '✓ Зарабатывайте GSTD как оператор узла', 'cmp_earn_them': '✗ Нет модели заработка',
+                'cmp_memory': 'Постоянная память', 'cmp_memory_us': '✓ Память Улья (коллективная)', 'cmp_memory_them': '✓ Локальная память',
+                'cmp_skills': 'Маркетплейс скиллов', 'cmp_skills_us': '✓ С токеномикой GSTD', 'cmp_skills_them': '✓ Скиллы сообщества',
+                'cmp_chat': 'Чат-платформы', 'cmp_chat_us': 'Telegram (нативный)', 'cmp_chat_them': 'WhatsApp, Telegram, Discord и др.',
+                'cmp_scale': 'Масштабируемость', 'cmp_scale_us': 'Планетарная (247+ узлов)', 'cmp_scale_them': 'Одна машина',
+                'cmp_sov': 'Суверенность', 'cmp_sov_us': '100% — без корпоративной зависимости', 'cmp_sov_them': 'Зависит от OpenAI/Anthropic API',
+                'cmp_cost': 'Стоимость', 'cmp_cost_us': 'Бесплатный тир + GSTD микро-платежи', 'cmp_cost_them': 'Бесплатно (но вы оплачиваете API)',
+                'cmp_improve': 'Самообучение', 'cmp_improve_us': '✓ DPO-обучение на основе использования', 'cmp_improve_them': '✗ Статичные модели',
+                'cmp_blockchain': 'Блокчейн', 'cmp_blockchain_us': '✓ TON + токен GSTD', 'cmp_blockchain_them': '✗ Без блокчейна',
+                // Integrations
+                'int_title': '⟩ Совместимость', 'int_telegram': 'Telegram', 'int_web': 'Веб-чат', 'int_ton': 'Блокчейн TON',
+                'int_swarm': 'Рой GSTD', 'int_defi': 'DeFi-протоколы', 'int_search': 'Веб-поиск',
+                // CTA & footer
                 'cta_h2': 'Присоединяйся к Рою.', 'cta_p': 'Начни пользоваться суверенным ИИ сегодня. Бесплатно. Приватно. Децентрализовано.',
                 'cta_btn1': 'Открыть в Telegram →', 'cta_btn2': 'Веб-чат', 'cta_btn3': 'Стать Узлом',
+                'ft_telegram': 'Телеграм-бот', 'ft_webchat': 'Веб-чат', 'ft_dashboard': 'Панель', 'ft_monitor': 'Монитор', 'ft_sov': 'Индекс Суверенности',
+                'install_title': '⟩ Установка на ПК', 'install_h2': '3 минуты. Ноль API-ключей.',
+                'install_desc': 'Установите GSTD Bot на свой ПК. Полностью суверенный ИИ — без подписок, без слежки, данные не покидают устройство.',
+                'install_github': '⭐ GitHub-репозиторий', 'install_skills': 'Обзор скиллов →', 'install_earn': 'Заработок токенов →', 'install_or': 'или установка из исходников:',
+                'step1_h': 'Установить Ollama', 'step2_h': 'Установить GSTD Bot', 'step3_h': 'Начать общение!',
                 'footer_copy': '© 2026 GSTD — Суверенные Децентрализованные Вычисления. Не аффилировано с корпорациями.',
                 'lang_switch': 'EN',
             }
@@ -1217,6 +1296,24 @@
         }
         fetchNodes();
         setInterval(fetchNodes, 30000);
+
+        // ─── Fetch GSTD price ────────────────────────────────────────
+        async function fetchPrice() {
+            try {
+                const r = await fetch('https://app.gstdtoken.com/api/v1/stats/public');
+                const d = await r.json();
+                const p = d.gstd_price_usd;
+                if (p && p > 0) {
+                    const formatted = '$' + p.toFixed(6);
+                    const el = document.getElementById('statPrice');
+                    if (el) el.textContent = formatted;
+                    const navEl = document.getElementById('navPrice');
+                    if (navEl) { navEl.textContent = formatted; navEl.style.display = 'inline-block'; }
+                }
+            } catch (e) { }
+        }
+        fetchPrice();
+        setInterval(fetchPrice, 15000);
     </script>
 
 </body>
