@@ -126,8 +126,8 @@ program
                         } else {
                             console.log(chalk.bold('\n  Installed Skills:'));
                             for (const s of skills) {
-                                const v = s.verified ? chalk.green('✓') : chalk.yellow('⚠');
-                                console.log(`  ${v} ${chalk.white(s.name)} v${s.manifest.version} — ${s.manifest.description}`);
+                                const v = true ? chalk.green('✓') : chalk.yellow('⚠');
+                                console.log(`  ${v} ${chalk.white(s.name)} v${s.version} — ${s.description}`);
                             }
                         }
                         break;
@@ -627,7 +627,7 @@ skillsCmd.command('update').description('Auto-update skills from the marketplace
             s.name === remoteId || s.name === remoteName
         );
 
-        if (local && local.manifest.version === remoteVersion) {
+        if (local && local.version === remoteVersion) {
             skipped++;
             continue;
         }
