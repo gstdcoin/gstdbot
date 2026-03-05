@@ -305,9 +305,64 @@ export interface SmartMixResult {
     costGstd: number;
 }
 
-export const SMARTMIX_TIERS: Record<string, { name: string; nameRU: string; cost: number; emoji: string; expertCount: number }> = {
-    free: { name: 'Single Expert', nameRU: 'Один эксперт', cost: 0, emoji: '🆓', expertCount: 1 },
-    standard: { name: 'Council of 3', nameRU: 'Совет из 3', cost: 0.05, emoji: '🔬', expertCount: 3 },
-    pro: { name: 'Panel of 5', nameRU: 'Панель из 5', cost: 0.15, emoji: '🔥', expertCount: 5 },
-    ultra: { name: 'Swarm of 7', nameRU: 'Рой из 7', cost: 0.50, emoji: '🧠', expertCount: 7 },
+// ─── Dynamic Pricing ─────────────────────────────────────────────
+// Fixed USD cost per query — GSTD amount adjusts with market price.
+// End user always pays the same USD regardless of GSTD fluctuations.
+export const SMARTMIX_TIERS: Record<string, {
+    name: string; nameRU: string;
+    cost: number;       // current GSTD cost (updated dynamically)
+    costUsd: number;    // fixed USD cost (never changes)
+    emoji: string; expertCount: number;
+}> = {
+    free: { name: 'Single Expert', nameRU: 'Один эксперт', cost: 0, costUsd: 0, emoji: '🆓', expertCount: 1 },
+    standard: { name: 'Council of 3', nameRU: 'Совет из 3', cost: 3.4, costUsd: 0.001, emoji: '🔬', expertCount: 3 },
+    pro: { name: 'Panel of 5', nameRU: 'Панель из 5', cost: 10.2, costUsd: 0.003, emoji: '🔥', expertCount: 5 },
+    ultra: { name: 'Swarm of 7', nameRU: 'Рой из 7', cost: 17.0, costUsd: 0.005, emoji: '🧠', expertCount: 7 },
 };
+
+// Cached GSTD price (refreshed every 60s)
+let _cachedGstdPrice = 0.0002946482;
+let _lastPriceFetch = 0;
+
+export async function getGstdPrice(): Promise<number> {
+    if (Date.now() - _lastPriceFetch < 60_000 && _cachedGstdPrice > 0) {
+        return _cachedGstdPrice;
+    }
+    try {
+        const resp = await fetch('https://app.gstdtoken.com/api/v1/market/price');
+        if (resp.ok) {
+            const data: any = await resp.json();
+            _cachedGstdPrice = data.gstd_price_usd || _cachedGstdPrice;
+            _lastPriceFetch = Date.now();
+        }
+    } catch { }
+    return _cachedGstdPrice;
+}
+
+/** Recalculate GSTD costs based on current price. Call periodically. */
+export async function refreshDynamicPricing(): Promise<void> {
+    const price = await getGstdPrice();
+    if (price <= 0) return;
+    for (const key of Object.keys(SMARTMIX_TIERS)) {
+        const tier = SMARTMIX_TIERS[key];
+        if (tier.costUsd > 0) {
+            tier.cost = parseFloat((tier.costUsd / price).toFixed(1));
+        }
+    }
+    console.log(`[Pricing] Updated: 1 GSTD = $${price.toFixed(8)} | Council=${SMARTMIX_TIERS.standard.cost} | Panel=${SMARTMIX_TIERS.pro.cost} | Swarm=${SMARTMIX_TIERS.ultra.cost}`);
+}
+
+/** Get cost display string with both GSTD and USD */
+export function formatCost(tier: SmartMixTier): { gstd: string; usd: string } {
+    const t = SMARTMIX_TIERS[tier] || SMARTMIX_TIERS.free;
+    if (t.costUsd === 0) return { gstd: 'Free', usd: '$0' };
+    return {
+        gstd: `${t.cost.toFixed(1)} GSTD`,
+        usd: `$${t.costUsd.toFixed(4)}`,
+    };
+}
+
+// Refresh pricing on module load & every 60s
+refreshDynamicPricing();
+setInterval(refreshDynamicPricing, 60_000);
+

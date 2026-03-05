@@ -4,7 +4,7 @@
  */
 
 import { Bot, Context, session } from 'grammy';
-import { NeuralRouter, type SmartMixTier, SMARTMIX_TIERS } from '../gateway/router.js';
+import { NeuralRouter, type SmartMixTier, SMARTMIX_TIERS, formatCost, getGstdPrice } from '../gateway/router.js';
 import { CommunityGuardian } from './guardian.js';
 
 export interface TelegramConfig {
@@ -163,21 +163,22 @@ export class TelegramChannel {
                 return this.handleTopUp(ctx, lang);
             }
 
+            const s = SMARTMIX_TIERS;
             const msg = lang === 'ru'
                 ? `🐝 <b>GSTD — Коллективный Интеллект</b>\n\n` +
                 `🆓 <b>Бесплатно:</b> 1 эксперт — просто пиши и ИИ ответит мгновенно.\n\n` +
-                `🧠 <b>Платные уровни (GSTD):</b>\n` +
-                `🔬 Совет из 3 (0.05 GSTD) — 3 эксперта + консенсус\n` +
-                `🔥 Панель из 5 (0.15 GSTD) — глубокий анализ\n` +
-                `🧠 Рой из 7 (0.50 GSTD) — полная верификация\n\n` +
-                `💡 <i>Нажми 🔬 SmartMix чтобы выбрать уровень.</i>`
+                `🧠 <b>Платные уровни:</b>\n` +
+                `🔬 Совет из 3 (${s.standard.cost.toFixed(1)} GSTD ≈ $${s.standard.costUsd}) — 3 эксперта + консенсус\n` +
+                `🔥 Панель из 5 (${s.pro.cost.toFixed(1)} GSTD ≈ $${s.pro.costUsd}) — глубокий анализ\n` +
+                `🧠 Рой из 7 (${s.ultra.cost.toFixed(1)} GSTD ≈ $${s.ultra.costUsd}) — полная верификация\n\n` +
+                `💡 <i>Нажми 🧠 Интеллект чтобы выбрать уровень.</i>`
                 : `🐝 <b>GSTD — Collective Intelligence</b>\n\n` +
                 `🆓 <b>Free:</b> 1 expert — just type and AI responds instantly.\n\n` +
-                `🧠 <b>Paid tiers (GSTD):</b>\n` +
-                `🔬 Council of 3 (0.05 GSTD) — 3 experts + consensus\n` +
-                `🔥 Panel of 5 (0.15 GSTD) — deep analysis\n` +
-                `🧠 Swarm of 7 (0.50 GSTD) — full verification\n\n` +
-                `💡 <i>Tap 🔬 SmartMix to choose your level.</i>`;
+                `🧠 <b>Paid tiers:</b>\n` +
+                `🔬 Council of 3 (${s.standard.cost.toFixed(1)} GSTD ≈ $${s.standard.costUsd}) — 3 experts + consensus\n` +
+                `🔥 Panel of 5 (${s.pro.cost.toFixed(1)} GSTD ≈ $${s.pro.costUsd}) — deep analysis\n` +
+                `🧠 Swarm of 7 (${s.ultra.cost.toFixed(1)} GSTD ≈ $${s.ultra.costUsd}) — full verification\n\n` +
+                `💡 <i>Tap 🧠 Intelligence to choose your level.</i>`;
 
             await ctx.reply(msg, {
                 parse_mode: 'HTML',
@@ -481,7 +482,8 @@ export class TelegramChannel {
                 } catch { }
                 const gstdPerStar = gstdPrice > 0 ? STAR_USD / gstdPrice : 10;
                 const gstdAmount = Math.floor(starsAmount * gstdPerStar);
-                const proReqs = Math.floor(gstdAmount / 0.1);
+                const costPerReq = SMARTMIX_TIERS.standard.cost || 3.4;
+                const proReqs = Math.floor(gstdAmount / costPerReq);
                 const usd = (starsAmount * STAR_USD).toFixed(2);
 
                 const title = lang === 'ru'
@@ -535,31 +537,32 @@ export class TelegramChannel {
         const currentTier = ((ctx.session as any).mixTier as SmartMixTier) || 'free';
         const currentInfo = SMARTMIX_TIERS[currentTier];
 
+        const sm = SMARTMIX_TIERS;
         const msg = lang === 'ru'
             ? `🧠 <b>Коллективный Интеллект</b>\n\n` +
             `Выберите уровень:\n\n` +
             `🆓 <b>Один эксперт</b> — 1 модель, бесплатно\n` +
-            `🔬 <b>Совет из 3</b> — 0.05 GSTD — 3 эксперта + консенсус\n` +
-            `🔥 <b>Панель из 5</b> — 0.15 GSTD — 5 экспертов + синтез\n` +
-            `🧠 <b>Рой из 7</b> — 0.50 GSTD — 7 экспертов + полная верификация\n\n` +
+            `🔬 <b>Совет из 3</b> — ${sm.standard.cost.toFixed(1)} GSTD ($${sm.standard.costUsd}) — 3 эксперта + консенсус\n` +
+            `🔥 <b>Панель из 5</b> — ${sm.pro.cost.toFixed(1)} GSTD ($${sm.pro.costUsd}) — 5 экспертов + синтез\n` +
+            `🧠 <b>Рой из 7</b> — ${sm.ultra.cost.toFixed(1)} GSTD ($${sm.ultra.costUsd}) — 7 экспертов + полная верификация\n\n` +
             `Текущий: ${currentInfo.emoji} <b>${currentInfo.nameRU}</b>`
             : `🧠 <b>Collective Intelligence</b>\n\n` +
             `Choose your level:\n\n` +
             `🆓 <b>Single Expert</b> — 1 model, free\n` +
-            `🔬 <b>Council of 3</b> — 0.05 GSTD — 3 experts + consensus\n` +
-            `🔥 <b>Panel of 5</b> — 0.15 GSTD — 5 experts + synthesis\n` +
-            `🧠 <b>Swarm of 7</b> — 0.50 GSTD — 7 experts + full verification\n\n` +
+            `🔬 <b>Council of 3</b> — ${sm.standard.cost.toFixed(1)} GSTD ($${sm.standard.costUsd}) — 3 experts + consensus\n` +
+            `🔥 <b>Panel of 5</b> — ${sm.pro.cost.toFixed(1)} GSTD ($${sm.pro.costUsd}) — 5 experts + synthesis\n` +
+            `🧠 <b>Swarm of 7</b> — ${sm.ultra.cost.toFixed(1)} GSTD ($${sm.ultra.costUsd}) — 7 experts + full verification\n\n` +
             `Current: ${currentInfo.emoji} <b>${currentInfo.name}</b>`;
 
         const keyboard = {
             inline_keyboard: [
                 [
                     { text: `🆓 Free${currentTier === 'free' ? ' ✓' : ''}`, callback_data: 'smartmix_free' },
-                    { text: `🔬 Council${currentTier === 'standard' ? ' ✓' : ''} (0.05)`, callback_data: 'smartmix_standard' },
+                    { text: `🔬 Council${currentTier === 'standard' ? ' ✓' : ''} ($${sm.standard.costUsd})`, callback_data: 'smartmix_standard' },
                 ],
                 [
-                    { text: `🔥 Panel${currentTier === 'pro' ? ' ✓' : ''} (0.15)`, callback_data: 'smartmix_pro' },
-                    { text: `🧠 Swarm${currentTier === 'ultra' ? ' ✓' : ''} (0.50)`, callback_data: 'smartmix_ultra' },
+                    { text: `🔥 Panel${currentTier === 'pro' ? ' ✓' : ''} ($${sm.pro.costUsd})`, callback_data: 'smartmix_pro' },
+                    { text: `🧠 Swarm${currentTier === 'ultra' ? ' ✓' : ''} ($${sm.ultra.costUsd})`, callback_data: 'smartmix_ultra' },
                 ],
             ],
         };
@@ -651,7 +654,8 @@ export class TelegramChannel {
         try {
             const data = await this.apiCall(`/api/v1/telegram/bot/balance?telegram_id=${ctx.from.id}`);
 
-            const proReqs = Math.floor((data.balance_gstd || 0) / 0.1);
+            const costPerPro = SMARTMIX_TIERS.standard.cost;
+            const proReqs = costPerPro > 0 ? Math.floor((data.balance_gstd || 0) / costPerPro) : 999;
             const pending = data.pending_gstd || 0;
 
             let msg: string;
@@ -660,13 +664,13 @@ export class TelegramChannel {
                 if (pending > 0) {
                     msg += `\n\n⏳ <b>Награда: ${pending.toFixed(4)} GSTD</b>\n   └ После комиссии: <b>${(pending * 0.85).toFixed(4)} GSTD</b>\n   └ 10% → Фонд развития, 5% → Sovereign AI Pool`;
                 }
-                msg += '\n\n<i>🆓 Бесплатная модель всегда доступна\n⚡ Pro = 0.1 GSTD/запрос ($0.005)</i>';
+                msg += `\n\n<i>🆓 Бесплатная модель всегда доступна\n⚡ Pro = ${costPerPro.toFixed(1)} GSTD/запрос ($${SMARTMIX_TIERS.standard.costUsd})</i>`;
             } else {
                 msg = `💎 <b>My Balance</b>\n\n💰 <b>${(data.balance_gstd || 0).toFixed(4)} GSTD</b>\n⚡ Pro requests: <b>${proReqs}</b>`;
                 if (pending > 0) {
                     msg += `\n\n⏳ <b>Mining reward: ${pending.toFixed(4)} GSTD</b>\n   └ After commission: <b>${(pending * 0.85).toFixed(4)} GSTD</b>\n   └ 10% → Development Fund, 5% → Sovereign AI Pool`;
                 }
-                msg += '\n\n<i>🆓 Free model always available\n⚡ Pro = 0.1 GSTD/request ($0.005)</i>';
+                msg += `\n\n<i>🆓 Free model always available\n⚡ Pro = ${costPerPro.toFixed(1)} GSTD/request ($${SMARTMIX_TIERS.standard.costUsd})</i>`;
             }
 
             const inlineKeyboard: any[][] = [];
@@ -725,7 +729,7 @@ export class TelegramChannel {
 
         const tierLines = tiers.map(t => {
             const gstd = Math.floor(t.stars * gstdPerStar);
-            const proReqs = Math.floor(gstd / 0.1);
+            const proReqs = Math.floor(gstd / (SMARTMIX_TIERS.standard.cost || 3.4));
             const usd = (t.stars * STAR_USD).toFixed(2);
             return lang === 'ru'
                 ? `${t.stars}⭐ = <b>${gstd} GSTD</b> = ${proReqs} Pro ($${usd})`
