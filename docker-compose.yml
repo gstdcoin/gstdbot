@@ -1,49 +1,108 @@
-version: '3.8'
-
-# GSTD Node — Full Stack Docker Setup
-# cp .env.example .env && docker compose up -d
+# ═══════════════════════════════════════════════════════════════
+# GSTD Node OS — Docker Compose Stack
+#
+# Full node deployment: daemon + Redis + ChromaDB
+# Usage: docker compose up -d
+# ═══════════════════════════════════════════════════════════════
 
 services:
+  # ─── GSTD Node Daemon (main process) ───────────────────────
   gstd-node:
     build: .
     container_name: gstd-node
     restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - NODE_NAME=${NODE_NAME:-my-gstd-node}
-      - WALLET_SEED=${WALLET_SEED:-}
-      - SWARM_ENABLED=${SWARM_ENABLED:-true}
-      - GPU_MODE=${GPU_MODE:-auto}
-      - MAX_CPU=${MAX_CPU:-80}
-      - MAX_RAM=${MAX_RAM:-70}
-      - DASHBOARD_PORT=8080
-      - GSTD_SWARM_URL=${GSTD_SWARM_URL:-https://app.gstdtoken.com/api/v1}
-      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
     ports:
-      - "${DASHBOARD_PORT:-8080}:8080"    # Dashboard + API
+      - "8080:8080" # Dashboard UI
+      - "18789:18789" # Omega Gateway (AI API)
+    environment:
+      - NODE_NAME=${NODE_NAME:-gstd-node}
+      - GSTD_NODE_ID=${GSTD_NODE_ID:-}
+      - GSTD_DASHBOARD_PORT=8080
+      - GSTD_API_PORT=18789
+      - GSTD_SOVEREIGNTY_MODE=${GSTD_SOVEREIGNTY_MODE:-full}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_ADMIN_IDS=${TELEGRAM_ADMIN_IDS:-}
+      - SWARM_ENABLED=${SWARM_ENABLED:-true}
+      - GSTD_MAX_CPU=${GSTD_MAX_CPU:-80}
+      - GSTD_MAX_RAM=${GSTD_MAX_RAM:-70}
+      - REDIS_URL=redis://redis:6379
+      - CHROMA_URL=http://chromadb:8000
+      - GSTD_MEMORY=true
+      - GSTD_APPS=true
     volumes:
-      - gstd-data:/app/data
-      - gstd-config:/root/.config/gstdbot
+      - node-config:/root/.config/gstdbot
+      - /var/run/docker.sock:/var/run/docker.sock # For app management
     depends_on:
-      - ollama
+      redis:
+        condition: service_healthy
+    networks:
+      - gstd
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: gstd-ollama
+  # ─── Redis (Collective Memory L2) ──────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: gstd-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save 60 1000
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - gstd
+
+  # ─── ChromaDB (Vector Memory — Semantic Search) ────────────
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: gstd-chromadb
     restart: unless-stopped
     ports:
-      - "11434:11434"
+      - "8000:8000"
     volumes:
-      - ollama-data:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+      - chroma-data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    networks:
+      - gstd
+
+  # ─── Ollama (Local AI Models — optional) ───────────────────
+  # Uncomment for hybrid/sovereign mode
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: gstd-ollama
+  #   restart: unless-stopped
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama-data:/root/.ollama
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]
+  #   networks:
+  #     - gstd
 
 volumes:
-  gstd-data:
-  gstd-config:
-  ollama-data:
+  node-config:
+    driver: local
+  redis-data:
+    driver: local
+  chroma-data:
+    driver: local
+  # ollama-data:
+  #   driver: local
+
+networks:
+  gstd:
+    driver: bridge
+    name: gstd-network

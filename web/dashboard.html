@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GSTD Node — Control Panel</title>
+    <title>GSTD Node OS — Control Panel</title>
     <meta name="description" content="Local dashboard for managing your GSTD Node. Monitor hardware, manage wallet, control swarm.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
@@ -277,7 +277,7 @@
 <!-- Header -->
 <div class="header">
     <div class="logo">
-        🐝 GSTD Node
+        🐝 GSTD Node OS
         <span class="tag tag-online" id="h-tag">CONNECTING</span>
     </div>
     <div class="sep"></div>
@@ -352,6 +352,48 @@
         </div>
     </div>
 
+    <!-- Row 2b: Earnings + Memory -->
+    <div class="grid-2">
+        <!-- Earnings -->
+        <div class="card">
+            <div class="card-label"><span class="ic" style="background:rgba(34,197,94,0.1);">📈</span> Earnings</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px;">
+                <div style="text-align:center;">
+                    <div style="font-size:18px;font-weight:900;color:var(--emerald);" id="e-today">0</div>
+                    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Today</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:18px;font-weight:900;color:var(--cyan);" id="e-week">0</div>
+                    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Week</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:18px;font-weight:900;color:var(--accent);" id="e-total">0</div>
+                    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Total</div>
+                </div>
+            </div>
+            <div class="card-sub" style="margin-top:8px;">GSTD tokens earned by this node</div>
+        </div>
+        <!-- Memory -->
+        <div class="card">
+            <div class="card-label"><span class="ic" style="background:rgba(139,92,246,0.1);">🧠</span> Collective Memory</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px;">
+                <div style="text-align:center;">
+                    <div style="font-size:18px;font-weight:900;color:var(--accent);" id="m-entries">0</div>
+                    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Entries</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:18px;font-weight:900;color:var(--cyan);" id="m-recalls">0</div>
+                    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Recalls</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:18px;font-weight:900;color:var(--emerald);" id="m-hit">0%</div>
+                    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Hit Rate</div>
+                </div>
+            </div>
+            <div class="card-sub" style="margin-top:8px;" id="m-status">L1: Memory | L2: — | L3: —</div>
+        </div>
+    </div>
+
     <!-- Row 3: Node Info + Controls -->
     <div class="grid-1-2">
         <!-- Controls -->
@@ -408,7 +450,7 @@
 
     <!-- Footer -->
     <div style="text-align:center;padding:24px 0 8px;font-size:11px;color:rgba(255,255,255,0.15);">
-        GSTD Node v3.0 · <a href="https://gstdbot.gstdtoken.com" style="color:rgba(255,255,255,0.25);text-decoration:none;">gstdbot.gstdtoken.com</a> · <a href="https://github.com/gstdcoin/gstdbot" style="color:rgba(255,255,255,0.25);text-decoration:none;">GitHub</a>
+        GSTD Node OS v3.1 · <a href="https://gstdbot.gstdtoken.com" style="color:rgba(255,255,255,0.25);text-decoration:none;">gstdbot.gstdtoken.com</a> · <a href="https://github.com/gstdcoin/gstdbot" style="color:rgba(255,255,255,0.25);text-decoration:none;">GitHub</a>
     </div>
 </div>
 
@@ -598,11 +640,24 @@ function copyDiag() {
 }
 
 // Boot
-log('Dashboard v3.0 loaded.');
+async function refreshEarnings() {
+    try {
+        const r = await fetch(API + '/api/node/earnings');
+        if (!r.ok) return;
+        const d = await r.json();
+        document.getElementById('e-today').textContent = (d.today || 0).toFixed(2);
+        document.getElementById('e-week').textContent = (d.week || 0).toFixed(2);
+        document.getElementById('e-total').textContent = (d.total || 0).toFixed(2);
+    } catch {}
+}
+
+log('GSTD Node OS v3.1 dashboard loaded.');
 refresh();
 refreshTasks();
+refreshEarnings();
 setInterval(refresh, 2000);
 setInterval(refreshTasks, 10000);
+setInterval(refreshEarnings, 30000);
 </script>
 </body>
 </html>

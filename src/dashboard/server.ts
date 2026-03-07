@@ -8,7 +8,7 @@ import express from 'express';
 import { cpus, totalmem, freemem, hostname, platform, arch, loadavg, uptime as osUptime, networkInterfaces } from 'os';
 import { existsSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
-import { getWallet, getBalance } from '../wallet/wallet.js';
+import { getWallet, getBalance } from '../wallet/manager.js';
 
 export interface DashboardConfig {
     host: string;
