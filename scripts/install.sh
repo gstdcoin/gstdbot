@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
-# GSTD Node — Idempotent Installer v3.1
+# GSTD Node OS — Idempotent Installer v3.2
 # curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
 #
 # Features:
@@ -12,7 +12,7 @@
 # ═══════════════════════════════════════════════════════════════
 set -euo pipefail
 
-VERSION="3.1.0"
+VERSION="3.2.0"
 INSTALL_DIR="${GSTD_INSTALL_DIR:-$HOME/gstdbot}"
 CONFIG_DIR="$HOME/.config/gstdbot"
 STATE_FILE="$CONFIG_DIR/.install_state"
