@@ -1,13 +1,25 @@
 /**
  * GSTD Node OS — Main Orchestrator (gstdd)
- * 
- * Core daemon that manages all node services:
- * - Swarm Agent (P2P task processing)
- * - Collective Memory (distributed knowledge)
- * - Wallet & Earnings (GSTD tokens)
- * - AI Engine (Groq + Ollama)
- * - Dashboard (Web UI on :8080)
- * - App Manager (Docker-based apps)
+ *
+ * ═══════════════════════════════════════════════════════
+ * Your node is a fully self-contained AI platform:
+ * - No external websites needed — everything is built-in
+ * - Connect from any device, anywhere (LAN/Relay/Tor)
+ * - More nodes = stronger swarm + collective memory
+ * - Earn GSTD tokens for sharing resources
+ * - GSTD token = key to all platform functions
+ * ═══════════════════════════════════════════════════════
+ *
+ * Boot sequence:
+ *  1. AI Gateway (Groq + Ollama)
+ *  2. Blockchain Manager (GSTD wallet + staking)
+ *  3. Collective Memory (L1 Map + L2 Redis + L3 Platform)
+ *  4. Swarm Agent (P2P task processing + earnings)
+ *  5. Resource Sharing (sell compute/GPU for GSTD)
+ *  6. Federated Training (distributed model training)
+ *  7. Remote Access (token auth + relay + Tor)
+ *  8. Telegram Channel
+ *  9. Dashboard (all-in-one control panel on :8080)
  */
 
 import { OmegaGateway } from './gateway/server.js';
@@ -17,6 +29,10 @@ import { SwarmAgent } from './swarm/agent.js';
 import { CollectiveMemory } from './memory/collective.js';
 import { NodeWallet } from './wallet/manager.js';
 import { AppManager } from './apps/manager.js';
+import { BlockchainManager } from './blockchain/token.js';
+import { RemoteAccessManager } from './network/remote.js';
+import { ResourceSharing } from './network/resources.js';
+import { SwarmTrainer } from './training/federated.js';
 import { hostname, cpus, totalmem, platform, arch } from 'os';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -39,7 +55,7 @@ export interface NodeConfig {
 function loadConfig(): NodeConfig {
     const configPath = join(homedir(), '.config', 'gstdbot', 'config.json');
     const defaults: NodeConfig = {
-        version: '3.1.0',
+        version: '3.2.0',
         mode: 'cloud',
         nodeId: process.env.GSTD_NODE_ID || `node-${Date.now()}`,
         nodeName: process.env.NODE_NAME || `${hostname()}-node`,
@@ -72,7 +88,13 @@ function loadConfig(): NodeConfig {
     if (existsSync(configPath)) {
         try {
             const file = JSON.parse(readFileSync(configPath, 'utf-8'));
-            return { ...defaults, ...file, swarm: { ...defaults.swarm, ...file.swarm }, dashboard: { ...defaults.dashboard, ...file.dashboard }, memory: { ...defaults.memory, ...file.memory }, apps: { ...defaults.apps, ...file.apps } };
+            return {
+                ...defaults, ...file,
+                swarm: { ...defaults.swarm, ...file.swarm },
+                dashboard: { ...defaults.dashboard, ...file.dashboard },
+                memory: { ...defaults.memory, ...file.memory },
+                apps: { ...defaults.apps, ...file.apps },
+            };
         } catch { }
     }
     return defaults;
@@ -82,16 +104,18 @@ function loadConfig(): NodeConfig {
 async function main(): Promise<void> {
     const config = loadConfig();
     const startTime = Date.now();
+    const TOTAL_STEPS = 9;
 
     console.log('');
-    console.log('  🐝 ═══════════════════════════════════════════');
+    console.log('  🐝 ═══════════════════════════════════════════════════');
     console.log('  🐝  GSTD Node OS v' + config.version);
     console.log('  🐝  ' + config.nodeName + ' (' + config.mode + ' mode)');
-    console.log('  🐝 ═══════════════════════════════════════════');
+    console.log('  🐝  All-in-one: AI + Swarm + Memory + Wallet + Apps');
+    console.log('  🐝 ═══════════════════════════════════════════════════');
     console.log('');
 
     // ── 1. Start Gateway (API + AI Engine) ──────────────────────
-    console.log('  [1/6] Starting AI Gateway...');
+    console.log(`  [1/${TOTAL_STEPS}] Starting AI Gateway...`);
     const gateway = new OmegaGateway({
         apiPort: parseInt(process.env.GSTD_API_PORT || '8080'),
         swarmUrl: process.env.GSTD_SWARM_URL || process.env.OLLAMA_URL || 'http://localhost:11434',
@@ -100,23 +124,41 @@ async function main(): Promise<void> {
     });
     await gateway.start();
 
-    // ── 2. Start Wallet Manager ─────────────────────────────────
-    console.log('  [2/6] Initializing wallet...');
+    // ── 2. Blockchain Manager (GSTD Wallet + Staking) ───────────
+    console.log(`  [2/${TOTAL_STEPS}] Initializing blockchain...`);
+    const blockchain = new BlockchainManager();
+    await blockchain.init();
+
+    // ── 3. Wallet Manager (Earnings Tracker) ────────────────────
+    console.log(`  [3/${TOTAL_STEPS}] Starting wallet manager...`);
     const wallet = new NodeWallet(config);
     await wallet.init();
 
-    // ── 3. Start Collective Memory ──────────────────────────────
-    console.log('  [3/6] Connecting collective memory...');
+    // ── 4. Collective Memory ────────────────────────────────────
+    console.log(`  [4/${TOTAL_STEPS}] Connecting collective memory...`);
     const memory = new CollectiveMemory(config);
     await memory.init();
 
-    // ── 4. Start Swarm Agent ────────────────────────────────────
-    console.log('  [4/6] Joining swarm network...');
+    // ── 5. Swarm Agent (P2P + Task Processing) ──────────────────
+    console.log(`  [5/${TOTAL_STEPS}] Joining swarm network...`);
     const swarm = new SwarmAgent(config, wallet, memory);
     await swarm.start();
 
-    // ── 5. Start Telegram Channel ───────────────────────────────
-    console.log('  [5/6] Setting up channels...');
+    // ── 6. Resource Sharing ─────────────────────────────────────
+    console.log(`  [6/${TOTAL_STEPS}] Enabling resource sharing...`);
+    const resources = new ResourceSharing(config);
+    await resources.init();
+
+    // ── 7. Federated Training ───────────────────────────────────
+    console.log(`  [7/${TOTAL_STEPS}] Initializing training engine...`);
+    const trainer = new SwarmTrainer(config);
+    await trainer.init();
+
+    // ── 8. Remote Access + Channels ─────────────────────────────
+    console.log(`  [8/${TOTAL_STEPS}] Setting up remote access...`);
+    const remote = new RemoteAccessManager(config.nodeId);
+    await remote.init();
+
     const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
     if (telegramToken) {
         const telegram = new TelegramChannel({
@@ -128,33 +170,56 @@ async function main(): Promise<void> {
         });
         await telegram.start();
     } else {
-        console.log('    No TELEGRAM_BOT_TOKEN — Telegram disabled');
+        console.log('    Telegram: disabled (no token)');
     }
 
-    // ── 6. Start Dashboard ──────────────────────────────────────
+    // ── 9. Dashboard (All-in-One UI) ────────────────────────────
     if (config.dashboard.enabled) {
-        console.log('  [6/6] Starting dashboard...');
+        console.log(`  [9/${TOTAL_STEPS}] Starting dashboard...`);
         await startDashboard(config.dashboard.port, config.dashboard.host);
     }
 
     // ── Boot complete ───────────────────────────────────────────
     const bootTime = ((Date.now() - startTime) / 1000).toFixed(1);
+    const accessInfo = remote.getAccessInfo();
+
     console.log('');
-    console.log('  ✅ GSTD Node OS ready in ' + bootTime + 's');
-    console.log('  📊 Dashboard: http://localhost:' + config.dashboard.port);
-    console.log('  🌐 Swarm: ' + (swarm.isConnected() ? 'connected' : 'standalone'));
-    console.log('  💰 Wallet: ' + (wallet.getAddress() || 'not configured'));
-    console.log('  🧠 Memory: ' + (memory.isConnected() ? 'online' : 'local-only'));
+    console.log('  ╔═══════════════════════════════════════════════════╗');
+    console.log('  ║          🐝 GSTD Node OS — Ready!                ║');
+    console.log('  ╚═══════════════════════════════════════════════════╝');
+    console.log('');
+    console.log('  ✅ Boot time: ' + bootTime + 's');
+    console.log('');
+    console.log('  📊 Dashboard:   http://localhost:' + config.dashboard.port);
+    if (accessInfo.methods.relay?.status === 'connected') {
+        console.log('  🌐 Remote:      ' + accessInfo.methods.relay.url);
+    }
+    if (accessInfo.methods.tor?.onion) {
+        console.log('  🧅 Tor:         http://' + accessInfo.methods.tor.onion);
+    }
+    console.log('  🐝 Swarm:       ' + (swarm.isConnected() ? 'connected' : 'standalone'));
+    console.log('  💰 Wallet:      ' + (wallet.getAddress() || 'not configured'));
+    console.log('  🧠 Memory:      ' + (memory.isConnected() ? 'L1+L2+L3' : 'L1 (local)'));
+    console.log('  📦 Resources:   sharing enabled');
+    console.log('  🎓 Training:    ' + (trainer.getStats().activeJobs > 0 ? 'active' : 'ready'));
+    console.log('');
+    console.log('  ⚡ No external websites needed — everything is in your node!');
+    console.log('  ⚡ More nodes = stronger swarm + collective memory');
+    console.log('  ⚡ GSTD token = key to all platform functions');
     console.log('');
 
-    logActivity('GSTD Node OS booted in ' + bootTime + 's', 'success');
+    logActivity('GSTD Node OS v' + config.version + ' booted in ' + bootTime + 's', 'success');
 
     // ── Graceful shutdown ───────────────────────────────────────
     const shutdown = async () => {
         console.log('\n  🛑 Shutting down GSTD Node OS...');
         logActivity('Node shutdown initiated', 'warn');
+        await trainer.stop();
+        await resources.stop();
+        await remote.stop();
         await swarm.stop();
         await memory.close();
+        await blockchain.close();
         await gateway.stop();
         console.log('  ✅ Clean shutdown complete.');
         process.exit(0);
