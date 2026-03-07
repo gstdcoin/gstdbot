@@ -32,17 +32,31 @@
         padding: 0;
       }
       :root {
+        /* Gravity UI Design Tokens — unified with app.gstdtoken.com */
         --bg: #030014;
         --card: rgba(255, 255, 255, 0.025);
         --border: rgba(255, 255, 255, 0.06);
-        --text: #e2e2e8;
-        --muted: #6b6b80;
+        --text: rgba(255,255,255,0.95);
+        --muted: rgba(255,255,255,0.45);
         --accent: #8b5cf6;
         --cyan: #06b6d4;
-        --emerald: #22c55e;
-        --amber: #f59e0b;
-        --rose: #f43f5e;
+        --emerald: #34d399;
+        --amber: #fbbf24;
+        --rose: #f87171;
+        --brand: #FFD700;
         --glow: rgba(139, 92, 246, 0.12);
+        /* Gravity spacing */
+        --g-s-1:4px; --g-s-2:8px; --g-s-3:12px; --g-s-4:16px; --g-s-5:20px; --g-s-6:24px; --g-s-8:32px;
+        /* Gravity radius */
+        --g-r-s:6px; --g-r-m:8px; --g-r-l:12px; --g-r-xl:16px; --g-r-2xl:20px;
+        /* Gravity transitions */
+        --g-fast:150ms cubic-bezier(0.4,0,0.2,1);
+        --g-mid:200ms cubic-bezier(0.4,0,0.2,1);
+        --g-slow:300ms cubic-bezier(0.4,0,0.2,1);
+        /* Gravity shadows */
+        --g-shadow-s:0 1px 4px rgba(0,0,0,0.25);
+        --g-shadow-m:0 4px 16px rgba(0,0,0,0.30), 0 2px 6px rgba(0,0,0,0.20);
+        --g-shadow-l:0 8px 32px rgba(0,0,0,0.35);
       }
       html {
         scroll-behavior: smooth;
@@ -75,21 +89,26 @@
         color: inherit;
       }
 
-      /* Nav */
+      /* Nav — Gravity UI */
       nav {
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
         z-index: 100;
-        padding: 14px 24px;
-        background: rgba(3, 0, 20, 0.85);
-        backdrop-filter: blur(24px);
+        height: 56px;
+        display: flex;
+        align-items: center;
+        padding: 0 var(--g-s-6);
+        background: rgba(3, 0, 20, 0.88);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
         border-bottom: 1px solid var(--border);
       }
       nav .inner {
         max-width: 1200px;
         margin: 0 auto;
+        width: 100%;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -99,10 +118,10 @@
         font-size: 18px;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: var(--g-s-2);
       }
       nav .logo span {
-        background: linear-gradient(135deg, var(--accent), var(--cyan));
+        background: linear-gradient(135deg, var(--brand), #FFA500);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
       }
@@ -110,8 +129,8 @@
         font-size: 9px;
         font-weight: 700;
         padding: 2px 7px;
-        border-radius: 4px;
-        background: var(--emerald);
+        border-radius: var(--g-r-s);
+        background: var(--brand);
         color: #030014;
         -webkit-text-fill-color: #030014;
         letter-spacing: 0.8px;
@@ -120,46 +139,53 @@
       nav .links {
         display: flex;
         align-items: center;
-        gap: 20px;
+        gap: var(--g-s-4);
       }
       nav .links a {
         color: var(--muted);
         font-size: 13px;
         font-weight: 500;
-        transition: color 0.2s;
+        transition: color var(--g-fast);
+        padding: 6px var(--g-s-3);
+        border-radius: var(--g-r-m);
       }
       nav .links a:hover {
         color: white;
+        background: rgba(255,255,255,0.04);
       }
       .btn {
         display: inline-flex;
         align-items: center;
-        gap: 7px;
-        padding: 9px 20px;
-        border-radius: 10px;
+        gap: var(--g-s-2);
+        padding: 9px var(--g-s-5);
+        border-radius: var(--g-r-l);
         font-size: 13px;
-        font-weight: 700;
+        font-weight: 600;
+        font-family: 'Inter', system-ui, sans-serif;
         border: none;
         cursor: pointer;
-        transition: all 0.25s;
+        transition: all var(--g-fast);
+        white-space: nowrap;
       }
+      .btn:active { transform: scale(0.97); }
+      .btn:focus-visible { box-shadow: 0 0 0 2px #030014, 0 0 0 4px var(--brand); outline: none; }
       .btn-primary {
-        background: var(--accent);
-        color: white;
+        background: linear-gradient(135deg, var(--brand), #E6C200);
+        color: #030014;
       }
       .btn-primary:hover {
-        background: #7c3aed;
+        background: linear-gradient(135deg, #FFE347, var(--brand));
         transform: translateY(-1px);
-        box-shadow: 0 8px 30px rgba(139, 92, 246, 0.3);
+        box-shadow: 0 4px 16px rgba(255,215,0,0.25);
       }
       .btn-emerald {
         background: var(--emerald);
         color: #030014;
       }
       .btn-emerald:hover {
-        background: #16a34a;
+        background: #6ee7b7;
         transform: translateY(-1px);
-        box-shadow: 0 8px 30px rgba(34, 197, 94, 0.3);
+        box-shadow: 0 4px 16px rgba(52,211,153,0.25);
       }
       .btn-ghost {
         background: transparent;
@@ -168,12 +194,13 @@
       }
       .btn-ghost:hover {
         color: white;
-        border-color: rgba(255, 255, 255, 0.15);
+        background: rgba(255,255,255,0.04);
+        border-color: rgba(255, 255, 255, 0.14);
       }
       .btn-lg {
         padding: 14px 32px;
         font-size: 15px;
-        border-radius: 14px;
+        border-radius: var(--g-r-xl);
       }
 
       /* Hero */
@@ -377,38 +404,38 @@
         line-height: 1.7;
       }
 
-      /* Cards */
+      /* Cards — Gravity UI */
       .card {
-        padding: 28px;
-        border-radius: 18px;
+        padding: var(--g-s-6);
+        border-radius: var(--g-r-xl);
         border: 1px solid var(--border);
         background: var(--card);
-        transition: all 0.3s;
+        transition: all var(--g-mid);
       }
       .card:hover {
-        border-color: rgba(139, 92, 246, 0.2);
-        transform: translateY(-3px);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        border-color: rgba(255, 215, 0, 0.15);
+        transform: translateY(-2px);
+        box-shadow: var(--g-shadow-m);
       }
       .card .ic {
         width: 44px;
         height: 44px;
-        border-radius: 12px;
+        border-radius: var(--g-r-l);
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 22px;
-        margin-bottom: 16px;
+        margin-bottom: var(--g-s-4);
       }
       .card h3 {
         font-size: 16px;
-        font-weight: 800;
-        margin-bottom: 6px;
+        font-weight: 700;
+        margin-bottom: var(--g-s-2);
       }
       .card p {
         font-size: 13px;
         color: var(--muted);
-        line-height: 1.6;
+        line-height: 1.7;
       }
 
       /* Grid */
@@ -652,25 +679,29 @@
         pointer-events: none;
       }
 
-      /* Footer */
+      /* Footer — Gravity UI */
       footer {
-        padding: 40px 0;
+        padding: var(--g-s-8) 0;
         border-top: 1px solid var(--border);
         text-align: center;
       }
       footer .links {
         display: flex;
-        gap: 20px;
+        gap: var(--g-s-5);
         justify-content: center;
-        margin-bottom: 16px;
+        margin-bottom: var(--g-s-4);
+        flex-wrap: wrap;
       }
       footer .links a {
         color: var(--muted);
         font-size: 13px;
-        transition: color 0.2s;
+        transition: color var(--g-fast);
+        padding: var(--g-s-1) var(--g-s-2);
+        border-radius: var(--g-r-s);
       }
       footer .links a:hover {
-        color: white;
+        color: var(--brand);
+        background: rgba(255,215,0,0.05);
       }
       footer .copy {
         font-size: 12px;
@@ -744,7 +775,7 @@
         animation-delay: 0.4s;
         opacity: 0;
       }
-      .nav-dashboard-link { color: var(--accent) !important; font-weight: 700 !important; }
+      .nav-dashboard-link { color: var(--brand) !important; font-weight: 700 !important; }
 
     </style>
   </head>
@@ -754,6 +785,7 @@
     <nav>
       <div class="inner">
         <div class="logo">
+          <img src="https://app.gstdtoken.com/logo.png" alt="GSTD" style="width:32px;height:32px;border-radius:50%">
           <span>GSTD Node OS</span>
           <div class="tag">v3.2</div>
         </div>
