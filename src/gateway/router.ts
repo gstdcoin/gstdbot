@@ -27,6 +27,11 @@ export interface ChatMessage {
     content: string;
 }
 
+// Strip <think> tags from reasoning models (Qwen3, etc.)
+function stripThinkTags(text: string): string {
+    return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+}
+
 // Verified available Groq models
 const GROQ_MODELS = [
     'llama-3.3-70b-versatile',
@@ -89,7 +94,27 @@ export class NeuralRouter {
             };
         }
 
-        // Map model names
+        // Check if user requested a specific Groq model
+        const isSpecificGroqModel = GROQ_MODELS.includes(requestedModel);
+
+        if (isSpecificGroqModel && this.groqKey) {
+            // ─── Direct Groq: user picked a specific model ────────────
+            try {
+                console.log(`[Router] Direct Groq request: ${requestedModel}`);
+                const result = await this.callSingleGroq(requestedModel, messages, 2048);
+                this.cache.set(key, result.content, result.model);
+                return {
+                    content: result.content, model: result.model, tier: 'groq',
+                    latencyMs: Date.now() - start,
+                    usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+                };
+            } catch (err: any) {
+                console.warn(`[Router] Direct Groq ${requestedModel} failed:`, err?.message?.substring(0, 80));
+                // Fall through to standard routing
+            }
+        }
+
+        // Map model names for backend
         const gatewayModel = this.mapModel(requestedModel);
 
         // ─── L2: Go Backend (SmartRouter → Ollama → Phantom Nodes) ─
@@ -168,7 +193,8 @@ export class NeuralRouter {
                         throw new Error(`Groq ${resp.status}: ${errText.substring(0, 100)}`);
                     }
                     const data: any = await resp.json();
-                    const content = data.choices?.[0]?.message?.content || '';
+                    const rawContent = data.choices?.[0]?.message?.content || '';
+                    const content = stripThinkTags(rawContent);
                     if (!content) throw new Error('Empty Groq response');
                     console.log(`[Router] ✅ Groq: ${model} (${data.usage?.total_tokens || 0} tokens)`);
                     return {
@@ -284,7 +310,8 @@ export class NeuralRouter {
             });
             if (!resp.ok) throw new Error(`Groq ${resp.status}`);
             const data: any = await resp.json();
-            const content = data.choices?.[0]?.message?.content || '';
+            const rawContent = data.choices?.[0]?.message?.content || '';
+            const content = stripThinkTags(rawContent);
             if (!content) throw new Error('Empty');
             return { content, model };
         } finally {

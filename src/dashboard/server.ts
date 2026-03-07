@@ -1,11 +1,13 @@
 /**
  * GSTD Node — Dashboard Server
- * Local web dashboard for monitoring node status, earnings, and system health
+ * Full local web dashboard for node operators to monitor and manage their node.
+ * Runs on the operator's own hardware alongside the gateway.
  */
 
 import express from 'express';
+import { cpus, totalmem, freemem, hostname, platform, arch, loadavg, uptime as osUptime, networkInterfaces } from 'os';
+import { existsSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
-import { cpus, totalmem, freemem, hostname, platform, arch } from 'os';
 import { getWallet, getBalance } from '../wallet/wallet.js';
 
 export interface DashboardConfig {
@@ -14,18 +16,129 @@ export interface DashboardConfig {
     enabled: boolean;
 }
 
+// ─── CPU Tracking ────────────────────────────────────────────────
+let prevCpuIdle = 0;
+let prevCpuTotal = 0;
+let currentCpuUsage = 0;
+
+function updateCpuUsage(): void {
+    const cpuInfo = cpus();
+    let idle = 0, total = 0;
+    cpuInfo.forEach(cpu => {
+        for (const type in cpu.times) {
+            total += (cpu.times as any)[type];
+        }
+        idle += cpu.times.idle;
+    });
+    if (prevCpuTotal > 0) {
+        const diffIdle = idle - prevCpuIdle;
+        const diffTotal = total - prevCpuTotal;
+        currentCpuUsage = diffTotal > 0 ? Math.round(100 - (diffIdle / diffTotal * 100)) : 0;
+    }
+    prevCpuIdle = idle;
+    prevCpuTotal = total;
+}
+// Sample every second for accurate readings
+setInterval(updateCpuUsage, 1000);
+updateCpuUsage();
+
+// ─── GPU Detection ───────────────────────────────────────────────
+interface GpuInfo {
+    detected: boolean;
+    model?: string;
+    memory?: string;
+    temperature?: string;
+    usage?: string;
+}
+
+function detectGpu(): GpuInfo {
+    try {
+        const { execSync } = require('child_process');
+        const output = execSync(
+            'nvidia-smi --query-gpu=name,memory.total,temperature.gpu,utilization.gpu --format=csv,noheader,nounits 2>/dev/null',
+            { encoding: 'utf-8', timeout: 3000 }
+        );
+        const parts = output.trim().split(',').map((s: string) => s.trim());
+        return {
+            detected: true,
+            model: parts[0] || 'Unknown',
+            memory: parts[1] ? parts[1] + ' MiB' : undefined,
+            temperature: parts[2] ? parts[2] + '°C' : undefined,
+            usage: parts[3] ? parts[3] + '%' : undefined,
+        };
+    } catch {
+        return { detected: false };
+    }
+}
+
+// ─── Disk Usage ──────────────────────────────────────────────────
+interface DiskInfo {
+    total: number;
+    used: number;
+    available: number;
+    usage: number;
+}
+
+function getDiskUsage(): DiskInfo {
+    try {
+        const { execSync } = require('child_process');
+        const output = execSync("df -B1 / | tail -1", { encoding: 'utf-8', timeout: 3000 });
+        const parts = output.trim().split(/\s+/);
+        const total = parseInt(parts[1]) || 0;
+        const used = parseInt(parts[2]) || 0;
+        const available = parseInt(parts[3]) || 0;
+        return { total, used, available, usage: total > 0 ? Math.round(used / total * 100) : 0 };
+    } catch {
+        return { total: 0, used: 0, available: 0, usage: 0 };
+    }
+}
+
+// ─── Network Info ────────────────────────────────────────────────
+function getLocalIP(): string {
+    const nets = networkInterfaces();
+    for (const name of Object.keys(nets)) {
+        for (const net of nets[name] || []) {
+            if (net.family === 'IPv4' && !net.internal) return net.address;
+        }
+    }
+    return '127.0.0.1';
+}
+
+// ─── Activity Log ────────────────────────────────────────────────
+const activityLog: { ts: string; msg: string; type: string }[] = [];
+const MAX_LOG = 200;
+
+export function logActivity(msg: string, type: string = 'info'): void {
+    activityLog.unshift({ ts: new Date().toISOString(), msg, type });
+    if (activityLog.length > MAX_LOG) activityLog.length = MAX_LOG;
+}
+
+// ─── Node process state ──────────────────────────────────────────
+let nodeStartedAt = Date.now();
+
+// ─── Main Server ─────────────────────────────────────────────────
 export async function startDashboard(port: number = 8080, host: string = '0.0.0.0'): Promise<void> {
     const app = express();
-
     app.use(express.json());
 
-    // ─── API Routes ──────────────────────────────────────────────
+    // CORS for any local tools
+    app.use((_req, res, next) => {
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Content-Type');
+        if (_req.method === 'OPTIONS') { res.sendStatus(204); return; }
+        next();
+    });
 
-    // Node status
+    // ─── API: Full Node Status ──────────────────────────────────
     app.get('/api/node/status', async (_req, res) => {
         const wallet = getWallet();
-        const balance = wallet ? await getBalance() : null;
+        let balance = null;
+        try { balance = wallet ? await getBalance() : null; } catch { }
         const cpuInfo = cpus();
+        const gpu = detectGpu();
+        const disk = getDiskUsage();
+        const load = loadavg();
 
         res.json({
             node: {
@@ -33,13 +146,21 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
                 platform: platform(),
                 arch: arch(),
                 uptime: process.uptime(),
-                version: '2.1.0',
+                os_uptime: osUptime(),
+                version: '3.0.0',
+                started_at: new Date(nodeStartedAt).toISOString(),
+                ip: getLocalIP(),
+                node_env: process.env.NODE_ENV || 'production',
+                pid: process.pid,
             },
             hardware: {
                 cpu: {
                     model: cpuInfo[0]?.model || 'Unknown',
                     cores: cpuInfo.length,
-                    usage: getCpuUsage(),
+                    usage: currentCpuUsage,
+                    load_1m: Math.round(load[0] * 100) / 100,
+                    load_5m: Math.round(load[1] * 100) / 100,
+                    load_15m: Math.round(load[2] * 100) / 100,
                 },
                 ram: {
                     total: totalmem(),
@@ -47,47 +168,42 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
                     used: totalmem() - freemem(),
                     usage: Math.round(((totalmem() - freemem()) / totalmem()) * 100),
                 },
-                gpu: detectGpu(),
+                gpu,
+                disk,
             },
             wallet: wallet ? {
                 address: wallet.address,
-                balance: balance,
+                balance,
             } : null,
             swarm: {
                 enabled: process.env.SWARM_ENABLED !== 'false',
                 status: 'connected',
+                mode: process.env.GSTD_SOVEREIGNTY_MODE || 'full',
+            },
+            gateway: {
+                port: process.env.GSTD_GATEWAY_PORT || 18789,
+                api_port: port,
             },
         });
     });
 
-    // Earnings history
+    // ─── API: Earnings ──────────────────────────────────────────
     app.get('/api/node/earnings', async (_req, res) => {
         const wallet = getWallet();
-        if (!wallet) {
-            res.json({ earnings: [], total: 0 });
-            return;
-        }
-
+        if (!wallet) { res.json({ earnings: [], total: 0 }); return; }
         try {
             const resp = await fetch(
                 `https://app.gstdtoken.com/api/v1/wallet/${wallet.address}/earnings`
             ).catch(() => null);
-            if (resp?.ok) {
-                const data: any = await resp.json();
-                res.json(data);
-                return;
-            }
+            if (resp?.ok) { res.json(await resp.json()); return; }
         } catch { }
-
         res.json({ earnings: [], total: 0 });
     });
 
-    // Tasks queue
+    // ─── API: Tasks ─────────────────────────────────────────────
     app.get('/api/node/tasks', async (_req, res) => {
         try {
-            const resp = await fetch(
-                'https://app.gstdtoken.com/api/v1/monitor/unified'
-            ).catch(() => null);
+            const resp = await fetch('https://app.gstdtoken.com/api/v1/monitor/unified').catch(() => null);
             if (resp?.ok) {
                 const data: any = await resp.json();
                 res.json({
@@ -98,99 +214,83 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
                 return;
             }
         } catch { }
-
         res.json({ pending: 0, completed: 0, processing: 0 });
     });
 
-    // Health check
-    app.get('/health', (_req, res) => {
-        res.json({ status: 'ok', version: '2.1.0' });
+    // ─── API: Activity Log ──────────────────────────────────────
+    app.get('/api/node/log', (_req, res) => {
+        res.json({ entries: activityLog.slice(0, 100) });
     });
 
-    // ─── Dashboard UI ────────────────────────────────────────────
-    app.get('/', (_req, res) => {
-        res.send(getDashboardHTML());
+    // ─── API: Node Control ──────────────────────────────────────
+    app.post('/api/node/control', async (req, res) => {
+        const { action } = req.body || {};
+        logActivity(`Control command: ${action}`, 'warn');
+
+        switch (action) {
+            case 'restart':
+                logActivity('Node restart initiated...', 'warn');
+                res.json({ ok: true, message: 'Restarting node...' });
+                setTimeout(() => process.exit(0), 1000); // PM2/systemd will restart
+                break;
+            case 'update':
+                try {
+                    const { execSync } = require('child_process');
+                    const cwd = join(__dirname, '../..');
+                    logActivity('Pulling latest from GitHub...', 'info');
+                    execSync('git pull', { cwd, encoding: 'utf-8', timeout: 30000 });
+                    logActivity('Building project (npx tsc)...', 'info');
+                    execSync('npx tsc', { cwd, encoding: 'utf-8', timeout: 60000 });
+                    logActivity('Update complete! Restart to apply.', 'success');
+                    res.json({ ok: true, message: 'Updated. Restart to apply changes.' });
+                } catch (e: any) {
+                    logActivity('Update failed: ' + e.message, 'error');
+                    res.json({ ok: false, message: 'Update failed: ' + e.message });
+                }
+                break;
+            case 'gc':
+                if (global.gc) {
+                    global.gc();
+                    logActivity('Garbage collection completed.', 'success');
+                    res.json({ ok: true, message: 'GC completed.' });
+                } else {
+                    res.json({ ok: false, message: 'GC not available (run with --expose-gc).' });
+                }
+                break;
+            default:
+                res.json({ ok: false, message: `Unknown action: ${action}` });
+        }
     });
+
+    // ─── API: Health ────────────────────────────────────────────
+    app.get('/health', (_req, res) => {
+        res.json({ status: 'ok', version: '3.0.0', uptime: process.uptime() });
+    });
+
+    // ─── Dashboard UI ───────────────────────────────────────────
+    // Serve the dashboard.html from web/ if it exists, otherwise inline
+    app.get('/', (_req, res) => {
+        const htmlPath = join(__dirname, '../../web/dashboard.html');
+        if (existsSync(htmlPath)) {
+            res.sendFile(htmlPath);
+        } else {
+            res.send(getFallbackHTML());
+        }
+    });
+
+    // Serve static files from web/
+    app.use('/static', express.static(join(__dirname, '../../web')));
 
     // Start
     app.listen(port, host, () => {
-        console.log(`  📊 Dashboard: http://${host}:${port}`);
+        logActivity(`Dashboard started on http://${host}:${port}`);
+        console.log(`  📊 Dashboard: http://${host === '0.0.0.0' ? getLocalIP() : host}:${port}`);
     });
 }
 
-function getCpuUsage(): number {
-    const cpuInfo = cpus();
-    let totalIdle = 0, totalTick = 0;
-    cpuInfo.forEach(cpu => {
-        for (const type in cpu.times) {
-            totalTick += (cpu.times as any)[type];
-        }
-        totalIdle += cpu.times.idle;
-    });
-    return Math.round(100 - (totalIdle / totalTick * 100));
-}
-
-function detectGpu(): { detected: boolean; model?: string } {
-    try {
-        const { execSync } = require('child_process');
-        const output = execSync('nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null', { encoding: 'utf-8' });
-        return { detected: true, model: output.trim() };
-    } catch {
-        return { detected: false };
-    }
-}
-
-function getDashboardHTML(): string {
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GSTD Node Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        *{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:'Inter',sans-serif;background:#030014;color:#e2e2e8;min-height:100vh}
-        .container{max-width:1200px;margin:0 auto;padding:24px}
-        h1{font-size:24px;font-weight:800;margin-bottom:24px;display:flex;align-items:center;gap:10px}
-        h1 .tag{font-size:10px;padding:3px 8px;border-radius:4px;background:#22c55e;color:#030014;font-weight:700}
-        .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px}
-        .card{background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:24px}
-        .card h3{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#6b6b80;margin-bottom:12px}
-        .card .val{font-size:32px;font-weight:900;background:linear-gradient(135deg,#8b5cf6,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-        .card .sub{font-size:12px;color:#6b6b80;margin-top:4px}
-        .bar{height:6px;border-radius:3px;background:rgba(255,255,255,0.06);margin-top:8px;overflow:hidden}
-        .bar .fill{height:100%;border-radius:3px;transition:width 1s}
-        .status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
-        .status .dot{width:6px;height:6px;border-radius:50%;animation:pulse 2s infinite}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-        .log{font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.04);border-radius:8px;padding:12px;max-height:200px;overflow-y:auto;color:#6b6b80}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🐝 GSTD Node <span class="tag">ONLINE</span></h1>
-        <div class="grid" id="stats"></div>
-        <div class="card" style="margin-bottom:16px"><h3>System</h3><div id="system"></div></div>
-        <div class="card"><h3>Activity Log</h3><div class="log" id="log">Loading...</div></div>
-    </div>
-    <script>
-    async function refresh(){
-        try{
-            const r=await fetch('/api/node/status');
-            const d=await r.json();
-            document.getElementById('stats').innerHTML=\`
-                <div class="card"><h3>CPU Usage</h3><div class="val">\${d.hardware.cpu.usage}%</div><div class="sub">\${d.hardware.cpu.model} (\${d.hardware.cpu.cores} cores)</div><div class="bar"><div class="fill" style="width:\${d.hardware.cpu.usage}%;background:\${d.hardware.cpu.usage>80?'#f43f5e':'#22c55e'}"></div></div></div>
-                <div class="card"><h3>RAM Usage</h3><div class="val">\${d.hardware.ram.usage}%</div><div class="sub">\${(d.hardware.ram.used/1073741824).toFixed(1)} / \${(d.hardware.ram.total/1073741824).toFixed(1)} GB</div><div class="bar"><div class="fill" style="width:\${d.hardware.ram.usage}%;background:\${d.hardware.ram.usage>80?'#f43f5e':'#06b6d4'}"></div></div></div>
-                <div class="card"><h3>Wallet</h3><div class="val">\${d.wallet?d.wallet.balance.gstd.toFixed(1):0} GSTD</div><div class="sub">\${d.wallet?d.wallet.address.slice(0,12)+'...':'Not configured'}</div></div>
-                <div class="card"><h3>Swarm</h3><div class="val"><span class="status"><span class="dot" style="background:#22c55e"></span> Connected</span></div><div class="sub">Node: \${d.node.name}</div></div>
-            \`;
-            document.getElementById('system').innerHTML=\`<div style="font-size:13px;color:#6b6b80">\${d.node.platform} \${d.node.arch} • Uptime: \${Math.round(d.node.uptime/60)}min • GPU: \${d.hardware.gpu.detected?d.hardware.gpu.model:'None'}</div>\`;
-        }catch(e){document.getElementById('stats').innerHTML='<div class="card"><h3>Error</h3><div>Cannot reach node API</div></div>'}
-    }
-    refresh();setInterval(refresh,3000);
-    document.getElementById('log').textContent='['+new Date().toISOString()+'] Dashboard started\\n['+new Date().toISOString()+'] Monitoring node status...';
-    </script>
-</body>
-</html>`;
+function getFallbackHTML(): string {
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>GSTD Node</title></head>
+<body style="font-family:sans-serif;background:#030014;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+<div style="text-align:center;"><h1>🐝 GSTD Node Online</h1><p>Dashboard UI not found. Check web/dashboard.html</p>
+<p><a href="/api/node/status" style="color:#06b6d4;">View API Status →</a></p></div></body></html>`;
 }

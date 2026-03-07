@@ -1,11 +1,91 @@
 /**
  * Telegram Channel — grammY-based Telegram bot integration
  * + Community Guardian for group chats
+ * + Factuality System Prompt (same as chat.gstdtoken.com)
+ * + Redis Knowledge Cache (shared with web chat)
  */
 
 import { Bot, Context, session } from 'grammy';
 import { NeuralRouter, type SmartMixTier, SMARTMIX_TIERS, formatCost, getGstdPrice } from '../gateway/router.js';
 import { CommunityGuardian } from './guardian.js';
+import net from 'net';
+import crypto from 'crypto';
+
+// ─── Factuality System Prompt (identical to chat.gstdtoken.com) ───
+const FACTUALITY_PROMPT = `You are a knowledgeable AI assistant that ONLY provides verified, factual information.
+
+CRITICAL RULES:
+1. ONLY state facts you are confident are true and widely accepted
+2. When citing information, reference the source type (e.g., "According to scientific research...", "Per official documentation...", "Based on established data...")
+3. If you are NOT CERTAIN about something, say "I'm not sure about this" or "This may not be accurate" — NEVER fabricate facts
+4. Distinguish clearly between established facts, expert opinions, and your inferences
+5. For numerical data (statistics, dates, measurements), only provide values you are confident about
+6. If asked about recent events you may not have data on, explicitly state your knowledge cutoff
+7. Prefer concise, accurate answers over lengthy uncertain ones
+8. Use markdown formatting for clarity
+
+Your goal is to be TRUSTWORTHY — users rely on you for accurate information. Being honest about uncertainty is better than being confidently wrong.`;
+
+// ─── Redis Knowledge Cache (shared with web chat) ─────────────────
+const KNOWLEDGE_CACHE_TTL = 86400; // 24 hours
+
+function makeKnowledgeKey(question: string): string {
+    const normalized = question.toLowerCase().trim().replace(/\s+/g, ' ');
+    return `gstd:knowledge:${crypto.createHash('md5').update(normalized).digest('hex')}`;
+}
+
+function redisCommand(args: string[]): Promise<string | null> {
+    return new Promise((resolve) => {
+        const socket = new net.Socket();
+        let response = '';
+        let resolved = false;
+        const done = (val: string | null) => {
+            if (resolved) return;
+            resolved = true;
+            socket.destroy();
+            resolve(val);
+        };
+        socket.setTimeout(2000);
+        socket.connect(6379, '127.0.0.1', () => {
+            const cmd = `*${args.length}\r\n${args.map(a => `$${Buffer.byteLength(a)}\r\n${a}`).join('\r\n')}\r\n`;
+            socket.write(cmd);
+        });
+        socket.on('data', (data) => {
+            response += data.toString();
+            if (response.startsWith('$-1\r\n')) return done(null);
+            if (response.startsWith('-')) return done(null);
+            if (response.startsWith('+') && response.includes('\r\n')) {
+                return done(response.slice(1, response.indexOf('\r\n')));
+            }
+            const sizeMatch = response.match(/^\$(\d+)\r\n/);
+            if (sizeMatch) {
+                const expectedLen = parseInt(sizeMatch[1]);
+                const dataStart = sizeMatch[0].length;
+                if (response.length >= dataStart + expectedLen + 2) {
+                    return done(response.substring(dataStart, dataStart + expectedLen));
+                }
+            }
+        });
+        socket.on('error', () => done(null));
+        socket.on('timeout', () => done(null));
+    });
+}
+
+async function redisGet(key: string): Promise<string | null> {
+    return redisCommand(['GET', key]);
+}
+
+async function redisSet(key: string, value: string, ttl: number): Promise<void> {
+    await redisCommand(['SET', key, value, 'EX', String(ttl)]);
+}
+
+async function saveToKnowledge(question: string, answer: string, model: string): Promise<void> {
+    try {
+        const key = makeKnowledgeKey(question);
+        const data = JSON.stringify({ answer, model, timestamp: Date.now() });
+        await redisSet(key, data, KNOWLEDGE_CACHE_TTL);
+    } catch { /* ignore cache write failures */ }
+}
 
 export interface TelegramConfig {
     botToken: string;
@@ -199,6 +279,66 @@ export class TelegramChannel {
             await this.sendHelp(ctx);
         });
 
+        // ── /model — Switch AI model / show available models ──
+        this.bot.command('model', async (ctx) => {
+            if (ctx.chat?.type !== 'private') return;
+            const lang = this.lang(ctx);
+
+            const models = [
+                { id: 'auto', label: '🤖 Auto (best available)', labelRU: '🤖 Авто (лучшая доступная)' },
+                { id: 'llama-3.3-70b-versatile', label: '🦙 Llama 3.3 70B', labelRU: '🦙 Llama 3.3 70B' },
+                { id: 'llama-3.1-8b-instant', label: '⚡ Llama 3.1 8B (fast)', labelRU: '⚡ Llama 3.1 8B (быстрая)' },
+                { id: 'meta-llama/llama-4-scout-17b-16e-instruct', label: '🔭 Llama 4 Scout', labelRU: '🔭 Llama 4 Scout' },
+                { id: 'meta-llama/llama-4-maverick-17b-128e-instruct', label: '🚀 Llama 4 Maverick', labelRU: '🚀 Llama 4 Maverick' },
+                { id: 'qwen/qwen3-32b', label: '🐉 Qwen3 32B', labelRU: '🐉 Qwen3 32B' },
+                { id: 'openai/gpt-oss-120b', label: '🧠 GPT-OSS 120B', labelRU: '🧠 GPT-OSS 120B' },
+                { id: 'openai/gpt-oss-20b', label: '💡 GPT-OSS 20B', labelRU: '💡 GPT-OSS 20B' },
+                { id: 'moonshotai/kimi-k2-instruct', label: '🌙 Kimi K2', labelRU: '🌙 Kimi K2' },
+            ];
+
+            const current = ctx.session.model || 'auto';
+            const currentLabel = models.find(m => m.id === current)?.[lang === 'ru' ? 'labelRU' : 'label'] || current;
+
+            const msg = lang === 'ru'
+                ? `🤖 <b>Выберите ИИ модель</b>\n\nТекущая: <b>${currentLabel}</b>\n\n<i>Все модели бесплатны • Sovereign AI</i>`
+                : `🤖 <b>Choose AI Model</b>\n\nCurrent: <b>${currentLabel}</b>\n\n<i>All models are free • Sovereign AI</i>`;
+
+            const buttons = models.map(m => {
+                const isActive = m.id === current;
+                const label = lang === 'ru' ? m.labelRU : m.label;
+                return [{ text: `${isActive ? '✅ ' : ''}${label}`, callback_data: `model_${m.id}` }];
+            });
+
+            await ctx.reply(msg, {
+                parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: buttons },
+            });
+        });
+
+        // ── /status — Session status ──
+        this.bot.command('status', async (ctx) => {
+            if (ctx.chat?.type !== 'private') return;
+            const lang = this.lang(ctx);
+            const model = ctx.session.model || 'auto';
+            const histLen = ctx.session.history?.length || 0;
+            const mixTier = ((ctx.session as any).mixTier as SmartMixTier) || 'free';
+            const tierInfo = SMARTMIX_TIERS[mixTier];
+
+            const msg = lang === 'ru'
+                ? `📊 <b>Статус сессии</b>\n\n` +
+                  `🤖 Модель: <b>${model}</b>\n` +
+                  `💬 Сообщений: <b>${histLen}</b>\n` +
+                  `🧠 Интеллект: <b>${tierInfo.emoji} ${tierInfo.nameRU}</b>\n` +
+                  `\n<i>Команды: /new — сбросить, /model — сменить модель</i>`
+                : `📊 <b>Session Status</b>\n\n` +
+                  `🤖 Model: <b>${model}</b>\n` +
+                  `💬 Messages: <b>${histLen}</b>\n` +
+                  `🧠 Intelligence: <b>${tierInfo.emoji} ${tierInfo.name}</b>\n` +
+                  `\n<i>Commands: /new — reset, /model — switch model</i>`;
+
+            await ctx.reply(msg, { parse_mode: 'HTML' });
+        });
+
         // ── Main message handler ──
         this.bot.on('message:text', async (ctx) => {
             const text = ctx.message?.text || '';
@@ -271,9 +411,43 @@ export class TelegramChannel {
             console.log(`[AI] Processing: "${cleanMessage.substring(0, 40)}"`);
             await ctx.api.sendChatAction(ctx.chat!.id, 'typing');
 
-            const systemPrompt = isGroup
+            const basePrompt = isGroup
                 ? 'You are GSTD Bot in a community group chat. Be helpful and concise. Respond in the user\'s language. Keep answers under 200 words.'
                 : 'You are GSTD — a sovereign decentralized AI powered by the Swarm. You have Collective Memory from all users. Respond in the user\'s language. Be helpful, concise, and direct.';
+
+            // Inject factuality prompt (same as chat.gstdtoken.com)
+            const systemPrompt = FACTUALITY_PROMPT + '\n\n' + basePrompt;
+
+            // ── Check Redis Knowledge Cache before calling AI ──
+            if (cleanMessage.length > 5) {
+                try {
+                    const cached = await redisGet(makeKnowledgeKey(cleanMessage));
+                    if (cached) {
+                        const knowledge = JSON.parse(cached);
+                        if (knowledge.answer) {
+                            console.log(`[AI] 📚 Knowledge cache hit: "${cleanMessage.substring(0, 40)}"`);
+                            const cacheFooter = isPrivate ? `\n\n📚 Verified · ${knowledge.model || 'cached'} · instant` : '';
+                            const fullResponse = knowledge.answer + cacheFooter;
+                            const htmlResponse = this.markdownToTelegramHtml(fullResponse);
+                            try {
+                                await this.sendFormattedReply(ctx, htmlResponse, isGroup);
+                            } catch {
+                                await ctx.reply(fullResponse.substring(0, 4000), {
+                                    reply_to_message_id: isGroup ? ctx.message?.message_id : undefined,
+                                });
+                            }
+                            if (isPrivate) {
+                                ctx.session.history.push({ role: 'user', content: cleanMessage });
+                                ctx.session.history.push({ role: 'assistant', content: knowledge.answer });
+                                if (ctx.session.history.length > 40) {
+                                    ctx.session.history = ctx.session.history.slice(-30);
+                                }
+                            }
+                            return;
+                        }
+                    }
+                } catch { /* cache miss, proceed normally */ }
+            }
 
             const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
                 { role: 'system', content: systemPrompt },
@@ -290,6 +464,11 @@ export class TelegramChannel {
                     await ctx.api.sendChatAction(ctx.chat!.id, 'typing');
                     const mixResult = await this.router.routeSmartMix(mixTier, messages);
                     console.log(`[AI] SmartMix response: ${mixResult.tier} ${mixResult.strategy} ${mixResult.latencyMs}ms`);
+
+                    // Save SmartMix consensus to knowledge cache (highest quality answers)
+                    if (cleanMessage.length > 5) {
+                        saveToKnowledge(cleanMessage, mixResult.content, `smartmix-${mixResult.tier}`).catch(() => {});
+                    }
 
                     if (isPrivate) {
                         ctx.session.history.push({ role: 'user', content: cleanMessage });
@@ -317,6 +496,11 @@ export class TelegramChannel {
                 console.log('[AI] Calling router.route...');
                 const result = await this.router.route(ctx.session.model || 'auto', messages);
                 console.log(`[AI] Got response: ${result.tier} ${result.model} ${result.latencyMs}ms len=${result.content.length}`);
+
+                // Save to shared Redis knowledge cache (same as chat.gstdtoken.com)
+                if (cleanMessage.length > 5 && result.tier !== 'cache' && result.tier !== 'fallback') {
+                    saveToKnowledge(cleanMessage, result.content, result.model).catch(() => {});
+                }
 
                 if (isPrivate) {
                     ctx.session.history.push({ role: 'user', content: cleanMessage });
@@ -523,6 +707,32 @@ export class TelegramChannel {
                     : `${tierInfo.emoji} <b>${tierInfo.name}</b> activated!\n\n` +
                     `${tierInfo.cost > 0 ? `💰 Cost: ${tierInfo.cost} GSTD/request` : '🆓 Free'}\n\n` +
                     `<i>Type any question — ${tierInfo.expertCount} expert${tierInfo.expertCount > 1 ? 's' : ''} will respond${tierInfo.expertCount > 1 ? ' and synthesize consensus' : ''}.</i>`;
+
+                return ctx.reply(msg, { parse_mode: 'HTML' });
+            }
+
+            // Model selection callbacks (from /model command)
+            if (data.startsWith('model_')) {
+                await ctx.answerCallbackQuery();
+                const selectedModel = data.replace('model_', '');
+                ctx.session.model = selectedModel;
+
+                const modelNames: Record<string, { en: string; ru: string }> = {
+                    'auto': { en: '🤖 Auto (best available)', ru: '🤖 Авто (лучшая доступная)' },
+                    'llama-3.3-70b-versatile': { en: '🦙 Llama 3.3 70B', ru: '🦙 Llama 3.3 70B' },
+                    'llama-3.1-8b-instant': { en: '⚡ Llama 3.1 8B', ru: '⚡ Llama 3.1 8B' },
+                    'meta-llama/llama-4-scout-17b-16e-instruct': { en: '🔭 Llama 4 Scout', ru: '🔭 Llama 4 Scout' },
+                    'meta-llama/llama-4-maverick-17b-128e-instruct': { en: '🚀 Llama 4 Maverick', ru: '🚀 Llama 4 Maverick' },
+                    'qwen/qwen3-32b': { en: '🐉 Qwen3 32B', ru: '🐉 Qwen3 32B' },
+                    'openai/gpt-oss-120b': { en: '🧠 GPT-OSS 120B', ru: '🧠 GPT-OSS 120B' },
+                    'openai/gpt-oss-20b': { en: '💡 GPT-OSS 20B', ru: '💡 GPT-OSS 20B' },
+                    'moonshotai/kimi-k2-instruct': { en: '🌙 Kimi K2', ru: '🌙 Kimi K2' },
+                };
+
+                const name = modelNames[selectedModel]?.[lang === 'ru' ? 'ru' : 'en'] || selectedModel;
+                const msg = lang === 'ru'
+                    ? `✅ Модель переключена на <b>${name}</b>\n\n<i>Просто напишите любой вопрос!</i>`
+                    : `✅ Switched to <b>${name}</b>\n\n<i>Just type any question!</i>`;
 
                 return ctx.reply(msg, { parse_mode: 'HTML' });
             }

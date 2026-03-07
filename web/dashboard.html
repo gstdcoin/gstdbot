@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSTD Node — Control Panel</title>
+    <meta name="description" content="Local dashboard for managing your GSTD Node. Monitor hardware, manage wallet, control swarm.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #030014;
+            --card: rgba(255,255,255,0.025);
+            --border: rgba(255,255,255,0.06);
+            --muted: #6b6b80;
+            --accent: #8b5cf6;
+            --cyan: #06b6d4;
+            --emerald: #22c55e;
+            --amber: #f59e0b;
+            --rose: #f43f5e;
+            --text: #e2e2e8;
+        }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ─── Header ─── */
+        .header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(3,0,20,0.9);
+            backdrop-filter: blur(20px);
+        }
+        .header .logo {
+            font-size: 20px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header .logo .tag {
+            font-size: 9px;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .tag-online { background: var(--emerald); color: #030014; }
+        .tag-offline { background: var(--rose); color: #fff; }
+        .header .sep { flex: 1; }
+        .header .meta {
+            font-size: 11px;
+            color: var(--muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .header .refresh-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--emerald);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+        /* ─── Layout ─── */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px 24px;
+        }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 14px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 14px; }
+        .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; margin-bottom: 14px; }
+
+        /* ─── Cards ─── */
+        .card {
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.3s;
+        }
+        .card:hover { border-color: rgba(139,92,246,0.15); }
+        .card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(139,92,246,0.2), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .card:hover::after { opacity: 1; }
+        .card-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--muted);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .card-label .ic {
+            width: 24px; height: 24px;
+            border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px;
+        }
+        .card-value {
+            font-size: 28px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.1;
+        }
+        .card-value.sm { font-size: 20px; }
+        .card-sub {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ─── Progress bars ─── */
+        .bar {
+            height: 5px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.06);
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.8s cubic-bezier(.4,0,.2,1);
+            position: relative;
+        }
+        .bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+            animation: shine 2.5s infinite;
+        }
+        @keyframes shine { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+
+        /* ─── Info rows ─── */
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 7px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            font-size: 12px;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-row .k { color: var(--muted); font-weight: 500; }
+        .info-row .v {
+            color: var(--text);
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            text-align: right;
+            max-width: 60%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ─── Control buttons ─── */
+        .ctrl-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        .ctrl-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 14px 8px;
+            border-radius: 12px;
+            border: 1px solid;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            transition: all 0.2s;
+            background: transparent;
+        }
+        .ctrl-btn:hover { transform: translateY(-1px); }
+        .ctrl-btn:active { transform: translateY(0); }
+        .ctrl-btn .emoji { font-size: 20px; }
+        .ctrl-green { border-color: rgba(34,197,94,0.2); color: var(--emerald); background: rgba(34,197,94,0.04); }
+        .ctrl-green:hover { background: rgba(34,197,94,0.1); box-shadow: 0 4px 20px rgba(34,197,94,0.1); }
+        .ctrl-red { border-color: rgba(244,63,94,0.2); color: var(--rose); background: rgba(244,63,94,0.04); }
+        .ctrl-red:hover { background: rgba(244,63,94,0.1); box-shadow: 0 4px 20px rgba(244,63,94,0.1); }
+        .ctrl-amber { border-color: rgba(245,158,11,0.2); color: var(--amber); background: rgba(245,158,11,0.04); }
+        .ctrl-amber:hover { background: rgba(245,158,11,0.1); box-shadow: 0 4px 20px rgba(245,158,11,0.1); }
+        .ctrl-cyan { border-color: rgba(6,182,212,0.2); color: var(--cyan); background: rgba(6,182,212,0.04); }
+        .ctrl-cyan:hover { background: rgba(6,182,212,0.1); box-shadow: 0 4px 20px rgba(6,182,212,0.1); }
+        .ctrl-output {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.04);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--muted);
+            min-height: 32px;
+        }
+
+        /* ─── Log ─── */
+        .log-box {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 10px;
+            padding: 12px;
+            max-height: 260px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.015);
+            line-height: 1.6;
+            color: var(--muted);
+        }
+        .log-entry:last-child { border-bottom: none; }
+        .log-entry .ts { color: rgba(139,92,246,0.5); }
+        .log-entry.success { color: var(--emerald); }
+        .log-entry.warn { color: var(--amber); }
+        .log-entry.error { color: var(--rose); }
+
+        /* ─── Status badge ─── */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .status-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 1024px) {
+            .grid-4 { grid-template-columns: repeat(2, 1fr); }
+            .grid-1-2 { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+            .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+            .card-value { font-size: 22px; }
+            .container { padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+    <div class="logo">
+        🐝 GSTD Node
+        <span class="tag tag-online" id="h-tag">CONNECTING</span>
+    </div>
+    <div class="sep"></div>
+    <div class="meta" id="h-meta">—</div>
+    <div class="refresh-dot" id="h-dot"></div>
+</div>
+
+<div class="container">
+
+    <!-- Row 1: Main metrics -->
+    <div class="grid-4">
+        <!-- CPU -->
+        <div class="card">
+            <div class="card-label"><span class="ic" style="background:rgba(34,197,94,0.1);">⚙</span> CPU</div>
+            <div class="card-value" id="cpu-val">—</div>
+            <div class="card-sub" id="cpu-sub">…</div>
+            <div class="bar"><div class="bar-fill" id="cpu-bar" style="width:0;background:linear-gradient(90deg,#22c55e,#06b6d4);"></div></div>
+        </div>
+        <!-- RAM -->
+        <div class="card">
+            <div class="card-label"><span class="ic" style="background:rgba(6,182,212,0.1);">🧊</span> RAM</div>
+            <div class="card-value" id="ram-val">—</div>
+            <div class="card-sub" id="ram-sub">…</div>
+            <div class="bar"><div class="bar-fill" id="ram-bar" style="width:0;background:linear-gradient(90deg,#06b6d4,#8b5cf6);"></div></div>
+        </div>
+        <!-- Disk -->
+        <div class="card">
+            <div class="card-label"><span class="ic" style="background:rgba(245,158,11,0.1);">💾</span> Disk</div>
+            <div class="card-value" id="disk-val">—</div>
+            <div class="card-sub" id="disk-sub">…</div>
+            <div class="bar"><div class="bar-fill" id="disk-bar" style="width:0;background:linear-gradient(90deg,#f59e0b,#f43f5e);"></div></div>
+        </div>
+        <!-- GPU -->
+        <div class="card">
+            <div class="card-label"><span class="ic" style="background:rgba(139,92,246,0.1);">🎮</span> GPU</div>
+            <div class="card-value" id="gpu-val">—</div>
+            <div class="card-sub" id="gpu-sub">…</div>
+        </div>
+    </div>
+
+    <!-- Row 2: Wallet + Tasks + Swarm -->
+    <div class="grid-3">
+        <!-- Wallet -->
+        <div class="card">
+            <div class="card-label"><span class="ic" style="background:rgba(34,197,94,0.1);">💰</span> Wallet</div>
+            <div class="card-value" id="wallet-val">—</div>
+            <div class="card-sub" id="wallet-sub">…</div>
+        </div>
+        <!-- Tasks -->
+        <div class="card">
+            <div class="card-label"><span class="ic" style="background:rgba(244,63,94,0.1);">📋</span> Tasks</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px;">
+                <div style="text-align:center;">
+                    <div style="font-size:22px;font-weight:900;color:var(--emerald);" id="t-done">0</div>
+                    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;">Done</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:22px;font-weight:900;color:var(--amber);" id="t-proc">0</div>
+                    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;">Active</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:22px;font-weight:900;color:var(--muted);" id="t-pend">0</div>
+                    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;">Queue</div>
+                </div>
+            </div>
+        </div>
+        <!-- Swarm -->
+        <div class="card">
+            <div class="card-label"><span class="ic" style="background:rgba(139,92,246,0.1);">🐝</span> Swarm</div>
+            <div class="card-value sm" id="swarm-val">—</div>
+            <div class="card-sub" id="swarm-sub">…</div>
+        </div>
+    </div>
+
+    <!-- Row 3: Node Info + Controls -->
+    <div class="grid-1-2">
+        <!-- Controls -->
+        <div class="card">
+            <div class="card-label"><span class="ic" style="background:rgba(6,182,212,0.1);">🎛</span> Controls</div>
+            <div class="ctrl-grid">
+                <button class="ctrl-btn ctrl-amber" onclick="nodeCmd('restart')">
+                    <span class="emoji">🔄</span> Restart
+                </button>
+                <button class="ctrl-btn ctrl-cyan" onclick="nodeCmd('update')">
+                    <span class="emoji">⬆</span> Update
+                </button>
+                <button class="ctrl-btn ctrl-green" onclick="nodeCmd('gc')">
+                    <span class="emoji">🧹</span> GC
+                </button>
+                <button class="ctrl-btn ctrl-red" onclick="copyDiag()">
+                    <span class="emoji">📋</span> Diagnostics
+                </button>
+            </div>
+            <div class="ctrl-output" id="ctrl-out">Ready. Select an action.</div>
+        </div>
+
+        <!-- Node details -->
+        <div class="card">
+            <div class="card-label"><span class="ic" style="background:rgba(168,85,247,0.1);">🖥</span> Node Details</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
+                <div class="info-row"><span class="k">Hostname</span><span class="v" id="n-host">—</span></div>
+                <div class="info-row"><span class="k">Platform</span><span class="v" id="n-plat">—</span></div>
+                <div class="info-row"><span class="k">Architecture</span><span class="v" id="n-arch">—</span></div>
+                <div class="info-row"><span class="k">Node Uptime</span><span class="v" id="n-uptime">—</span></div>
+                <div class="info-row"><span class="k">OS Uptime</span><span class="v" id="n-os-up">—</span></div>
+                <div class="info-row"><span class="k">CPU Load (1m)</span><span class="v" id="n-load">—</span></div>
+                <div class="info-row"><span class="k">IP Address</span><span class="v" id="n-ip">—</span></div>
+                <div class="info-row"><span class="k">Gateway Port</span><span class="v" id="n-gw">—</span></div>
+                <div class="info-row"><span class="k">PID</span><span class="v" id="n-pid">—</span></div>
+                <div class="info-row"><span class="k">Version</span><span class="v" id="n-ver">—</span></div>
+                <div class="info-row"><span class="k">Mode</span><span class="v" id="n-mode">—</span></div>
+                <div class="info-row"><span class="k">Started</span><span class="v" id="n-start">—</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 4: Activity Log -->
+    <div class="card">
+        <div class="card-label" style="margin-bottom:0;">
+            <span class="ic" style="background:rgba(139,92,246,0.1);">📜</span> Activity Log
+            <span style="flex:1;"></span>
+            <button onclick="clearLog()" style="font-size:9px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;">Clear</button>
+        </div>
+        <div class="log-box" id="log-box">
+            <div class="log-entry"><span class="ts">[--:--:--]</span> Dashboard loaded. Connecting to node API…</div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align:center;padding:24px 0 8px;font-size:11px;color:rgba(255,255,255,0.15);">
+        GSTD Node v3.0 · <a href="https://gstdbot.gstdtoken.com" style="color:rgba(255,255,255,0.25);text-decoration:none;">gstdbot.gstdtoken.com</a> · <a href="https://github.com/gstdcoin/gstdbot" style="color:rgba(255,255,255,0.25);text-decoration:none;">GitHub</a>
+    </div>
+</div>
+
+<script>
+const API = window.location.origin;
+let connected = false;
+let lastData = null;
+
+function ts() { return new Date().toISOString().slice(11,19); }
+
+function log(msg, type='') {
+    const box = document.getElementById('log-box');
+    const el = document.createElement('div');
+    el.className = 'log-entry ' + type;
+    el.innerHTML = `<span class="ts">[${ts()}]</span> ${msg}`;
+    box.prepend(el);
+    while (box.children.length > 150) box.removeChild(box.lastChild);
+}
+
+function clearLog() {
+    document.getElementById('log-box').innerHTML = '';
+    log('Log cleared.');
+}
+
+function fmtBytes(b) { return (b / 1073741824).toFixed(1) + ' GB'; }
+
+function fmtUptime(s) {
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (d > 0) return d + 'd ' + h + 'h ' + m + 'm';
+    if (h > 0) return h + 'h ' + m + 'm';
+    return m + 'm ' + Math.floor(s % 60) + 's';
+}
+
+async function refresh() {
+    const t0 = performance.now();
+    try {
+        const r = await fetch(API + '/api/node/status');
+        const lat = Math.round(performance.now() - t0);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        lastData = d;
+
+        if (!connected) {
+            connected = true;
+            log('Connected to node: ' + d.node.name, 'success');
+        }
+
+        // Header
+        document.getElementById('h-tag').textContent = 'ONLINE';
+        document.getElementById('h-tag').className = 'tag tag-online';
+        document.getElementById('h-meta').textContent = d.node.name + ' · ' + lat + 'ms';
+        document.getElementById('h-dot').style.background = 'var(--emerald)';
+
+        // CPU
+        const cpu = d.hardware.cpu;
+        document.getElementById('cpu-val').textContent = cpu.usage + '%';
+        document.getElementById('cpu-sub').textContent = cpu.model + ' (' + cpu.cores + ' cores)';
+        document.getElementById('cpu-bar').style.width = cpu.usage + '%';
+        document.getElementById('cpu-bar').style.background = cpu.usage > 80
+            ? 'linear-gradient(90deg,#f59e0b,#f43f5e)' : 'linear-gradient(90deg,#22c55e,#06b6d4)';
+
+        // RAM
+        const ram = d.hardware.ram;
+        document.getElementById('ram-val').textContent = ram.usage + '%';
+        document.getElementById('ram-sub').textContent = fmtBytes(ram.used) + ' / ' + fmtBytes(ram.total);
+        document.getElementById('ram-bar').style.width = ram.usage + '%';
+        document.getElementById('ram-bar').style.background = ram.usage > 80
+            ? 'linear-gradient(90deg,#f59e0b,#f43f5e)' : 'linear-gradient(90deg,#06b6d4,#8b5cf6)';
+
+        // Disk
+        const disk = d.hardware.disk;
+        if (disk && disk.total > 0) {
+            document.getElementById('disk-val').textContent = disk.usage + '%';
+            document.getElementById('disk-sub').textContent = fmtBytes(disk.used) + ' / ' + fmtBytes(disk.total);
+            document.getElementById('disk-bar').style.width = disk.usage + '%';
+        } else {
+            document.getElementById('disk-val').textContent = '—';
+            document.getElementById('disk-sub').textContent = 'Unavailable';
+        }
+
+        // GPU
+        const gpu = d.hardware.gpu;
+        if (gpu.detected) {
+            document.getElementById('gpu-val').textContent = gpu.usage || '✓';
+            document.getElementById('gpu-sub').textContent = gpu.model + (gpu.temperature ? ' · ' + gpu.temperature : '');
+        } else {
+            document.getElementById('gpu-val').textContent = 'None';
+            document.getElementById('gpu-sub').textContent = 'No GPU detected';
+        }
+
+        // Wallet
+        if (d.wallet) {
+            const bal = d.wallet.balance;
+            document.getElementById('wallet-val').textContent = (bal?.gstd ?? 0).toFixed(2) + ' GSTD';
+            document.getElementById('wallet-sub').textContent = d.wallet.address.slice(0,10) + '…' + d.wallet.address.slice(-6);
+        } else {
+            document.getElementById('wallet-val').textContent = 'Not linked';
+            document.getElementById('wallet-sub').textContent = 'Configure wallet in .env';
+        }
+
+        // Swarm
+        if (d.swarm.enabled) {
+            document.getElementById('swarm-val').innerHTML = '<span class="status-badge"><span class="status-dot" style="background:var(--emerald);"></span> Connected</span>';
+            document.getElementById('swarm-sub').textContent = 'Mode: ' + (d.swarm.mode || 'full');
+        } else {
+            document.getElementById('swarm-val').textContent = 'Disabled';
+            document.getElementById('swarm-sub').textContent = 'Set SWARM_ENABLED=true';
+        }
+
+        // Node info
+        document.getElementById('n-host').textContent = d.node.name;
+        document.getElementById('n-plat').textContent = d.node.platform;
+        document.getElementById('n-arch').textContent = d.node.arch;
+        document.getElementById('n-uptime').textContent = fmtUptime(d.node.uptime);
+        document.getElementById('n-os-up').textContent = fmtUptime(d.node.os_uptime);
+        document.getElementById('n-load').textContent = cpu.load_1m + ' / ' + cpu.load_5m + ' / ' + cpu.load_15m;
+        document.getElementById('n-ip').textContent = d.node.ip || '—';
+        document.getElementById('n-gw').textContent = ':' + (d.gateway?.port || '18789');
+        document.getElementById('n-pid').textContent = d.node.pid || '—';
+        document.getElementById('n-ver').textContent = 'v' + d.node.version;
+        document.getElementById('n-mode').textContent = d.swarm?.mode || '—';
+        document.getElementById('n-start').textContent = d.node.started_at ? new Date(d.node.started_at).toLocaleString() : '—';
+
+    } catch (e) {
+        if (connected) {
+            connected = false;
+            log('Node disconnected: ' + e.message, 'error');
+        }
+        document.getElementById('h-tag').textContent = 'OFFLINE';
+        document.getElementById('h-tag').className = 'tag tag-offline';
+        document.getElementById('h-meta').textContent = 'Cannot reach node API';
+        document.getElementById('h-dot').style.background = 'var(--rose)';
+    }
+}
+
+async function refreshTasks() {
+    try {
+        const r = await fetch(API + '/api/node/tasks');
+        if (!r.ok) return;
+        const d = await r.json();
+        document.getElementById('t-done').textContent = (d.completed || 0).toLocaleString();
+        document.getElementById('t-proc').textContent = (d.processing || 0).toLocaleString();
+        document.getElementById('t-pend').textContent = (d.pending || 0).toLocaleString();
+    } catch {}
+}
+
+async function nodeCmd(action) {
+    const out = document.getElementById('ctrl-out');
+    out.textContent = '⏳ Executing: ' + action + '…';
+    out.style.color = 'var(--amber)';
+    log('Control command: ' + action, 'warn');
+
+    try {
+        const r = await fetch(API + '/api/node/control', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action })
+        });
+        const d = await r.json();
+        out.textContent = d.ok ? '✅ ' + d.message : '❌ ' + d.message;
+        out.style.color = d.ok ? 'var(--emerald)' : 'var(--rose)';
+        log(d.message, d.ok ? 'success' : 'error');
+    } catch (e) {
+        out.textContent = '❌ Failed: ' + e.message;
+        out.style.color = 'var(--rose)';
+        log('Control failed: ' + e.message, 'error');
+    }
+}
+
+function copyDiag() {
+    if (!lastData) {
+        document.getElementById('ctrl-out').textContent = '❌ No data yet. Wait for connection.';
+        return;
+    }
+    const diag = JSON.stringify(lastData, null, 2);
+    navigator.clipboard.writeText(diag).then(() => {
+        document.getElementById('ctrl-out').textContent = '📋 Diagnostics copied to clipboard!';
+        document.getElementById('ctrl-out').style.color = 'var(--emerald)';
+        log('Diagnostics copied to clipboard.', 'success');
+    }).catch(() => {
+        // Fallback: show in ctrl-out
+        document.getElementById('ctrl-out').textContent = diag.slice(0, 500) + '…';
+        document.getElementById('ctrl-out').style.color = 'var(--muted)';
+    });
+}
+
+// Boot
+log('Dashboard v3.0 loaded.');
+refresh();
+refreshTasks();
+setInterval(refresh, 2000);
+setInterval(refreshTasks, 10000);
+</script>
+</body>
+</html>
