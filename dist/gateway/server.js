@@ -108,6 +108,7 @@ class OmegaGateway {
     clients = new Map();
     appManager;
     wallet = null;
+    subsystems = {};
     metrics = {
         totalRequests: 0,
         swarmRequests: 0,
@@ -128,6 +129,10 @@ class OmegaGateway {
     setWallet(wallet) {
         this.wallet = wallet;
         logActivity('Wallet connected to gateway — rewards active', 'success');
+    }
+    /** Inject subsystems for full status reporting */
+    setSubsystems(subs) {
+        this.subsystems = subs;
     }
     setupAPI() {
         this.app.use(express_1.default.json({ limit: '10mb' }));
@@ -334,7 +339,29 @@ class OmegaGateway {
                     address: this.wallet.getAddress(),
                     balance: this.wallet.getBalance(),
                 } : null,
-                swarm: { enabled: process.env.SWARM_ENABLED !== 'false', status: 'connected', mode: process.env.GSTD_SOVEREIGNTY_MODE || 'full' },
+                memory: this.subsystems.memory ? {
+                    connected: this.subsystems.memory.isConnected(),
+                    entries: this.subsystems.memory.getEntryCount(),
+                    stats: this.subsystems.memory.getStats(),
+                } : null,
+                training: this.subsystems.trainer ? {
+                    stats: this.subsystems.trainer.getStats(),
+                    activeJobs: this.subsystems.trainer.getActiveJobs().length,
+                } : null,
+                blockchain: this.subsystems.blockchain ? await (async () => {
+                    try {
+                        return await this.subsystems.blockchain.getFullStatus();
+                    }
+                    catch {
+                        return null;
+                    }
+                })() : null,
+                swarm: {
+                    enabled: process.env.SWARM_ENABLED !== 'false',
+                    status: this.subsystems.swarm?.isConnected() ? 'connected' : 'standalone',
+                    mode: process.env.GSTD_SOVEREIGNTY_MODE || 'full',
+                    peers: this.subsystems.swarm?.getPeerCount?.() || 0,
+                },
                 gateway: { port: this.config.port, api_port: this.config.apiPort },
             });
         });

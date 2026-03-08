@@ -155,6 +155,14 @@ async function main() {
     }
     // ── 9. Node OS ready (Dashboard served via Gateway) ──────────
     console.log(`  [9/${TOTAL_STEPS}] Node OS UI active on gateway port...`);
+    // Inject all subsystems into gateway for full status reporting
+    gateway.setSubsystems({
+        memory,
+        trainer,
+        resources,
+        swarm,
+        blockchain,
+    });
     // ── Boot complete ───────────────────────────────────────────
     const bootTime = ((Date.now() - startTime) / 1000).toFixed(1);
     const accessInfo = remote.getAccessInfo();

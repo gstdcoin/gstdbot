@@ -1897,11 +1897,28 @@
           document.getElementById("sb-balance").textContent =
             (bal?.gstd ?? 0).toFixed(1) + " GSTD";
           // Swarm
-          document.getElementById("swarm-val").textContent = d.swarm.enabled
-            ? "Connected"
-            : "Disabled";
+          document.getElementById("swarm-val").textContent = d.swarm.status === 'connected'
+            ? "Connected (" + (d.swarm.peers || 0) + " peers)"
+            : d.swarm.enabled ? "Standalone" : "Disabled";
           document.getElementById("swarm-sub").textContent =
             "Mode: " + (d.swarm.mode || "full");
+          // Memory
+          if (d.memory) {
+            const memEl = document.getElementById("mem-entries");
+            if (memEl) memEl.textContent = (d.memory.entries || 0) + " entries";
+            const hitEl = document.getElementById("mem-hitrate");
+            if (hitEl) hitEl.textContent = ((d.memory.stats?.hitRate || 0) * 100).toFixed(0) + "% hit rate";
+          }
+          // Training  
+          if (d.training) {
+            const trainEl = document.getElementById("train-jobs");
+            if (trainEl) trainEl.textContent = d.training.activeJobs + " active jobs";
+          }
+          // Blockchain
+          if (d.blockchain) {
+            const bcEl = document.getElementById("bc-status");
+            if (bcEl) bcEl.textContent = "Connected · " + (d.blockchain.balance?.gstd?.toFixed(2) || "0") + " GSTD";
+          }
           // Node info
           document.getElementById("n-host").textContent = d.node.name;
           document.getElementById("n-plat").textContent = d.node.platform;

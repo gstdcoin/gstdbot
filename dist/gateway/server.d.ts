@@ -24,10 +24,19 @@ export declare class OmegaGateway {
     private clients;
     private appManager;
     private wallet;
+    private subsystems;
     private metrics;
     constructor(config?: Partial<GatewayConfig>);
     /** Inject wallet after it's initialized (wallet created after gateway) */
     setWallet(wallet: NodeWallet): void;
+    /** Inject subsystems for full status reporting */
+    setSubsystems(subs: {
+        memory?: any;
+        trainer?: any;
+        resources?: any;
+        swarm?: any;
+        blockchain?: any;
+    }): void;
     private setupAPI;
     private setupNodeOS;
     private getFallbackHTML;
