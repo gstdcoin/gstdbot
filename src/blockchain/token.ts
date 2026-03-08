@@ -239,14 +239,14 @@ export class BlockchainManager {
             // Submit to platform for on-chain processing
             const resp = await fetch(`${PLATFORM_API}/wallet/transfer`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Wallet-Address': this.walletAddress!,
+                },
                 body: JSON.stringify({
-                    from: this.walletAddress,
                     to: toAddress,
                     amount,
-                    token: 'GSTD',
-                    seed_hash: createHash('sha256').update(this.walletSeed).digest('hex'),
-                    memo,
+                    description: memo || `Transfer ${amount} GSTD`,
                 }),
                 signal: AbortSignal.timeout(15000),
             });
@@ -283,12 +283,11 @@ export class BlockchainManager {
         try {
             const resp = await fetch(`${PLATFORM_API}/staking/stake`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    address: this.walletAddress,
-                    amount,
-                    seed_hash: createHash('sha256').update(this.walletSeed!).digest('hex'),
-                }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Wallet-Address': this.walletAddress!,
+                },
+                body: JSON.stringify({ amount }),
                 signal: AbortSignal.timeout(10000),
             });
 
@@ -327,12 +326,11 @@ export class BlockchainManager {
         try {
             const resp = await fetch(`${PLATFORM_API}/staking/unstake`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    address: this.walletAddress,
-                    amount,
-                    seed_hash: createHash('sha256').update(this.walletSeed!).digest('hex'),
-                }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Wallet-Address': this.walletAddress!,
+                },
+                body: JSON.stringify({ amount }),
                 signal: AbortSignal.timeout(10000),
             });
 
