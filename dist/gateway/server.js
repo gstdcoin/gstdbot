@@ -359,10 +359,11 @@ class OmegaGateway {
                     });
                 }
                 catch { }
-                // Step 1: Clean dirty files (package-lock.json etc.) and stash
+                // Step 1: Force-clean working directory before pull
+                // git reset --hard ensures NO local modifications block the update
                 try {
-                    (0, child_process_1.execSync)('git checkout -- package-lock.json 2>/dev/null || true', { cwd: installDir, encoding: 'utf-8', timeout: 5000 });
-                    (0, child_process_1.execSync)('git stash --include-untracked 2>/dev/null || true', { cwd: installDir, encoding: 'utf-8', timeout: 5000 });
+                    (0, child_process_1.execSync)('git reset --hard HEAD', { cwd: installDir, encoding: 'utf-8', timeout: 10000 });
+                    (0, child_process_1.execSync)('git clean -fd 2>/dev/null || true', { cwd: installDir, encoding: 'utf-8', timeout: 10000 });
                 }
                 catch { }
                 // Step 2: Pull latest
@@ -373,9 +374,10 @@ class OmegaGateway {
                     });
                 }
                 catch {
-                    // If ff-only fails, force reset to remote
-                    pullOutput = (0, child_process_1.execSync)(`git fetch origin ${branch} && git reset --hard origin/${branch}`, {
-                        cwd: installDir, encoding: 'utf-8', timeout: 30000,
+                    // If ff-only fails (diverged), force reset to remote
+                    (0, child_process_1.execSync)(`git fetch origin ${branch}`, { cwd: installDir, encoding: 'utf-8', timeout: 15000 });
+                    pullOutput = (0, child_process_1.execSync)(`git reset --hard origin/${branch}`, {
+                        cwd: installDir, encoding: 'utf-8', timeout: 10000,
                     });
                 }
                 // Step 3: Install deps
@@ -800,8 +802,7 @@ class OmegaGateway {
                     const result = execSync(`git log HEAD..origin/${branch} --oneline 2>&1`, { cwd: installDir, timeout: 5000 }).toString();
                     if (result.trim()) {
                         await sendReply('📦 Updates available:\\n```\\n' + result.trim() + '\\n```\\nApplying update...');
-                        execSync('git checkout -- package-lock.json 2>/dev/null || true', { cwd: installDir, timeout: 5000 });
-                        execSync('git stash --include-untracked 2>/dev/null || true', { cwd: installDir, timeout: 5000 });
+                        execSync('git reset --hard HEAD', { cwd: installDir, timeout: 10000 });
                         execSync(`git pull origin ${branch} --ff-only && npm install --legacy-peer-deps && npx tsc`, { cwd: installDir, timeout: 120000 });
                         await sendReply('✅ Updated! Restarting...');
                         setTimeout(() => process.exit(0), 1000);
@@ -850,7 +851,7 @@ class OmegaGateway {
             const branch = getDefaultBranch(installDir);
             try {
                 if (component === 'core' || component === 'all') {
-                    (0, child_process_1.execSync)('git checkout -- package-lock.json 2>/dev/null || true', { cwd: installDir, timeout: 5000 });
+                    (0, child_process_1.execSync)('git reset --hard HEAD', { cwd: installDir, timeout: 10000 });
                     (0, child_process_1.execSync)(`cd ${installDir} && git pull origin ${branch} --ff-only && npm install --legacy-peer-deps && npx tsc`, { timeout: 120000 });
                     logActivity('Core updated', 'success');
                 }
@@ -859,7 +860,7 @@ class OmegaGateway {
                     logActivity('App registry refreshed', 'success');
                 }
                 if (component === 'dashboard' || component === 'all') {
-                    (0, child_process_1.execSync)(`cd ${installDir} && git checkout origin/main -- web/dashboard.html`, { timeout: 15000 });
+                    (0, child_process_1.execSync)(`cd ${installDir} && git checkout origin/${branch} -- web/dashboard.html`, { timeout: 15000 });
                     logActivity('Dashboard updated', 'success');
                 }
                 res.json({ success: true, component, message: `${component} updated successfully` });
