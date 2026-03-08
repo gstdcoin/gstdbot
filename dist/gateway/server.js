@@ -1115,6 +1115,108 @@ class OmegaGateway {
                 await this.appManager.start(appId).catch(() => { });
             res.json({ ok, message: ok ? `${appId} updated and restarted` : `Failed to update ${appId}` });
         });
+        // ─── App Status ──────────────────────────────────────────
+        this.app.get('/api/apps/status', async (_req, res) => {
+            const installed = this.appManager.getInstalled?.() || this.appManager.installedApps || [];
+            const running = this.appManager.runningApps || [];
+            res.json({
+                installed: Array.isArray(installed) ? installed.map((a) => ({ id: a.id || a, status: 'installed' })) : [],
+                total_installed: Array.isArray(installed) ? installed.length : 0,
+                total_running: Array.isArray(running) ? running.length : 0,
+            });
+        });
+        // ─── Memory APIs ─────────────────────────────────────────
+        this.app.post('/api/memory/store', (req, res) => {
+            const memory = this.subsystems?.memory;
+            if (!memory) {
+                res.json({ ok: false, error: 'Memory module not available' });
+                return;
+            }
+            const { key, value, tags } = req.body || {};
+            if (!key || !value) {
+                res.status(400).json({ error: 'key and value required' });
+                return;
+            }
+            try {
+                memory.store(key, value, tags || []);
+                res.json({ ok: true, key, stored_at: new Date().toISOString() });
+            }
+            catch (e) {
+                res.json({ ok: false, error: e.message });
+            }
+        });
+        this.app.post('/api/memory/recall', (req, res) => {
+            const memory = this.subsystems?.memory;
+            if (!memory) {
+                res.json({ results: [], error: 'Memory module not available' });
+                return;
+            }
+            const { query, limit } = req.body || {};
+            try {
+                const results = memory.recall(query || '', limit || 10);
+                res.json({ results, count: results?.length || 0, query });
+            }
+            catch (e) {
+                res.json({ results: [], error: e.message });
+            }
+        });
+        this.app.get('/api/memory/stats', (_req, res) => {
+            const memory = this.subsystems?.memory;
+            if (!memory) {
+                res.json({ connected: false, entries: 0 });
+                return;
+            }
+            res.json({
+                connected: memory.isConnected?.() || false,
+                entries: memory.getEntryCount?.() || 0,
+                stats: memory.getStats?.() || {},
+            });
+        });
+        // ─── Training Status ─────────────────────────────────────
+        this.app.get('/api/training/status', (_req, res) => {
+            const trainer = this.subsystems?.trainer;
+            if (!trainer) {
+                res.json({ status: 'disabled', activeJobs: 0 });
+                return;
+            }
+            res.json({
+                status: 'active',
+                stats: trainer.getStats?.() || {},
+                activeJobs: trainer.getActiveJobs?.()?.length || 0,
+                jobs: trainer.getActiveJobs?.()?.slice(0, 10) || [],
+            });
+        });
+        // ─── Dashboard Chat ──────────────────────────────────────
+        this.app.post('/v1/dashboard/chat', async (req, res) => {
+            const { message, history } = req.body || {};
+            if (!message) {
+                res.status(400).json({ error: 'message required' });
+                return;
+            }
+            try {
+                const messages = [
+                    { role: 'system', content: 'You are a helpful assistant for the GSTD Node dashboard. Answer concisely.' },
+                    ...(history || []),
+                    { role: 'user', content: message },
+                ];
+                const result = await this.router.route('auto', messages);
+                res.json({
+                    reply: result.content || '',
+                    model: result.model || 'auto',
+                });
+            }
+            catch (e) {
+                res.json({ reply: 'I apologize, I could not process your request. Please try again.', error: e.message });
+            }
+        });
+        // ─── Chat History ────────────────────────────────────────
+        this.app.get('/api/chat/history', (_req, res) => {
+            // Return recent chat entries from activity log
+            const chatEntries = activityLog
+                .filter(e => e.msg?.includes('Chat:') || e.msg?.includes('GSTD') || e.type === 'chat')
+                .slice(0, 50);
+            res.json({ history: chatEntries, count: chatEntries.length });
+        });
         // ─── Security APIs ──────────────────────────────────────
         this.app.get('/api/security/status', (_req, res) => {
             const security = this.security;
