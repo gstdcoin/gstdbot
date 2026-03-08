@@ -1267,6 +1267,55 @@ class OmegaGateway {
                 res.json({ ok: false, error: e.message });
             }
         });
+        // ─── Remote Access APIs ──────────────────────────────────
+        this.app.get('/api/remote/status', (_req, res) => {
+            res.json({
+                enabled: true,
+                relay: { connected: true, url: `https://relay.gstdtoken.com/node/${this.config.swarmUrl ? 'connected' : 'standalone'}` },
+                tor: { enabled: false, onion: null },
+                wireguard: { enabled: false },
+                activeSessions: 0,
+                authRequired: true,
+            });
+        });
+        this.app.get('/api/remote/info', (_req, res) => {
+            res.json({
+                methods: {
+                    relay: { available: true, url: 'https://relay.gstdtoken.com' },
+                    tor: { available: false },
+                    wireguard: { available: false },
+                    direct: { available: true, port: this.config.apiPort },
+                },
+                auth: { type: 'token', tokenCount: 0 },
+                dashboard: { url: `http://localhost:${this.config.apiPort}` },
+            });
+        });
+        // ─── Node Settings & Config ──────────────────────────────
+        this.app.get('/api/node/settings', (_req, res) => {
+            res.json({
+                aiMode: process.env.AI_MODE || 'cloud',
+                swarmEnabled: this.config.swarmUrl !== '',
+                cocoonEnabled: this.config.cocoonEnabled,
+                apiPort: this.config.apiPort,
+                autoUpdate: process.env.AUTO_UPDATE !== 'false',
+                telemetry: process.env.TELEMETRY !== 'false',
+                maxConcurrentTasks: parseInt(process.env.MAX_TASKS || '5'),
+            });
+        });
+        this.app.get('/api/node/config', (_req, res) => {
+            res.json({
+                nodeId: process.env.NODE_ID || 'unknown',
+                version: process.env.npm_package_version || '3.3.0',
+                mode: process.env.AI_MODE || 'cloud',
+                platform: process.platform,
+                arch: process.arch,
+                uptime: process.uptime(),
+                swarmUrl: this.config.swarmUrl || '',
+                cocoonEnabled: this.config.cocoonEnabled,
+                apiPort: this.config.apiPort,
+                env: process.env.NODE_ENV || 'production',
+            });
+        });
         // ─── Security APIs ──────────────────────────────────────
         this.app.get('/api/security/status', (_req, res) => {
             const security = this.security;
