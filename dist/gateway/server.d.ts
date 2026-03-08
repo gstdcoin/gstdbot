@@ -46,6 +46,7 @@ export declare class OmegaGateway {
     private setupAPI;
     private setupNodeOS;
     private getFallbackHTML;
+    private getCertExpiry;
     private setupWebSocket;
     private handleWSMessage;
     private handleCommand;

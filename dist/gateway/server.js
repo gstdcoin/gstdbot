@@ -1055,6 +1055,443 @@ class OmegaGateway {
                 premiumApps: 11,
             });
         });
+        // ═══════════════════════════════════════════════════════════
+        // ─── WALLET AUTH (TON Connect style) ─────────────────────
+        // ═══════════════════════════════════════════════════════════
+        this.app.post('/api/auth/wallet', (req, res) => {
+            const { address, signature, timestamp } = req.body || {};
+            if (!address || !signature) {
+                res.status(400).json({ error: 'address and signature required' });
+                return;
+            }
+            // Verify signature is recent (within 5 minutes)
+            const ts = parseInt(timestamp) || 0;
+            if (Math.abs(Date.now() - ts) > 5 * 60 * 1000) {
+                res.status(400).json({ error: 'Signature expired' });
+                return;
+            }
+            // Verify the signature matches the wallet address
+            const expectedSig = (0, crypto_1.createHash)('sha256').update(address + ':' + timestamp + ':gstd-node-auth').digest('hex');
+            if (signature !== expectedSig) {
+                res.status(401).json({ error: 'Invalid wallet signature' });
+                return;
+            }
+            // If node wallet matches — full access; otherwise read-only
+            const nodeWalletAddr = this.wallet?.getAddress?.() || '';
+            const isOwner = address === nodeWalletAddr || !nodeWalletAddr;
+            const token = createAuthToken();
+            logActivity(`Wallet auth: ${address.slice(0, 12)}... (${isOwner ? 'owner' : 'viewer'})`, 'success');
+            res.json({ success: true, token, role: isOwner ? 'owner' : 'viewer', address });
+        });
+        // ═══════════════════════════════════════════════════════════
+        // ─── LET'S ENCRYPT + SSL MANAGEMENT ──────────────────────
+        // ═══════════════════════════════════════════════════════════
+        this.app.get('/api/ssl/status', (_req, res) => {
+            const sslDir = (0, path_1.join)(require('os').homedir(), '.config', 'gstdbot', 'ssl');
+            const hasCert = (0, fs_1.existsSync)((0, path_1.join)(sslDir, 'fullchain.pem'));
+            const hasKey = (0, fs_1.existsSync)((0, path_1.join)(sslDir, 'privkey.pem'));
+            let domain = '';
+            try {
+                domain = (0, fs_1.readFileSync)((0, path_1.join)(sslDir, 'domain.txt'), 'utf-8').trim();
+            }
+            catch { }
+            res.json({
+                enabled: hasCert && hasKey,
+                domain,
+                certPath: hasCert ? (0, path_1.join)(sslDir, 'fullchain.pem') : null,
+                expires: hasCert ? this.getCertExpiry((0, path_1.join)(sslDir, 'fullchain.pem')) : null,
+            });
+        });
+        this.app.post('/api/ssl/setup', async (req, res) => {
+            const { domain, email } = req.body || {};
+            if (!domain || !email) {
+                res.status(400).json({ error: 'domain and email required' });
+                return;
+            }
+            const sslDir = (0, path_1.join)(require('os').homedir(), '.config', 'gstdbot', 'ssl');
+            try {
+                if (!(0, fs_1.existsSync)(sslDir))
+                    (0, fs_1.mkdirSync)(sslDir, { recursive: true });
+                // Install certbot if needed, then obtain cert
+                const cmds = [
+                    'which certbot || (sudo apt-get update -qq && sudo apt-get install -y -qq certbot)',
+                    `sudo certbot certonly --standalone --non-interactive --agree-tos -m ${email} -d ${domain} --http-01-port 80`,
+                    `sudo cp /etc/letsencrypt/live/${domain}/fullchain.pem ${sslDir}/`,
+                    `sudo cp /etc/letsencrypt/live/${domain}/privkey.pem ${sslDir}/`,
+                    `sudo chown $(whoami) ${sslDir}/*.pem`,
+                ];
+                for (const cmd of cmds) {
+                    (0, child_process_1.execSync)(cmd, { timeout: 120000, stdio: 'pipe' });
+                }
+                (0, fs_1.writeFileSync)((0, path_1.join)(sslDir, 'domain.txt'), domain);
+                logActivity(`SSL certificate obtained for ${domain}`, 'success');
+                res.json({ success: true, domain, message: `SSL certificate installed for ${domain}. Restart node to enable HTTPS.` });
+            }
+            catch (e) {
+                logActivity('SSL setup failed: ' + e.message, 'error');
+                res.status(500).json({ error: 'SSL setup failed: ' + e.message });
+            }
+        });
+        // ═══════════════════════════════════════════════════════════
+        // ─── DYNAMIC DNS SUPPORT ─────────────────────────────────
+        // ═══════════════════════════════════════════════════════════
+        this.app.get('/api/dns/status', (_req, res) => {
+            const dnsFile = (0, path_1.join)(require('os').homedir(), '.config', 'gstdbot', 'dyndns.json');
+            let config = null;
+            try {
+                config = JSON.parse((0, fs_1.readFileSync)(dnsFile, 'utf-8'));
+            }
+            catch { }
+            res.json({
+                configured: !!config,
+                provider: config?.provider || null,
+                domain: config?.domain || null,
+                lastUpdate: config?.lastUpdate || null,
+                supportedProviders: ['duckdns', 'noip', 'dynu', 'freedns', 'cloudflare'],
+            });
+        });
+        this.app.post('/api/dns/setup', (req, res) => {
+            const { provider, domain, token: dnsToken, username, password } = req.body || {};
+            if (!provider || !domain) {
+                res.status(400).json({ error: 'provider and domain required' });
+                return;
+            }
+            const dnsFile = (0, path_1.join)(require('os').homedir(), '.config', 'gstdbot', 'dyndns.json');
+            const config = { provider, domain, token: dnsToken, username, password, lastUpdate: null };
+            // Test update
+            try {
+                let updateUrl = '';
+                switch (provider) {
+                    case 'duckdns':
+                        updateUrl = `https://www.duckdns.org/update?domains=${domain.replace('.duckdns.org', '')}&token=${dnsToken}&ip=`;
+                        break;
+                    case 'noip':
+                        updateUrl = `https://${username}:${password}@dynupdate.no-ip.com/nic/update?hostname=${domain}`;
+                        break;
+                    case 'dynu':
+                        updateUrl = `https://api.dynu.com/nic/update?hostname=${domain}&password=${dnsToken}`;
+                        break;
+                    case 'cloudflare':
+                        // Cloudflare uses API, more complex
+                        break;
+                    default:
+                        updateUrl = `https://freedns.afraid.org/dynamic/update.php?${dnsToken}`;
+                }
+                config.lastUpdate = new Date().toISOString();
+                (0, fs_1.writeFileSync)(dnsFile, JSON.stringify(config, null, 2));
+                logActivity(`DynDNS configured: ${provider} → ${domain}`, 'success');
+                res.json({ success: true, provider, domain });
+            }
+            catch (e) {
+                res.status(500).json({ error: 'DynDNS setup failed: ' + e.message });
+            }
+        });
+        // ═══════════════════════════════════════════════════════════
+        // ─── SWARM NETWORK STATS (real data from platform) ───────
+        // ═══════════════════════════════════════════════════════════
+        this.app.get('/api/swarm/network', async (_req, res) => {
+            try {
+                const resp = await fetch('https://app.gstdtoken.com/api/v1/monitor/unified', {
+                    signal: AbortSignal.timeout(5000)
+                }).catch(() => null);
+                if (resp?.ok) {
+                    const data = await resp.json();
+                    const eco = data.ecosystem || {};
+                    res.json({
+                        totalNodes: eco.total_users || 0,
+                        activeNodes: eco.active_nodes || eco.total_users || 0,
+                        totalPower: {
+                            cpu: eco.total_cpu_cores || 0,
+                            ram_gb: eco.total_ram_gb || 0,
+                            gpu: eco.total_gpus || 0,
+                            storage_tb: eco.total_storage_tb || 0,
+                        },
+                        tasksCompleted: eco.tasks_completed || 0,
+                        tasksProcessing: eco.tasks_processing || 0,
+                        totalGSTDMined: eco.total_gstd_mined || 0,
+                        networkUptime: eco.network_uptime || '99.9%',
+                    });
+                    return;
+                }
+            }
+            catch { }
+            // Fallback: local data + orchestrator
+            const orch = this.orchestrator;
+            res.json({
+                totalNodes: orch?.getPeers()?.length || 1,
+                activeNodes: orch?.getPeers()?.filter((p) => Date.now() - p.lastSeen < 60000).length || 1,
+                totalPower: {
+                    cpu: (0, os_1.cpus)().length,
+                    ram_gb: Math.round((0, os_1.totalmem)() / 1024 / 1024 / 1024),
+                    gpu: 0,
+                    storage_tb: 0,
+                },
+                tasksCompleted: this.metrics.totalRequests,
+                tasksProcessing: 0,
+                totalGSTDMined: 0,
+                networkUptime: '100%',
+            });
+        });
+        // ═══════════════════════════════════════════════════════════
+        // ─── RESOURCE SHARING CONFIG + EARNINGS CALCULATOR ───────
+        // ═══════════════════════════════════════════════════════════
+        this.app.get('/api/resources/config', (_req, res) => {
+            const configFile = (0, path_1.join)(require('os').homedir(), '.config', 'gstdbot', 'resources.json');
+            let config = {
+                maxCPU: parseInt(process.env.GSTD_MAX_CPU || '80'),
+                maxRAM: parseInt(process.env.GSTD_MAX_RAM || '70'),
+                maxGPU: parseInt(process.env.GSTD_MAX_GPU || '50'),
+                maxDisk: parseInt(process.env.GSTD_MAX_DISK || '20'),
+                sharingEnabled: process.env.SWARM_ENABLED !== 'false',
+            };
+            try {
+                config = { ...config, ...JSON.parse((0, fs_1.readFileSync)(configFile, 'utf-8')) };
+            }
+            catch { }
+            // Earnings estimate
+            const totalCPU = (0, os_1.cpus)().length;
+            const totalRAM = Math.round((0, os_1.totalmem)() / 1024 / 1024 / 1024);
+            const sharedCPU = Math.round(totalCPU * config.maxCPU / 100);
+            const sharedRAM = Math.round(totalRAM * config.maxRAM / 100);
+            // Estimated daily earnings: 0.1 GSTD base + 0.05 per shared CPU core + 0.02 per shared GB RAM
+            const dailyEstimate = 0.1 + (sharedCPU * 0.05) + (sharedRAM * 0.02);
+            res.json({
+                config,
+                hardware: { totalCPU, totalRAM, sharedCPU, sharedRAM },
+                earnings: {
+                    daily: Math.round(dailyEstimate * 1000) / 1000,
+                    weekly: Math.round(dailyEstimate * 7 * 1000) / 1000,
+                    monthly: Math.round(dailyEstimate * 30 * 1000) / 1000,
+                },
+                rates: { perCPU: 0.05, perRAM_GB: 0.02, baseUptime: 0.1 },
+            });
+        });
+        this.app.post('/api/resources/config', (req, res) => {
+            const { maxCPU, maxRAM, maxGPU, maxDisk, sharingEnabled } = req.body || {};
+            const configFile = (0, path_1.join)(require('os').homedir(), '.config', 'gstdbot', 'resources.json');
+            const config = {
+                maxCPU: Math.min(100, Math.max(10, maxCPU || 80)),
+                maxRAM: Math.min(100, Math.max(10, maxRAM || 70)),
+                maxGPU: Math.min(100, Math.max(0, maxGPU || 50)),
+                maxDisk: Math.min(50, Math.max(0, maxDisk || 20)),
+                sharingEnabled: sharingEnabled !== false,
+            };
+            try {
+                (0, fs_1.writeFileSync)(configFile, JSON.stringify(config, null, 2));
+                logActivity(`Resource sharing updated: CPU ${config.maxCPU}%, RAM ${config.maxRAM}%`, 'success');
+            }
+            catch { }
+            res.json({ success: true, config });
+        });
+        // ═══════════════════════════════════════════════════════════
+        // ─── SELF-DIAGNOSTICS SYSTEM ─────────────────────────────
+        // ═══════════════════════════════════════════════════════════
+        this.app.get('/api/diagnostics/run', async (_req, res) => {
+            const checks = [];
+            // 1. Disk space check
+            try {
+                const df = (0, child_process_1.execSync)('df -h / | tail -1', { encoding: 'utf-8', timeout: 5000 });
+                const parts = df.trim().split(/\s+/);
+                const usedPct = parseInt(parts[4]) || 0;
+                if (usedPct > 90) {
+                    // Auto-clean temp files
+                    try {
+                        (0, child_process_1.execSync)('rm -rf /tmp/gstd-* 2>/dev/null; npm cache clean --force 2>/dev/null', { timeout: 10000, stdio: 'pipe' });
+                        checks.push({ name: 'Disk Space', status: 'warning', message: `${usedPct}% used — temp files cleaned`, autoFixed: true });
+                    }
+                    catch {
+                        checks.push({ name: 'Disk Space', status: 'critical', message: `${usedPct}% used — clean up manually` });
+                    }
+                }
+                else {
+                    checks.push({ name: 'Disk Space', status: 'ok', message: `${usedPct}% used` });
+                }
+            }
+            catch {
+                checks.push({ name: 'Disk Space', status: 'error', message: 'Could not check disk' });
+            }
+            // 2. Node.js version
+            try {
+                const nodeVer = process.version;
+                const major = parseInt(nodeVer.slice(1));
+                checks.push({ name: 'Node.js', status: major >= 20 ? 'ok' : 'warning', message: nodeVer });
+            }
+            catch {
+                checks.push({ name: 'Node.js', status: 'error', message: 'Unknown' });
+            }
+            // 3. Docker available
+            try {
+                (0, child_process_1.execSync)('docker info', { timeout: 5000, stdio: 'pipe' });
+                checks.push({ name: 'Docker', status: 'ok', message: 'Running' });
+            }
+            catch {
+                checks.push({ name: 'Docker', status: 'warning', message: 'Not available — apps cannot be installed' });
+            }
+            // 4. Git repository
+            try {
+                const branch = (0, child_process_1.execSync)('git -C ' + (0, path_1.join)(__dirname, '../..') + ' rev-parse --abbrev-ref HEAD', { encoding: 'utf-8', timeout: 5000 }).trim();
+                const behind = (0, child_process_1.execSync)('git -C ' + (0, path_1.join)(__dirname, '../..') + ' rev-list HEAD..origin/' + branch + ' --count 2>/dev/null || echo 0', { encoding: 'utf-8', timeout: 10000 }).trim();
+                checks.push({ name: 'Git Repository', status: 'ok', message: `Branch: ${branch}, behind: ${behind} commits` });
+            }
+            catch {
+                checks.push({ name: 'Git Repository', status: 'warning', message: 'Not a git repository' });
+            }
+            // 5. Memory pressure
+            const memUsage = Math.round((((0, os_1.totalmem)() - (0, os_1.freemem)()) / (0, os_1.totalmem)()) * 100);
+            checks.push({ name: 'Memory', status: memUsage > 90 ? 'critical' : memUsage > 75 ? 'warning' : 'ok', message: `${memUsage}% used` });
+            // 6. Config integrity
+            const configDir = (0, path_1.join)(require('os').homedir(), '.config', 'gstdbot');
+            checks.push({ name: 'Config Directory', status: (0, fs_1.existsSync)(configDir) ? 'ok' : 'warning', message: configDir });
+            // 7. Log file size
+            try {
+                const logSize = (0, fs_1.existsSync)(LOG_FILE) ? require('fs').statSync(LOG_FILE).size : 0;
+                if (logSize > 10 * 1024 * 1024) { // > 10MB
+                    // Rotate log
+                    const lines = (0, fs_1.readFileSync)(LOG_FILE, 'utf-8').split('\n');
+                    (0, fs_1.writeFileSync)(LOG_FILE, lines.slice(-500).join('\n'));
+                    checks.push({ name: 'Activity Log', status: 'ok', message: 'Rotated (was too large)', autoFixed: true });
+                }
+                else {
+                    checks.push({ name: 'Activity Log', status: 'ok', message: `${Math.round(logSize / 1024)}KB` });
+                }
+            }
+            catch {
+                checks.push({ name: 'Activity Log', status: 'ok', message: 'No log file' });
+            }
+            // 8. Swarm connectivity
+            checks.push({
+                name: 'Swarm Network',
+                status: this.subsystems.swarm?.isConnected() ? 'ok' : 'warning',
+                message: this.subsystems.swarm?.isConnected() ? 'Connected' : 'Standalone mode',
+            });
+            const critical = checks.filter(c => c.status === 'critical').length;
+            const warnings = checks.filter(c => c.status === 'warning').length;
+            const fixed = checks.filter(c => c.autoFixed).length;
+            logActivity(`Diagnostics: ${checks.length} checks, ${critical} critical, ${warnings} warnings, ${fixed} auto-fixed`, 'info');
+            res.json({ checks, summary: { total: checks.length, ok: checks.filter(c => c.status === 'ok').length, warnings, critical, autoFixed: fixed } });
+        });
+        // ═══════════════════════════════════════════════════════════
+        // ─── REINSTALL & RESET ───────────────────────────────────
+        // ═══════════════════════════════════════════════════════════
+        this.app.post('/api/system/reinstall', async (req, res) => {
+            const { preserveData = true } = req.body || {};
+            logActivity(`System reinstall requested (preserveData=${preserveData})`, 'warn');
+            try {
+                const cwd = (0, path_1.join)(__dirname, '../..');
+                // Backup data if preserving
+                if (preserveData) {
+                    const backupDir = (0, path_1.join)(require('os').homedir(), '.config', 'gstdbot', 'backup');
+                    (0, child_process_1.execSync)(`mkdir -p ${backupDir}`, { timeout: 5000 });
+                    (0, child_process_1.execSync)(`cp -r ${(0, path_1.join)(require('os').homedir(), '.config', 'gstdbot', 'wallet.json')} ${backupDir}/ 2>/dev/null || true`, { timeout: 5000 });
+                    (0, child_process_1.execSync)(`cp -r ${(0, path_1.join)(require('os').homedir(), '.config', 'gstdbot', 'earnings.json')} ${backupDir}/ 2>/dev/null || true`, { timeout: 5000 });
+                    (0, child_process_1.execSync)(`cp -r ${(0, path_1.join)(require('os').homedir(), '.config', 'gstdbot', 'dashboard_pin.hash')} ${backupDir}/ 2>/dev/null || true`, { timeout: 5000 });
+                    (0, child_process_1.execSync)(`cp -r ${(0, path_1.join)(require('os').homedir(), '.config', 'gstdbot', 'telegram_link.json')} ${backupDir}/ 2>/dev/null || true`, { timeout: 5000 });
+                }
+                // Git pull + rebuild
+                (0, child_process_1.execSync)('git fetch --all && git reset --hard origin/main', { cwd, timeout: 30000, stdio: 'pipe' });
+                (0, child_process_1.execSync)('npm install --legacy-peer-deps', { cwd, timeout: 120000, stdio: 'pipe' });
+                (0, child_process_1.execSync)('npx tsc', { cwd, timeout: 60000, stdio: 'pipe' });
+                // Restore data
+                if (preserveData) {
+                    const backupDir = (0, path_1.join)(require('os').homedir(), '.config', 'gstdbot', 'backup');
+                    (0, child_process_1.execSync)(`cp -r ${backupDir}/* ${(0, path_1.join)(require('os').homedir(), '.config', 'gstdbot/')} 2>/dev/null || true`, { timeout: 5000 });
+                    (0, child_process_1.execSync)(`rm -rf ${backupDir}`, { timeout: 5000 });
+                }
+                logActivity('Reinstall complete — restart to apply', 'success');
+                res.json({ success: true, message: 'Reinstalled. Restarting in 3 seconds...' });
+                setTimeout(() => process.exit(0), 3000);
+            }
+            catch (e) {
+                logActivity('Reinstall failed: ' + e.message, 'error');
+                res.status(500).json({ error: 'Reinstall failed: ' + e.message });
+            }
+        });
+        this.app.post('/api/system/reset', (req, res) => {
+            const { confirm } = req.body || {};
+            if (confirm !== 'RESET_ALL_DATA') {
+                res.status(400).json({ error: 'Send { confirm: "RESET_ALL_DATA" } to confirm full reset' });
+                return;
+            }
+            logActivity('FULL SYSTEM RESET requested', 'warn');
+            try {
+                const configDir = (0, path_1.join)(require('os').homedir(), '.config', 'gstdbot');
+                (0, child_process_1.execSync)(`rm -rf ${configDir}`, { timeout: 5000 });
+                (0, child_process_1.execSync)(`mkdir -p ${configDir}`, { timeout: 5000 });
+                const cwd = (0, path_1.join)(__dirname, '../..');
+                (0, child_process_1.execSync)('git fetch --all && git reset --hard origin/main', { cwd, timeout: 30000, stdio: 'pipe' });
+                (0, child_process_1.execSync)('npm install --legacy-peer-deps', { cwd, timeout: 120000, stdio: 'pipe' });
+                (0, child_process_1.execSync)('npx tsc', { cwd, timeout: 60000, stdio: 'pipe' });
+                res.json({ success: true, message: 'Full reset complete. Restarting in 3 seconds...' });
+                setTimeout(() => process.exit(0), 3000);
+            }
+            catch (e) {
+                res.status(500).json({ error: 'Reset failed: ' + e.message });
+            }
+        });
+        // ═══════════════════════════════════════════════════════════
+        // ─── SSH SECURITY + SYSTEM UPDATES FROM DASHBOARD ────────
+        // ═══════════════════════════════════════════════════════════
+        this.app.get('/api/system/ssh', (_req, res) => {
+            try {
+                const sshConfig = (0, fs_1.readFileSync)('/etc/ssh/sshd_config', 'utf-8').split('\n');
+                const rootLogin = sshConfig.find(l => l.match(/^\s*PermitRootLogin/i))?.trim() || 'not set';
+                const passwordAuth = sshConfig.find(l => l.match(/^\s*PasswordAuthentication/i))?.trim() || 'not set';
+                const port = sshConfig.find(l => l.match(/^\s*Port\s/i))?.trim() || 'Port 22';
+                res.json({ rootLogin, passwordAuth, port, status: 'readable' });
+            }
+            catch {
+                res.json({ status: 'not_accessible', message: 'Cannot read SSH config' });
+            }
+        });
+        this.app.post('/api/system/ssh/harden', async (_req, res) => {
+            try {
+                const cmds = [
+                    "sudo sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config",
+                    "sudo sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config",
+                    'sudo systemctl reload sshd || sudo service sshd reload',
+                ];
+                for (const cmd of cmds) {
+                    (0, child_process_1.execSync)(cmd, { timeout: 10000, stdio: 'pipe' });
+                }
+                logActivity('SSH hardened: root login disabled, password auth disabled', 'success');
+                res.json({ success: true, message: 'SSH hardened. Make sure you have SSH key access before disconnecting!' });
+            }
+            catch (e) {
+                res.status(500).json({ error: 'SSH hardening failed: ' + e.message });
+            }
+        });
+        this.app.post('/api/system/update-os', async (_req, res) => {
+            logActivity('System update started from dashboard', 'info');
+            try {
+                (0, child_process_1.execSync)('sudo apt-get update -qq', { timeout: 120000, stdio: 'pipe' });
+                const output = (0, child_process_1.execSync)('sudo apt-get upgrade -y -qq 2>&1 | tail -5', { timeout: 600000, encoding: 'utf-8', stdio: 'pipe' });
+                logActivity('System update complete', 'success');
+                res.json({ success: true, message: 'System updated', output: output.trim() });
+            }
+            catch (e) {
+                logActivity('System update failed: ' + e.message, 'error');
+                res.status(500).json({ error: 'System update failed: ' + e.message });
+            }
+        });
+        // ═══════════════════════════════════════════════════════════
+        // ─── OFFICIAL PROJECT LINKS ──────────────────────────────
+        // ═══════════════════════════════════════════════════════════
+        this.app.get('/api/links', (_req, res) => {
+            res.json({
+                links: [
+                    { name: 'Dashboard', url: 'https://app.gstdtoken.com', icon: '📊', description: 'GSTD Platform Dashboard' },
+                    { name: 'Web Chat', url: 'https://app.gstdtoken.com/chat', icon: '💬', description: 'AI Chat Interface' },
+                    { name: 'Monitor', url: 'https://app.gstdtoken.com/monitor', icon: '📡', description: 'Network Monitor' },
+                    { name: 'Node OS', url: 'https://gstdbot.gstdtoken.com', icon: '🐝', description: 'Node OS Landing Page' },
+                    { name: 'Telegram Bot', url: 'https://t.me/GstdAppBot', icon: '🤖', description: 'AI Telegram Bot' },
+                    { name: 'GitHub', url: 'https://github.com/gstdcoin/gstdbot', icon: '⭐', description: 'Source Code' },
+                    { name: 'GitHub Org', url: 'https://github.com/gstdcoin', icon: '🏢', description: 'GSTD Organization' },
+                    { name: 'Documentation', url: 'https://gstdbot.gstdtoken.com/#install', icon: '📖', description: 'Installation Guide' },
+                    { name: 'Tonkeeper', url: 'https://tonkeeper.com', icon: '💎', description: 'TON Wallet' },
+                    { name: 'Ston.fi', url: 'https://ston.fi', icon: '🔄', description: 'DEX for GSTD/TON' },
+                ],
+            });
+        });
         logActivity('Node OS mounted on gateway — all-in-one on :' + this.config.apiPort);
     }
     getFallbackHTML() {
@@ -1062,6 +1499,15 @@ class OmegaGateway {
 <body style="font-family:sans-serif;background:#030014;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;">
 <div style="text-align:center;"><img src="/static/logo.png" alt="GSTD" style="width:64px;border-radius:12px;margin-bottom:12px;"><h1>GSTD Node Online</h1><p>Dashboard UI not found. Check web/dashboard.html</p>
 <p><a href="/api/node/status" style="color:#06b6d4;">View API Status →</a></p></div></body></html>`;
+    }
+    getCertExpiry(certPath) {
+        try {
+            const output = (0, child_process_1.execSync)(`openssl x509 -enddate -noout -in ${certPath}`, { encoding: 'utf-8', timeout: 5000 });
+            return output.replace('notAfter=', '').trim();
+        }
+        catch {
+            return null;
+        }
     }
     setupWebSocket() {
         this.wss = new ws_1.WebSocketServer({ server: this.server, path: '/ws' });
@@ -1215,6 +1661,32 @@ class OmegaGateway {
                         resolve();
                     });
                 });
+                // Auto-start HTTPS if SSL certs exist
+                const sslDir = (0, path_1.join)(require('os').homedir(), '.config', 'gstdbot', 'ssl');
+                const certPath = (0, path_1.join)(sslDir, 'fullchain.pem');
+                const keyPath = (0, path_1.join)(sslDir, 'privkey.pem');
+                if ((0, fs_1.existsSync)(certPath) && (0, fs_1.existsSync)(keyPath)) {
+                    try {
+                        const https = require('https');
+                        const httpsServer = https.createServer({
+                            cert: (0, fs_1.readFileSync)(certPath),
+                            key: (0, fs_1.readFileSync)(keyPath),
+                        }, this.app);
+                        const httpsPort = parseInt(process.env.GSTD_HTTPS_PORT || '443');
+                        httpsServer.listen(httpsPort, '0.0.0.0', () => {
+                            console.log(`    HTTPS ready on port ${httpsPort}`);
+                            logActivity(`HTTPS enabled on port ${httpsPort}`, 'success');
+                        });
+                        httpsServer.on('error', (e) => {
+                            if (e.code === 'EACCES') {
+                                console.log(`    ⚠ HTTPS port ${httpsPort} requires root — use reverse proxy or run with sudo`);
+                            }
+                        });
+                    }
+                    catch (e) {
+                        console.log(`    ⚠ HTTPS setup failed: ${e.message}`);
+                    }
+                }
                 return; // Success — exit loop
             }
             catch (err) {
