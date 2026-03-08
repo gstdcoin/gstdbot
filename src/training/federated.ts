@@ -9,7 +9,7 @@
  * - Model sharing and distribution
  */
 
-import { logActivity } from '../dashboard/server.js';
+import { logActivity } from '../gateway/server.js';
 import type { NodeConfig } from '../index.js';
 
 // ─── Types ───────────────────────────────────────────────────────

@@ -11,7 +11,7 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SwarmTrainer = void 0;
-const server_js_1 = require("../dashboard/server.js");
+const server_js_1 = require("../gateway/server.js");
 // ─── Swarm Training Manager ─────────────────────────────────────
 class SwarmTrainer {
     config;

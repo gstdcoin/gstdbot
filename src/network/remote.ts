@@ -14,7 +14,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import WebSocket from 'ws';
-import { logActivity } from '../dashboard/server.js';
+import { logActivity } from '../gateway/server.js';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface AccessToken {

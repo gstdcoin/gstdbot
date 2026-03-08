@@ -133,6 +133,12 @@ async function main(): Promise<void> {
     const wallet = new NodeWallet(config);
     await wallet.init();
 
+    // Connect wallet to gateway → every query earns GSTD
+    gateway.setWallet(wallet);
+
+    // Auto-save earnings every 5 minutes
+    setInterval(() => { try { wallet.saveEarnings(); } catch {} }, 5 * 60 * 1000);
+
     // ── 4. Collective Memory ────────────────────────────────────
     console.log(`  [4/${TOTAL_STEPS}] Connecting collective memory...`);
     const memory = new CollectiveMemory(config);

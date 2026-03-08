@@ -14,7 +14,7 @@ import { createHash, randomBytes } from 'crypto';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import { logActivity } from '../dashboard/server.js';
+import { logActivity } from '../gateway/server.js';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface TokenBalance {

@@ -10,7 +10,7 @@
  */
 
 import { cpus, totalmem, freemem, hostname, platform, arch, loadavg } from 'os';
-import { logActivity } from '../dashboard/server.js';
+import { logActivity } from '../gateway/server.js';
 import type { NodeConfig } from '../index.js';
 import type { NodeWallet } from '../wallet/manager.js';
 import type { CollectiveMemory } from '../memory/collective.js';

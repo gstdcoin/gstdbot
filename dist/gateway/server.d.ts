@@ -5,6 +5,7 @@
  * Handles: WebSocket sessions, channel routing, tool dispatch, skills, swarm,
  * Dashboard UI, App Store, and all Node OS functions — all on one port.
  */
+import { NodeWallet } from '../wallet/manager.js';
 export interface GatewayConfig {
     port: number;
     apiPort: number;
@@ -22,8 +23,11 @@ export declare class OmegaGateway {
     private config;
     private clients;
     private appManager;
+    private wallet;
     private metrics;
     constructor(config?: Partial<GatewayConfig>);
+    /** Inject wallet after it's initialized (wallet created after gateway) */
+    setWallet(wallet: NodeWallet): void;
     private setupAPI;
     private setupNodeOS;
     private getFallbackHTML;

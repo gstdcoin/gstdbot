@@ -19,7 +19,7 @@ const fs_1 = require("fs");
 const path_1 = require("path");
 const os_1 = require("os");
 const ws_1 = __importDefault(require("ws"));
-const server_js_1 = require("../dashboard/server.js");
+const server_js_1 = require("../gateway/server.js");
 // ─── Remote Access Manager ───────────────────────────────────────
 class RemoteAccessManager {
     tokens = [];

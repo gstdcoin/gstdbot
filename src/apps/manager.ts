@@ -11,7 +11,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import { logActivity } from '../dashboard/server.js';
+import { logActivity } from '../gateway/server.js';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface AppManifest {

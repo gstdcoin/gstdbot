@@ -112,6 +112,13 @@ async function main() {
     console.log(`  [3/${TOTAL_STEPS}] Starting wallet manager...`);
     const wallet = new manager_js_1.NodeWallet(config);
     await wallet.init();
+    // Connect wallet to gateway → every query earns GSTD
+    gateway.setWallet(wallet);
+    // Auto-save earnings every 5 minutes
+    setInterval(() => { try {
+        wallet.saveEarnings();
+    }
+    catch { } }, 5 * 60 * 1000);
     // ── 4. Collective Memory ────────────────────────────────────
     console.log(`  [4/${TOTAL_STEPS}] Connecting collective memory...`);
     const memory = new collective_js_1.CollectiveMemory(config);

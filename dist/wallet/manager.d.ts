@@ -58,7 +58,7 @@ export declare class NodeWallet {
     private earnUptime;
     private createWallet;
     private refreshBalance;
-    private saveEarnings;
+    saveEarnings(): void;
 }
 export declare function getWallet(): WalletData | null;
 export declare function getBalance(): Promise<WalletBalance>;

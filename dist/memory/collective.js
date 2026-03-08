@@ -13,7 +13,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CollectiveMemory = void 0;
 const crypto_1 = require("crypto");
-const server_js_1 = require("../dashboard/server.js");
+const server_js_1 = require("../gateway/server.js");
 // ─── Collective Memory ──────────────────────────────────────────
 class CollectiveMemory {
     config;

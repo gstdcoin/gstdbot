@@ -16,6 +16,12 @@ import { cpus, totalmem, freemem, hostname, platform, arch, loadavg, uptime as o
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { AppManager, type AppManifest, type InstalledApp } from '../apps/manager.js';
+import { NodeWallet } from '../wallet/manager.js';
+
+// ─── Reward config ───────────────────────────────────────────────
+const REWARD_PER_QUERY = 0.001;        // GSTD per AI query served
+const REWARD_PER_SMARTMIX = 0.003;     // GSTD per multi-model query  
+const REWARD_PER_CACHE_HIT = 0.0005;   // GSTD per cache hit
 
 export interface GatewayConfig {
     port: number;
@@ -101,6 +107,7 @@ export class OmegaGateway {
     private config: GatewayConfig;
     private clients = new Map<string, WebSocket>();
     private appManager: AppManager;
+    private wallet: NodeWallet | null = null;
     private metrics = {
         totalRequests: 0,
         swarmRequests: 0,
@@ -117,6 +124,12 @@ export class OmegaGateway {
         this.server = http.createServer(this.app);
         this.setupAPI();
         this.setupNodeOS();
+    }
+
+    /** Inject wallet after it's initialized (wallet created after gateway) */
+    setWallet(wallet: NodeWallet): void {
+        this.wallet = wallet;
+        logActivity('Wallet connected to gateway — rewards active', 'success');
     }
 
     private setupAPI(): void {
@@ -328,7 +341,10 @@ export class OmegaGateway {
                     ram: { total: totalmem(), free: freemem(), used: totalmem() - freemem(), usage: Math.round(((totalmem() - freemem()) / totalmem()) * 100) },
                     gpu, disk,
                 },
-                wallet: null,
+                wallet: this.wallet ? {
+                    address: this.wallet.getAddress(),
+                    balance: this.wallet.getBalance(),
+                } : null,
                 swarm: { enabled: process.env.SWARM_ENABLED !== 'false', status: 'connected', mode: process.env.GSTD_SOVEREIGNTY_MODE || 'full' },
                 gateway: { port: this.config.port, api_port: this.config.apiPort },
             });
@@ -346,8 +362,30 @@ export class OmegaGateway {
             res.json({ pending: 0, completed: 0, processing: 0 });
         });
 
-        // ─── Earnings ────────────────────────────────────────────
-        this.app.get('/api/node/earnings', async (_req, res) => { res.json({ earnings: [], total: 0, today: 0, week: 0 }); });
+        // ─── Earnings (real from wallet) ────────────────────────────
+        this.app.get('/api/node/earnings', async (_req, res) => {
+            if (this.wallet) {
+                const stats = this.wallet.getStats();
+                res.json({
+                    today: stats.earningsToday,
+                    week: stats.earningsWeek,
+                    month: stats.earningsMonth,
+                    total: stats.earningsTotal,
+                    earnings: stats.earningsHistory.slice(0, 50),
+                });
+            } else {
+                res.json({ earnings: [], total: 0, today: 0, week: 0, month: 0 });
+            }
+        });
+
+        // ─── Wallet Stats (full) ─────────────────────────────────
+        this.app.get('/api/node/wallet', async (_req, res) => {
+            if (this.wallet) {
+                res.json(this.wallet.getStats());
+            } else {
+                res.json({ address: null, balance: { gstd: 0, ton: 0, pending: 0, totalEarned: 0 } });
+            }
+        });
 
         // ─── Node Control ────────────────────────────────────────
         this.app.post('/api/node/control', async (req, res) => {
@@ -534,11 +572,27 @@ export class OmegaGateway {
 
     private updateMetrics(result: RouteResult): void {
         switch (result.tier) {
-            case 'cache': this.metrics.cacheHits++; break;
-            case 'swarm': this.metrics.swarmRequests++; break;
-            case 'groq': this.metrics.swarmRequests++; break;
+            case 'cache':
+                this.metrics.cacheHits++;
+                if (this.wallet) {
+                    this.wallet.addEarning(REWARD_PER_CACHE_HIT, 'inference', `Cache hit: ${result.model}`);
+                }
+                break;
+            case 'swarm':
+            case 'groq':
+                this.metrics.swarmRequests++;
+                if (this.wallet) {
+                    const reward = result.model?.includes('smartmix') ? REWARD_PER_SMARTMIX : REWARD_PER_QUERY;
+                    this.wallet.addEarning(reward, 'inference', `Query: ${result.model} (${result.latencyMs}ms)`);
+                }
+                break;
             case 'fallback':
-            case 'commercial': this.metrics.commercialRequests++; break;
+            case 'commercial':
+                this.metrics.commercialRequests++;
+                if (this.wallet) {
+                    this.wallet.addEarning(REWARD_PER_QUERY, 'inference', `Fallback query: ${result.model}`);
+                }
+                break;
         }
     }
 

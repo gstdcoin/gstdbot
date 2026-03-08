@@ -12,7 +12,7 @@ import { randomBytes, createHash } from 'crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import { logActivity } from '../dashboard/server.js';
+import { logActivity } from '../gateway/server.js';
 import type { NodeConfig } from '../index.js';
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -210,7 +210,7 @@ export class NodeWallet {
         } catch { }
     }
 
-    private saveEarnings(): void {
+    saveEarnings(): void {
         try {
             writeFileSync(this.earningsFile, JSON.stringify(this.earnings, null, 2));
         } catch { }

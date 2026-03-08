@@ -12,7 +12,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SwarmAgent = void 0;
 const os_1 = require("os");
-const server_js_1 = require("../dashboard/server.js");
+const server_js_1 = require("../gateway/server.js");
 // ─── Swarm Agent ─────────────────────────────────────────────────
 class SwarmAgent {
     config;
