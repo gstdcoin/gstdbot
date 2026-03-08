@@ -260,27 +260,37 @@ fi
 # Build
 step 4 "Building GSTD Node..."
 cd "$INSTALL_DIR"
-if [ ! -d "node_modules" ] || [ ! -f "node_modules/.package-lock.json" ]; then
-    npm install --legacy-peer-deps 2>>"$LOG_FILE" || {
-        warn "npm install failed, retrying..."
-        npm install 2>>"$LOG_FILE"
-    }
-    info "Dependencies installed"
-else
-    info "Dependencies (already installed)"
-fi
 
-if [ ! -d "dist" ] || [ ! -f "dist/index.js" ] || \
-   find src -name '*.ts' -newer dist/index.js 2>/dev/null | grep -q .; then
-    info "Building TypeScript..."
-    npx tsc 2>>"$LOG_FILE" || {
-        warn "TypeScript build failed, trying with --skipLibCheck..."
-        npx tsc --skipLibCheck 2>>"$LOG_FILE"
+# Always install/update dependencies
+npm install --legacy-peer-deps 2>>"$LOG_FILE" || {
+    warn "npm install failed, retrying..."
+    npm install 2>>"$LOG_FILE"
+}
+info "Dependencies installed"
+
+# Always rebuild TypeScript to ensure dist/ matches source
+info "Compiling TypeScript..."
+npx tsc 2>>"$LOG_FILE" || {
+    warn "TypeScript build failed, trying with --skipLibCheck..."
+    npx tsc --skipLibCheck 2>>"$LOG_FILE" || {
+        # If build fails completely, dist/ from git should still work
+        if [ -f "dist/index.js" ]; then
+            warn "Build failed but pre-built dist/ exists — using it"
+        else
+            err "Build failed and no pre-built dist/ found"
+            exit 1
+        fi
     }
-    info "TypeScript compiled ✓"
-else
-    info "Already built (no source changes)"
+}
+info "Build complete ✓"
+
+# Verify the critical file exists
+if [ ! -f "dist/gateway/server.js" ]; then
+    err "dist/gateway/server.js missing — build incomplete"
+    exit 1
 fi
+info "Verified: gateway server ready"
+
 cd - >/dev/null
 mark_done "gstdbot"
 
