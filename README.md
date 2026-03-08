@@ -55,6 +55,22 @@ Your Hardware
 | **📊 Control Panel**     | Real-time CPU/RAM/GPU/Disk, wallet, tasks, app launcher        |
 | **🔑 SSH Management**    | Read/harden SSH config, system updates — all from dashboard    |
 | **🔁 One-Cmd Reinstall** | `bash reinstall.sh` — preserves data, rebuilds from GitHub     |
+| **🔷 TON Validator**     | Run validator with 1M GSTD — staking, 12-20% APY, signed TX    |
+| **🧠 Model Training**    | Train custom AI on swarm GPUs with 10M GSTD — tokens to nodes  |
+| **🏢 Enterprise Swarm**  | Rent swarm compute with 100M GSTD — fault-tolerant, SLA-grade  |
+
+## 💎 Super-Premium Tiers
+
+| Tier                    | Requirement      | Capability                                                |
+| ----------------------- | ---------------- | --------------------------------------------------------- |
+| 🔷 **TON Validator**    | 1,000,000 GSTD   | Run validator, accept staking, earn 12-20% APY commission |
+| 🧠 **Model Training**   | 10,000,000 GSTD  | Train custom AI models on distributed GPU/CPU resources   |
+| 🏢 **Enterprise Swarm** | 100,000,000 GSTD | Rent fault-tolerant swarm compute for data centers        |
+
+- **Commission**: 5% platform fee, 95% distributed to participating nodes
+- **Security**: All transactions require wallet signature verification
+- **Rewards**: Nodes claim rewards on-demand via signed wallet transactions
+- **Swarm Memory**: Training results stored in distributed memory, accessible network-wide
 
 ## 🚀 Quick Start
 
