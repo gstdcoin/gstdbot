@@ -81,6 +81,23 @@ function getDiskUsage() {
         return { total: 0, used: 0, available: 0, usage: 0 };
     }
 }
+function getDefaultBranch(dir) {
+    try {
+        const b = (0, child_process_1.execSync)('git remote show origin 2>/dev/null | grep "HEAD branch" | awk \'{print $NF}\'', {
+            cwd: dir, encoding: 'utf-8', timeout: 10000, stdio: ['pipe', 'pipe', 'pipe'],
+        }).trim();
+        return b || 'main';
+    }
+    catch {
+        try {
+            (0, child_process_1.execSync)('git rev-parse origin/main', { cwd: dir, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+            return 'main';
+        }
+        catch {
+            return 'master';
+        }
+    }
+}
 function getLocalIP() {
     const nets = (0, os_1.networkInterfaces)();
     for (const name of Object.keys(nets)) {
@@ -298,20 +315,30 @@ class OmegaGateway {
         // ─── Self-Update (OTA from dashboard) ────────────────────
         this.app.get('/api/check-update', async (_req, res) => {
             try {
-                const { execSync } = require('child_process');
                 const installDir = process.env.GSTD_INSTALL_DIR || require('os').homedir() + '/gstdbot';
-                // Fetch latest from remote
-                execSync('git fetch origin main', { cwd: installDir, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'] });
-                const localHash = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8' }).trim();
-                const remoteHash = execSync('git rev-parse origin/main', { cwd: installDir, encoding: 'utf-8' }).trim();
-                const behind = parseInt(execSync('git rev-list HEAD..origin/main --count', { cwd: installDir, encoding: 'utf-8' }).trim()) || 0;
+                const branch = getDefaultBranch(installDir);
+                (0, child_process_1.execSync)(`git fetch origin ${branch}`, { cwd: installDir, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'] });
+                const localHash = (0, child_process_1.execSync)('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8' }).trim();
+                const remoteHash = (0, child_process_1.execSync)(`git rev-parse origin/${branch}`, { cwd: installDir, encoding: 'utf-8' }).trim();
+                const behind = parseInt((0, child_process_1.execSync)(`git rev-list HEAD..origin/${branch} --count`, { cwd: installDir, encoding: 'utf-8' }).trim()) || 0;
                 const currentVersion = require('../../package.json').version || 'unknown';
+                let changelog = [];
+                if (behind > 0) {
+                    try {
+                        changelog = (0, child_process_1.execSync)(`git log HEAD..origin/${branch} --oneline --no-decorate`, {
+                            cwd: installDir, encoding: 'utf-8', timeout: 5000,
+                        }).trim().split('\n').filter(Boolean);
+                    }
+                    catch { }
+                }
                 res.json({
                     update_available: localHash !== remoteHash,
                     current_version: currentVersion,
                     current_hash: localHash.slice(0, 8),
                     remote_hash: remoteHash.slice(0, 8),
                     commits_behind: behind,
+                    branch,
+                    changelog,
                 });
             }
             catch (e) {
@@ -320,40 +347,77 @@ class OmegaGateway {
         });
         this.app.post('/api/update', async (_req, res) => {
             try {
-                const { execSync } = require('child_process');
                 const installDir = process.env.GSTD_INSTALL_DIR || require('os').homedir() + '/gstdbot';
-                // Step 1: Pull latest
-                const pullOutput = execSync('git pull origin main --ff-only', {
-                    cwd: installDir, encoding: 'utf-8', timeout: 30000,
-                });
-                // Step 2: Install deps (if package.json changed)
-                execSync('npm install --production 2>&1 || true', {
+                const branch = getDefaultBranch(installDir);
+                logActivity(`Starting self-update from origin/${branch}...`, 'info');
+                // Step 0: Backup config
+                try {
+                    const configDir = require('os').homedir() + '/.config/gstdbot';
+                    const backupDir = configDir + '/backup_' + Date.now();
+                    (0, child_process_1.execSync)(`mkdir -p ${backupDir} && cp ${configDir}/wallet.json ${configDir}/earnings.json ${configDir}/dashboard_pin.hash ${backupDir}/ 2>/dev/null || true`, {
+                        encoding: 'utf-8', timeout: 5000,
+                    });
+                }
+                catch { }
+                // Step 1: Clean dirty files (package-lock.json etc.) and stash
+                try {
+                    (0, child_process_1.execSync)('git checkout -- package-lock.json 2>/dev/null || true', { cwd: installDir, encoding: 'utf-8', timeout: 5000 });
+                    (0, child_process_1.execSync)('git stash --include-untracked 2>/dev/null || true', { cwd: installDir, encoding: 'utf-8', timeout: 5000 });
+                }
+                catch { }
+                // Step 2: Pull latest
+                let pullOutput = '';
+                try {
+                    pullOutput = (0, child_process_1.execSync)(`git pull origin ${branch} --ff-only`, {
+                        cwd: installDir, encoding: 'utf-8', timeout: 30000,
+                    });
+                }
+                catch {
+                    // If ff-only fails, force reset to remote
+                    pullOutput = (0, child_process_1.execSync)(`git fetch origin ${branch} && git reset --hard origin/${branch}`, {
+                        cwd: installDir, encoding: 'utf-8', timeout: 30000,
+                    });
+                }
+                // Step 3: Install deps
+                (0, child_process_1.execSync)('npm install --legacy-peer-deps 2>&1 | tail -5 || true', {
                     cwd: installDir, encoding: 'utf-8', timeout: 120000,
                 });
-                // Step 3: Build
-                execSync('npx tsc 2>&1 || true', {
+                // Step 4: Build
+                (0, child_process_1.execSync)('npx tsc 2>&1 | tail -5 || true', {
                     cwd: installDir, encoding: 'utf-8', timeout: 60000,
                 });
+                // Step 5: Copy dashboard if target exists
+                try {
+                    (0, child_process_1.execSync)(`test -d /var/www/gstdbot && cp ${installDir}/web/dashboard.html /var/www/gstdbot/ 2>/dev/null || true`, {
+                        encoding: 'utf-8', timeout: 3000,
+                    });
+                }
+                catch { }
+                const newHash = (0, child_process_1.execSync)('git rev-parse --short HEAD', { cwd: installDir, encoding: 'utf-8' }).trim();
                 const newVersion = JSON.parse(require('fs').readFileSync(installDir + '/package.json', 'utf-8')).version || 'unknown';
+                logActivity(`Update complete: v${newVersion} (${newHash})`, 'success');
                 res.json({
                     success: true,
                     message: 'Update applied. Restarting...',
                     new_version: newVersion,
-                    pull_output: pullOutput.trim(),
+                    new_hash: newHash,
+                    branch,
+                    pull_output: pullOutput.toString().trim().slice(-500),
                 });
-                // Step 4: Restart process gracefully (after response is sent)
+                // Step 6: Restart gracefully
                 setTimeout(() => {
                     logActivity('Self-update complete — restarting...', 'success');
                     try {
-                        // If running via systemd, restart the service
-                        execSync('systemctl restart gstd-node 2>/dev/null || true', { encoding: 'utf-8', timeout: 5000 });
+                        (0, child_process_1.execSync)('sudo systemctl restart gstd-node 2>/dev/null || systemctl restart gstd-node 2>/dev/null || true', {
+                            encoding: 'utf-8', timeout: 10000,
+                        });
                     }
                     catch { }
-                    // If not systemd, just exit — PM2 or shell will restart
-                    process.exit(0);
+                    setTimeout(() => process.exit(0), 1000);
                 }, 500);
             }
             catch (e) {
+                logActivity('Update failed: ' + e.message, 'error');
                 res.status(500).json({ success: false, error: e.message });
             }
         });
@@ -728,13 +792,17 @@ class OmegaGateway {
             }
             else if (text === '/update') {
                 await sendReply('🔄 Checking for updates...');
-                // Trigger update check
                 try {
+                    const installDir = process.env.GSTD_INSTALL_DIR || (0, path_1.join)(require('os').homedir(), 'gstdbot');
+                    const branch = getDefaultBranch(installDir);
                     const { execSync } = require('child_process');
-                    const result = execSync('cd ' + (process.env.GSTD_INSTALL_DIR || (0, path_1.join)(require('os').homedir(), 'gstdbot')) + ' && git fetch origin main 2>&1 && git log HEAD..origin/main --oneline 2>&1', { timeout: 15000 }).toString();
+                    execSync(`git fetch origin ${branch} 2>&1`, { cwd: installDir, timeout: 15000 });
+                    const result = execSync(`git log HEAD..origin/${branch} --oneline 2>&1`, { cwd: installDir, timeout: 5000 }).toString();
                     if (result.trim()) {
-                        await sendReply('📦 Updates available:\n```\n' + result.trim() + '\n```\nApplying update...');
-                        execSync('cd ' + (process.env.GSTD_INSTALL_DIR || (0, path_1.join)(require('os').homedir(), 'gstdbot')) + ' && git pull origin main --ff-only && npm install --production && npx tsc', { timeout: 120000 });
+                        await sendReply('📦 Updates available:\\n```\\n' + result.trim() + '\\n```\\nApplying update...');
+                        execSync('git checkout -- package-lock.json 2>/dev/null || true', { cwd: installDir, timeout: 5000 });
+                        execSync('git stash --include-untracked 2>/dev/null || true', { cwd: installDir, timeout: 5000 });
+                        execSync(`git pull origin ${branch} --ff-only && npm install --legacy-peer-deps && npx tsc`, { cwd: installDir, timeout: 120000 });
                         await sendReply('✅ Updated! Restarting...');
                         setTimeout(() => process.exit(0), 1000);
                     }
@@ -779,10 +847,11 @@ class OmegaGateway {
         this.app.post('/api/update/component', async (req, res) => {
             const { component } = req.body || {};
             const installDir = process.env.GSTD_INSTALL_DIR || (0, path_1.join)(require('os').homedir(), 'gstdbot');
-            const { execSync } = require('child_process');
+            const branch = getDefaultBranch(installDir);
             try {
                 if (component === 'core' || component === 'all') {
-                    execSync(`cd ${installDir} && git pull origin main --ff-only && npm install --production && npx tsc`, { timeout: 120000 });
+                    (0, child_process_1.execSync)('git checkout -- package-lock.json 2>/dev/null || true', { cwd: installDir, timeout: 5000 });
+                    (0, child_process_1.execSync)(`cd ${installDir} && git pull origin ${branch} --ff-only && npm install --legacy-peer-deps && npx tsc`, { timeout: 120000 });
                     logActivity('Core updated', 'success');
                 }
                 if (component === 'apps' || component === 'all') {
@@ -790,7 +859,7 @@ class OmegaGateway {
                     logActivity('App registry refreshed', 'success');
                 }
                 if (component === 'dashboard' || component === 'all') {
-                    execSync(`cd ${installDir} && git checkout origin/main -- web/dashboard.html`, { timeout: 15000 });
+                    (0, child_process_1.execSync)(`cd ${installDir} && git checkout origin/main -- web/dashboard.html`, { timeout: 15000 });
                     logActivity('Dashboard updated', 'success');
                 }
                 res.json({ success: true, component, message: `${component} updated successfully` });
