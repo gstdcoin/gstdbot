@@ -102,7 +102,7 @@ export class BlockchainManager {
             try {
                 const data = JSON.parse(readFileSync(walletFile, 'utf-8'));
                 this.walletAddress = data.address;
-                this.walletSeed = data.seed;
+                // Seed is encrypted in wallet_seed.enc, not in wallet.json
             } catch { }
         }
 
@@ -188,7 +188,7 @@ export class BlockchainManager {
     private async refreshPrice(): Promise<void> {
         try {
             const resp = await fetch(
-                `${PLATFORM_API}/token/price`,
+                `${PLATFORM_API}/market/price`,
                 { signal: AbortSignal.timeout(5000) }
             ).catch(() => null);
 
