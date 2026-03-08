@@ -23,6 +23,8 @@
  */
 
 import { OmegaGateway, logActivity } from './gateway/server.js';
+import { SecurityHardening } from './security/hardening.js';
+import { SwarmOrchestrator } from './swarm/orchestrator.js';
 import { TelegramChannel } from './channels/telegram.js';
 import { SwarmAgent } from './swarm/agent.js';
 import { CollectiveMemory } from './memory/collective.js';
@@ -183,6 +185,11 @@ async function main(): Promise<void> {
     // ── 9. Node OS ready (Dashboard served via Gateway) ──────────
     console.log(`  [9/${TOTAL_STEPS}] Node OS UI active on gateway port...`);
 
+    // Initialize security and orchestrator
+    const security = new SecurityHardening();
+    const orchestrator = new SwarmOrchestrator(config);
+    await orchestrator.init().catch(() => {});
+
     // Inject all subsystems into gateway for full status reporting
     gateway.setSubsystems({
         memory,
@@ -190,6 +197,8 @@ async function main(): Promise<void> {
         resources,
         swarm,
         blockchain,
+        security,
+        orchestrator,
     });
 
     // ── Boot complete ───────────────────────────────────────────

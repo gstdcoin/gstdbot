@@ -38,6 +38,8 @@ export declare class OmegaGateway {
         resources?: any;
         swarm?: any;
         blockchain?: any;
+        security?: any;
+        orchestrator?: any;
     }): void;
     /** Get the actual port the gateway is listening on (may differ from requested if auto-reassigned) */
     getPort(): number;

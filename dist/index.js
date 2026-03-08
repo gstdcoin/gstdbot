@@ -24,6 +24,8 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 const server_js_1 = require("./gateway/server.js");
+const hardening_js_1 = require("./security/hardening.js");
+const orchestrator_js_1 = require("./swarm/orchestrator.js");
 const telegram_js_1 = require("./channels/telegram.js");
 const agent_js_1 = require("./swarm/agent.js");
 const collective_js_1 = require("./memory/collective.js");
@@ -157,6 +159,10 @@ async function main() {
     }
     // ── 9. Node OS ready (Dashboard served via Gateway) ──────────
     console.log(`  [9/${TOTAL_STEPS}] Node OS UI active on gateway port...`);
+    // Initialize security and orchestrator
+    const security = new hardening_js_1.SecurityHardening();
+    const orchestrator = new orchestrator_js_1.SwarmOrchestrator(config);
+    await orchestrator.init().catch(() => { });
     // Inject all subsystems into gateway for full status reporting
     gateway.setSubsystems({
         memory,
@@ -164,6 +170,8 @@ async function main() {
         resources,
         swarm,
         blockchain,
+        security,
+        orchestrator,
     });
     // ── Boot complete ───────────────────────────────────────────
     const bootTime = ((Date.now() - startTime) / 1000).toFixed(1);

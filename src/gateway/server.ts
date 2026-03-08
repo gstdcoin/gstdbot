@@ -142,8 +142,10 @@ export class OmegaGateway {
     }
 
     /** Inject subsystems for full status reporting */
-    setSubsystems(subs: { memory?: any; trainer?: any; resources?: any; swarm?: any; blockchain?: any }): void {
+    setSubsystems(subs: { memory?: any; trainer?: any; resources?: any; swarm?: any; blockchain?: any; security?: any; orchestrator?: any }): void {
         this.subsystems = subs;
+        if (subs.security) this.security = subs.security;
+        if (subs.orchestrator) this.orchestrator = subs.orchestrator;
     }
 
     /** Get the actual port the gateway is listening on (may differ from requested if auto-reassigned) */

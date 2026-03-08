@@ -135,6 +135,10 @@ class OmegaGateway {
     /** Inject subsystems for full status reporting */
     setSubsystems(subs) {
         this.subsystems = subs;
+        if (subs.security)
+            this.security = subs.security;
+        if (subs.orchestrator)
+            this.orchestrator = subs.orchestrator;
     }
     /** Get the actual port the gateway is listening on (may differ from requested if auto-reassigned) */
     getPort() {
