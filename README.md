@@ -17,15 +17,18 @@ curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
 
 ```
 Your Hardware
-├── 📊 Dashboard (localhost:8080) — full node control panel with PIN auth
+├── 📊 Dashboard (localhost:8080) — full node control panel with wallet/PIN auth
 ├── 🤖 AI Engine — 8 Groq models + local Ollama + OpenClaw gateway
 ├── 🌐 Swarm Agent — P2P task processing → earn GSTD
 ├── 🧠 Collective Memory — Redis + ChromaDB, shared knowledge across nodes
 ├── 💰 GSTD Wallet — TON-based, earnings tracker, staking
 ├── 📦 App Store — 77 apps (11 Premium), Docker-based
-├── 🔒 Security — AES-256 encryption, rate limiting, Docker sandboxing
+├── 🔒 Security — AES-256, wallet auth, brute-force protection, SSH hardening
 ├── 📱 Telegram Management — remote node control via Telegram bot
 ├── 🔄 Swarm Orchestrator — load balancing, P2P relay, model distribution
+├── 🔐 SSL & DynDNS — Let's Encrypt auto-SSL + 5 DynDNS providers
+├── 🩺 Self-Diagnostics — 8 health checks with auto-fix
+├── ⚙️ Resource Control — CPU/RAM sharing config + earnings calculator
 └── 💬 Channels — Telegram bot + Web chat
 ```
 
@@ -42,9 +45,16 @@ Your Hardware
 | **⭐ Premium Apps**      | 11 premium apps unlocked at 1000 GSTD balance                  |
 | **📱 Telegram Control**  | Manage your node remotely via Telegram commands                |
 | **🔒 Security**          | AES-256 encryption, rate limiting, sandboxed Docker containers |
+| **🔐 Wallet Auth**       | Login with TON wallet — crypto signatures, owner/viewer roles  |
+| **🌐 Let's Encrypt SSL** | One-click HTTPS, auto-certificate, works from dashboard        |
+| **🔀 Dynamic DNS**       | DuckDNS, No-IP, Dynu, FreeDNS, Cloudflare — built-in           |
+| **🩺 Self-Diagnostics**  | 8 auto-checks with auto-fix: disk, memory, Docker, Git, logs   |
+| **⚙️ Resource Control**  | Configure CPU/RAM sharing, real-time earnings calculator       |
 | **🔄 Live Updates**      | Update core/dashboard/apps individually without data loss      |
 | **🔐 2FA PIN Reset**     | Reset dashboard PIN via linked Telegram (6-digit code)         |
 | **📊 Control Panel**     | Real-time CPU/RAM/GPU/Disk, wallet, tasks, app launcher        |
+| **🔑 SSH Management**    | Read/harden SSH config, system updates — all from dashboard    |
+| **🔁 One-Cmd Reinstall** | `bash reinstall.sh` — preserves data, rebuilds from GitHub     |
 
 ## 🚀 Quick Start
 
@@ -116,15 +126,20 @@ When a node answers with high confidence → cached and shared with all nodes.
 
 ## 🔒 Security
 
-| Layer             | Protection                                     |
-| ----------------- | ---------------------------------------------- |
-| Rate Limiting     | 120 req/min per IP, auto-block                 |
-| Login Protection  | 5 attempts → 15min lockout                     |
-| Encryption        | AES-256-CBC with node-unique key               |
-| Docker Sandboxing | no-new-privileges, cap-drop ALL, ro filesystem |
-| 2FA PIN Reset     | Via linked Telegram, 5min expiry               |
-| Audit Trail       | Immutable log of all security events           |
-| Request Signing   | HMAC-SHA256 with timestamp validation          |
+| Layer             | Protection                                       |
+| ----------------- | ------------------------------------------------ |
+| Wallet Auth       | TON wallet signature, owner/viewer roles         |
+| PIN Auth          | SHA-256 hashed, never stored in plaintext        |
+| Rate Limiting     | 120 req/min per IP, auto-block                   |
+| Login Protection  | 5 attempts → 15min lockout                       |
+| Encryption        | AES-256-CBC with node-unique key                 |
+| Docker Sandboxing | no-new-privileges, cap-drop ALL, ro filesystem   |
+| SSL / HTTPS       | Auto Let's Encrypt via dashboard                 |
+| SSH Hardening     | Disable root login, password auth from dashboard |
+| 2FA PIN Reset     | Via linked Telegram, 5min expiry                 |
+| Audit Trail       | Immutable log, persisted to file                 |
+| Self-Diagnostics  | 8 checks with auto-fix (disk, memory, logs)      |
+| Request Signing   | HMAC-SHA256 with timestamp validation            |
 
 ## 📱 Telegram Management
 
@@ -139,6 +154,16 @@ Link your Telegram → manage node remotely:
 | `/earnings`  | GSTD earned               |
 | `/pin_reset` | 2FA PIN reset             |
 
+## 🔁 Reinstall / Reset
+
+```bash
+# Reinstall (preserves all data: wallet, earnings, PIN, config)
+bash reinstall.sh
+
+# Full factory reset (deletes everything)
+bash reinstall.sh --reset
+```
+
 ## 📡 Links
 
 - 🌐 **Landing**: [gstdbot.gstdtoken.com](https://gstdbot.gstdtoken.com)
@@ -146,6 +171,9 @@ Link your Telegram → manage node remotely:
 - 💬 **Web Chat**: [chat.gstdtoken.com](https://chat.gstdtoken.com)
 - 📊 **Monitor**: [monitor.gstdtoken.com](https://monitor.gstdtoken.com)
 - 🏠 **Dashboard**: [app.gstdtoken.com](https://app.gstdtoken.com)
+- ⭐ **GitHub**: [github.com/gstdcoin](https://github.com/gstdcoin)
+- 💎 **Tonkeeper**: [tonkeeper.com](https://tonkeeper.com)
+- 🔄 **Ston.fi**: [ston.fi](https://ston.fi)
 
 ## 📝 License
 
