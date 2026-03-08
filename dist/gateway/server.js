@@ -1217,6 +1217,56 @@ class OmegaGateway {
                 .slice(0, 50);
             res.json({ history: chatEntries, count: chatEntries.length });
         });
+        // ─── Resource Sharing APIs ─────────────────────────────────
+        this.app.get('/api/resources/status', (_req, res) => {
+            const rs = this.subsystems?.resources;
+            if (!rs) {
+                res.json({ status: 'disabled', message: 'Resource sharing not initialized' });
+                return;
+            }
+            res.json({
+                status: 'active',
+                meter: rs.getMeter?.() || {},
+                pricing: rs.getPricing?.() || {},
+                activeRequests: rs.getActiveRequests?.()?.length || 0,
+            });
+        });
+        this.app.get('/api/resources/available', (_req, res) => {
+            const rs = this.subsystems?.resources;
+            if (!rs) {
+                res.json({ resources: null });
+                return;
+            }
+            res.json({ resources: rs.getAvailableResources?.() || {} });
+        });
+        this.app.get('/api/resources/meter', (_req, res) => {
+            const rs = this.subsystems?.resources;
+            res.json(rs?.getMeter?.() || {
+                cpuHoursProvided: 0, gpuHoursProvided: 0, storageGbDays: 0,
+                queriesProcessed: 0, bandwidthGbServed: 0, totalEarnedGstd: 0, totalSpentGstd: 0,
+            });
+        });
+        this.app.get('/api/resources/pricing', (_req, res) => {
+            const rs = this.subsystems?.resources;
+            res.json(rs?.getPricing?.() || {
+                cpuHour: 0.1, gpuHour: 1.0, storageGbDay: 0.05,
+                inferenceQuery: 0.01, embeddingQuery: 0.0005, bandwidthGb: 0.02,
+            });
+        });
+        this.app.post('/api/resources/request', async (req, res) => {
+            const rs = this.subsystems?.resources;
+            if (!rs) {
+                res.json({ ok: false, error: 'Resource sharing not available' });
+                return;
+            }
+            try {
+                const result = await rs.handleRequest?.(req.body);
+                res.json({ ok: true, result });
+            }
+            catch (e) {
+                res.json({ ok: false, error: e.message });
+            }
+        });
         // ─── Security APIs ──────────────────────────────────────
         this.app.get('/api/security/status', (_req, res) => {
             const security = this.security;
