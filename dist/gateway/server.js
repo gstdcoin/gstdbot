@@ -134,6 +134,10 @@ class OmegaGateway {
     setSubsystems(subs) {
         this.subsystems = subs;
     }
+    /** Get the actual port the gateway is listening on (may differ from requested if auto-reassigned) */
+    getPort() {
+        return this.config.apiPort;
+    }
     setupAPI() {
         this.app.use(express_1.default.json({ limit: '10mb' }));
         // ─── Health ──────────────────────────────────────────────
@@ -602,23 +606,40 @@ class OmegaGateway {
         return chunks;
     }
     async start() {
-        this.setupWebSocket();
-        return new Promise((resolve) => {
-            this.server.listen(this.config.apiPort, '0.0.0.0', () => {
-                console.log(`
-╔══════════════════════════════════════════════╗
-║           🐝 GSTD Bot — Omega Gateway        ║
-╠══════════════════════════════════════════════╣
-║  API:    http://0.0.0.0:${this.config.apiPort}                 ║
-║  WS:     ws://0.0.0.0:${this.config.apiPort}/ws               ║
-║  Models: auto, flash, pro, ultra, cocoon     ║
-║  Swarm:  ${this.config.swarmUrl}        ║
-║  Mode:   ${this.config.sovereigntyMode.padEnd(35)}║
-╚══════════════════════════════════════════════╝
-                `);
-                resolve();
-            });
-        });
+        const MAX_PORT_ATTEMPTS = 10;
+        let port = this.config.apiPort;
+        for (let attempt = 0; attempt < MAX_PORT_ATTEMPTS; attempt++) {
+            try {
+                await new Promise((resolve, reject) => {
+                    const onError = (err) => {
+                        this.server.removeListener('error', onError);
+                        reject(err);
+                    };
+                    this.server.on('error', onError);
+                    this.server.listen(port, '0.0.0.0', () => {
+                        this.server.removeListener('error', onError);
+                        this.config.apiPort = port;
+                        // Now that server is bound, attach WebSocket
+                        this.setupWebSocket();
+                        console.log(`    Gateway ready on port ${port}`);
+                        resolve();
+                    });
+                });
+                return; // Success — exit loop
+            }
+            catch (err) {
+                if (err.code === 'EADDRINUSE' && attempt < MAX_PORT_ATTEMPTS - 1) {
+                    const nextPort = port + 1;
+                    console.log(`    ⚠ Port ${port} busy, trying ${nextPort}...`);
+                    port = nextPort;
+                    // Create fresh http server (old one is unusable after error)
+                    this.server = http_1.default.createServer(this.app);
+                }
+                else {
+                    throw err;
+                }
+            }
+        }
     }
     async stop() {
         this.wss?.close();

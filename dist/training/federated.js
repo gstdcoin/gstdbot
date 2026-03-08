@@ -253,7 +253,7 @@ class SwarmTrainer {
     async detectGPU() {
         try {
             const { execSync } = require('child_process');
-            execSync('nvidia-smi', { encoding: 'utf-8', timeout: 3000 });
+            execSync('nvidia-smi', { encoding: 'utf-8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] });
             return true;
         }
         catch {

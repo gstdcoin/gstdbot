@@ -37,6 +37,8 @@ export declare class OmegaGateway {
         swarm?: any;
         blockchain?: any;
     }): void;
+    /** Get the actual port the gateway is listening on (may differ from requested if auto-reassigned) */
+    getPort(): number;
     private setupAPI;
     private setupNodeOS;
     private getFallbackHTML;

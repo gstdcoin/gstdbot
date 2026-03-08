@@ -97,13 +97,15 @@ async function main() {
     console.log('');
     // ── 1. Start Gateway (API + AI Engine) ──────────────────────
     console.log(`  [1/${TOTAL_STEPS}] Starting AI Gateway...`);
+    const desiredPort = parseInt(process.env.GSTD_DASHBOARD_PORT || process.env.GSTD_API_PORT || '8080');
     const gateway = new server_js_1.OmegaGateway({
-        apiPort: parseInt(process.env.GSTD_API_PORT || '8080'),
+        apiPort: desiredPort,
         swarmUrl: process.env.GSTD_SWARM_URL || process.env.OLLAMA_URL || 'http://localhost:11434',
         cocoonEnabled: process.env.GSTD_COCOON_ENABLED !== 'false',
         sovereigntyMode: process.env.GSTD_SOVEREIGNTY_MODE || 'full',
     });
     await gateway.start();
+    const actualPort = gateway.getPort();
     // ── 2. Blockchain Manager (GSTD Wallet + Staking) ───────────
     console.log(`  [2/${TOTAL_STEPS}] Initializing blockchain...`);
     const blockchain = new token_js_1.BlockchainManager();
@@ -166,29 +168,31 @@ async function main() {
     // ── Boot complete ───────────────────────────────────────────
     const bootTime = ((Date.now() - startTime) / 1000).toFixed(1);
     const accessInfo = remote.getAccessInfo();
+    const dashPort = actualPort;
     console.log('');
     console.log('  ╔═══════════════════════════════════════════════════╗');
-    console.log('  ║          🐝 GSTD Node OS — Ready!                ║');
+    console.log('  ║      🐝 GSTD Node OS — Ready! (' + bootTime + 's)             ║');
     console.log('  ╚═══════════════════════════════════════════════════╝');
     console.log('');
-    console.log('  ✅ Boot time: ' + bootTime + 's');
+    console.log('  👉 Open in your browser:');
+    console.log('     http://localhost:' + dashPort);
     console.log('');
-    console.log('  📊 Dashboard:   http://localhost:' + config.dashboard.port);
     if (accessInfo.methods.relay?.status === 'connected') {
         console.log('  🌐 Remote:      ' + accessInfo.methods.relay.url);
     }
     if (accessInfo.methods.tor?.onion) {
         console.log('  🧅 Tor:         http://' + accessInfo.methods.tor.onion);
     }
-    console.log('  🐝 Swarm:       ' + (swarm.isConnected() ? 'connected' : 'standalone'));
-    console.log('  💰 Wallet:      ' + (wallet.getAddress() || 'not configured'));
-    console.log('  🧠 Memory:      ' + (memory.isConnected() ? 'L1+L2+L3' : 'L1 (local)'));
+    console.log('  🐝 Swarm:       ' + (swarm.isConnected() ? '✓ connected to network' : 'standalone (will auto-connect)'));
+    console.log('  💰 Wallet:      ' + (wallet.getAddress() || 'auto-generated'));
+    console.log('  🧠 Memory:      ' + (memory.isConnected() ? 'full (L1+L2+L3)' : 'local (L1) — Redis optional'));
     console.log('  📦 Resources:   sharing enabled');
     console.log('  🎓 Training:    ' + (trainer.getStats().activeJobs > 0 ? 'active' : 'ready'));
     console.log('');
-    console.log('  ⚡ No external websites needed — everything is in your node!');
-    console.log('  ⚡ More nodes = stronger swarm + collective memory');
-    console.log('  ⚡ GSTD token = key to all platform functions');
+    console.log('  💡 Tips:');
+    console.log('     • Your node earns GSTD tokens automatically while running');
+    console.log('     • Open the dashboard to chat with 8 free AI models');
+    console.log('     • To stop: press Ctrl+C');
     console.log('');
     (0, server_js_1.logActivity)('GSTD Node OS v' + config.version + ' booted in ' + bootTime + 's', 'success');
     // ── Graceful shutdown ───────────────────────────────────────
