@@ -748,24 +748,32 @@
   </head>
   <body>
     <!-- PIN Lock Screen -->
-    <div id="pin-screen" style="position:fixed;inset:0;z-index:9999;background:#0a0a0f;display:flex;align-items:center;justify-content:center;">
-      <div style="text-align:center;max-width:360px;padding:40px;">
-        <div style="font-size:48px;margin-bottom:16px;">🐝</div>
-        <h2 style="color:white;margin:0 0 8px;">GSTD Node OS</h2>
-        <p style="color:#888;margin:0 0 24px;font-size:13px;">Enter your 6-digit PIN to access the dashboard</p>
-        <input id="pin-input" type="password" maxlength="6" placeholder="••••••" 
-          style="width:200px;padding:14px 16px;font-size:24px;text-align:center;letter-spacing:12px;border-radius:12px;border:1px solid #333;background:#15151e;color:white;outline:none;font-family:monospace;"
-          onkeyup="if(event.key==='Enter')loginPIN()">
+    <div id="pin-screen" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0a0a0f 0%,#0f1520 100%);display:flex;align-items:center;justify-content:center;">
+      <div style="text-align:center;max-width:380px;padding:40px;">
+        <img src="/static/logo.png" alt="GSTD" style="width:80px;height:80px;border-radius:20px;margin-bottom:16px;box-shadow:0 0 40px rgba(255,215,0,0.3);">
+        <h2 style="color:white;margin:0 0 4px;font-size:22px;font-weight:800;">GSTD Node OS</h2>
+        <p id="pin-subtitle" style="color:#888;margin:0 0 28px;font-size:13px;">Enter your PIN to access the dashboard</p>
+        <input id="pin-input" type="password" maxlength="8" placeholder="••••••" 
+          style="width:220px;padding:14px 16px;font-size:24px;text-align:center;letter-spacing:10px;border-radius:12px;border:1px solid rgba(255,215,0,0.2);background:rgba(255,255,255,0.04);color:white;outline:none;font-family:monospace;transition:border 0.3s;"
+          onfocus="this.style.borderColor='rgba(255,215,0,0.5)'" onblur="this.style.borderColor='rgba(255,215,0,0.2)'"
+          onkeyup="if(event.key==='Enter')submitPIN()">
+        <div id="pin-confirm-row" style="display:none;margin-top:12px;">
+          <input id="pin-confirm" type="password" maxlength="8" placeholder="Confirm PIN" 
+            style="width:220px;padding:14px 16px;font-size:24px;text-align:center;letter-spacing:10px;border-radius:12px;border:1px solid rgba(139,92,246,0.2);background:rgba(255,255,255,0.04);color:white;outline:none;font-family:monospace;"
+            onkeyup="if(event.key==='Enter')submitPIN()">
+        </div>
         <br>
-        <button onclick="loginPIN()" style="margin-top:16px;padding:12px 32px;border-radius:10px;border:none;background:linear-gradient(135deg,#8b5cf6,#06b6d4);color:white;font-weight:700;cursor:pointer;font-size:14px;">Unlock</button>
-        <div id="pin-error" style="color:#f43f5e;font-size:12px;margin-top:12px;display:none;">Invalid PIN. Check ~/.config/gstdbot/dashboard_pin.txt</div>
+        <button id="pin-btn" onclick="submitPIN()" style="margin-top:16px;padding:12px 40px;border-radius:10px;border:none;background:linear-gradient(135deg,#FFD700,#FFB300);color:#0a0a0f;font-weight:800;cursor:pointer;font-size:14px;letter-spacing:0.5px;transition:transform 0.15s,box-shadow 0.3s;box-shadow:0 4px 20px rgba(255,215,0,0.3);"
+          onmousedown="this.style.transform='scale(0.97)'" onmouseup="this.style.transform='scale(1)'">Unlock</button>
+        <div id="pin-error" style="color:#f43f5e;font-size:12px;margin-top:14px;display:none;"></div>
+        <div style="margin-top:32px;color:#444;font-size:11px;">100% private · your data stays on your node</div>
       </div>
     </div>
 
     <!-- Sidebar Navigation -->
     <div class="sidebar">
       <div class="sidebar-brand">
-        <h1>🐝 <span>GSTD Node OS</span> <span class="ver">v3.2</span></h1>
+        <h1><img src="/static/logo.png" alt="" style="width:28px;height:28px;border-radius:6px;vertical-align:middle;margin-right:6px;"> <span>GSTD Node OS</span> <span class="ver">v3.3</span></h1>
         <div class="status-line" id="sb-status">Connecting...</div>
       </div>
       <nav class="sidebar-nav">
@@ -1821,10 +1829,10 @@
       let connected = false,
         lastData = null;
       let authToken = localStorage.getItem('gstd_pin_token') || '';
+      let isSetupMode = false;
 
-      // ─── PIN Authentication ─────────────────────────────
+      // ─── PIN Authentication (create or verify) ─────────
       async function checkAuth() {
-        // Try with stored token or auto-auth for local
         try {
           const r = await fetch(API + '/api/auth/check', {
             headers: authToken ? { 'Authorization': 'Bearer ' + authToken } : {}
@@ -1834,35 +1842,76 @@
             document.getElementById('pin-screen').style.display = 'none';
             return true;
           }
+          if (d.needs_setup) {
+            // First login — show Create PIN mode
+            isSetupMode = true;
+            document.getElementById('pin-subtitle').textContent = 'Create a PIN to secure your dashboard';
+            document.getElementById('pin-btn').textContent = 'Create PIN';
+            document.getElementById('pin-confirm-row').style.display = 'block';
+            document.getElementById('pin-input').placeholder = 'New PIN';
+          }
         } catch {}
-        // Show PIN screen
         document.getElementById('pin-screen').style.display = 'flex';
         document.getElementById('pin-input').focus();
         return false;
       }
 
-      async function loginPIN() {
+      async function submitPIN() {
         const pin = document.getElementById('pin-input').value;
-        if (!pin || pin.length < 4) return;
-        try {
-          const r = await fetch(API + '/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin })
-          });
-          const d = await r.json();
-          if (d.success) {
-            authToken = d.token;
-            localStorage.setItem('gstd_pin_token', authToken);
-            document.getElementById('pin-screen').style.display = 'none';
-            refresh();
-          } else {
-            document.getElementById('pin-error').style.display = 'block';
-            document.getElementById('pin-input').value = '';
-            document.getElementById('pin-input').focus();
+        const errEl = document.getElementById('pin-error');
+
+        if (!pin || pin.length < 4) {
+          errEl.textContent = 'PIN must be at least 4 digits';
+          errEl.style.display = 'block';
+          return;
+        }
+
+        if (isSetupMode) {
+          // Create PIN flow
+          const confirm = document.getElementById('pin-confirm').value;
+          if (pin !== confirm) {
+            errEl.textContent = 'PINs do not match. Try again.';
+            errEl.style.display = 'block';
+            return;
           }
-        } catch {
-          document.getElementById('pin-error').style.display = 'block';
+          try {
+            const r = await fetch(API + '/api/auth/setup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ pin })
+            });
+            const d = await r.json();
+            if (d.success) {
+              authToken = d.token;
+              localStorage.setItem('gstd_pin_token', authToken);
+              document.getElementById('pin-screen').style.display = 'none';
+              refresh(); checkUpdate();
+            } else {
+              errEl.textContent = d.error || 'Setup failed';
+              errEl.style.display = 'block';
+            }
+          } catch { errEl.textContent = 'Connection error'; errEl.style.display = 'block'; }
+        } else {
+          // Login flow
+          try {
+            const r = await fetch(API + '/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ pin })
+            });
+            const d = await r.json();
+            if (d.success) {
+              authToken = d.token;
+              localStorage.setItem('gstd_pin_token', authToken);
+              document.getElementById('pin-screen').style.display = 'none';
+              refresh(); checkUpdate();
+            } else {
+              errEl.textContent = 'Wrong PIN. Try again.';
+              errEl.style.display = 'block';
+              document.getElementById('pin-input').value = '';
+              document.getElementById('pin-input').focus();
+            }
+          } catch { errEl.textContent = 'Connection error'; errEl.style.display = 'block'; }
         }
       }
 
@@ -1900,6 +1949,30 @@
           log('Update error: ' + e.message, 'error');
         }
         btn.disabled = false;
+      }
+
+      // ─── App Launcher (embedded iframe) ─────────────────
+      function openApp(appId, appName, port) {
+        // Create overlay for app
+        let overlay = document.getElementById('app-overlay');
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.id = 'app-overlay';
+          overlay.style.cssText = 'position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;';
+          document.body.appendChild(overlay);
+        }
+        const appUrl = window.location.protocol + '//' + window.location.hostname + ':' + port;
+        overlay.innerHTML = `
+          <div style="display:flex;align-items:center;padding:8px 16px;background:#15151e;border-bottom:1px solid #222;">
+            <img src="/static/logo.png" alt="" style="width:20px;height:20px;border-radius:4px;margin-right:8px;">
+            <span style="color:white;font-weight:700;font-size:13px;flex:1;">${appName}</span>
+            <span style="color:#666;font-size:11px;margin-right:12px;">${appUrl}</span>
+            <button onclick="window.open('${appUrl}','_blank')" style="background:rgba(255,255,255,0.06);border:1px solid #333;color:#aaa;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;margin-right:6px;" title="Open in new tab">↗ New Tab</button>
+            <button onclick="document.getElementById('app-overlay').remove()" style="background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);color:#f43f5e;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;">✕ Close</button>
+          </div>
+          <iframe src="${appUrl}" style="flex:1;border:none;background:#0a0a0f;" allow="clipboard-write" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+        `;
+        overlay.style.display = 'flex';
       }
 
       // ─── Init Auth ──────────────────────────────────────
@@ -2220,7 +2293,9 @@
             const inst = installedMap[app.id];
             const isInstalled = !!inst;
             const status = inst?.status || "";
+            const isRunning = status === 'running';
             const catClass = "cat-" + (app.category || "system");
+            const appPort = app.port || (3000 + Math.abs(hashCode(app.id)) % 5000);
             const card = document.createElement("div");
             card.className = "app-card";
             card.dataset.category = app.category || "system";
@@ -2236,11 +2311,12 @@
                 </div>
                 ${
                   isInstalled
-                    ? '<div style="display:flex;gap:8px;"><button class="app-btn app-btn-open" onclick="appAction(\'start\',\'' +
-                      app.id +
-                      "')\">▶ Start</button><button class=\"app-btn app-btn-remove\" onclick=\"appAction('uninstall','" +
-                      app.id +
-                      "')\">✕ Remove</button></div>"
+                    ? '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+                      + (isRunning ? '<button class="app-btn" style="background:rgba(6,182,212,0.15);color:#06b6d4;border-color:rgba(6,182,212,0.3);" onclick="openApp(\'' + app.id + "','" + app.name.replace(/'/g,'') + "'," + appPort + ')\">📺 Open</button>' : '')
+                      + '<button class="app-btn app-btn-open" onclick="appAction(\'' + (isRunning ? 'stop' : 'start') + "','" + app.id + "')\">" + (isRunning ? '⏹ Stop' : '▶ Start') + "</button>"
+                      + '<button class="app-btn" style="background:rgba(139,92,246,0.1);color:#a78bfa;border-color:rgba(139,92,246,0.2);" onclick="appAction(\'update\',\'' + app.id + "')\">🔄 Update</button>"
+                      + '<button class="app-btn app-btn-remove" onclick="appAction(\'uninstall\',\'' + app.id + "')\">✕</button>"
+                      + "</div>"
                     : "<button class=\"app-btn app-btn-install\" onclick=\"appAction('install','" +
                       app.id +
                       "')\">⬇ Install</button>"
@@ -2255,6 +2331,12 @@
         } catch (e) {
           console.error("App store error:", e);
         }
+      }
+
+      function hashCode(s) {
+        let h = 0;
+        for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+        return h;
       }
 
       function filterApps(cat) {
@@ -2284,7 +2366,7 @@
       }
 
       // ─── Boot ────────────────────────────────────────────
-      log("GSTD Node OS v3.2 loaded.");
+      log("GSTD Node OS v3.3 loaded.");
       refresh();
       refreshTasks();
       refreshEarnings();

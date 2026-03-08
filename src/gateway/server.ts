@@ -429,27 +429,47 @@ export class OmegaGateway {
         // ─── Dashboard PIN Authentication ────────────────────────
         const configDir = join(require('os').homedir(), '.config', 'gstdbot');
         const pinFile = join(configDir, 'dashboard_pin.txt');
-        let dashboardPIN: string;
+        let dashboardPIN: string = '';
+        let pinConfigured = false;
 
         if (existsSync(pinFile)) {
             dashboardPIN = readFileSync(pinFile, 'utf-8').trim();
-        } else {
-            // Generate 6-digit PIN on first boot
-            dashboardPIN = Math.floor(100000 + Math.random() * 900000).toString();
-            try {
-                const { mkdirSync } = require('fs');
-                if (!existsSync(configDir)) mkdirSync(configDir, { recursive: true });
-                const { writeFileSync } = require('fs');
-                writeFileSync(pinFile, dashboardPIN);
-                console.log(`    🔐 Dashboard PIN: ${dashboardPIN}`);
-                console.log(`    📄 PIN saved to: ${pinFile}`);
-                logActivity('Dashboard PIN generated and saved', 'info');
-            } catch { }
+            pinConfigured = !!dashboardPIN;
         }
 
-        // PIN validation endpoints (always accessible)
+        // Ensure config dir exists
+        if (!existsSync(configDir)) {
+            try { require('fs').mkdirSync(configDir, { recursive: true }); } catch {}
+        }
+
+        // POST /api/auth/setup — create PIN on first login
+        this.app.post('/api/auth/setup', (req, res) => {
+            if (pinConfigured) {
+                res.status(400).json({ success: false, error: 'PIN already configured' });
+                return;
+            }
+            const { pin } = req.body || {};
+            if (!pin || pin.length < 4 || pin.length > 8) {
+                res.status(400).json({ success: false, error: 'PIN must be 4-8 digits' });
+                return;
+            }
+            dashboardPIN = pin;
+            pinConfigured = true;
+            try {
+                const { writeFileSync } = require('fs');
+                writeFileSync(pinFile, dashboardPIN);
+                logActivity('Dashboard PIN created by user', 'success');
+            } catch {}
+            res.json({ success: true, token: 'pin_' + dashboardPIN });
+        });
+
+        // POST /api/auth/login — verify PIN
         this.app.post('/api/auth/login', (req, res) => {
             const { pin } = req.body || {};
+            if (!pinConfigured) {
+                res.status(400).json({ success: false, error: 'PIN not configured. Use /api/auth/setup first.' });
+                return;
+            }
             if (pin === dashboardPIN) {
                 res.json({ success: true, token: 'pin_' + dashboardPIN });
             } else {
@@ -457,9 +477,14 @@ export class OmegaGateway {
             }
         });
 
+        // GET /api/auth/check — check auth status
         this.app.get('/api/auth/check', (req, res) => {
             const token = req.headers.authorization?.replace('Bearer ', '') || req.query?.token as string;
             const isLocal = this.isLocalRequest(req);
+            if (!pinConfigured) {
+                res.json({ authenticated: false, needs_setup: true });
+                return;
+            }
             if (isLocal || token === 'pin_' + dashboardPIN) {
                 res.json({ authenticated: true, local: isLocal });
             } else {
@@ -500,7 +525,7 @@ export class OmegaGateway {
                     name: process.env.NODE_NAME || hostname(),
                     platform: platform(), arch: arch(),
                     uptime: process.uptime(), os_uptime: osUptime(),
-                    version: '3.2.0',
+                    version: '3.3.0',
                     started_at: new Date(nodeStartedAt).toISOString(),
                     ip: getLocalIP(), pid: process.pid,
                 },
@@ -636,13 +661,25 @@ export class OmegaGateway {
             res.json({ ok });
         });
 
+        this.app.post('/api/apps/update', async (req, res) => {
+            const { appId } = req.body;
+            if (!appId) { res.json({ ok: false, message: 'Missing appId' }); return; }
+            logActivity(`Updating app: ${appId}...`, 'info');
+            // Stop → Uninstall → Reinstall (preserves data via volumes)
+            await this.appManager.stop(appId).catch(() => {});
+            await this.appManager.uninstall(appId).catch(() => {});
+            const ok = await this.appManager.install(appId);
+            if (ok) await this.appManager.start(appId).catch(() => {});
+            res.json({ ok, message: ok ? `${appId} updated and restarted` : `Failed to update ${appId}` });
+        });
+
         logActivity('Node OS mounted on gateway — all-in-one on :' + this.config.apiPort);
     }
 
     private getFallbackHTML(): string {
         return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>GSTD Node</title></head>
 <body style="font-family:sans-serif;background:#030014;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;">
-<div style="text-align:center;"><h1>🐝 GSTD Node Online</h1><p>Dashboard UI not found. Check web/dashboard.html</p>
+<div style="text-align:center;"><img src="/static/logo.png" alt="GSTD" style="width:64px;border-radius:12px;margin-bottom:12px;"><h1>GSTD Node Online</h1><p>Dashboard UI not found. Check web/dashboard.html</p>
 <p><a href="/api/node/status" style="color:#06b6d4;">View API Status →</a></p></div></body></html>`;
     }
 

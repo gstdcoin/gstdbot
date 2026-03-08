@@ -39,7 +39,7 @@ const os_2 = require("os");
 function loadConfig() {
     const configPath = (0, path_1.join)((0, os_2.homedir)(), '.config', 'gstdbot', 'config.json');
     const defaults = {
-        version: '3.2.0',
+        version: '3.3.0',
         mode: 'cloud',
         nodeId: process.env.GSTD_NODE_ID || `node-${Date.now()}`,
         nodeName: process.env.NODE_NAME || `${(0, os_1.hostname)()}-node`,
