@@ -552,13 +552,32 @@ export class OmegaGateway {
 
         // ─── Swarm status ────────────────────────────────────────
         this.app.get('/v1/swarm/status', (_req, res) => {
-            res.json({
-                status: 'active',
-                nodes: 247,
-                models_available: ['qwen2.5-coder:7b', 'llama3.1:8b', 'deepseek-r1:14b'],
-                total_compute_hours: 12480,
-                gstd_distributed: 4521.5,
-            });
+            const agent = this.subsystems?.swarm;
+            if (agent && typeof agent.getStats === 'function') {
+                const stats = agent.getStats();
+                res.json({
+                    status: stats.connected ? 'active' : 'connecting',
+                    connected: stats.connected,
+                    nodeId: stats.nodeId,
+                    peersCount: stats.peersCount,
+                    tasksCompleted: stats.tasksCompleted,
+                    tasksProcessing: stats.tasksProcessing,
+                    tasksFailed: stats.tasksFailed,
+                    totalEarnedGstd: stats.totalEarnedGstd,
+                    uptimeSeconds: stats.uptimeSeconds,
+                    lastHeartbeat: stats.lastHeartbeat,
+                    rank: stats.rank,
+                    models_available: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'qwen/qwen3-32b', 'meta-llama/llama-4-scout-17b-16e-instruct'],
+                });
+            } else {
+                res.json({
+                    status: 'standalone',
+                    connected: false,
+                    peersCount: 0,
+                    tasksCompleted: 0,
+                    models_available: ['llama-3.3-70b-versatile'],
+                });
+            }
         });
 
         // ─── Chat API (for dashboard) ────────────────────────────
@@ -924,12 +943,23 @@ export class OmegaGateway {
                 blockchain: this.subsystems.blockchain ? await (async () => {
                     try { return await this.subsystems.blockchain.getFullStatus(); } catch { return null; }
                 })() : null,
-                swarm: {
-                    enabled: process.env.SWARM_ENABLED !== 'false',
-                    status: this.subsystems.swarm?.isConnected() ? 'connected' : 'standalone',
-                    mode: process.env.GSTD_SOVEREIGNTY_MODE || 'full',
-                    peers: this.subsystems.swarm?.getPeerCount?.() || 0,
-                },
+                swarm: (() => {
+                    const agent = this.subsystems?.swarm;
+                    const stats = agent?.getStats?.();
+                    return {
+                        enabled: process.env.SWARM_ENABLED !== 'false',
+                        status: stats?.connected ? 'connected' : 'standalone',
+                        connected: stats?.connected || false,
+                        mode: process.env.GSTD_SOVEREIGNTY_MODE || 'full',
+                        peers: stats?.peersCount || 0,
+                        tasksCompleted: stats?.tasksCompleted || 0,
+                        tasksProcessing: stats?.tasksProcessing || 0,
+                        totalEarnedGstd: stats?.totalEarnedGstd || 0,
+                        uptimeSeconds: stats?.uptimeSeconds || 0,
+                        lastHeartbeat: stats?.lastHeartbeat || null,
+                        rank: stats?.rank || 0,
+                    };
+                })(),
                 gateway: { port: this.config.port, api_port: this.config.apiPort },
             });
         });
