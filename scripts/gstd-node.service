@@ -1,0 +1,27 @@
+[Unit]
+Description=GSTD Node OS — Sovereign AI Node
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/gstdbot
+Environment=NODE_ENV=production
+Environment=GSTD_API_PORT=8090
+Environment=SWARM_ENABLED=true
+Environment=GSTD_MEMORY=true
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gstd-node
+
+# Resource limits
+LimitNOFILE=65535
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target
