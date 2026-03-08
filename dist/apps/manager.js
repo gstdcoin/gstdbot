@@ -2,7 +2,7 @@
 /**
  * GSTD Node OS — App Manager
  *
- * Docker-based application management (like Umbrel App Store):
+ * Docker-based application management (77 apps, 11 Premium):
  * - Install/Remove apps from GSTD App Registry
  * - Manage app lifecycle (start/stop/restart)
  * - App manifest format (gstd-app.yml)

@@ -1,9 +1,9 @@
 # 🐝 GSTD Node OS
 
-> **Sovereign AI Platform** — Like Umbrel, but for AI swarm computing.  
-> Run AI models, earn GSTD tokens, join the collective intelligence network.
+> **Sovereign AI Platform** — Your Personal Decentralized AI Node.  
+> Run AI models, earn GSTD tokens, join the collective intelligence swarm.
 
-[![Version](https://img.shields.io/badge/version-3.1.0-8b5cf6)](https://github.com/gstdcoin/gstdbot/releases)
+[![Version](https://img.shields.io/badge/version-3.3.0-8b5cf6)](https://github.com/gstdcoin/gstdbot/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-22c55e)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-06b6d4)](https://nodejs.org)
 
@@ -17,27 +17,34 @@ curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
 
 ```
 Your Hardware
-├── 📊 Dashboard (localhost:8080) — full node control panel
-├── 🤖 AI Engine — 8 Groq models + local Ollama
+├── 📊 Dashboard (localhost:8080) — full node control panel with PIN auth
+├── 🤖 AI Engine — 8 Groq models + local Ollama + OpenClaw gateway
 ├── 🌐 Swarm Agent — P2P task processing → earn GSTD
-├── 🧠 Collective Memory — Redis + ChromaDB, shared knowledge
-├── 💰 GSTD Wallet — TON-based, earnings tracker
-├── 📦 App Manager — Docker-based apps (like Umbrel)
+├── 🧠 Collective Memory — Redis + ChromaDB, shared knowledge across nodes
+├── 💰 GSTD Wallet — TON-based, earnings tracker, staking
+├── 📦 App Store — 77 apps (11 Premium), Docker-based
+├── 🔒 Security — AES-256 encryption, rate limiting, Docker sandboxing
+├── 📱 Telegram Management — remote node control via Telegram bot
+├── 🔄 Swarm Orchestrator — load balancing, P2P relay, model distribution
 └── 💬 Channels — Telegram bot + Web chat
 ```
 
 ## ✨ Key Features
 
-| Feature                  | Description                                                |
-| ------------------------ | ---------------------------------------------------------- |
-| **🌐 Swarm Network**     | Nodes form a P2P network, share AI tasks, earn tokens      |
-| **🧠 Collective Memory** | Answer found by one node → available to all                |
-| **💰 GSTD Tokens**       | Earn for uptime, AI tasks, verification, storage           |
-| **🤖 8 AI Models**       | Llama 3.3, Llama 4 Scout/Maverick, Qwen3, GPT-OSS, Kimi K2 |
-| **🔬 SmartMix**          | 3-7 models reach consensus for verified answers            |
-| **📊 Control Panel**     | Real-time CPU/RAM/GPU/Disk, wallet, tasks, controls        |
-| **📦 App Store**         | Docker-based apps: Chat, Monitor, Files, Knowledge         |
-| **🔒 Sovereign**         | Your data stays on your hardware. Open source.             |
+| Feature                  | Description                                                    |
+| ------------------------ | -------------------------------------------------------------- |
+| **🌐 Swarm Network**     | Nodes form P2P mesh, share AI tasks, distribute load           |
+| **🧠 Collective Memory** | Answer found by one node → available to all                    |
+| **💰 GSTD Tokens**       | Earn for uptime, AI tasks, verification, storage               |
+| **🤖 8 AI Models**       | Llama 3.3/4, Qwen3, GPT-OSS, Kimi K2 — all free via Groq       |
+| **🔬 SmartMix**          | 3-7 models reach consensus for verified answers                |
+| **📦 77 Apps**           | Browsers, social media, AI tools, DeFi, wallets, TON services  |
+| **⭐ Premium Apps**      | 11 premium apps unlocked at 1000 GSTD balance                  |
+| **📱 Telegram Control**  | Manage your node remotely via Telegram commands                |
+| **🔒 Security**          | AES-256 encryption, rate limiting, sandboxed Docker containers |
+| **🔄 Live Updates**      | Update core/dashboard/apps individually without data loss      |
+| **🔐 2FA PIN Reset**     | Reset dashboard PIN via linked Telegram (6-digit code)         |
+| **📊 Control Panel**     | Real-time CPU/RAM/GPU/Disk, wallet, tasks, app launcher        |
 
 ## 🚀 Quick Start
 
@@ -68,6 +75,24 @@ node dist/index.js
 
 After starting, open **http://localhost:8080** for the control panel.
 
+## 📦 App Store (77 apps, 11 ⭐ Premium)
+
+| Category    | Apps | Highlights                                            |
+| ----------- | ---- | ----------------------------------------------------- |
+| 🤖 AI       | 10   | OpenClaw⭐, Ollama⭐, AI Hub⭐, Stable Diffusion⭐    |
+| 🌐 Web      | 4    | Chromium⭐, Firefox⭐, Tor, Web Proxy                 |
+| 💬 Social   | 12   | Telegram⭐, Discord⭐, Matrix, Mastodon, WhatsApp, X  |
+| 💎 DeFi     | 8    | Tonkeeper⭐, GSTD Swap⭐, Ston.fi, DeDust, Buy Crypto |
+| 🛠️ Tools    | 10   | Documents, Spreadsheet, Calendar, Notes, Kanban       |
+| 🎬 Media    | 6    | Photo, Music, Reader, Downloader, Video               |
+| ☁️ Cloud    | 6    | Drive, Backup, Sync, Git, S3, Database                |
+| 🌐 Network  | 6    | VPN, Monitor, TON Liteserver⭐, TON Explorer          |
+| 🛡️ Security | 6    | Firewall, IDS, SSL, 2FA, Audit                        |
+| ⚙️ System   | 5    | Knowledge, Automation, Terminal, Scheduler, Logs      |
+| 💰 Finance  | 4    | Wallet, Mining, Staking, Tracker                      |
+
+⭐ = Premium (requires 1000 GSTD token balance)
+
 ## 💰 Earning GSTD Tokens
 
 | Action                 | Reward     |
@@ -89,27 +114,30 @@ Three-layer knowledge system:
 
 When a node answers with high confidence → cached and shared with all nodes.
 
-## 📦 Built-in Apps
+## 🔒 Security
 
-| App                 | Description                     | Port  |
-| ------------------- | ------------------------------- | ----- |
-| 💬 AI Chat          | Multi-model chat with SmartMix  | :3000 |
-| 📊 Network Monitor  | Real-time swarm stats           | :3001 |
-| 📁 File Manager     | Local + IPFS storage            | :3002 |
-| 💰 Wallet Dashboard | Earnings, staking, transactions | :3003 |
-| 🧠 Knowledge Base   | Browse collective memory        | :3004 |
+| Layer             | Protection                                     |
+| ----------------- | ---------------------------------------------- |
+| Rate Limiting     | 120 req/min per IP, auto-block                 |
+| Login Protection  | 5 attempts → 15min lockout                     |
+| Encryption        | AES-256-CBC with node-unique key               |
+| Docker Sandboxing | no-new-privileges, cap-drop ALL, ro filesystem |
+| 2FA PIN Reset     | Via linked Telegram, 5min expiry               |
+| Audit Trail       | Immutable log of all security events           |
+| Request Signing   | HMAC-SHA256 with timestamp validation          |
 
-## 🆚 vs Umbrel
+## 📱 Telegram Management
 
-|          | Umbrel                  | **GSTD Node OS**                         |
-| -------- | ----------------------- | ---------------------------------------- |
-| Focus    | Home cloud server       | AI Swarm + Token economy                 |
-| AI       | Single model (OpenClaw) | **8 models + SmartMix consensus**        |
-| Network  | Isolated                | **P2P Swarm** — nodes amplify each other |
-| Memory   | Local files             | **Collective Memory** — shared knowledge |
-| Income   | None                    | **GSTD tokens** for tasks                |
-| Hardware | $699 Umbrel Pro         | **$0** — any Linux/Mac/RPi               |
-| License  | PolyForm Noncommercial  | **Apache 2.0**                           |
+Link your Telegram → manage node remotely:
+
+| Command      | Action                    |
+| ------------ | ------------------------- |
+| `/status`    | Node uptime, RAM, version |
+| `/restart`   | Restart node              |
+| `/update`    | Pull + build + restart    |
+| `/apps`      | List installed apps       |
+| `/earnings`  | GSTD earned               |
+| `/pin_reset` | 2FA PIN reset             |
 
 ## 📡 Links
 
