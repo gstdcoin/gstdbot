@@ -270,14 +270,16 @@ else
     info "Dependencies (already installed)"
 fi
 
-if [ ! -d "dist" ] || [ "src/index.ts" -nt "dist/index.js" ] 2>/dev/null; then
+if [ ! -d "dist" ] || [ ! -f "dist/index.js" ] || \
+   find src -name '*.ts' -newer dist/index.js 2>/dev/null | grep -q .; then
+    info "Building TypeScript..."
     npx tsc 2>>"$LOG_FILE" || {
-        warn "TypeScript build failed, trying again..."
+        warn "TypeScript build failed, trying with --skipLibCheck..."
         npx tsc --skipLibCheck 2>>"$LOG_FILE"
     }
-    info "TypeScript compiled"
+    info "TypeScript compiled ✓"
 else
-    info "Already built"
+    info "Already built (no source changes)"
 fi
 cd - >/dev/null
 mark_done "gstdbot"
