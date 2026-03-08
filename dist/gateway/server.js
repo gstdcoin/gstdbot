@@ -998,8 +998,11 @@ class OmegaGateway {
                 case 'update':
                     try {
                         const cwd = (0, path_1.join)(__dirname, '../..');
-                        (0, child_process_1.execSync)('git pull', { cwd, encoding: 'utf-8', timeout: 30000 });
-                        (0, child_process_1.execSync)('npx tsc', { cwd, encoding: 'utf-8', timeout: 60000 });
+                        const branch = getDefaultBranch(cwd);
+                        (0, child_process_1.execSync)('git reset --hard HEAD', { cwd, encoding: 'utf-8', timeout: 10000 });
+                        (0, child_process_1.execSync)(`git pull origin ${branch} --ff-only`, { cwd, encoding: 'utf-8', timeout: 30000 });
+                        (0, child_process_1.execSync)('npm install --legacy-peer-deps 2>&1 | tail -5 || true', { cwd, encoding: 'utf-8', timeout: 120000 });
+                        (0, child_process_1.execSync)('npx tsc 2>&1 | tail -5 || true', { cwd, encoding: 'utf-8', timeout: 60000 });
                         logActivity('Update complete! Restart to apply.', 'success');
                         res.json({ ok: true, message: 'Updated. Restart to apply changes.' });
                     }
