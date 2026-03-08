@@ -593,6 +593,9 @@
         }
       }
       /* ─── App Store ─── */
+      .app-filter { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-family: 'Inter',sans-serif; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+      .app-filter:hover { border-color: rgba(139,92,246,0.3); color: white; }
+      .app-filter.active { background: rgba(139,92,246,0.15); border-color: rgba(139,92,246,0.4); color: var(--accent); }
       .app-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -1764,7 +1767,16 @@
       <div class="page" id="page-appstore">
         <div style="margin-bottom:20px;">
           <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;">
-            Install apps to extend your node — like UmbrelOS, but for AI. All apps run on your hardware, earn you GSTD, and connect to the swarm.
+            25+ built-in apps powered by your AI node. Install any app — it runs locally on your hardware, earns GSTD, and connects to the swarm. All apps are free.
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;" id="app-filters">
+            <button class="app-filter active" onclick="filterApps('all')" data-cat="all">All (25)</button>
+            <button class="app-filter" onclick="filterApps('ai')" data-cat="ai">🤖 AI</button>
+            <button class="app-filter" onclick="filterApps('tools')" data-cat="tools">🛠️ Tools</button>
+            <button class="app-filter" onclick="filterApps('finance')" data-cat="finance">💰 Finance</button>
+            <button class="app-filter" onclick="filterApps('media')" data-cat="media">🎬 Media</button>
+            <button class="app-filter" onclick="filterApps('network')" data-cat="network">🌐 Network</button>
+            <button class="app-filter" onclick="filterApps('system')" data-cat="system">⚙️ System</button>
           </div>
         </div>
         <div class="app-grid" id="app-grid">
@@ -2096,6 +2108,7 @@
             const catClass = "cat-" + (app.category || "system");
             const card = document.createElement("div");
             card.className = "app-card";
+            card.dataset.category = app.category || "system";
             card.innerHTML = `
                 <div class="app-icon">${app.icon || "📦"}</div>
                 <div class="app-name">${app.name}</div>
@@ -2127,6 +2140,14 @@
         } catch (e) {
           console.error("App store error:", e);
         }
+      }
+
+      function filterApps(cat) {
+        document.querySelectorAll('.app-filter').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.app-filter[data-cat="${cat}"]`)?.classList.add('active');
+        document.querySelectorAll('.app-card').forEach(card => {
+          card.style.display = (cat === 'all' || card.dataset.category === cat) ? '' : 'none';
+        });
       }
 
       async function appAction(action, appId) {
