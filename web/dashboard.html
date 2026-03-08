@@ -1755,47 +1755,62 @@
         <div class="grid-2">
           <div class="card">
             <div class="card-label">⚙️ Node Configuration</div>
-            <div class="info-row">
-              <span class="k">Node ID</span><span class="v" id="set-id">—</span>
-            </div>
-            <div class="info-row">
-              <span class="k">Node Name</span
-              ><span class="v" id="set-name">—</span>
-            </div>
-            <div class="info-row">
-              <span class="k">Mode</span><span class="v" id="set-mode">—</span>
-            </div>
-            <div class="info-row">
-              <span class="k">Dashboard Port</span
-              ><span class="v" id="set-port">8080</span>
-            </div>
-            <div class="info-row">
-              <span class="k">Swarm</span
-              ><span class="v" id="set-swarm">—</span>
-            </div>
-            <div class="info-row">
-              <span class="k">Memory</span
-              ><span class="v" id="set-memory">—</span>
-            </div>
+            <div class="info-row"><span class="k">Node ID</span><span class="v" id="set-id">—</span></div>
+            <div class="info-row"><span class="k">Node Name</span><span class="v" id="set-name">—</span></div>
+            <div class="info-row"><span class="k">Mode</span><span class="v" id="set-mode">—</span></div>
+            <div class="info-row"><span class="k">Dashboard Port</span><span class="v" id="set-port">8080</span></div>
+            <div class="info-row"><span class="k">Swarm</span><span class="v" id="set-swarm">—</span></div>
+            <div class="info-row"><span class="k">Memory</span><span class="v" id="set-memory">—</span></div>
           </div>
           <div class="card">
             <div class="card-label">📦 System Info</div>
-            <div class="info-row">
-              <span class="k">Version</span
-              ><span class="v" id="set-ver">—</span>
+            <div class="info-row"><span class="k">Version</span><span class="v" id="set-ver">—</span></div>
+            <div class="info-row"><span class="k">Node.js</span><span class="v" id="set-node">—</span></div>
+            <div class="info-row"><span class="k">OS</span><span class="v" id="set-os">—</span></div>
+            <div class="info-row"><span class="k">Architecture</span><span class="v" id="set-arch">—</span></div>
+          </div>
+        </div>
+
+        <!-- Telegram Linking -->
+        <div class="grid-2" style="margin-top:16px;">
+          <div class="card">
+            <div class="card-label">✈️ Telegram Management</div>
+            <p style="color:var(--muted);font-size:12px;margin:0 0 12px;">Link your Telegram account to manage this node remotely. Commands: /status, /restart, /update, /apps, /earnings, /pin_reset</p>
+            <div id="tg-link-status" style="margin-bottom:12px;"></div>
+            <div style="display:flex;gap:8px;">
+              <input id="tg-chat-id" type="text" placeholder="Telegram Chat ID" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #333;background:#15151e;color:white;font-size:12px;">
+              <input id="tg-username" type="text" placeholder="@username" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #333;background:#15151e;color:white;font-size:12px;">
             </div>
-            <div class="info-row">
-              <span class="k">Node.js</span
-              ><span class="v" id="set-node">—</span>
-            </div>
-            <div class="info-row">
-              <span class="k">OS</span><span class="v" id="set-os">—</span>
-            </div>
-            <div class="info-row">
-              <span class="k">Architecture</span
-              ><span class="v" id="set-arch">—</span>
+            <button onclick="linkTelegram()" style="margin-top:10px;padding:8px 16px;border-radius:8px;border:1px solid rgba(0,136,204,0.3);background:rgba(0,136,204,0.1);color:#0088cc;font-weight:700;font-size:12px;cursor:pointer;">🔗 Link Telegram</button>
+          </div>
+
+          <!-- PIN Reset via 2FA -->
+          <div class="card">
+            <div class="card-label">🔐 Reset PIN (2FA)</div>
+            <p style="color:var(--muted);font-size:12px;margin:0 0 12px;">Reset your dashboard PIN via linked Telegram. A 6-digit confirmation code will be sent to your Telegram.</p>
+            <div id="pin-reset-status" style="margin-bottom:8px;"></div>
+            <button id="btn-request-reset" onclick="requestPinReset()" style="padding:8px 16px;border-radius:8px;border:1px solid rgba(244,63,94,0.3);background:rgba(244,63,94,0.1);color:#f43f5e;font-weight:700;font-size:12px;cursor:pointer;">📩 Send Reset Code</button>
+            <div id="pin-reset-form" style="display:none;margin-top:12px;">
+              <div style="display:flex;gap:8px;margin-bottom:8px;">
+                <input id="reset-code" type="text" maxlength="6" placeholder="Code from Telegram" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #333;background:#15151e;color:white;font-size:12px;font-family:monospace;letter-spacing:4px;">
+                <input id="reset-new-pin" type="password" maxlength="8" placeholder="New PIN" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #333;background:#15151e;color:white;font-size:12px;">
+              </div>
+              <button onclick="confirmPinReset()" style="padding:8px 16px;border-radius:8px;border:none;background:linear-gradient(135deg,#FFD700,#FFB300);color:#0a0a0f;font-weight:800;font-size:12px;cursor:pointer;">✅ Confirm Reset</button>
             </div>
           </div>
+        </div>
+
+        <!-- Component Updates -->
+        <div class="card" style="margin-top:16px;">
+          <div class="card-label">🔄 Component Updates</div>
+          <p style="color:var(--muted);font-size:12px;margin:0 0 12px;">Update individual components or everything at once. Data is always preserved.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="updateComponent('core')" class="app-btn" style="background:rgba(139,92,246,0.1);color:#a78bfa;border-color:rgba(139,92,246,0.2);">🧠 Core Engine</button>
+            <button onclick="updateComponent('dashboard')" class="app-btn" style="background:rgba(6,182,212,0.1);color:#06b6d4;border-color:rgba(6,182,212,0.2);">📺 Dashboard</button>
+            <button onclick="updateComponent('apps')" class="app-btn" style="background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.2);">📦 App Registry</button>
+            <button onclick="updateComponent('all')" class="app-btn" style="background:rgba(255,215,0,0.15);color:#FFD700;border-color:rgba(255,215,0,0.3);font-weight:800;">⚡ Update All</button>
+          </div>
+          <div id="update-log" style="margin-top:8px;font-size:11px;color:var(--muted);"></div>
         </div>
       </div>
 
@@ -1803,16 +1818,17 @@
       <div class="page" id="page-appstore">
         <div style="margin-bottom:20px;">
           <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;">
-            50+ built-in apps powered by your AI node. Install any app — it runs locally on your hardware, earns GSTD, and connects to the swarm. All apps are free. Your node is a full autonomous PC.
+            80+ apps powered by your AI node. Browsers, social media, AI models, DeFi wallets, TON services — all running locally. Install any app, it earns GSTD and connects to the swarm.
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;" id="app-filters">
-            <button class="app-filter active" onclick="filterApps('all')" data-cat="all">All (52)</button>
+            <button class="app-filter active" onclick="filterApps('all')" data-cat="all" id="app-filter-all">All</button>
             <button class="app-filter" onclick="filterApps('ai')" data-cat="ai">🤖 AI</button>
+            <button class="app-filter" onclick="filterApps('web')" data-cat="web">🌐 Web</button>
+            <button class="app-filter" onclick="filterApps('defi')" data-cat="defi">💎 DeFi</button>
             <button class="app-filter" onclick="filterApps('tools')" data-cat="tools">🛠️ Tools</button>
-            <button class="app-filter" onclick="filterApps('finance')" data-cat="finance">💰 Finance</button>
             <button class="app-filter" onclick="filterApps('media')" data-cat="media">🎬 Media</button>
             <button class="app-filter" onclick="filterApps('cloud')" data-cat="cloud">☁️ Cloud</button>
-            <button class="app-filter" onclick="filterApps('communication')" data-cat="communication">💬 Communication</button>
+            <button class="app-filter" onclick="filterApps('communication')" data-cat="communication">💬 Social</button>
             <button class="app-filter" onclick="filterApps('network')" data-cat="network">🌐 Network</button>
             <button class="app-filter" onclick="filterApps('security')" data-cat="security">🛡️ Security</button>
             <button class="app-filter" onclick="filterApps('system')" data-cat="system">⚙️ System</button>
@@ -2355,14 +2371,106 @@
             body: JSON.stringify({ appId }),
           });
           const d = await r.json();
-          log(
-            (d.ok ? "✅ " : "❌ ") + (d.message || action + " " + appId),
-            d.ok ? "success" : "error",
-          );
+          log((d.ok ? "✅ " : "❌ ") + (d.message || action + " " + appId), d.ok ? "success" : "error");
           loadApps();
         } catch (e) {
           log("❌ " + e.message, "error");
         }
+      }
+
+      // ─── Telegram Linking ──────────────────────────────
+      async function loadTelegramStatus() {
+        try {
+          const r = await fetch(API + '/api/telegram/status');
+          const d = await r.json();
+          const el = document.getElementById('tg-link-status');
+          if (d.linked) {
+            el.innerHTML = `<span style="color:#22c55e;">✅ Linked: @${d.telegram.username} (${d.telegram.chatId})</span>`;
+          } else {
+            el.innerHTML = '<span style="color:#f59e0b;">⚠️ Not linked</span>';
+          }
+        } catch {}
+      }
+
+      async function linkTelegram() {
+        const chatId = document.getElementById('tg-chat-id').value;
+        const username = document.getElementById('tg-username').value;
+        if (!chatId) { log('Enter your Telegram Chat ID', 'error'); return; }
+        try {
+          const r = await fetch(API + '/api/telegram/link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chatId, username })
+          });
+          const d = await r.json();
+          if (d.success) {
+            log('✅ Telegram linked: @' + username, 'success');
+            loadTelegramStatus();
+          }
+        } catch (e) { log('❌ Link error: ' + e.message, 'error'); }
+      }
+
+      // ─── PIN Reset via 2FA ──────────────────────────────
+      async function requestPinReset() {
+        const el = document.getElementById('pin-reset-status');
+        try {
+          const r = await fetch(API + '/api/auth/reset-pin-request', { method: 'POST' });
+          const d = await r.json();
+          if (d.success) {
+            el.innerHTML = '<span style="color:#22c55e;">✅ Code sent to Telegram. Check your messages.</span>';
+            document.getElementById('pin-reset-form').style.display = 'block';
+          } else {
+            el.innerHTML = `<span style="color:#f43f5e;">❌ ${d.error}</span>`;
+          }
+        } catch (e) { el.innerHTML = '<span style="color:#f43f5e;">❌ ' + e.message + '</span>'; }
+      }
+
+      async function confirmPinReset() {
+        const code = document.getElementById('reset-code').value;
+        const newPin = document.getElementById('reset-new-pin').value;
+        const el = document.getElementById('pin-reset-status');
+        if (!code || !newPin) { el.innerHTML = '<span style="color:#f43f5e;">Enter code and new PIN</span>'; return; }
+        try {
+          const r = await fetch(API + '/api/auth/reset-pin-confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, newPin })
+          });
+          const d = await r.json();
+          if (d.success) {
+            authToken = d.token;
+            localStorage.setItem('gstd_pin_token', authToken);
+            el.innerHTML = '<span style="color:#22c55e;">✅ PIN reset successfully!</span>';
+            document.getElementById('pin-reset-form').style.display = 'none';
+            log('🔐 PIN reset via 2FA Telegram', 'success');
+          } else {
+            el.innerHTML = `<span style="color:#f43f5e;">❌ ${d.error}</span>`;
+          }
+        } catch (e) { el.innerHTML = '<span style="color:#f43f5e;">❌ ' + e.message + '</span>'; }
+      }
+
+      // ─── Component Updates ──────────────────────────────
+      async function updateComponent(component) {
+        const el = document.getElementById('update-log');
+        el.innerHTML = `⏳ Updating ${component}...`;
+        try {
+          const r = await fetch(API + '/api/update/component', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ component })
+          });
+          const d = await r.json();
+          if (d.success) {
+            el.innerHTML = `<span style="color:#22c55e;">✅ ${d.message}</span>`;
+            log('✅ ' + d.message, 'success');
+            if (component === 'core' || component === 'all') {
+              el.innerHTML += ' Restarting...';
+              setTimeout(() => location.reload(), 3000);
+            }
+          } else {
+            el.innerHTML = `<span style="color:#f43f5e;">❌ ${d.error}</span>`;
+          }
+        } catch (e) { el.innerHTML = `<span style="color:#f43f5e;">❌ ${e.message}</span>`; }
       }
 
       // ─── Boot ────────────────────────────────────────────
@@ -2371,6 +2479,7 @@
       refreshTasks();
       refreshEarnings();
       loadApps();
+      loadTelegramStatus();
       setInterval(refresh, 2000);
       setInterval(refreshTasks, 10000);
       setInterval(refreshEarnings, 30000);

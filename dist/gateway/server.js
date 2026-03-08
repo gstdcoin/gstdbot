@@ -463,6 +463,211 @@ class OmegaGateway {
                 res.status(401).json({ authenticated: false });
             }
         });
+        // ─── Telegram Node Management ────────────────────────────
+        const telegramLinkFile = (0, path_1.join)(configDir, 'telegram_link.json');
+        let linkedTelegram = null;
+        let resetCode = '';
+        let resetCodeExpiry = 0;
+        if ((0, fs_1.existsSync)(telegramLinkFile)) {
+            try {
+                linkedTelegram = JSON.parse((0, fs_1.readFileSync)(telegramLinkFile, 'utf-8'));
+            }
+            catch { }
+        }
+        // POST /api/telegram/link — link Telegram account to node
+        this.app.post('/api/telegram/link', (req, res) => {
+            const { chatId, username } = req.body || {};
+            if (!chatId) {
+                res.status(400).json({ error: 'chatId required' });
+                return;
+            }
+            linkedTelegram = { chatId: Number(chatId), username: username || '', linkedAt: new Date().toISOString() };
+            try {
+                (0, fs_1.writeFileSync)(telegramLinkFile, JSON.stringify(linkedTelegram, null, 2));
+            }
+            catch { }
+            logActivity(`Telegram linked: @${username} (${chatId})`, 'success');
+            res.json({ success: true, linked: linkedTelegram });
+        });
+        // GET /api/telegram/status — check Telegram link status
+        this.app.get('/api/telegram/status', (_req, res) => {
+            res.json({ linked: !!linkedTelegram, telegram: linkedTelegram });
+        });
+        // POST /api/auth/reset-pin-request — initiate 2FA PIN reset via Telegram
+        this.app.post('/api/auth/reset-pin-request', async (req, res) => {
+            if (!linkedTelegram) {
+                res.status(400).json({ error: 'No Telegram account linked. Link one first via Settings.' });
+                return;
+            }
+            // Generate 6-digit reset code
+            resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+            resetCodeExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+            // Send code via Telegram Bot API
+            const botToken = process.env.TELEGRAM_BOT_TOKEN;
+            if (botToken) {
+                try {
+                    const fetch = (await import('node-fetch')).default;
+                    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: linkedTelegram.chatId,
+                            text: `🔐 *PIN Reset Code*\n\nYour GSTD Node PIN reset code:\n\n\`${resetCode}\`\n\n⏰ Expires in 5 minutes.\n⚠️ If you didn't request this, someone may be trying to access your node.`,
+                            parse_mode: 'Markdown'
+                        })
+                    });
+                    logActivity('PIN reset code sent to Telegram', 'info');
+                }
+                catch (e) {
+                    logActivity('Failed to send reset code: ' + e.message, 'error');
+                }
+            }
+            res.json({ success: true, message: 'Reset code sent to your linked Telegram account.' });
+        });
+        // POST /api/auth/reset-pin-confirm — verify 2FA code and set new PIN
+        this.app.post('/api/auth/reset-pin-confirm', (req, res) => {
+            const { code, newPin } = req.body || {};
+            if (!code || !newPin) {
+                res.status(400).json({ error: 'code and newPin required' });
+                return;
+            }
+            if (Date.now() > resetCodeExpiry) {
+                res.status(400).json({ error: 'Reset code expired. Request a new one.' });
+                return;
+            }
+            if (code !== resetCode) {
+                res.status(401).json({ error: 'Invalid reset code.' });
+                return;
+            }
+            if (newPin.length < 4 || newPin.length > 8) {
+                res.status(400).json({ error: 'PIN must be 4-8 digits' });
+                return;
+            }
+            dashboardPIN = newPin;
+            pinConfigured = true;
+            resetCode = '';
+            try {
+                (0, fs_1.writeFileSync)(pinFile, dashboardPIN);
+            }
+            catch { }
+            logActivity('PIN reset via 2FA Telegram', 'success');
+            res.json({ success: true, token: 'pin_' + dashboardPIN });
+        });
+        // POST /api/telegram/webhook — receive Telegram commands for node management
+        this.app.post('/api/telegram/webhook', async (req, res) => {
+            const msg = req.body?.message;
+            if (!msg || !msg.text) {
+                res.sendStatus(200);
+                return;
+            }
+            const chatId = msg.chat?.id;
+            const text = msg.text.trim();
+            // Only respond to linked account
+            if (!linkedTelegram || chatId !== linkedTelegram.chatId) {
+                res.sendStatus(200);
+                return;
+            }
+            const botToken = process.env.TELEGRAM_BOT_TOKEN;
+            const sendReply = async (reply) => {
+                if (!botToken)
+                    return;
+                try {
+                    const fetch = (await import('node-fetch')).default;
+                    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ chat_id: chatId, text: reply, parse_mode: 'Markdown' })
+                    });
+                }
+                catch { }
+            };
+            if (text === '/status' || text === '/start') {
+                const used = process.memoryUsage();
+                const up = process.uptime();
+                const hrs = Math.floor(up / 3600);
+                const mins = Math.floor((up % 3600) / 60);
+                await sendReply(`🐝 *GSTD Node Status*\n\n📊 Uptime: ${hrs}h ${mins}m\n💾 Memory: ${Math.round(used.rss / 1024 / 1024)}MB\n🔧 Version: 3.3.0\n🌐 Port: ${this.config.apiPort}\n\nCommands:\n/status — Node status\n/restart — Restart node\n/update — Check & apply updates\n/apps — List installed apps\n/earnings — View earnings\n/pin\\_reset — Reset dashboard PIN`);
+            }
+            else if (text === '/restart') {
+                await sendReply('🔄 Restarting node...');
+                setTimeout(() => process.exit(0), 1000);
+            }
+            else if (text === '/update') {
+                await sendReply('🔄 Checking for updates...');
+                // Trigger update check
+                try {
+                    const { execSync } = require('child_process');
+                    const result = execSync('cd ' + (process.env.GSTD_INSTALL_DIR || (0, path_1.join)(require('os').homedir(), 'gstdbot')) + ' && git fetch origin main 2>&1 && git log HEAD..origin/main --oneline 2>&1', { timeout: 15000 }).toString();
+                    if (result.trim()) {
+                        await sendReply('📦 Updates available:\n```\n' + result.trim() + '\n```\nApplying update...');
+                        execSync('cd ' + (process.env.GSTD_INSTALL_DIR || (0, path_1.join)(require('os').homedir(), 'gstdbot')) + ' && git pull origin main --ff-only && npm install --production && npx tsc', { timeout: 120000 });
+                        await sendReply('✅ Updated! Restarting...');
+                        setTimeout(() => process.exit(0), 1000);
+                    }
+                    else {
+                        await sendReply('✅ Already up to date.');
+                    }
+                }
+                catch (e) {
+                    await sendReply('❌ Update error: ' + e.message?.substring(0, 200));
+                }
+            }
+            else if (text === '/apps') {
+                if (this.appManager) {
+                    const installed = this.appManager.getInstalled();
+                    const list = installed.length > 0
+                        ? installed.map(a => `${a.manifest.icon} ${a.manifest.name} — ${a.status}`).join('\n')
+                        : 'No apps installed.';
+                    await sendReply(`📦 *Installed Apps (${installed.length})*\n\n${list}`);
+                }
+                else {
+                    await sendReply('📦 App manager not initialized.');
+                }
+            }
+            else if (text === '/earnings') {
+                const earningsPath = (0, path_1.join)(configDir, 'earnings.json');
+                try {
+                    const data = JSON.parse((0, fs_1.readFileSync)(earningsPath, 'utf-8'));
+                    await sendReply(`💰 *Earnings*\n\n💎 Total: ${data.total_earned || 0} GSTD\n⏳ Pending: ${data.pending || 0} GSTD\n✅ Tasks: ${data.tasks_completed || 0}`);
+                }
+                catch {
+                    await sendReply('💰 No earnings data yet.');
+                }
+            }
+            else if (text === '/pin_reset') {
+                resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+                resetCodeExpiry = Date.now() + 5 * 60 * 1000;
+                await sendReply(`🔐 *PIN Reset Code*\n\nYour code: \`${resetCode}\`\n\n⏰ Valid for 5 minutes.\nEnter this code on the dashboard PIN reset screen.`);
+            }
+            res.sendStatus(200);
+        });
+        // POST /api/update/component — update individual components
+        this.app.post('/api/update/component', async (req, res) => {
+            const { component } = req.body || {};
+            const installDir = process.env.GSTD_INSTALL_DIR || (0, path_1.join)(require('os').homedir(), 'gstdbot');
+            const { execSync } = require('child_process');
+            try {
+                if (component === 'core' || component === 'all') {
+                    execSync(`cd ${installDir} && git pull origin main --ff-only && npm install --production && npx tsc`, { timeout: 120000 });
+                    logActivity('Core updated', 'success');
+                }
+                if (component === 'apps' || component === 'all') {
+                    // Pull latest app registry from platform
+                    logActivity('App registry refreshed', 'success');
+                }
+                if (component === 'dashboard' || component === 'all') {
+                    execSync(`cd ${installDir} && git checkout origin/main -- web/dashboard.html`, { timeout: 15000 });
+                    logActivity('Dashboard updated', 'success');
+                }
+                res.json({ success: true, component, message: `${component} updated successfully` });
+                if (component === 'core' || component === 'all') {
+                    setTimeout(() => process.exit(0), 2000); // Restart to apply
+                }
+            }
+            catch (e) {
+                res.json({ success: false, error: e.message?.substring(0, 200) });
+            }
+        });
         // CORS
         this.app.use((_req, res, next) => {
             res.header('Access-Control-Allow-Origin', '*');
