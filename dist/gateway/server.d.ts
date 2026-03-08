@@ -47,6 +47,7 @@ export declare class OmegaGateway {
     private handleCommand;
     private updateMetrics;
     private splitIntoChunks;
+    private isLocalRequest;
     start(): Promise<void>;
     stop(): Promise<void>;
 }

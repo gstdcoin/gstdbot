@@ -82,18 +82,34 @@ class SwarmAgent {
     async register() {
         try {
             const caps = this.getCapabilities();
-            const result = await this.apiCall('/nodes/register', caps);
-            if (result?.nodeId || result?.node_id || result?.ok) {
+            // Platform expects: { name, specs } + X-Wallet-Address header
+            const payload = {
+                name: this.config.nodeName,
+                specs: {
+                    node_id: caps.node_id,
+                    platform: caps.platform,
+                    arch: caps.arch,
+                    cpu: caps.cpu_model,
+                    cpu_cores: caps.cpu_cores,
+                    ram: caps.ram_total_mb,
+                    gpu: caps.gpu,
+                    models: caps.models,
+                    mode: caps.mode,
+                    version: caps.version,
+                },
+            };
+            const result = await this.apiCall('/nodes/register', payload);
+            if (result?.id || result?.node_id || result?.ok) {
                 this.connected = true;
                 this.stats.connected = true;
-                (0, server_js_1.logActivity)(`Registered with swarm (ID: ${this.config.nodeId.slice(0, 12)}...)`, 'success');
+                (0, server_js_1.logActivity)(`Registered with platform (ID: ${this.config.nodeId.slice(0, 12)}...)`, 'success');
             }
             else {
-                (0, server_js_1.logActivity)('Swarm registration pending — will retry on heartbeat', 'warn');
+                (0, server_js_1.logActivity)('Platform registration pending — will retry on heartbeat', 'warn');
             }
         }
         catch (e) {
-            (0, server_js_1.logActivity)('Swarm registration error: ' + (e.message || 'network'), 'error');
+            (0, server_js_1.logActivity)('Platform registration error: ' + (e.message || 'network'), 'error');
         }
     }
     // ─── Heartbeat ───────────────────────────────────────────────
@@ -102,17 +118,20 @@ class SwarmAgent {
             const load = (0, os_1.loadavg)();
             const ramUsage = Math.round((((0, os_1.totalmem)() - (0, os_1.freemem)()) / (0, os_1.totalmem)()) * 100);
             const walletAddr = this.wallet.getAddress();
+            // Platform heartbeat expects: { wallet, node_id, status, battery, signal }
             const payload = {
+                wallet: walletAddr || this.config.nodeId,
                 node_id: this.config.nodeId,
-                node_name: this.config.nodeName,
                 status: 'online',
+                battery: 100 - Math.round(load[0] * 100 / (0, os_1.cpus)().length), // CPU as "battery" (inverse)
+                signal: 100 - ramUsage, // Available RAM as "signal"
+                // Extended fields (accepted but not required by platform)
                 cpu_usage: Math.round(load[0] * 100 / (0, os_1.cpus)().length),
                 ram_usage: ramUsage,
                 ram_free_mb: Math.round((0, os_1.freemem)() / 1048576),
                 tasks_completed: this.stats.tasksCompleted,
                 tasks_processing: this.stats.tasksProcessing,
                 uptime: Math.round((Date.now() - this.startedAt) / 1000),
-                wallet_address: walletAddr || undefined,
                 version: this.config.version,
                 mode: this.config.mode,
                 memory_entries: this.memory.getEntryCount(),
@@ -291,11 +310,16 @@ class SwarmAgent {
     }
     async apiCall(endpoint, data) {
         const url = this.config.swarm.apiUrl + endpoint;
+        const walletAddr = this.wallet.getAddress() || '';
         try {
             const resp = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
+                method: endpoint.startsWith('/nodes/public') ? 'GET' : 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Wallet-Address': walletAddr,
+                    'X-Node-Id': this.config.nodeId,
+                },
+                body: endpoint.startsWith('/nodes/public') ? undefined : JSON.stringify(data),
                 signal: AbortSignal.timeout(10_000),
             });
             if (resp.ok)

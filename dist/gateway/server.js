@@ -189,6 +189,68 @@ class OmegaGateway {
                 connectedClients: this.clients.size,
             });
         });
+        // ─── Self-Update (OTA from dashboard) ────────────────────
+        this.app.get('/api/check-update', async (_req, res) => {
+            try {
+                const { execSync } = require('child_process');
+                const installDir = process.env.GSTD_INSTALL_DIR || require('os').homedir() + '/gstdbot';
+                // Fetch latest from remote
+                execSync('git fetch origin main', { cwd: installDir, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'] });
+                const localHash = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8' }).trim();
+                const remoteHash = execSync('git rev-parse origin/main', { cwd: installDir, encoding: 'utf-8' }).trim();
+                const behind = parseInt(execSync('git rev-list HEAD..origin/main --count', { cwd: installDir, encoding: 'utf-8' }).trim()) || 0;
+                const currentVersion = require('../../package.json').version || 'unknown';
+                res.json({
+                    update_available: localHash !== remoteHash,
+                    current_version: currentVersion,
+                    current_hash: localHash.slice(0, 8),
+                    remote_hash: remoteHash.slice(0, 8),
+                    commits_behind: behind,
+                });
+            }
+            catch (e) {
+                res.json({ update_available: false, error: e.message });
+            }
+        });
+        this.app.post('/api/update', async (_req, res) => {
+            try {
+                const { execSync } = require('child_process');
+                const installDir = process.env.GSTD_INSTALL_DIR || require('os').homedir() + '/gstdbot';
+                // Step 1: Pull latest
+                const pullOutput = execSync('git pull origin main --ff-only', {
+                    cwd: installDir, encoding: 'utf-8', timeout: 30000,
+                });
+                // Step 2: Install deps (if package.json changed)
+                execSync('npm install --production 2>&1 || true', {
+                    cwd: installDir, encoding: 'utf-8', timeout: 120000,
+                });
+                // Step 3: Build
+                execSync('npx tsc 2>&1 || true', {
+                    cwd: installDir, encoding: 'utf-8', timeout: 60000,
+                });
+                const newVersion = JSON.parse(require('fs').readFileSync(installDir + '/package.json', 'utf-8')).version || 'unknown';
+                res.json({
+                    success: true,
+                    message: 'Update applied. Restarting...',
+                    new_version: newVersion,
+                    pull_output: pullOutput.trim(),
+                });
+                // Step 4: Restart process gracefully (after response is sent)
+                setTimeout(() => {
+                    logActivity('Self-update complete — restarting...', 'success');
+                    try {
+                        // If running via systemd, restart the service
+                        execSync('systemctl restart gstd-node 2>/dev/null || true', { encoding: 'utf-8', timeout: 5000 });
+                    }
+                    catch { }
+                    // If not systemd, just exit — PM2 or shell will restart
+                    process.exit(0);
+                }, 500);
+            }
+            catch (e) {
+                res.status(500).json({ success: false, error: e.message });
+            }
+        });
         // ─── OpenAI-compatible chat completions ──────────────────
         this.app.post('/v1/chat/completions', async (req, res) => {
             try {
@@ -335,11 +397,53 @@ class OmegaGateway {
     }
     // ─── Node OS: Dashboard + App Store + System APIs ────────────
     setupNodeOS() {
+        // ─── Dashboard PIN Authentication ────────────────────────
+        const configDir = (0, path_1.join)(require('os').homedir(), '.config', 'gstdbot');
+        const pinFile = (0, path_1.join)(configDir, 'dashboard_pin.txt');
+        let dashboardPIN;
+        if ((0, fs_1.existsSync)(pinFile)) {
+            dashboardPIN = (0, fs_1.readFileSync)(pinFile, 'utf-8').trim();
+        }
+        else {
+            // Generate 6-digit PIN on first boot
+            dashboardPIN = Math.floor(100000 + Math.random() * 900000).toString();
+            try {
+                const { mkdirSync } = require('fs');
+                if (!(0, fs_1.existsSync)(configDir))
+                    mkdirSync(configDir, { recursive: true });
+                const { writeFileSync } = require('fs');
+                writeFileSync(pinFile, dashboardPIN);
+                console.log(`    🔐 Dashboard PIN: ${dashboardPIN}`);
+                console.log(`    📄 PIN saved to: ${pinFile}`);
+                logActivity('Dashboard PIN generated and saved', 'info');
+            }
+            catch { }
+        }
+        // PIN validation endpoints (always accessible)
+        this.app.post('/api/auth/login', (req, res) => {
+            const { pin } = req.body || {};
+            if (pin === dashboardPIN) {
+                res.json({ success: true, token: 'pin_' + dashboardPIN });
+            }
+            else {
+                res.status(401).json({ success: false, error: 'Invalid PIN' });
+            }
+        });
+        this.app.get('/api/auth/check', (req, res) => {
+            const token = req.headers.authorization?.replace('Bearer ', '') || req.query?.token;
+            const isLocal = this.isLocalRequest(req);
+            if (isLocal || token === 'pin_' + dashboardPIN) {
+                res.json({ authenticated: true, local: isLocal });
+            }
+            else {
+                res.status(401).json({ authenticated: false });
+            }
+        });
         // CORS
         this.app.use((_req, res, next) => {
             res.header('Access-Control-Allow-Origin', '*');
             res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-            res.header('Access-Control-Allow-Headers', 'Content-Type');
+            res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
             if (_req.method === 'OPTIONS') {
                 res.sendStatus(204);
                 return;
@@ -643,6 +747,12 @@ class OmegaGateway {
             chunks.push(words.slice(i, i + chunkSize).join(' ') + ' ');
         }
         return chunks;
+    }
+    isLocalRequest(req) {
+        const ip = req.ip || req.socket?.remoteAddress || '';
+        return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1'
+            || ip.startsWith('192.168.') || ip.startsWith('10.')
+            || ip.startsWith('172.16.') || ip.startsWith('172.17.');
     }
     async start() {
         const MAX_PORT_ATTEMPTS = 10;
