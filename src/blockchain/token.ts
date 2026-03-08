@@ -58,13 +58,15 @@ export interface GSTDPrice {
     lastUpdated: string;
 }
 
-// ─── GSTD Smart Contract Addresses ──────────────────────────────
+// ─── GSTD Smart Contract Addresses (TON Mainnet) ────────────────
+// These are testnet placeholders — real addresses set after mainnet deploy
+// Override via env vars: GSTD_CONTRACT_TOKEN, GSTD_CONTRACT_STAKING, etc.
 const CONTRACTS = {
-    GSTD_TOKEN: 'EQBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxGSTD',   // GSTD Jetton master
-    STAKING: 'EQBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxSTAKE',     // Staking contract
-    SWARM_REWARDS: 'EQBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxREWARD',  // Reward distribution
-    DEX_POOL: 'EQBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxDEX',      // GSTD/TON DEX pool
-    GOVERNANCE: 'EQBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxGOV',    // DAO governance
+    GSTD_TOKEN: process.env.GSTD_CONTRACT_TOKEN || 'EQ_GSTD_TOKEN_MAINNET_PENDING',
+    STAKING: process.env.GSTD_CONTRACT_STAKING || 'EQ_STAKING_CONTRACT_PENDING',
+    SWARM_REWARDS: process.env.GSTD_CONTRACT_REWARDS || 'EQ_SWARM_REWARDS_PENDING',
+    DEX_POOL: process.env.GSTD_CONTRACT_DEX || 'EQ_DEX_POOL_PENDING',
+    GOVERNANCE: process.env.GSTD_CONTRACT_GOV || 'EQ_GOVERNANCE_PENDING',
 };
 
 const PLATFORM_API = 'https://app.gstdtoken.com/api/v1';

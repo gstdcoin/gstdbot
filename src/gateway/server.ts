@@ -13,10 +13,12 @@ import { v4 as uuid } from 'uuid';
 import { NeuralRouter, RouteResult } from './router.js';
 import { SessionManager, Session } from './sessions.js';
 import { cpus, totalmem, freemem, hostname, platform, arch, loadavg, uptime as osUptime, networkInterfaces } from 'os';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, appendFileSync } from 'fs';
 import { join } from 'path';
+import { createHash, randomBytes } from 'crypto';
 import { AppManager, type AppManifest, type InstalledApp } from '../apps/manager.js';
 import { NodeWallet } from '../wallet/manager.js';
+import { execSync } from 'child_process';
 
 // ─── Reward config ───────────────────────────────────────────────
 const REWARD_PER_QUERY = 0.001;        // GSTD per AI query served
@@ -88,12 +90,80 @@ function getLocalIP(): string {
     return '127.0.0.1';
 }
 
-// ─── Activity Log ────────────────────────────────────────────────
+// ─── Activity Log (persisted to file) ────────────────────────────
 const activityLog: { ts: string; msg: string; type: string }[] = [];
 const MAX_LOG = 200;
+const LOG_DIR = join(require('os').homedir(), '.config', 'gstdbot');
+const LOG_FILE = join(LOG_DIR, 'activity.log');
+
+// Load previous log on startup
+try {
+    if (!existsSync(LOG_DIR)) mkdirSync(LOG_DIR, { recursive: true });
+    if (existsSync(LOG_FILE)) {
+        const lines = readFileSync(LOG_FILE, 'utf-8').trim().split('\n').filter(Boolean);
+        for (const line of lines.slice(-MAX_LOG)) {
+            try { activityLog.push(JSON.parse(line)); } catch {}
+        }
+    }
+} catch {}
+
 export function logActivity(msg: string, type: string = 'info'): void {
-    activityLog.unshift({ ts: new Date().toISOString(), msg, type });
+    const entry = { ts: new Date().toISOString(), msg, type };
+    activityLog.unshift(entry);
     if (activityLog.length > MAX_LOG) activityLog.length = MAX_LOG;
+    // Persist to file (append)
+    try { appendFileSync(LOG_FILE, JSON.stringify(entry) + '\n'); } catch {}
+}
+
+// ─── PIN Hashing Helpers ─────────────────────────────────────────
+function hashPin(pin: string): string {
+    return createHash('sha256').update(pin + 'gstd-node-salt-2026').digest('hex');
+}
+function generateToken(): string {
+    return randomBytes(32).toString('hex');
+}
+// Active sessions: token → expiry
+const authSessions = new Map<string, number>();
+const AUTH_TOKEN_TTL = 24 * 60 * 60 * 1000; // 24 hours
+function createAuthToken(): string {
+    const token = generateToken();
+    authSessions.set(token, Date.now() + AUTH_TOKEN_TTL);
+    // Cleanup expired tokens
+    for (const [t, exp] of authSessions) {
+        if (Date.now() > exp) authSessions.delete(t);
+    }
+    return token;
+}
+function isValidToken(token: string): boolean {
+    const exp = authSessions.get(token);
+    if (!exp) return false;
+    if (Date.now() > exp) { authSessions.delete(token); return false; }
+    return true;
+}
+
+// ─── Auth Rate Limiting ──────────────────────────────────────────
+const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+function checkLoginRateLimit(ip: string): { allowed: boolean; remaining: number; lockoutMs?: number } {
+    const entry = loginAttempts.get(ip);
+    if (entry && Date.now() < entry.lockedUntil) {
+        return { allowed: false, remaining: 0, lockoutMs: entry.lockedUntil - Date.now() };
+    }
+    if (entry && Date.now() >= entry.lockedUntil) {
+        loginAttempts.delete(ip);
+    }
+    return { allowed: true, remaining: MAX_LOGIN_ATTEMPTS - (entry?.count || 0) };
+}
+function recordLoginAttempt(ip: string, success: boolean): void {
+    if (success) { loginAttempts.delete(ip); return; }
+    const entry = loginAttempts.get(ip) || { count: 0, lockedUntil: 0 };
+    entry.count++;
+    if (entry.count >= MAX_LOGIN_ATTEMPTS) {
+        entry.lockedUntil = Date.now() + LOCKOUT_DURATION;
+        logActivity(`IP ${ip} locked out for 15min after ${entry.count} failed login attempts`, 'warn');
+    }
+    loginAttempts.set(ip, entry);
 }
 
 const nodeStartedAt = Date.now();
@@ -154,7 +224,16 @@ export class OmegaGateway {
     }
 
     private setupAPI(): void {
-        this.app.use(express.json({ limit: '10mb' }));
+        // JSON body parser with error handler (fix #15)
+        this.app.use((req, res, next) => {
+            express.json({ limit: '10mb' })(req, res, (err) => {
+                if (err) {
+                    res.status(400).json({ error: 'Invalid JSON body', details: err.message });
+                    return;
+                }
+                next();
+            });
+        });
 
         // ─── Security Headers (critical for hosted nodes) ────────
         this.app.use((_req, res, next) => {
@@ -168,7 +247,7 @@ export class OmegaGateway {
 
         // ─── Rate Limiting (protects against abuse on hosted nodes) ──
         const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-        const RATE_LIMIT = 60;       // max requests per window
+        const RATE_LIMIT = 120;      // max requests per window
         const RATE_WINDOW = 60000;   // 1 minute window
         this.app.use((req, res, next) => {
             const ip = req.ip || req.socket.remoteAddress || 'unknown';
@@ -200,10 +279,19 @@ export class OmegaGateway {
         this.app.get('/health', (_req, res) => {
             res.json({
                 status: 'ok',
-                version: '1.0.0',
+                version: '3.3.0',
                 uptime: process.uptime(),
                 activeSessions: this.sessions.count(),
                 connectedClients: this.clients.size,
+                security: {
+                    rateLimiting: true,
+                    pinAuth: true,
+                    bruteForceProtection: true,
+                },
+                swarm: {
+                    peers: this.orchestrator?.getPeers()?.length || 0,
+                    models: this.orchestrator?.getAvailableModels()?.length || 0,
+                },
             });
         });
 
@@ -430,20 +518,33 @@ export class OmegaGateway {
 
     // ─── Node OS: Dashboard + App Store + System APIs ────────────
     private setupNodeOS(): void {
-        // ─── Dashboard PIN Authentication ────────────────────────
+        // ─── Dashboard PIN Authentication (Secure) ───────────────
         const configDir = join(require('os').homedir(), '.config', 'gstdbot');
-        const pinFile = join(configDir, 'dashboard_pin.txt');
-        let dashboardPIN: string = '';
+        const pinFile = join(configDir, 'dashboard_pin.hash'); // .hash not .txt
+        const oldPinFile = join(configDir, 'dashboard_pin.txt');
+        let pinHash: string = '';
         let pinConfigured = false;
 
-        if (existsSync(pinFile)) {
-            dashboardPIN = readFileSync(pinFile, 'utf-8').trim();
-            pinConfigured = !!dashboardPIN;
+        // Migrate old plaintext PIN → hashed
+        if (existsSync(oldPinFile)) {
+            const oldPin = readFileSync(oldPinFile, 'utf-8').trim();
+            if (oldPin) {
+                pinHash = hashPin(oldPin);
+                pinConfigured = true;
+                try {
+                    writeFileSync(pinFile, pinHash);
+                    require('fs').unlinkSync(oldPinFile);
+                    logActivity('PIN migrated to hashed storage', 'success');
+                } catch {}
+            }
+        } else if (existsSync(pinFile)) {
+            pinHash = readFileSync(pinFile, 'utf-8').trim();
+            pinConfigured = !!pinHash;
         }
 
         // Ensure config dir exists
         if (!existsSync(configDir)) {
-            try { require('fs').mkdirSync(configDir, { recursive: true }); } catch {}
+            try { mkdirSync(configDir, { recursive: true }); } catch {}
         }
 
         // POST /api/auth/setup — create PIN on first login
@@ -457,27 +558,39 @@ export class OmegaGateway {
                 res.status(400).json({ success: false, error: 'PIN must be 4-8 digits' });
                 return;
             }
-            dashboardPIN = pin;
+            pinHash = hashPin(pin);
             pinConfigured = true;
             try {
-                const { writeFileSync } = require('fs');
-                writeFileSync(pinFile, dashboardPIN);
-                logActivity('Dashboard PIN created by user', 'success');
+                writeFileSync(pinFile, pinHash);
+                logActivity('Dashboard PIN created (hashed)', 'success');
             } catch {}
-            res.json({ success: true, token: 'pin_' + dashboardPIN });
+            const token = createAuthToken();
+            res.json({ success: true, token });
         });
 
-        // POST /api/auth/login — verify PIN
+        // POST /api/auth/login — verify PIN with brute-force protection
         this.app.post('/api/auth/login', (req, res) => {
+            const ip = req.ip || req.socket.remoteAddress || 'unknown';
+            const rateCheck = checkLoginRateLimit(ip);
+            if (!rateCheck.allowed) {
+                const mins = Math.ceil((rateCheck.lockoutMs || 0) / 60000);
+                res.status(429).json({ success: false, error: `Too many attempts. Locked for ${mins} minutes.`, lockedMinutes: mins });
+                return;
+            }
             const { pin } = req.body || {};
             if (!pinConfigured) {
                 res.status(400).json({ success: false, error: 'PIN not configured. Use /api/auth/setup first.' });
                 return;
             }
-            if (pin === dashboardPIN) {
-                res.json({ success: true, token: 'pin_' + dashboardPIN });
+            if (hashPin(pin || '') === pinHash) {
+                recordLoginAttempt(ip, true);
+                const token = createAuthToken();
+                logActivity('Dashboard login successful', 'success');
+                res.json({ success: true, token });
             } else {
-                res.status(401).json({ success: false, error: 'Invalid PIN' });
+                recordLoginAttempt(ip, false);
+                logActivity(`Failed login attempt from ${ip}`, 'warn');
+                res.status(401).json({ success: false, error: 'Invalid PIN', remaining: rateCheck.remaining - 1 });
             }
         });
 
@@ -489,7 +602,7 @@ export class OmegaGateway {
                 res.json({ authenticated: false, needs_setup: true });
                 return;
             }
-            if (isLocal || token === 'pin_' + dashboardPIN) {
+            if (isLocal || isValidToken(token)) {
                 res.json({ authenticated: true, local: isLocal });
             } else {
                 res.status(401).json({ authenticated: false });
@@ -571,12 +684,13 @@ export class OmegaGateway {
                 res.status(400).json({ error: 'PIN must be 4-8 digits' });
                 return;
             }
-            dashboardPIN = newPin;
+            pinHash = hashPin(newPin);
             pinConfigured = true;
             resetCode = '';
-            try { writeFileSync(pinFile, dashboardPIN); } catch {}
+            try { writeFileSync(pinFile, pinHash); } catch {}
             logActivity('PIN reset via 2FA Telegram', 'success');
-            res.json({ success: true, token: 'pin_' + dashboardPIN });
+            const token = createAuthToken();
+            res.json({ success: true, token });
         });
 
         // POST /api/telegram/webhook — receive Telegram commands for node management
@@ -802,7 +916,6 @@ export class OmegaGateway {
                     break;
                 case 'update':
                     try {
-                        const { execSync } = require('child_process');
                         const cwd = join(__dirname, '../..');
                         execSync('git pull', { cwd, encoding: 'utf-8', timeout: 30000 });
                         execSync('npx tsc', { cwd, encoding: 'utf-8', timeout: 60000 });
@@ -832,6 +945,13 @@ export class OmegaGateway {
         this.app.post('/api/apps/install', async (req, res) => {
             const { appId } = req.body;
             if (!appId) { res.json({ ok: false, message: 'Missing appId' }); return; }
+            // Docker check (#7)
+            try {
+                execSync('docker info', { timeout: 5000, stdio: 'pipe' });
+            } catch {
+                res.json({ ok: false, message: '🐳 Docker is not installed or not running. Install Docker first: https://docs.docker.com/get-docker/' });
+                return;
+            }
             // Premium check: require 1000 GSTD balance
             const registry = await this.appManager.getRegistry();
             const app = registry.find((a: any) => a.id === appId);
@@ -844,6 +964,7 @@ export class OmegaGateway {
                 }
             }
             const ok = await this.appManager.install(appId);
+            logActivity(`App ${appId}: ${ok ? 'installed' : 'install failed'}`, ok ? 'success' : 'error');
             res.json({ ok, message: ok ? `${appId} installed` : `Failed to install ${appId}` });
         });
 
