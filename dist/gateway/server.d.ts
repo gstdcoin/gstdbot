@@ -24,6 +24,8 @@ export declare class OmegaGateway {
     private clients;
     private appManager;
     private wallet;
+    private security;
+    private orchestrator;
     private subsystems;
     private metrics;
     constructor(config?: Partial<GatewayConfig>);

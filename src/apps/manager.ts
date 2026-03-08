@@ -23,6 +23,7 @@ export interface AppManifest {
     author: string;
     category: 'ai' | 'tools' | 'network' | 'finance' | 'media' | 'system' | 'cloud' | 'security' | 'communication' | 'web' | 'defi';
     port: number;
+    premium?: boolean;             // Requires 1000 GSTD balance
     docker?: {
         image: string;
         ports: string[];
@@ -34,8 +35,8 @@ export interface AppManifest {
         start: string;
         stop: string;
     };
-    requires?: string[];       // Required system features
-    gstd_cost?: number;        // GSTD cost to install (0 = free)
+    requires?: string[];           // Required system features
+    gstd_cost?: number;            // GSTD cost to install (0 = free)
 }
 
 export interface InstalledApp {
@@ -627,6 +628,7 @@ const BUILTIN_APPS: AppManifest[] = [
         category: 'web',
         port: 3100,
         gstd_cost: 0,
+        premium: true,
         docker: { image: 'kasmweb/chromium:1.15.0', ports: ['3100:6901'], volumes: ['chromium_data:/home/kasm-user'], environment: {} },
     },
     {
@@ -639,6 +641,7 @@ const BUILTIN_APPS: AppManifest[] = [
         category: 'web',
         port: 3101,
         gstd_cost: 0,
+        premium: true,
         docker: { image: 'kasmweb/firefox:1.15.0', ports: ['3101:6901'], volumes: ['firefox_data:/home/kasm-user'], environment: {} },
     },
     {
@@ -675,6 +678,7 @@ const BUILTIN_APPS: AppManifest[] = [
         category: 'communication',
         port: 3110,
         gstd_cost: 0,
+        premium: true,
     },
     {
         id: 'gstd-discord',
@@ -686,6 +690,7 @@ const BUILTIN_APPS: AppManifest[] = [
         category: 'communication',
         port: 3111,
         gstd_cost: 0,
+        premium: true,
     },
     {
         id: 'gstd-matrix',
@@ -767,6 +772,7 @@ const BUILTIN_APPS: AppManifest[] = [
         category: 'ai',
         port: 3120,
         gstd_cost: 0,
+        premium: true,
         docker: { image: 'ghcr.io/lobehub/lobe-chat:latest', ports: ['3120:3210'], volumes: ['openclaw_data:/root/.lobe-chat'], environment: {} },
     },
     {
@@ -779,6 +785,7 @@ const BUILTIN_APPS: AppManifest[] = [
         category: 'ai',
         port: 3121,
         gstd_cost: 0,
+        premium: true,
     },
     {
         id: 'gstd-ollama',
@@ -790,6 +797,7 @@ const BUILTIN_APPS: AppManifest[] = [
         category: 'ai',
         port: 3122,
         gstd_cost: 0,
+        premium: true,
         docker: { image: 'ollama/ollama:latest', ports: ['3122:11434'], volumes: ['ollama_models:/root/.ollama'], environment: {} },
     },
     {
@@ -802,6 +810,7 @@ const BUILTIN_APPS: AppManifest[] = [
         category: 'ai',
         port: 3123,
         gstd_cost: 0,
+        premium: true,
     },
 
     // ═══ DeFi, Wallets & TON Services (8 apps) ═══
@@ -826,6 +835,7 @@ const BUILTIN_APPS: AppManifest[] = [
         category: 'defi',
         port: 3131,
         gstd_cost: 0,
+        premium: true,
     },
     {
         id: 'gstd-metamask',
@@ -848,6 +858,7 @@ const BUILTIN_APPS: AppManifest[] = [
         category: 'defi',
         port: 3133,
         gstd_cost: 0,
+        premium: true,
     },
     {
         id: 'gstd-stonfi',
@@ -905,6 +916,7 @@ const BUILTIN_APPS: AppManifest[] = [
         category: 'network',
         port: 3140,
         gstd_cost: 0,
+        premium: true,
         requires: ['docker', 'ram:16384'],
         docker: { image: 'tonlabs/ton-node:latest', ports: ['3140:3030', '43679:43679/udp'], volumes: ['ton_node_data:/var/ton-work'], environment: { TON_GLOBAL_CONFIG: 'https://ton.org/global-config.json' } },
     },

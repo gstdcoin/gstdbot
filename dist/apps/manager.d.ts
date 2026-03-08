@@ -16,6 +16,7 @@ export interface AppManifest {
     author: string;
     category: 'ai' | 'tools' | 'network' | 'finance' | 'media' | 'system' | 'cloud' | 'security' | 'communication' | 'web' | 'defi';
     port: number;
+    premium?: boolean;
     docker?: {
         image: string;
         ports: string[];

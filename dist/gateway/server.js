@@ -108,6 +108,8 @@ class OmegaGateway {
     clients = new Map();
     appManager;
     wallet = null;
+    security = null;
+    orchestrator = null;
     subsystems = {};
     metrics = {
         totalRequests: 0,
@@ -825,6 +827,17 @@ class OmegaGateway {
                 res.json({ ok: false, message: 'Missing appId' });
                 return;
             }
+            // Premium check: require 1000 GSTD balance
+            const registry = await this.appManager.getRegistry();
+            const app = registry.find((a) => a.id === appId);
+            if (app?.premium) {
+                const wb = this.wallet?.getBalance?.();
+                const walletBalance = typeof wb === 'number' ? wb : (wb?.gstd || 0);
+                if (walletBalance < 1000) {
+                    res.json({ ok: false, message: `⭐ Premium app requires 1000 GSTD balance. Current: ${walletBalance} GSTD. Buy GSTD or earn more through swarm tasks.`, premium: true });
+                    return;
+                }
+            }
             const ok = await this.appManager.install(appId);
             res.json({ ok, message: ok ? `${appId} installed` : `Failed to install ${appId}` });
         });
@@ -857,6 +870,50 @@ class OmegaGateway {
             if (ok)
                 await this.appManager.start(appId).catch(() => { });
             res.json({ ok, message: ok ? `${appId} updated and restarted` : `Failed to update ${appId}` });
+        });
+        // ─── Security APIs ──────────────────────────────────────
+        this.app.get('/api/security/status', (_req, res) => {
+            const security = this.security;
+            res.json({
+                status: security?.getStatus() || { enabled: false },
+                recentAudit: security?.getAuditLog(20) || [],
+            });
+        });
+        // ─── Swarm Orchestrator APIs ─────────────────────────────
+        this.app.get('/api/swarm/orchestrator', (_req, res) => {
+            const orch = this.orchestrator;
+            res.json({
+                status: orch?.getStatus() || { peers: 0 },
+                peers: orch?.getPeers()?.slice(0, 20) || [],
+            });
+        });
+        this.app.get('/api/swarm/models', (_req, res) => {
+            const orch = this.orchestrator;
+            res.json({
+                models: orch?.getAvailableModels() || [],
+                federatedTasks: orch?.getFederatedTasks() || [],
+            });
+        });
+        this.app.post('/api/swarm/route-task', (req, res) => {
+            const { taskType, requirements } = req.body || {};
+            const orch = this.orchestrator;
+            if (!orch) {
+                res.json({ error: 'Orchestrator not initialized' });
+                return;
+            }
+            const route = orch.routeTask(taskType || 'inference', requirements || {});
+            res.json(route);
+        });
+        // ─── Premium Status API ─────────────────────────────────
+        this.app.get('/api/premium/status', (_req, res) => {
+            const wb = this.wallet?.getBalance?.();
+            const balance = typeof wb === 'number' ? wb : (wb?.gstd || 0);
+            res.json({
+                isPremium: balance >= 1000,
+                balance,
+                requiredBalance: 1000,
+                premiumApps: 11,
+            });
         });
         logActivity('Node OS mounted on gateway — all-in-one on :' + this.config.apiPort);
     }

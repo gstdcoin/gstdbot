@@ -2312,30 +2312,32 @@
             const isRunning = status === 'running';
             const catClass = "cat-" + (app.category || "system");
             const appPort = app.port || (3000 + Math.abs(hashCode(app.id)) % 5000);
+            const isPremium = !!app.premium;
             const card = document.createElement("div");
             card.className = "app-card";
             card.dataset.category = app.category || "system";
+            if (isPremium) card.style.borderColor = 'rgba(255,215,0,0.3)';
             card.innerHTML = `
-                <div class="app-icon">${app.icon || "📦"}</div>
+                <div class="app-icon">${app.icon || "📦"}${isPremium ? '<span style="position:absolute;top:4px;right:8px;font-size:14px;">⭐</span>' : ''}</div>
                 <div class="app-name">${app.name}</div>
                 <div class="app-desc">${app.description || ""}</div>
                 <div class="app-meta">
                     <span class="app-cat ${catClass}">${app.category || "system"}</span>
                     <span>v${app.version}</span>
-                    ${app.gstd_cost > 0 ? "<span>" + app.gstd_cost + " GSTD</span>" : '<span style="color:var(--emerald)">FREE</span>'}
+                    ${isPremium ? '<span style="color:#FFD700;font-weight:700;">🔒 Premium</span>' : (app.gstd_cost > 0 ? "<span>" + app.gstd_cost + " GSTD</span>" : '<span style="color:var(--emerald)">FREE</span>')}
                     ${isInstalled ? '<span class="app-status status-' + status + '">' + status + "</span>" : ""}
                 </div>
                 ${
                   isInstalled
                     ? '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
-                      + (isRunning ? '<button class="app-btn" style="background:rgba(6,182,212,0.15);color:#06b6d4;border-color:rgba(6,182,212,0.3);" onclick="openApp(\'' + app.id + "','" + app.name.replace(/'/g,'') + "'," + appPort + ')\">📺 Open</button>' : '')
-                      + '<button class="app-btn app-btn-open" onclick="appAction(\'' + (isRunning ? 'stop' : 'start') + "','" + app.id + "')\">" + (isRunning ? '⏹ Stop' : '▶ Start') + "</button>"
+                      + (isRunning ? '<button class="app-btn" style="background:rgba(6,182,212,0.15);color:#06b6d4;border-color:rgba(6,182,212,0.3);" onclick="openApp(\'' + app.id + "','" + app.name.replace(/'/g,'') + "'," + appPort + ')\">\ud83d\udcfa Open</button>' : '')
+                      + '<button class="app-btn app-btn-open" onclick="appAction(\'' + (isRunning ? 'stop' : 'start') + "','" + app.id + "')\">" + (isRunning ? '\u23f9 Stop' : '\u25b6 Start') + "</button>"
                       + '<button class="app-btn" style="background:rgba(139,92,246,0.1);color:#a78bfa;border-color:rgba(139,92,246,0.2);" onclick="appAction(\'update\',\'' + app.id + "')\">🔄 Update</button>"
                       + '<button class="app-btn app-btn-remove" onclick="appAction(\'uninstall\',\'' + app.id + "')\">✕</button>"
                       + "</div>"
-                    : "<button class=\"app-btn app-btn-install\" onclick=\"appAction('install','" +
+                    : "<button class=\"app-btn " + (isPremium ? 'app-btn-open' : 'app-btn-install') + "\" onclick=\"appAction('install','" +
                       app.id +
-                      "')\">⬇ Install</button>"
+                      "')\">" + (isPremium ? "⭐ Install (1000 GSTD)" : "⬇ Install") + "</button>"
                 }
             `;
             grid.appendChild(card);
@@ -2344,6 +2346,9 @@
             grid.innerHTML =
               '<div style="color:var(--muted);padding:40px;text-align:center;">No apps available</div>';
           }
+          // Update total count in filter
+          const allBtn = document.getElementById('app-filter-all');
+          if (allBtn) allBtn.textContent = `All (${allApps.length})`;
         } catch (e) {
           console.error("App store error:", e);
         }
