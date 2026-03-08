@@ -1,18 +1,19 @@
 /**
  * GSTD Node OS — Wallet Manager
  *
- * Full wallet management with:
- * - GSTD token tracking
- * - Earnings history
- * - Staking (future)
- * - TON integration (future)
+ * Security model:
+ * - wallet.json stores ONLY address + publicKey (safe to expose)
+ * - Seed is encrypted in wallet_seed.enc (AES-256-CBC, chmod 600)
+ * - Even if node is hacked, funds are safe without real wallet
+ * - All financial operations require external wallet signature
  */
 import type { NodeConfig } from '../index.js';
 export interface WalletData {
     address: string;
-    seed: string;
+    publicKey: string;
     created: string;
     linkedTelegram?: string;
+    linkedExternalWallet?: string;
 }
 export interface WalletBalance {
     gstd: number;
@@ -60,6 +61,6 @@ export declare class NodeWallet {
     private refreshBalance;
     saveEarnings(): void;
 }
-export declare function getWallet(): WalletData | null;
+export { getWallet } from './wallet.js';
 export declare function getBalance(): Promise<WalletBalance>;
 //# sourceMappingURL=manager.d.ts.map

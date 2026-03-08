@@ -1,11 +1,11 @@
 /**
  * GSTD Node OS — Wallet Manager
  *
- * Full wallet management with:
- * - GSTD token tracking
- * - Earnings history
- * - Staking (future)
- * - TON integration (future)
+ * Security model:
+ * - wallet.json stores ONLY address + publicKey (safe to expose)
+ * - Seed is encrypted in wallet_seed.enc (AES-256-CBC, chmod 600)
+ * - Even if node is hacked, funds are safe without real wallet
+ * - All financial operations require external wallet signature
  */
 
 import { randomBytes, createHash } from 'crypto';
@@ -14,13 +14,15 @@ import { join } from 'path';
 import { homedir } from 'os';
 import { logActivity } from '../gateway/server.js';
 import type { NodeConfig } from '../index.js';
+import { initWallet, getWallet as getWalletSecure, type WalletConfig } from './wallet.js';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface WalletData {
     address: string;
-    seed: string;
+    publicKey: string;
     created: string;
     linkedTelegram?: string;
+    linkedExternalWallet?: string;
 }
 
 export interface WalletBalance {
@@ -56,7 +58,7 @@ export interface WalletStats {
 // ─── Wallet Manager ─────────────────────────────────────────────
 export class NodeWallet {
     private config: NodeConfig;
-    private wallet: WalletData | null = null;
+    private wallet: WalletConfig | null = null;
     private earnings: EarningEntry[] = [];
     private localBalance: WalletBalance = { gstd: 0, ton: 0, pending: 0, totalEarned: 0 };
 
@@ -174,19 +176,10 @@ export class NodeWallet {
 
     // ─── Wallet CRUD ─────────────────────────────────────────────
     private createWallet(): void {
-        const seed = randomBytes(32).toString('hex');
-        const addressHash = createHash('sha256').update(seed).digest('hex').slice(0, 32);
-        const address = `UQ${addressHash}`;
-
-        this.wallet = {
-            address,
-            seed,
-            created: new Date().toISOString(),
-        };
-
-        writeFileSync(this.walletFile, JSON.stringify(this.wallet, null, 2));
-        console.log('    New wallet created: ' + address.slice(0, 12) + '...');
-        logActivity('Wallet created: ' + address.slice(0, 16) + '...', 'success');
+        // Use secure wallet module — seed encrypted separately
+        this.wallet = initWallet();
+        console.log('    New wallet created: ' + this.wallet.address.slice(0, 12) + '...');
+        logActivity('Wallet created: ' + this.wallet.address.slice(0, 16) + '... (seed encrypted)', 'success');
     }
 
     private async refreshBalance(): Promise<void> {
@@ -218,15 +211,11 @@ export class NodeWallet {
 }
 
 // ─── Legacy compatibility exports ────────────────────────────────
-export function getWallet(): WalletData | null {
-    const walletFile = join(homedir(), '.config', 'gstdbot', 'wallet.json');
-    if (!existsSync(walletFile)) return null;
-    try { return JSON.parse(readFileSync(walletFile, 'utf-8')); }
-    catch { return null; }
-}
+export { getWallet } from './wallet.js';
 
 export function getBalance(): Promise<WalletBalance> {
-    const wallet = getWallet();
+    const { getWallet: getW } = require('./wallet.js');
+    const wallet = getW();
     if (!wallet) return Promise.resolve({ gstd: 0, ton: 0, pending: 0, totalEarned: 0 });
 
     return fetch(`https://app.gstdtoken.com/api/v1/wallet/${wallet.address}/balance`, { signal: AbortSignal.timeout(5000) })
