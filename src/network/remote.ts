@@ -86,7 +86,13 @@ export class RemoteAccessManager {
             const token = this.generateToken('default-admin', ['read', 'control', 'admin']);
             console.log('    🔑 Admin token: ' + token.token);
             console.log('    ⚠  Save this token! Use it to manage your node remotely.');
-            logActivity('Admin access token generated — save it!', 'warn');
+            // Save token to file so users don't lose it
+            const tokenFile = join(this.configDir, 'admin_token.txt');
+            try {
+                writeFileSync(tokenFile, `GSTD Node OS — Admin Access Token\n\nToken: ${token.token}\nCreated: ${token.createdAt}\nPermissions: ${token.permissions.join(', ')}\n\n⚠ Keep this file safe! Anyone with this token can control your node.\n`);
+                console.log('    📄 Token saved to: ' + tokenFile);
+            } catch { }
+            logActivity('Admin access token generated and saved', 'warn');
         }
 
         if (!this.config.enabled) {

@@ -140,6 +140,45 @@ class OmegaGateway {
     }
     setupAPI() {
         this.app.use(express_1.default.json({ limit: '10mb' }));
+        // ─── Security Headers (critical for hosted nodes) ────────
+        this.app.use((_req, res, next) => {
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+            res.setHeader('X-XSS-Protection', '1; mode=block');
+            res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+            res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+            next();
+        });
+        // ─── Rate Limiting (protects against abuse on hosted nodes) ──
+        const rateLimitMap = new Map();
+        const RATE_LIMIT = 60; // max requests per window
+        const RATE_WINDOW = 60000; // 1 minute window
+        this.app.use((req, res, next) => {
+            const ip = req.ip || req.socket.remoteAddress || 'unknown';
+            const now = Date.now();
+            let entry = rateLimitMap.get(ip);
+            if (!entry || now > entry.resetAt) {
+                entry = { count: 0, resetAt: now + RATE_WINDOW };
+                rateLimitMap.set(ip, entry);
+            }
+            entry.count++;
+            res.setHeader('X-RateLimit-Limit', RATE_LIMIT.toString());
+            res.setHeader('X-RateLimit-Remaining', Math.max(0, RATE_LIMIT - entry.count).toString());
+            if (entry.count > RATE_LIMIT) {
+                logActivity(`Rate limited: ${ip} (${entry.count} req/min)`, 'warn');
+                res.status(429).json({ error: 'Too many requests. Try again in 1 minute.' });
+                return;
+            }
+            next();
+        });
+        // Cleanup old rate limit entries every 5 minutes
+        setInterval(() => {
+            const now = Date.now();
+            for (const [ip, entry] of rateLimitMap.entries()) {
+                if (now > entry.resetAt + RATE_WINDOW)
+                    rateLimitMap.delete(ip);
+            }
+        }, 5 * 60_000);
         // ─── Health ──────────────────────────────────────────────
         this.app.get('/health', (_req, res) => {
             res.json({

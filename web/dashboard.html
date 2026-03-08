@@ -670,6 +670,18 @@
         background: rgba(255, 255, 255, 0.06);
         color: var(--muted);
       }
+      .cat-cloud {
+        background: rgba(56, 189, 248, 0.12);
+        color: #38bdf8;
+      }
+      .cat-security {
+        background: rgba(251, 191, 36, 0.12);
+        color: #fbbf24;
+      }
+      .cat-communication {
+        background: rgba(168, 85, 247, 0.12);
+        color: #a855f7;
+      }
       .app-btn {
         width: 100%;
         padding: 8px 0;
@@ -1767,15 +1779,18 @@
       <div class="page" id="page-appstore">
         <div style="margin-bottom:20px;">
           <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;">
-            25+ built-in apps powered by your AI node. Install any app — it runs locally on your hardware, earns GSTD, and connects to the swarm. All apps are free.
+            50+ built-in apps powered by your AI node. Install any app — it runs locally on your hardware, earns GSTD, and connects to the swarm. All apps are free. Your node is a full autonomous PC.
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;" id="app-filters">
-            <button class="app-filter active" onclick="filterApps('all')" data-cat="all">All (25)</button>
+            <button class="app-filter active" onclick="filterApps('all')" data-cat="all">All (52)</button>
             <button class="app-filter" onclick="filterApps('ai')" data-cat="ai">🤖 AI</button>
             <button class="app-filter" onclick="filterApps('tools')" data-cat="tools">🛠️ Tools</button>
             <button class="app-filter" onclick="filterApps('finance')" data-cat="finance">💰 Finance</button>
             <button class="app-filter" onclick="filterApps('media')" data-cat="media">🎬 Media</button>
+            <button class="app-filter" onclick="filterApps('cloud')" data-cat="cloud">☁️ Cloud</button>
+            <button class="app-filter" onclick="filterApps('communication')" data-cat="communication">💬 Communication</button>
             <button class="app-filter" onclick="filterApps('network')" data-cat="network">🌐 Network</button>
+            <button class="app-filter" onclick="filterApps('security')" data-cat="security">🛡️ Security</button>
             <button class="app-filter" onclick="filterApps('system')" data-cat="system">⚙️ System</button>
           </div>
         </div>

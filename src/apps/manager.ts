@@ -21,7 +21,7 @@ export interface AppManifest {
     description: string;
     icon: string;
     author: string;
-    category: 'ai' | 'tools' | 'network' | 'finance' | 'media' | 'system';
+    category: 'ai' | 'tools' | 'network' | 'finance' | 'media' | 'system' | 'cloud' | 'security' | 'communication';
     port: number;
     docker?: {
         image: string;
@@ -48,12 +48,12 @@ export interface InstalledApp {
 
 // ─── Built-in Apps Registry ─────────────────────────────────────
 const BUILTIN_APPS: AppManifest[] = [
-    // ═══ AI — Core Intelligence ═══
+    // ═══ AI — Core Intelligence (6 apps) ═══
     {
         id: 'gstd-chat',
         name: 'Sovereign AI Chat',
         version: '2.0.0',
-        description: 'Multi-model AI chat with SmartMix consensus. 8 models, streaming, markdown, code execution.',
+        description: 'Multi-model AI chat with SmartMix consensus. 8 models, streaming, markdown, code execution. Your private ChatGPT.',
         icon: '💬',
         author: 'GSTD Team',
         category: 'ai',
@@ -104,7 +104,19 @@ const BUILTIN_APPS: AppManifest[] = [
         port: 3013,
         gstd_cost: 0,
     },
-    // ═══ Tools — Everyday Productivity ═══
+    {
+        id: 'gstd-voice',
+        name: 'Voice Assistant',
+        version: '1.0.0',
+        description: 'Speech-to-text and text-to-speech. Talk to your AI, dictate notes, voice commands for your node.',
+        icon: '🎙️',
+        author: 'GSTD Team',
+        category: 'ai',
+        port: 3014,
+        gstd_cost: 0,
+    },
+
+    // ═══ Tools — Everyday Productivity (10 apps) ═══
     {
         id: 'gstd-notes',
         name: 'Smart Notes',
@@ -193,7 +205,30 @@ const BUILTIN_APPS: AppManifest[] = [
         port: 3026,
         gstd_cost: 0,
     },
-    // ═══ Finance — Wealth & Crypto ═══
+    {
+        id: 'gstd-spreadsheet',
+        name: 'Spreadsheet',
+        version: '1.0.0',
+        description: 'Collaborative spreadsheets with AI formula assistant. Data analysis, charts, pivot tables. Excel/CSV import/export.',
+        icon: '📊',
+        author: 'GSTD Team',
+        category: 'tools',
+        port: 3027,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-presentations',
+        name: 'Presentations',
+        version: '1.0.0',
+        description: 'Create stunning presentations with AI. Auto-design slides, content suggestions, speaker notes from bullet points.',
+        icon: '📺',
+        author: 'GSTD Team',
+        category: 'tools',
+        port: 3028,
+        gstd_cost: 0,
+    },
+
+    // ═══ Finance — Wealth & Crypto (4 apps) ═══
     {
         id: 'gstd-wallet',
         name: 'Wallet & Staking',
@@ -238,12 +273,13 @@ const BUILTIN_APPS: AppManifest[] = [
         port: 3032,
         gstd_cost: 0,
     },
-    // ═══ Media — Content & Entertainment ═══
+
+    // ═══ Media — Content & Entertainment (6 apps) ═══
     {
         id: 'gstd-photos',
         name: 'Photo Gallery',
         version: '1.0.0',
-        description: 'Self-hosted photo backup and gallery. AI auto-tagging, face recognition, smart albums. Never lose a memory.',
+        description: 'Self-hosted photo backup and gallery. AI auto-tagging, face recognition, smart albums. Google Photos alternative.',
         icon: '📸',
         author: 'GSTD Team',
         category: 'media',
@@ -254,7 +290,7 @@ const BUILTIN_APPS: AppManifest[] = [
         id: 'gstd-music',
         name: 'Music Player',
         version: '1.0.0',
-        description: 'Personal music streaming server. Upload your library, create playlists, stream from any device.',
+        description: 'Personal music streaming server. Upload your library, create playlists, stream from any device. Spotify alternative.',
         icon: '🎵',
         author: 'GSTD Team',
         category: 'media',
@@ -283,7 +319,144 @@ const BUILTIN_APPS: AppManifest[] = [
         port: 3043,
         gstd_cost: 0,
     },
-    // ═══ Network — Privacy & Security ═══
+    {
+        id: 'gstd-podcast',
+        name: 'Podcast Studio',
+        version: '1.0.0',
+        description: 'Record, edit, and publish podcasts. AI noise removal, auto-transcription, chapter markers, RSS feed generation.',
+        icon: '🎧',
+        author: 'GSTD Team',
+        category: 'media',
+        port: 3044,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-video',
+        name: 'Video Editor',
+        version: '1.0.0',
+        description: 'Simple web-based video editor. Cut, merge, add subtitles, AI enhance. Export to multiple formats.',
+        icon: '🎬',
+        author: 'GSTD Team',
+        category: 'media',
+        port: 3045,
+        gstd_cost: 0,
+    },
+
+    // ═══ Cloud & Storage (6 apps) ═══
+    {
+        id: 'gstd-cloud',
+        name: 'Cloud Drive',
+        version: '1.0.0',
+        description: 'Self-hosted cloud storage like Google Drive. Auto-sync across devices, share files, version history. 100% private.',
+        icon: '☁️',
+        author: 'GSTD Team',
+        category: 'cloud',
+        port: 3070,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-backup',
+        name: 'Backup Manager',
+        version: '1.0.0',
+        description: 'Automated encrypted backups. Schedule backups to other nodes, S3, or local drives. Cross-node redundancy.',
+        icon: '💾',
+        author: 'GSTD Team',
+        category: 'cloud',
+        port: 3071,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-sync',
+        name: 'File Sync',
+        version: '1.0.0',
+        description: 'Real-time file synchronization across all your devices. P2P direct transfer, conflict resolution, selective sync.',
+        icon: '🔄',
+        author: 'GSTD Team',
+        category: 'cloud',
+        port: 3072,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-git',
+        name: 'Git Server',
+        version: '1.0.0',
+        description: 'Private Git repository hosting. Web UI, pull requests, CI/CD pipelines. Your own GitHub/Gitea instance.',
+        icon: '🔧',
+        author: 'GSTD Team',
+        category: 'cloud',
+        port: 3073,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-s3',
+        name: 'Object Storage',
+        version: '1.0.0',
+        description: 'S3-compatible object storage API. Store and serve files for web apps, backups, and media. MinIO-based.',
+        icon: '🗄️',
+        author: 'GSTD Team',
+        category: 'cloud',
+        port: 3074,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-database',
+        name: 'Database Manager',
+        version: '1.0.0',
+        description: 'Visual database manager. Create, query, and manage SQL/NoSQL databases. Import/export CSV, JSON, Excel.',
+        icon: '🗃️',
+        author: 'GSTD Team',
+        category: 'cloud',
+        port: 3075,
+        gstd_cost: 0,
+    },
+
+    // ═══ Communication (4 apps) ═══
+    {
+        id: 'gstd-messenger',
+        name: 'Encrypted Messenger',
+        version: '1.0.0',
+        description: 'Decentralized P2P messaging. End-to-end encrypted, no central server. Group chats, file sharing, voice messages.',
+        icon: '💬',
+        author: 'GSTD Team',
+        category: 'communication',
+        port: 3080,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-videocall',
+        name: 'Video Conferencing',
+        version: '1.0.0',
+        description: 'Self-hosted video calls and meetings. WebRTC-based, E2E encrypted, screen sharing, recording. Zoom alternative.',
+        icon: '📹',
+        author: 'GSTD Team',
+        category: 'communication',
+        port: 3081,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-mailserver',
+        name: 'Email Server',
+        version: '1.0.0',
+        description: 'Full self-hosted email server. SMTP/IMAP with webmail UI, AI spam filtering, custom domains. Own your inbox.',
+        icon: '📬',
+        author: 'GSTD Team',
+        category: 'communication',
+        port: 3082,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-contacts',
+        name: 'Contacts',
+        version: '1.0.0',
+        description: 'Contact management with CardDAV sync. AI deduplication, social enrichment, birthday reminders, contact groups.',
+        icon: '👥',
+        author: 'GSTD Team',
+        category: 'communication',
+        port: 3083,
+        gstd_cost: 0,
+    },
+
+    // ═══ Network & Privacy (3 apps) ═══
     {
         id: 'gstd-vpn',
         name: 'VPN Gateway',
@@ -299,7 +472,7 @@ const BUILTIN_APPS: AppManifest[] = [
         id: 'gstd-adblock',
         name: 'Ad Blocker',
         version: '1.0.0',
-        description: 'Network-wide ad and tracker blocking. DNS-level filtering for all devices on your network. Privacy first.',
+        description: 'Network-wide ad and tracker blocking. DNS-level filtering for all devices on your network. PiHole alternative.',
         icon: '🚫',
         author: 'GSTD Team',
         category: 'network',
@@ -310,14 +483,83 @@ const BUILTIN_APPS: AppManifest[] = [
         id: 'gstd-monitor',
         name: 'Network Monitor',
         version: '1.0.0',
-        description: 'Real-time monitoring of the GSTD swarm network. Node stats, tasks, earnings, peer connections.',
+        description: 'Real-time monitoring of the GSTD swarm network. Node stats, tasks, earnings, peer connections, global map.',
         icon: '🌐',
         author: 'GSTD Team',
         category: 'network',
         port: 3001,
         gstd_cost: 0,
     },
-    // ═══ System — Node Management ═══
+
+    // ═══ Security (6 apps) ═══
+    {
+        id: 'gstd-firewall',
+        name: 'Firewall Manager',
+        version: '1.0.0',
+        description: 'Visual firewall rules manager. One-click port opening/closing, geo-blocking, DDoS protection, traffic analysis.',
+        icon: '🧱',
+        author: 'GSTD Team',
+        category: 'security',
+        port: 3090,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-ids',
+        name: 'Intrusion Detection',
+        version: '1.0.0',
+        description: 'AI-powered threat detection. Monitors login attempts, network anomalies, file changes. Real-time alerts.',
+        icon: '🔔',
+        author: 'GSTD Team',
+        category: 'security',
+        port: 3091,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-ssl',
+        name: 'SSL Manager',
+        version: '1.0.0',
+        description: 'Automatic SSL certificate management. Let\'s Encrypt auto-renewal, wildcard support, reverse proxy config.',
+        icon: '🔒',
+        author: 'GSTD Team',
+        category: 'security',
+        port: 3092,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-2fa',
+        name: '2FA Authenticator',
+        version: '1.0.0',
+        description: 'Self-hosted TOTP authenticator. Replaces Google Authenticator — your codes stay on your node, encrypted backups.',
+        icon: '🔑',
+        author: 'GSTD Team',
+        category: 'security',
+        port: 3093,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-audit',
+        name: 'Audit Logger',
+        version: '1.0.0',
+        description: 'Immutable security audit trail. Logs all access, changes, logins. Tamper-proof with hash chain verification.',
+        icon: '📋',
+        author: 'GSTD Team',
+        category: 'security',
+        port: 3094,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-hardening',
+        name: 'Node Hardening',
+        version: '1.0.0',
+        description: 'One-click security hardening for hosted nodes. CIS benchmarks, SSH hardening, auto-updates, vulnerability scan.',
+        icon: '🛡️',
+        author: 'GSTD Team',
+        category: 'security',
+        port: 3095,
+        gstd_cost: 0,
+    },
+
+    // ═══ System — Node Management (5 apps) ═══
     {
         id: 'gstd-knowledge',
         name: 'Knowledge Base',
@@ -349,6 +591,28 @@ const BUILTIN_APPS: AppManifest[] = [
         author: 'GSTD Team',
         category: 'system',
         port: 3061,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-cron',
+        name: 'Task Scheduler',
+        version: '1.0.0',
+        description: 'Visual cron job manager. Schedule scripts, backups, updates. Natural language scheduling with AI ("every Monday at 9am").',
+        icon: '⏰',
+        author: 'GSTD Team',
+        category: 'system',
+        port: 3062,
+        gstd_cost: 0,
+    },
+    {
+        id: 'gstd-logs',
+        name: 'Log Viewer',
+        version: '1.0.0',
+        description: 'Centralized log viewer for all apps and system services. Search, filter, alerts on errors. AI diagnostics.',
+        icon: '📜',
+        author: 'GSTD Team',
+        category: 'system',
+        port: 3063,
         gstd_cost: 0,
     },
 ];

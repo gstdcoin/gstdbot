@@ -14,7 +14,7 @@ export interface AppManifest {
     description: string;
     icon: string;
     author: string;
-    category: 'ai' | 'tools' | 'network' | 'finance' | 'media' | 'system';
+    category: 'ai' | 'tools' | 'network' | 'finance' | 'media' | 'system' | 'cloud' | 'security' | 'communication';
     port: number;
     docker?: {
         image: string;
