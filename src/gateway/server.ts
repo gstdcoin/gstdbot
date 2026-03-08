@@ -1732,6 +1732,117 @@ export class OmegaGateway {
             });
         });
 
+        // ═══════════════════════════════════════════════════════════
+        // ─── BOUNTY TASKS (create tasks with rewards) ─────────────
+        // ═══════════════════════════════════════════════════════════
+        const bountyTasks: Record<string, {
+            id: string; creator: string; title: string; description: string;
+            category: string; reward: number; status: string;
+            assignees: string[]; submissions: Array<{ node: string; result: string; submittedAt: number }>;
+            createdAt: number; deadline: number; priority: string;
+        }> = {};
+
+        this.app.post('/api/tasks/create', (req, res) => {
+            const { address, signature, title, description, category, reward, priority, deadlineHours } = req.body || {};
+            if (!address || !signature || !title || !reward) {
+                res.status(400).json({ error: 'address, signature, title, and reward required' }); return;
+            }
+            if (!verifySignature(address, signature, `task:${title}:${reward}`)) {
+                res.status(401).json({ error: 'Invalid signature' }); return;
+            }
+            if (reward < 10) { res.status(400).json({ error: 'Minimum reward is 10 GSTD' }); return; }
+            const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+            bountyTasks[taskId] = {
+                id: taskId, creator: address, title, description: description || '',
+                category: category || 'general', reward, status: 'open',
+                assignees: [], submissions: [], createdAt: Date.now(),
+                deadline: Date.now() + (deadlineHours || 72) * 3600000,
+                priority: priority || 'normal',
+            };
+            logActivity(`Bounty task created: "${title}" by ${address.slice(0, 12)}... (${reward} GSTD reward)`, 'success');
+            res.json({ success: true, taskId, task: bountyTasks[taskId] });
+        });
+
+        this.app.get('/api/tasks/list', (req, res) => {
+            const { status, category } = req.query;
+            let tasks = Object.values(bountyTasks);
+            if (status && typeof status === 'string') tasks = tasks.filter(t => t.status === status);
+            if (category && typeof category === 'string') tasks = tasks.filter(t => t.category === category);
+            // Auto-expire old tasks
+            const now = Date.now();
+            tasks.forEach(t => { if (t.status === 'open' && t.deadline < now) t.status = 'expired'; });
+            const list = tasks.map(t => ({
+                id: t.id, title: t.title, description: t.description.slice(0, 200),
+                category: t.category, reward: t.reward, priority: t.priority,
+                status: t.status, creator: t.creator.slice(0, 12) + '...',
+                assigneesCount: t.assignees.length, submissionsCount: t.submissions.length,
+                createdAt: t.createdAt, deadline: t.deadline,
+                hoursRemaining: Math.max(0, Math.round((t.deadline - now) / 3600000)),
+            }));
+            res.json({ tasks: list, count: list.length, categories: ['general', 'ai', 'data', 'verification', 'compute', 'research'] });
+        });
+
+        this.app.post('/api/tasks/claim', (req, res) => {
+            const { address, signature, taskId } = req.body || {};
+            if (!address || !signature || !taskId) {
+                res.status(400).json({ error: 'address, signature, taskId required' }); return;
+            }
+            if (!verifySignature(address, signature, `claim-task:${taskId}`)) {
+                res.status(401).json({ error: 'Invalid signature' }); return;
+            }
+            const task = bountyTasks[taskId];
+            if (!task) { res.status(404).json({ error: 'Task not found' }); return; }
+            if (task.status !== 'open') { res.status(400).json({ error: `Task is ${task.status}` }); return; }
+            if (task.creator === address) { res.status(400).json({ error: 'Cannot claim your own task' }); return; }
+            if (!task.assignees.includes(address)) task.assignees.push(address);
+            task.status = 'in_progress';
+            logActivity(`Task claimed: "${task.title}" by ${address.slice(0, 12)}...`, 'success');
+            res.json({ success: true, task: { id: task.id, title: task.title, status: task.status } });
+        });
+
+        this.app.post('/api/tasks/submit', (req, res) => {
+            const { address, signature, taskId, result } = req.body || {};
+            if (!address || !signature || !taskId || !result) {
+                res.status(400).json({ error: 'address, signature, taskId, result required' }); return;
+            }
+            if (!verifySignature(address, signature, `submit-task:${taskId}`)) {
+                res.status(401).json({ error: 'Invalid signature' }); return;
+            }
+            const task = bountyTasks[taskId];
+            if (!task) { res.status(404).json({ error: 'Task not found' }); return; }
+            if (!task.assignees.includes(address)) { res.status(403).json({ error: 'Must claim task first' }); return; }
+            task.submissions.push({ node: address, result, submittedAt: Date.now() });
+            logActivity(`Task submission: "${task.title}" by ${address.slice(0, 12)}...`, 'success');
+            res.json({ success: true, submissionIndex: task.submissions.length - 1 });
+        });
+
+        this.app.post('/api/tasks/verify', (req, res) => {
+            const { address, signature, taskId, approved, submissionIndex } = req.body || {};
+            if (!address || !signature || !taskId) {
+                res.status(400).json({ error: 'address, signature, taskId required' }); return;
+            }
+            if (!verifySignature(address, signature, `verify-task:${taskId}:${approved ? 1 : 0}`)) {
+                res.status(401).json({ error: 'Invalid signature' }); return;
+            }
+            const task = bountyTasks[taskId];
+            if (!task) { res.status(404).json({ error: 'Task not found' }); return; }
+            if (task.creator !== address) { res.status(403).json({ error: 'Only task creator can verify' }); return; }
+            if (approved && task.submissions.length > 0) {
+                const idx = submissionIndex ?? 0;
+                const sub = task.submissions[idx];
+                if (!sub) { res.status(400).json({ error: 'Invalid submission index' }); return; }
+                // Distribute reward
+                const dist = distributeTokens(task.reward, [sub.node], 0.05);
+                task.status = 'completed';
+                logActivity(`Task completed: "${task.title}" → ${sub.node.slice(0, 12)}... earned ${dist.perNode.toFixed(2)} GSTD`, 'success');
+                res.json({ success: true, rewarded: sub.node, amount: dist.perNode, platformFee: dist.platformFee });
+            } else {
+                task.status = 'rejected';
+                logActivity(`Task rejected: "${task.title}" by creator`, 'warning');
+                res.json({ success: true, status: 'rejected' });
+            }
+        });
+
         this.app.get('/api/links', (_req, res) => {
             res.json({
                 links: [
