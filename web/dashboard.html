@@ -1,859 +1,2145 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GSTD Node OS</title>
-    <meta name="description" content="GSTD Node OS — All-in-one AI swarm platform. Dashboard, Chat, Wallet, Memory, Training — everything built into your node.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <meta
+      name="description"
+      content="GSTD Node OS — All-in-one AI swarm platform. Dashboard, Chat, Wallet, Memory, Training — everything built into your node."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :root {
-            --bg: #030014;
-            --sidebar: rgba(8,4,28,0.95);
-            --card: rgba(255,255,255,0.025);
-            --border: rgba(255,255,255,0.06);
-            --muted: #6b6b80;
-            --accent: #8b5cf6;
-            --cyan: #06b6d4;
-            --emerald: #22c55e;
-            --amber: #f59e0b;
-            --rose: #f43f5e;
-            --text: #e2e2e8;
-            --glow: rgba(139,92,246,0.15);
-        }
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            display: flex;
-        }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      :root {
+        --bg: #030014;
+        --sidebar: rgba(8, 4, 28, 0.95);
+        --card: rgba(255, 255, 255, 0.025);
+        --border: rgba(255, 255, 255, 0.06);
+        --muted: #6b6b80;
+        --accent: #8b5cf6;
+        --cyan: #06b6d4;
+        --emerald: #22c55e;
+        --amber: #f59e0b;
+        --rose: #f43f5e;
+        --text: #e2e2e8;
+        --glow: rgba(139, 92, 246, 0.15);
+      }
+      body {
+        font-family:
+          "Inter",
+          -apple-system,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+      }
 
-        /* ─── Sidebar ─── */
-        .sidebar {
-            width: 240px;
-            min-height: 100vh;
-            background: var(--sidebar);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            position: fixed;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            z-index: 200;
-            backdrop-filter: blur(20px);
+      /* ─── Sidebar ─── */
+      .sidebar {
+        width: 240px;
+        min-height: 100vh;
+        background: var(--sidebar);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 200;
+        backdrop-filter: blur(20px);
+      }
+      .sidebar-brand {
+        padding: 20px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .sidebar-brand h1 {
+        font-size: 16px;
+        font-weight: 900;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .sidebar-brand .ver {
+        font-size: 9px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: var(--accent);
+        color: white;
+        font-weight: 800;
+      }
+      .sidebar-brand .status-line {
+        font-size: 10px;
+        color: var(--muted);
+        margin-top: 4px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .sidebar-nav {
+        flex: 1;
+        padding: 12px 8px;
+        overflow-y: auto;
+      }
+      .nav-section {
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--muted);
+        padding: 12px 12px 6px;
+      }
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--muted);
+        transition: all 0.2s;
+        border: 1px solid transparent;
+        margin-bottom: 2px;
+      }
+      .nav-item:hover {
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+      }
+      .nav-item.active {
+        background: rgba(139, 92, 246, 0.1);
+        border-color: rgba(139, 92, 246, 0.2);
+        color: var(--accent);
+      }
+      .nav-item .ic {
+        font-size: 16px;
+        width: 20px;
+        text-align: center;
+      }
+      .nav-item .badge {
+        margin-left: auto;
+        font-size: 9px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 800;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .badge-green {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--emerald);
+      }
+      .badge-amber {
+        background: rgba(245, 158, 11, 0.15);
+        color: var(--amber);
+      }
+      .sidebar-footer {
+        padding: 12px 16px;
+        border-top: 1px solid var(--border);
+        font-size: 10px;
+        color: rgba(255, 255, 255, 0.15);
+      }
+
+      /* ─── Main ─── */
+      .main {
+        flex: 1;
+        margin-left: 240px;
+        min-height: 100vh;
+      }
+      .topbar {
+        padding: 14px 24px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(3, 0, 20, 0.9);
+        backdrop-filter: blur(20px);
+      }
+      .topbar h2 {
+        font-size: 16px;
+        font-weight: 800;
+      }
+      .topbar .sep {
+        flex: 1;
+      }
+      .topbar .meta {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: "JetBrains Mono", monospace;
+      }
+      .dot-online {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--emerald);
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
         }
-        .sidebar-brand {
-            padding: 20px 16px;
-            border-bottom: 1px solid var(--border);
+        50% {
+          opacity: 0.3;
+        }
+      }
+
+      /* ─── Page content ─── */
+      .page {
+        display: none;
+        padding: 20px 24px;
+      }
+      .page.active {
+        display: block;
+      }
+      .grid-4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      .grid-1-2 {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      .grid-2-1 {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+
+      .card {
+        padding: 20px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.3s;
+      }
+      .card:hover {
+        border-color: rgba(139, 92, 246, 0.15);
+      }
+      .card::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(139, 92, 246, 0.2),
+          transparent
+        );
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      .card:hover::after {
+        opacity: 1;
+      }
+      .card-label {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: var(--muted);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .card-label .cic {
+        width: 24px;
+        height: 24px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+      }
+      .card-value {
+        font-size: 28px;
+        font-weight: 900;
+        background: linear-gradient(
+          135deg,
+          #fff 0%,
+          rgba(255, 255, 255, 0.7) 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        line-height: 1.1;
+      }
+      .card-value.sm {
+        font-size: 20px;
+      }
+      .card-sub {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 4px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .bar {
+        height: 5px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.06);
+        margin-top: 10px;
+        overflow: hidden;
+      }
+      .bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 7px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        font-size: 12px;
+      }
+      .info-row:last-child {
+        border-bottom: none;
+      }
+      .info-row .k {
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .info-row .v {
+        color: var(--text);
+        font-weight: 600;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        text-align: right;
+        max-width: 60%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ctrl-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+      .ctrl-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 14px 8px;
+        border-radius: 12px;
+        border: 1px solid;
+        cursor: pointer;
+        font-family: "Inter", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        transition: all 0.2s;
+        background: transparent;
+      }
+      .ctrl-btn:hover {
+        transform: translateY(-1px);
+      }
+      .ctrl-btn .emoji {
+        font-size: 20px;
+      }
+      .ctrl-green {
+        border-color: rgba(34, 197, 94, 0.2);
+        color: var(--emerald);
+        background: rgba(34, 197, 94, 0.04);
+      }
+      .ctrl-green:hover {
+        background: rgba(34, 197, 94, 0.1);
+        box-shadow: 0 4px 20px rgba(34, 197, 94, 0.1);
+      }
+      .ctrl-red {
+        border-color: rgba(244, 63, 94, 0.2);
+        color: var(--rose);
+        background: rgba(244, 63, 94, 0.04);
+      }
+      .ctrl-amber {
+        border-color: rgba(245, 158, 11, 0.2);
+        color: var(--amber);
+        background: rgba(245, 158, 11, 0.04);
+      }
+      .ctrl-cyan {
+        border-color: rgba(6, 182, 212, 0.2);
+        color: var(--cyan);
+        background: rgba(6, 182, 212, 0.04);
+      }
+      .ctrl-output {
+        margin-top: 10px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        color: var(--muted);
+        min-height: 32px;
+      }
+      .log-box {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10px;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: 10px;
+        padding: 12px;
+        max-height: 260px;
+        overflow-y: auto;
+        margin-top: 10px;
+      }
+      .log-entry {
+        padding: 2px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.015);
+        line-height: 1.6;
+        color: var(--muted);
+      }
+      .log-entry .ts {
+        color: rgba(139, 92, 246, 0.5);
+      }
+      .log-entry.success {
+        color: var(--emerald);
+      }
+      .log-entry.warn {
+        color: var(--amber);
+      }
+      .log-entry.error {
+        color: var(--rose);
+      }
+
+      /* ─── Chat panel ─── */
+      .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 100px);
+      }
+      .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 0;
+      }
+      .chat-msg {
+        margin-bottom: 16px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        max-width: 85%;
+      }
+      .chat-msg.user {
+        background: rgba(139, 92, 246, 0.12);
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        margin-left: auto;
+      }
+      .chat-msg.ai {
+        background: var(--card);
+        border: 1px solid var(--border);
+      }
+      .chat-msg .msg-model {
+        font-size: 9px;
+        color: var(--accent);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 4px;
+      }
+      .chat-msg .msg-text {
+        font-size: 13px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+      }
+      .chat-input-row {
+        display: flex;
+        gap: 8px;
+        padding: 12px 0;
+      }
+      .chat-input {
+        flex: 1;
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.3);
+        color: var(--text);
+        font-family: "Inter", sans-serif;
+        font-size: 13px;
+        outline: none;
+        resize: none;
+      }
+      .chat-input:focus {
+        border-color: var(--accent);
+      }
+      .chat-send {
+        padding: 12px 20px;
+        border-radius: 12px;
+        border: none;
+        background: linear-gradient(135deg, var(--accent), #a855f7);
+        color: white;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: "Inter", sans-serif;
+        transition: all 0.2s;
+      }
+      .chat-send:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
+      }
+      .model-select {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.3);
+        color: var(--text);
+        font-family: "Inter", sans-serif;
+        font-size: 12px;
+        outline: none;
+      }
+
+      /* ─── TX table ─── */
+      .tx-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin-top: 12px;
+      }
+      .tx-table th {
+        text-align: left;
+        color: var(--muted);
+        font-weight: 600;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+      }
+      .tx-table td {
+        padding: 8px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+      }
+      .tx-earn {
+        color: var(--emerald);
+      }
+      .tx-spend {
+        color: var(--rose);
+      }
+
+      /* ─── Responsive ─── */
+      @media (max-width: 1024px) {
+        .sidebar {
+          width: 60px;
+        }
+        .sidebar .nav-item span:not(.ic),
+        .sidebar .nav-section,
+        .sidebar-brand h1 span,
+        .sidebar-brand .status-line,
+        .sidebar-footer,
+        .nav-item .badge {
+          display: none;
         }
         .sidebar-brand h1 {
-            font-size: 16px;
-            font-weight: 900;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .sidebar-brand .ver {
-            font-size: 9px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: var(--accent);
-            color: white;
-            font-weight: 800;
-        }
-        .sidebar-brand .status-line {
-            font-size: 10px;
-            color: var(--muted);
-            margin-top: 4px;
-            font-family: 'JetBrains Mono', monospace;
-        }
-        .sidebar-nav {
-            flex: 1;
-            padding: 12px 8px;
-            overflow-y: auto;
-        }
-        .nav-section {
-            font-size: 9px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: var(--muted);
-            padding: 12px 12px 6px;
+          justify-content: center;
         }
         .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            color: var(--muted);
-            transition: all 0.2s;
-            border: 1px solid transparent;
-            margin-bottom: 2px;
+          justify-content: center;
+          padding: 12px;
         }
-        .nav-item:hover {
-            background: rgba(255,255,255,0.04);
-            color: var(--text);
-        }
-        .nav-item.active {
-            background: rgba(139,92,246,0.1);
-            border-color: rgba(139,92,246,0.2);
-            color: var(--accent);
-        }
-        .nav-item .ic { font-size: 16px; width: 20px; text-align: center; }
-        .nav-item .badge {
-            margin-left: auto;
-            font-size: 9px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: 800;
-            font-family: 'JetBrains Mono', monospace;
-        }
-        .badge-green { background: rgba(34,197,94,0.15); color: var(--emerald); }
-        .badge-amber { background: rgba(245,158,11,0.15); color: var(--amber); }
-        .sidebar-footer {
-            padding: 12px 16px;
-            border-top: 1px solid var(--border);
-            font-size: 10px;
-            color: rgba(255,255,255,0.15);
-        }
-
-        /* ─── Main ─── */
         .main {
-            flex: 1;
-            margin-left: 240px;
-            min-height: 100vh;
+          margin-left: 60px;
         }
-        .topbar {
-            padding: 14px 24px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: rgba(3,0,20,0.9);
-            backdrop-filter: blur(20px);
+        .grid-4 {
+          grid-template-columns: repeat(2, 1fr);
         }
-        .topbar h2 { font-size: 16px; font-weight: 800; }
-        .topbar .sep { flex: 1; }
-        .topbar .meta {
-            font-size: 11px;
-            color: var(--muted);
-            font-family: 'JetBrains Mono', monospace;
+        .grid-1-2,
+        .grid-2-1 {
+          grid-template-columns: 1fr;
         }
-        .dot-online {
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            background: var(--emerald);
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-
-        /* ─── Page content ─── */
-        .page { display: none; padding: 20px 24px; }
-        .page.active { display: block; }
-        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 14px; }
-        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
-        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 14px; }
-        .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; margin-bottom: 14px; }
-        .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
-
-        .card {
-            padding: 20px;
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            background: var(--card);
-            position: relative;
-            overflow: hidden;
-            transition: border-color 0.3s;
-        }
-        .card:hover { border-color: rgba(139,92,246,0.15); }
-        .card::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(139,92,246,0.2), transparent);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .card:hover::after { opacity: 1; }
-        .card-label {
-            font-size: 10px; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 1.2px;
-            color: var(--muted); margin-bottom: 8px;
-            display: flex; align-items: center; gap: 6px;
-        }
-        .card-label .cic {
-            width: 24px; height: 24px;
-            border-radius: 7px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 13px;
+      }
+      @media (max-width: 640px) {
+        .grid-4,
+        .grid-3,
+        .grid-2 {
+          grid-template-columns: 1fr;
         }
         .card-value {
-            font-size: 28px; font-weight: 900;
-            background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            line-height: 1.1;
+          font-size: 22px;
         }
-        .card-value.sm { font-size: 20px; }
-        .card-sub {
-            font-size: 11px; color: var(--muted); margin-top: 4px;
-            font-family: 'JetBrains Mono', monospace;
-        }
-        .bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,0.06); margin-top: 10px; overflow: hidden; }
-        .bar-fill {
-            height: 100%; border-radius: 3px;
-            transition: width 0.8s cubic-bezier(.4,0,.2,1);
-        }
-        .info-row {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 12px;
-        }
-        .info-row:last-child { border-bottom: none; }
-        .info-row .k { color: var(--muted); font-weight: 500; }
-        .info-row .v {
-            color: var(--text); font-weight: 600;
-            font-family: 'JetBrains Mono', monospace; font-size: 11px;
-            text-align: right; max-width: 60%; overflow: hidden; text-overflow: ellipsis;
-        }
-        .ctrl-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-        .ctrl-btn {
-            display: flex; flex-direction: column; align-items: center; gap: 4px;
-            padding: 14px 8px; border-radius: 12px; border: 1px solid;
-            cursor: pointer; font-family: 'Inter', sans-serif; font-size: 11px;
-            font-weight: 700; transition: all 0.2s; background: transparent;
-        }
-        .ctrl-btn:hover { transform: translateY(-1px); }
-        .ctrl-btn .emoji { font-size: 20px; }
-        .ctrl-green { border-color: rgba(34,197,94,0.2); color: var(--emerald); background: rgba(34,197,94,0.04); }
-        .ctrl-green:hover { background: rgba(34,197,94,0.1); box-shadow: 0 4px 20px rgba(34,197,94,0.1); }
-        .ctrl-red { border-color: rgba(244,63,94,0.2); color: var(--rose); background: rgba(244,63,94,0.04); }
-        .ctrl-amber { border-color: rgba(245,158,11,0.2); color: var(--amber); background: rgba(245,158,11,0.04); }
-        .ctrl-cyan { border-color: rgba(6,182,212,0.2); color: var(--cyan); background: rgba(6,182,212,0.04); }
-        .ctrl-output {
-            margin-top: 10px; padding: 8px 12px; border-radius: 8px;
-            background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.04);
-            font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); min-height: 32px;
-        }
-        .log-box {
-            font-family: 'JetBrains Mono', monospace; font-size: 10px;
-            background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.04);
-            border-radius: 10px; padding: 12px; max-height: 260px; overflow-y: auto; margin-top: 10px;
-        }
-        .log-entry { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.015); line-height: 1.6; color: var(--muted); }
-        .log-entry .ts { color: rgba(139,92,246,0.5); }
-        .log-entry.success { color: var(--emerald); }
-        .log-entry.warn { color: var(--amber); }
-        .log-entry.error { color: var(--rose); }
-
-        /* ─── Chat panel ─── */
-        .chat-container { display: flex; flex-direction: column; height: calc(100vh - 100px); }
-        .chat-messages { flex: 1; overflow-y: auto; padding: 16px 0; }
-        .chat-msg { margin-bottom: 16px; padding: 12px 16px; border-radius: 12px; max-width: 85%; }
-        .chat-msg.user { background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.2); margin-left: auto; }
-        .chat-msg.ai { background: var(--card); border: 1px solid var(--border); }
-        .chat-msg .msg-model { font-size: 9px; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
-        .chat-msg .msg-text { font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
-        .chat-input-row { display: flex; gap: 8px; padding: 12px 0; }
-        .chat-input {
-            flex: 1; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border);
-            background: rgba(0,0,0,0.3); color: var(--text); font-family: 'Inter', sans-serif;
-            font-size: 13px; outline: none; resize: none;
-        }
-        .chat-input:focus { border-color: var(--accent); }
-        .chat-send {
-            padding: 12px 20px; border-radius: 12px; border: none;
-            background: linear-gradient(135deg, var(--accent), #a855f7);
-            color: white; font-weight: 700; cursor: pointer; font-family: 'Inter', sans-serif;
-            transition: all 0.2s;
-        }
-        .chat-send:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(139,92,246,0.3); }
-        .model-select {
-            padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);
-            background: rgba(0,0,0,0.3); color: var(--text); font-family: 'Inter', sans-serif;
-            font-size: 12px; outline: none;
-        }
-
-        /* ─── TX table ─── */
-        .tx-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 12px; }
-        .tx-table th { text-align: left; color: var(--muted); font-weight: 600; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; }
-        .tx-table td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.02); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
-        .tx-earn { color: var(--emerald); }
-        .tx-spend { color: var(--rose); }
-
-        /* ─── Responsive ─── */
-        @media (max-width: 1024px) {
-            .sidebar { width: 60px; }
-            .sidebar .nav-item span:not(.ic), .sidebar .nav-section,
-            .sidebar-brand h1 span, .sidebar-brand .status-line,
-            .sidebar-footer, .nav-item .badge { display: none; }
-            .sidebar-brand h1 { justify-content: center; }
-            .nav-item { justify-content: center; padding: 12px; }
-            .main { margin-left: 60px; }
-            .grid-4 { grid-template-columns: repeat(2, 1fr); }
-            .grid-1-2, .grid-2-1 { grid-template-columns: 1fr; }
-        }
-        @media (max-width: 640px) {
-            .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
-            .card-value { font-size: 22px; }
-        }
+      }
+      /* ─── App Store ─── */
+      .app-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 16px;
+      }
+      .app-card {
+        padding: 20px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+      }
+      .app-card:hover {
+        border-color: rgba(139, 92, 246, 0.25);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(139, 92, 246, 0.08);
+      }
+      .app-card .app-icon {
+        font-size: 36px;
+        margin-bottom: 10px;
+      }
+      .app-card .app-name {
+        font-size: 15px;
+        font-weight: 800;
+        margin-bottom: 4px;
+      }
+      .app-card .app-desc {
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.5;
+        margin-bottom: 12px;
+      }
+      .app-card .app-meta {
+        font-size: 9px;
+        color: var(--muted);
+        font-family: "JetBrains Mono", monospace;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .app-card .app-cat {
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .cat-ai {
+        background: rgba(139, 92, 246, 0.12);
+        color: var(--accent);
+      }
+      .cat-tools {
+        background: rgba(6, 182, 212, 0.12);
+        color: var(--cyan);
+      }
+      .cat-network {
+        background: rgba(34, 197, 94, 0.12);
+        color: var(--emerald);
+      }
+      .cat-finance {
+        background: rgba(245, 158, 11, 0.12);
+        color: var(--amber);
+      }
+      .cat-media {
+        background: rgba(244, 63, 94, 0.12);
+        color: var(--rose);
+      }
+      .cat-system {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--muted);
+      }
+      .app-btn {
+        width: 100%;
+        padding: 8px 0;
+        border-radius: 10px;
+        border: 1px solid;
+        font-family: "Inter", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .app-btn:hover {
+        transform: translateY(-1px);
+      }
+      .app-btn-install {
+        background: linear-gradient(
+          135deg,
+          rgba(139, 92, 246, 0.15),
+          rgba(139, 92, 246, 0.05)
+        );
+        border-color: rgba(139, 92, 246, 0.3);
+        color: var(--accent);
+      }
+      .app-btn-install:hover {
+        background: linear-gradient(
+          135deg,
+          rgba(139, 92, 246, 0.25),
+          rgba(139, 92, 246, 0.1)
+        );
+        box-shadow: 0 4px 16px rgba(139, 92, 246, 0.15);
+      }
+      .app-btn-remove {
+        background: rgba(244, 63, 94, 0.05);
+        border-color: rgba(244, 63, 94, 0.2);
+        color: var(--rose);
+      }
+      .app-btn-open {
+        background: rgba(34, 197, 94, 0.08);
+        border-color: rgba(34, 197, 94, 0.2);
+        color: var(--emerald);
+      }
+      .app-status {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 9px;
+        font-weight: 700;
+      }
+      .status-running {
+        background: rgba(34, 197, 94, 0.12);
+        color: var(--emerald);
+      }
+      .status-stopped {
+        background: rgba(245, 158, 11, 0.12);
+        color: var(--amber);
+      }
+      .status-installing {
+        background: rgba(6, 182, 212, 0.12);
+        color: var(--cyan);
+      }
     </style>
-</head>
-<body>
-
-<!-- Sidebar Navigation -->
-<div class="sidebar">
-    <div class="sidebar-brand">
+  </head>
+  <body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+      <div class="sidebar-brand">
         <h1>🐝 <span>GSTD Node OS</span> <span class="ver">v3.2</span></h1>
         <div class="status-line" id="sb-status">Connecting...</div>
-    </div>
-    <nav class="sidebar-nav">
+      </div>
+      <nav class="sidebar-nav">
         <div class="nav-section">Overview</div>
-        <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
-            <span class="ic">📊</span><span>Dashboard</span>
+        <div
+          class="nav-item active"
+          onclick="showPage('dashboard')"
+          id="nav-dashboard"
+        >
+          <span class="ic">📊</span><span>Dashboard</span>
         </div>
 
         <div class="nav-section">AI Platform</div>
         <div class="nav-item" onclick="showPage('chat')" id="nav-chat">
-            <span class="ic">💬</span><span>AI Chat</span>
-            <span class="badge badge-green">8 models</span>
+          <span class="ic">💬</span><span>AI Chat</span>
+          <span class="badge badge-green">8 models</span>
         </div>
         <div class="nav-item" onclick="showPage('memory')" id="nav-memory">
-            <span class="ic">🧠</span><span>Memory</span>
+          <span class="ic">🧠</span><span>Memory</span>
         </div>
         <div class="nav-item" onclick="showPage('training')" id="nav-training">
-            <span class="ic">🎓</span><span>Training</span>
+          <span class="ic">🎓</span><span>Training</span>
         </div>
 
         <div class="nav-section">Economy</div>
         <div class="nav-item" onclick="showPage('wallet')" id="nav-wallet">
-            <span class="ic">💰</span><span>Wallet</span>
-            <span class="badge badge-green" id="sb-balance">0 GSTD</span>
+          <span class="ic">💰</span><span>Wallet</span>
+          <span class="badge badge-green" id="sb-balance">0 GSTD</span>
         </div>
         <div class="nav-item" onclick="showPage('swarm')" id="nav-swarm">
-            <span class="ic">🐝</span><span>Swarm</span>
+          <span class="ic">🐝</span><span>Swarm</span>
         </div>
-        <div class="nav-item" onclick="showPage('resources')" id="nav-resources">
-            <span class="ic">📡</span><span>Resources</span>
+        <div
+          class="nav-item"
+          onclick="showPage('resources')"
+          id="nav-resources"
+        >
+          <span class="ic">📡</span><span>Resources</span>
+        </div>
+
+        <div class="nav-section">Store</div>
+        <div class="nav-item" onclick="showPage('appstore')" id="nav-appstore">
+          <span class="ic">📦</span><span>App Store</span>
+          <span class="badge badge-green">NEW</span>
         </div>
 
         <div class="nav-section">System</div>
         <div class="nav-item" onclick="showPage('access')" id="nav-access">
-            <span class="ic">🔑</span><span>Remote Access</span>
+          <span class="ic">🔑</span><span>Remote Access</span>
         </div>
         <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
-            <span class="ic">⚙️</span><span>Settings</span>
+          <span class="ic">⚙️</span><span>Settings</span>
         </div>
-    </nav>
-    <div class="sidebar-footer">
-        GSTD Node OS · Apache 2.0<br>
-        <a href="https://github.com/gstdcoin/gstdbot" style="color:inherit;">GitHub</a>
+      </nav>
+      <div class="sidebar-footer">
+        GSTD Node OS · Apache 2.0<br />
+        <a href="https://github.com/gstdcoin/gstdbot" style="color: inherit"
+          >GitHub</a
+        >
+      </div>
     </div>
-</div>
 
-<!-- Main Content -->
-<div class="main">
-    <div class="topbar">
+    <!-- Main Content -->
+    <div class="main">
+      <div class="topbar">
         <h2 id="page-title">Dashboard</h2>
         <div class="sep"></div>
         <div class="meta" id="topbar-meta">—</div>
         <div class="dot-online" id="topbar-dot"></div>
-    </div>
+      </div>
 
-    <!-- ═══ PAGE: Dashboard ═══ -->
-    <div class="page active" id="page-dashboard">
+      <!-- ═══ PAGE: Dashboard ═══ -->
+      <div class="page active" id="page-dashboard">
         <div class="grid-4">
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(34,197,94,0.1);">⚙</span> CPU</div>
-                <div class="card-value" id="cpu-val">—</div>
-                <div class="card-sub" id="cpu-sub">…</div>
-                <div class="bar"><div class="bar-fill" id="cpu-bar" style="width:0;background:linear-gradient(90deg,#22c55e,#06b6d4);"></div></div>
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(34, 197, 94, 0.1)"
+                >⚙</span
+              >
+              CPU
             </div>
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(6,182,212,0.1);">🧊</span> RAM</div>
-                <div class="card-value" id="ram-val">—</div>
-                <div class="card-sub" id="ram-sub">…</div>
-                <div class="bar"><div class="bar-fill" id="ram-bar" style="width:0;background:linear-gradient(90deg,#06b6d4,#8b5cf6);"></div></div>
+            <div class="card-value" id="cpu-val">—</div>
+            <div class="card-sub" id="cpu-sub">…</div>
+            <div class="bar">
+              <div
+                class="bar-fill"
+                id="cpu-bar"
+                style="
+                  width: 0;
+                  background: linear-gradient(90deg, #22c55e, #06b6d4);
+                "
+              ></div>
             </div>
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(245,158,11,0.1);">💾</span> Disk</div>
-                <div class="card-value" id="disk-val">—</div>
-                <div class="card-sub" id="disk-sub">…</div>
-                <div class="bar"><div class="bar-fill" id="disk-bar" style="width:0;background:linear-gradient(90deg,#f59e0b,#f43f5e);"></div></div>
+          </div>
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(6, 182, 212, 0.1)"
+                >🧊</span
+              >
+              RAM
             </div>
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(139,92,246,0.1);">🎮</span> GPU</div>
-                <div class="card-value" id="gpu-val">—</div>
-                <div class="card-sub" id="gpu-sub">…</div>
+            <div class="card-value" id="ram-val">—</div>
+            <div class="card-sub" id="ram-sub">…</div>
+            <div class="bar">
+              <div
+                class="bar-fill"
+                id="ram-bar"
+                style="
+                  width: 0;
+                  background: linear-gradient(90deg, #06b6d4, #8b5cf6);
+                "
+              ></div>
             </div>
+          </div>
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(245, 158, 11, 0.1)"
+                >💾</span
+              >
+              Disk
+            </div>
+            <div class="card-value" id="disk-val">—</div>
+            <div class="card-sub" id="disk-sub">…</div>
+            <div class="bar">
+              <div
+                class="bar-fill"
+                id="disk-bar"
+                style="
+                  width: 0;
+                  background: linear-gradient(90deg, #f59e0b, #f43f5e);
+                "
+              ></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(139, 92, 246, 0.1)"
+                >🎮</span
+              >
+              GPU
+            </div>
+            <div class="card-value" id="gpu-val">—</div>
+            <div class="card-sub" id="gpu-sub">…</div>
+          </div>
         </div>
 
         <div class="grid-3">
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(34,197,94,0.1);">💰</span> Balance</div>
-                <div class="card-value" id="d-bal">0 GSTD</div>
-                <div class="card-sub" id="d-addr">—</div>
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(34, 197, 94, 0.1)"
+                >💰</span
+              >
+              Balance
             </div>
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(244,63,94,0.1);">📋</span> Tasks</div>
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px;">
-                    <div style="text-align:center;"><div style="font-size:22px;font-weight:900;color:var(--emerald);" id="t-done">0</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Done</div></div>
-                    <div style="text-align:center;"><div style="font-size:22px;font-weight:900;color:var(--amber);" id="t-proc">0</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Active</div></div>
-                    <div style="text-align:center;"><div style="font-size:22px;font-weight:900;color:var(--muted);" id="t-pend">0</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Queue</div></div>
+            <div class="card-value" id="d-bal">0 GSTD</div>
+            <div class="card-sub" id="d-addr">—</div>
+          </div>
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(244, 63, 94, 0.1)"
+                >📋</span
+              >
+              Tasks
+            </div>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                margin-top: 6px;
+              "
+            >
+              <div style="text-align: center">
+                <div
+                  style="
+                    font-size: 22px;
+                    font-weight: 900;
+                    color: var(--emerald);
+                  "
+                  id="t-done"
+                >
+                  0
                 </div>
+                <div
+                  style="
+                    font-size: 9px;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                  "
+                >
+                  Done
+                </div>
+              </div>
+              <div style="text-align: center">
+                <div
+                  style="font-size: 22px; font-weight: 900; color: var(--amber)"
+                  id="t-proc"
+                >
+                  0
+                </div>
+                <div
+                  style="
+                    font-size: 9px;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                  "
+                >
+                  Active
+                </div>
+              </div>
+              <div style="text-align: center">
+                <div
+                  style="font-size: 22px; font-weight: 900; color: var(--muted)"
+                  id="t-pend"
+                >
+                  0
+                </div>
+                <div
+                  style="
+                    font-size: 9px;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                  "
+                >
+                  Queue
+                </div>
+              </div>
             </div>
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(139,92,246,0.1);">🐝</span> Swarm</div>
-                <div class="card-value sm" id="swarm-val">—</div>
-                <div class="card-sub" id="swarm-sub">…</div>
+          </div>
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(139, 92, 246, 0.1)"
+                >🐝</span
+              >
+              Swarm
             </div>
+            <div class="card-value sm" id="swarm-val">—</div>
+            <div class="card-sub" id="swarm-sub">…</div>
+          </div>
         </div>
 
         <div class="grid-2">
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(34,197,94,0.1);">📈</span> Earnings</div>
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px;">
-                    <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:var(--emerald);" id="e-today">0</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Today</div></div>
-                    <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:var(--cyan);" id="e-week">0</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Week</div></div>
-                    <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:var(--accent);" id="e-total">0</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Total</div></div>
-                </div>
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(34, 197, 94, 0.1)"
+                >📈</span
+              >
+              Earnings
             </div>
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(139,92,246,0.1);">🧠</span> Collective Memory</div>
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px;">
-                    <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:var(--accent);" id="m-entries">0</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Entries</div></div>
-                    <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:var(--cyan);" id="m-recalls">0</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Recalls</div></div>
-                    <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:var(--emerald);" id="m-hit">0%</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Hit Rate</div></div>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                margin-top: 6px;
+              "
+            >
+              <div style="text-align: center">
+                <div
+                  style="
+                    font-size: 18px;
+                    font-weight: 900;
+                    color: var(--emerald);
+                  "
+                  id="e-today"
+                >
+                  0
                 </div>
+                <div
+                  style="
+                    font-size: 9px;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                  "
+                >
+                  Today
+                </div>
+              </div>
+              <div style="text-align: center">
+                <div
+                  style="font-size: 18px; font-weight: 900; color: var(--cyan)"
+                  id="e-week"
+                >
+                  0
+                </div>
+                <div
+                  style="
+                    font-size: 9px;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                  "
+                >
+                  Week
+                </div>
+              </div>
+              <div style="text-align: center">
+                <div
+                  style="
+                    font-size: 18px;
+                    font-weight: 900;
+                    color: var(--accent);
+                  "
+                  id="e-total"
+                >
+                  0
+                </div>
+                <div
+                  style="
+                    font-size: 9px;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                  "
+                >
+                  Total
+                </div>
+              </div>
             </div>
+          </div>
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(139, 92, 246, 0.1)"
+                >🧠</span
+              >
+              Collective Memory
+            </div>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                margin-top: 6px;
+              "
+            >
+              <div style="text-align: center">
+                <div
+                  style="
+                    font-size: 18px;
+                    font-weight: 900;
+                    color: var(--accent);
+                  "
+                  id="m-entries"
+                >
+                  0
+                </div>
+                <div
+                  style="
+                    font-size: 9px;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                  "
+                >
+                  Entries
+                </div>
+              </div>
+              <div style="text-align: center">
+                <div
+                  style="font-size: 18px; font-weight: 900; color: var(--cyan)"
+                  id="m-recalls"
+                >
+                  0
+                </div>
+                <div
+                  style="
+                    font-size: 9px;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                  "
+                >
+                  Recalls
+                </div>
+              </div>
+              <div style="text-align: center">
+                <div
+                  style="
+                    font-size: 18px;
+                    font-weight: 900;
+                    color: var(--emerald);
+                  "
+                  id="m-hit"
+                >
+                  0%
+                </div>
+                <div
+                  style="
+                    font-size: 9px;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                  "
+                >
+                  Hit Rate
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="grid-1-2">
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(6,182,212,0.1);">🎛</span> Controls</div>
-                <div class="ctrl-grid">
-                    <button class="ctrl-btn ctrl-amber" onclick="nodeCmd('restart')"><span class="emoji">🔄</span>Restart</button>
-                    <button class="ctrl-btn ctrl-cyan" onclick="nodeCmd('update')"><span class="emoji">⬆</span>Update</button>
-                    <button class="ctrl-btn ctrl-green" onclick="nodeCmd('gc')"><span class="emoji">🧹</span>GC</button>
-                    <button class="ctrl-btn ctrl-red" onclick="copyDiag()"><span class="emoji">📋</span>Diag</button>
-                </div>
-                <div class="ctrl-output" id="ctrl-out">Ready.</div>
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(6, 182, 212, 0.1)"
+                >🎛</span
+              >
+              Controls
             </div>
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(168,85,247,0.1);">🖥</span> Node Details</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
-                    <div class="info-row"><span class="k">Hostname</span><span class="v" id="n-host">—</span></div>
-                    <div class="info-row"><span class="k">Platform</span><span class="v" id="n-plat">—</span></div>
-                    <div class="info-row"><span class="k">Architecture</span><span class="v" id="n-arch">—</span></div>
-                    <div class="info-row"><span class="k">Uptime</span><span class="v" id="n-uptime">—</span></div>
-                    <div class="info-row"><span class="k">IP</span><span class="v" id="n-ip">—</span></div>
-                    <div class="info-row"><span class="k">Version</span><span class="v" id="n-ver">—</span></div>
-                    <div class="info-row"><span class="k">Mode</span><span class="v" id="n-mode">—</span></div>
-                    <div class="info-row"><span class="k">PID</span><span class="v" id="n-pid">—</span></div>
-                </div>
+            <div class="ctrl-grid">
+              <button class="ctrl-btn ctrl-amber" onclick="nodeCmd('restart')">
+                <span class="emoji">🔄</span>Restart
+              </button>
+              <button class="ctrl-btn ctrl-cyan" onclick="nodeCmd('update')">
+                <span class="emoji">⬆</span>Update
+              </button>
+              <button class="ctrl-btn ctrl-green" onclick="nodeCmd('gc')">
+                <span class="emoji">🧹</span>GC
+              </button>
+              <button class="ctrl-btn ctrl-red" onclick="copyDiag()">
+                <span class="emoji">📋</span>Diag
+              </button>
             </div>
+            <div class="ctrl-output" id="ctrl-out">Ready.</div>
+          </div>
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(168, 85, 247, 0.1)"
+                >🖥</span
+              >
+              Node Details
+            </div>
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px"
+            >
+              <div class="info-row">
+                <span class="k">Hostname</span
+                ><span class="v" id="n-host">—</span>
+              </div>
+              <div class="info-row">
+                <span class="k">Platform</span
+                ><span class="v" id="n-plat">—</span>
+              </div>
+              <div class="info-row">
+                <span class="k">Architecture</span
+                ><span class="v" id="n-arch">—</span>
+              </div>
+              <div class="info-row">
+                <span class="k">Uptime</span
+                ><span class="v" id="n-uptime">—</span>
+              </div>
+              <div class="info-row">
+                <span class="k">IP</span><span class="v" id="n-ip">—</span>
+              </div>
+              <div class="info-row">
+                <span class="k">Version</span
+                ><span class="v" id="n-ver">—</span>
+              </div>
+              <div class="info-row">
+                <span class="k">Mode</span><span class="v" id="n-mode">—</span>
+              </div>
+              <div class="info-row">
+                <span class="k">PID</span><span class="v" id="n-pid">—</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="card">
-            <div class="card-label" style="margin-bottom:0;">
-                <span class="cic" style="background:rgba(139,92,246,0.1);">📜</span> Activity Log
-                <span style="flex:1;"></span>
-                <button onclick="clearLog()" style="font-size:9px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;">Clear</button>
+          <div class="card-label" style="margin-bottom: 0">
+            <span class="cic" style="background: rgba(139, 92, 246, 0.1)"
+              >📜</span
+            >
+            Activity Log
+            <span style="flex: 1"></span>
+            <button
+              onclick="clearLog()"
+              style="
+                font-size: 9px;
+                padding: 3px 8px;
+                border-radius: 5px;
+                border: 1px solid var(--border);
+                background: transparent;
+                color: var(--muted);
+                cursor: pointer;
+                font-family: &quot;Inter&quot;, sans-serif;
+                font-weight: 600;
+              "
+            >
+              Clear
+            </button>
+          </div>
+          <div class="log-box" id="log-box">
+            <div class="log-entry">
+              <span class="ts">[--:--:--]</span> Loading...
             </div>
-            <div class="log-box" id="log-box">
-                <div class="log-entry"><span class="ts">[--:--:--]</span> Loading...</div>
-            </div>
+          </div>
         </div>
-    </div>
+      </div>
 
-    <!-- ═══ PAGE: AI Chat ═══ -->
-    <div class="page" id="page-chat">
+      <!-- ═══ PAGE: AI Chat ═══ -->
+      <div class="page" id="page-chat">
         <div class="chat-container">
-            <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
-                <select class="model-select" id="chat-model">
-                    <option value="llama-3.3-70b-versatile">🦙 Llama 3.3 70B</option>
-                    <option value="llama-3.1-8b-instant">⚡ Llama 3.1 8B (fast)</option>
-                    <option value="meta-llama/llama-4-scout-17b-16e-instruct">🔭 Llama 4 Scout</option>
-                    <option value="meta-llama/llama-4-maverick-17b-128e-instruct">🚀 Llama 4 Maverick</option>
-                    <option value="qwen/qwen3-32b">🐉 Qwen3 32B</option>
-                    <option value="openai/gpt-oss-120b">🧠 GPT-OSS 120B</option>
-                    <option value="openai/gpt-oss-20b">💡 GPT-OSS 20B</option>
-                    <option value="moonshotai/kimi-k2-instruct">🌙 Kimi K2</option>
-                    <option value="smartmix-council">🔬 SmartMix Council (3 models)</option>
-                    <option value="smartmix-panel">🔥 SmartMix Panel (5 models)</option>
-                    <option value="smartmix-swarm">🧠 SmartMix Swarm (7 models)</option>
-                </select>
-                <span style="font-size:11px;color:var(--muted);">All models are free via Groq</span>
+          <div
+            style="
+              display: flex;
+              gap: 8px;
+              align-items: center;
+              margin-bottom: 12px;
+            "
+          >
+            <select class="model-select" id="chat-model">
+              <option value="llama-3.3-70b-versatile">🦙 Llama 3.3 70B</option>
+              <option value="llama-3.1-8b-instant">
+                ⚡ Llama 3.1 8B (fast)
+              </option>
+              <option value="meta-llama/llama-4-scout-17b-16e-instruct">
+                🔭 Llama 4 Scout
+              </option>
+              <option value="meta-llama/llama-4-maverick-17b-128e-instruct">
+                🚀 Llama 4 Maverick
+              </option>
+              <option value="qwen/qwen3-32b">🐉 Qwen3 32B</option>
+              <option value="openai/gpt-oss-120b">🧠 GPT-OSS 120B</option>
+              <option value="openai/gpt-oss-20b">💡 GPT-OSS 20B</option>
+              <option value="moonshotai/kimi-k2-instruct">🌙 Kimi K2</option>
+              <option value="smartmix-council">
+                🔬 SmartMix Council (3 models)
+              </option>
+              <option value="smartmix-panel">
+                🔥 SmartMix Panel (5 models)
+              </option>
+              <option value="smartmix-swarm">
+                🧠 SmartMix Swarm (7 models)
+              </option>
+            </select>
+            <span style="font-size: 11px; color: var(--muted)"
+              >All models are free via Groq</span
+            >
+          </div>
+          <div class="chat-messages" id="chat-messages">
+            <div class="chat-msg ai">
+              <div class="msg-model">🐝 GSTD Node OS</div>
+              <div class="msg-text">
+                Welcome! I have 8 AI models ready. Choose a model and start
+                chatting. All processing happens locally on your node or via
+                Groq API — no external services needed.
+              </div>
             </div>
-            <div class="chat-messages" id="chat-messages">
-                <div class="chat-msg ai">
-                    <div class="msg-model">🐝 GSTD Node OS</div>
-                    <div class="msg-text">Welcome! I have 8 AI models ready. Choose a model and start chatting. All processing happens locally on your node or via Groq API — no external services needed.</div>
+          </div>
+          <div class="chat-input-row">
+            <textarea
+              class="chat-input"
+              id="chat-input"
+              rows="2"
+              placeholder="Ask anything..."
+              onkeydown="
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  sendChat();
+                }
+              "
+            ></textarea>
+            <button class="chat-send" onclick="sendChat()">Send ➤</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ PAGE: Wallet ═══ -->
+      <div class="page" id="page-wallet">
+        <div class="grid-3">
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(34, 197, 94, 0.1)"
+                >💰</span
+              >
+              GSTD Balance
+            </div>
+            <div class="card-value" id="w-gstd">0.00</div>
+            <div class="card-sub" id="w-usd">≈ $0.00 USD</div>
+          </div>
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(6, 182, 212, 0.1)"
+                >🔷</span
+              >
+              TON Balance
+            </div>
+            <div class="card-value" id="w-ton">0.00</div>
+            <div class="card-sub">For gas fees</div>
+          </div>
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(139, 92, 246, 0.1)"
+                >📊</span
+              >
+              Staked
+            </div>
+            <div class="card-value" id="w-staked">0.00</div>
+            <div class="card-sub" id="w-apy">APY: 12%</div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(34, 197, 94, 0.1)"
+                >📈</span
+              >
+              Earnings History
+            </div>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+                margin-top: 6px;
+              "
+            >
+              <div style="text-align: center">
+                <div
+                  style="
+                    font-size: 16px;
+                    font-weight: 900;
+                    color: var(--emerald);
+                  "
+                  id="w-e-today"
+                >
+                  0
                 </div>
-            </div>
-            <div class="chat-input-row">
-                <textarea class="chat-input" id="chat-input" rows="2" placeholder="Ask anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
-                <button class="chat-send" onclick="sendChat()">Send ➤</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══ PAGE: Wallet ═══ -->
-    <div class="page" id="page-wallet">
-        <div class="grid-3">
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(34,197,94,0.1);">💰</span> GSTD Balance</div>
-                <div class="card-value" id="w-gstd">0.00</div>
-                <div class="card-sub" id="w-usd">≈ $0.00 USD</div>
-            </div>
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(6,182,212,0.1);">🔷</span> TON Balance</div>
-                <div class="card-value" id="w-ton">0.00</div>
-                <div class="card-sub">For gas fees</div>
-            </div>
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(139,92,246,0.1);">📊</span> Staked</div>
-                <div class="card-value" id="w-staked">0.00</div>
-                <div class="card-sub" id="w-apy">APY: 12%</div>
-            </div>
-        </div>
-        <div class="grid-2">
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(34,197,94,0.1);">📈</span> Earnings History</div>
-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px;">
-                    <div style="text-align:center;"><div style="font-size:16px;font-weight:900;color:var(--emerald);" id="w-e-today">0</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Today</div></div>
-                    <div style="text-align:center;"><div style="font-size:16px;font-weight:900;color:var(--cyan);" id="w-e-week">0</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Week</div></div>
-                    <div style="text-align:center;"><div style="font-size:16px;font-weight:900;color:var(--accent);" id="w-e-month">0</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Month</div></div>
-                    <div style="text-align:center;"><div style="font-size:16px;font-weight:900;color:var(--text);" id="w-e-total">0</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;">All Time</div></div>
+                <div
+                  style="
+                    font-size: 9px;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                  "
+                >
+                  Today
                 </div>
+              </div>
+              <div style="text-align: center">
+                <div
+                  style="font-size: 16px; font-weight: 900; color: var(--cyan)"
+                  id="w-e-week"
+                >
+                  0
+                </div>
+                <div
+                  style="
+                    font-size: 9px;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                  "
+                >
+                  Week
+                </div>
+              </div>
+              <div style="text-align: center">
+                <div
+                  style="
+                    font-size: 16px;
+                    font-weight: 900;
+                    color: var(--accent);
+                  "
+                  id="w-e-month"
+                >
+                  0
+                </div>
+                <div
+                  style="
+                    font-size: 9px;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                  "
+                >
+                  Month
+                </div>
+              </div>
+              <div style="text-align: center">
+                <div
+                  style="font-size: 16px; font-weight: 900; color: var(--text)"
+                  id="w-e-total"
+                >
+                  0
+                </div>
+                <div
+                  style="
+                    font-size: 9px;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                  "
+                >
+                  All Time
+                </div>
+              </div>
             </div>
-            <div class="card">
-                <div class="card-label"><span class="cic" style="background:rgba(6,182,212,0.1);">🔑</span> Wallet Address</div>
-                <div class="card-sub" id="w-addr" style="font-size:13px;margin-top:8px;word-break:break-all;">—</div>
-                <button onclick="navigator.clipboard.writeText(document.getElementById('w-addr').textContent)" style="margin-top:8px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--accent);cursor:pointer;font-size:11px;font-weight:600;">📋 Copy Address</button>
+          </div>
+          <div class="card">
+            <div class="card-label">
+              <span class="cic" style="background: rgba(6, 182, 212, 0.1)"
+                >🔑</span
+              >
+              Wallet Address
             </div>
+            <div
+              class="card-sub"
+              id="w-addr"
+              style="font-size: 13px; margin-top: 8px; word-break: break-all"
+            >
+              —
+            </div>
+            <button
+              onclick="
+                navigator.clipboard.writeText(
+                  document.getElementById('w-addr').textContent,
+                )
+              "
+              style="
+                margin-top: 8px;
+                padding: 6px 12px;
+                border-radius: 8px;
+                border: 1px solid var(--border);
+                background: transparent;
+                color: var(--accent);
+                cursor: pointer;
+                font-size: 11px;
+                font-weight: 600;
+              "
+            >
+              📋 Copy Address
+            </button>
+          </div>
         </div>
         <div class="card">
-            <div class="card-label">Recent Transactions</div>
-            <table class="tx-table">
-                <thead><tr><th>Time</th><th>Type</th><th>Amount</th><th>Description</th></tr></thead>
-                <tbody id="tx-body"><tr><td colspan="4" style="color:var(--muted);text-align:center;padding:24px;">No transactions yet</td></tr></tbody>
-            </table>
+          <div class="card-label">Recent Transactions</div>
+          <table class="tx-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody id="tx-body">
+              <tr>
+                <td
+                  colspan="4"
+                  style="color: var(--muted); text-align: center; padding: 24px"
+                >
+                  No transactions yet
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-    </div>
+      </div>
 
-    <!-- ═══ PAGE: Swarm ═══ -->
-    <div class="page" id="page-swarm">
+      <!-- ═══ PAGE: Swarm ═══ -->
+      <div class="page" id="page-swarm">
         <div class="grid-3">
-            <div class="card"><div class="card-label">🌐 Peers Online</div><div class="card-value" id="sw-peers">0</div><div class="card-sub">Nodes in the swarm</div></div>
-            <div class="card"><div class="card-label">📋 Tasks Done</div><div class="card-value" id="sw-tasks">0</div><div class="card-sub">Total completed</div></div>
-            <div class="card"><div class="card-label">🏆 Node Rank</div><div class="card-value" id="sw-rank">#—</div><div class="card-sub">Among all nodes</div></div>
+          <div class="card">
+            <div class="card-label">🌐 Peers Online</div>
+            <div class="card-value" id="sw-peers">0</div>
+            <div class="card-sub">Nodes in the swarm</div>
+          </div>
+          <div class="card">
+            <div class="card-label">📋 Tasks Done</div>
+            <div class="card-value" id="sw-tasks">0</div>
+            <div class="card-sub">Total completed</div>
+          </div>
+          <div class="card">
+            <div class="card-label">🏆 Node Rank</div>
+            <div class="card-value" id="sw-rank">#—</div>
+            <div class="card-sub">Among all nodes</div>
+          </div>
         </div>
         <div class="card">
-            <div class="card-label">💡 How the Swarm Works</div>
-            <div style="font-size:13px;line-height:1.7;color:var(--muted);margin-top:8px;">
-                <p>• <strong style="color:var(--text);">More nodes = stronger swarm.</strong> Each node adds compute power, memory, and knowledge.</p>
-                <p style="margin-top:8px;">• <strong style="color:var(--emerald);">Earn GSTD</strong> for processing AI tasks, sharing resources, and keeping your node online.</p>
-                <p style="margin-top:8px;">• <strong style="color:var(--cyan);">Collective Memory:</strong> When any node finds a verified answer, all nodes benefit.</p>
-                <p style="margin-top:8px;">• <strong style="color:var(--accent);">Resource sharing:</strong> Sell your idle CPU/GPU time for GSTD tokens.</p>
-            </div>
+          <div class="card-label">💡 How the Swarm Works</div>
+          <div
+            style="
+              font-size: 13px;
+              line-height: 1.7;
+              color: var(--muted);
+              margin-top: 8px;
+            "
+          >
+            <p>
+              •
+              <strong style="color: var(--text)"
+                >More nodes = stronger swarm.</strong
+              >
+              Each node adds compute power, memory, and knowledge.
+            </p>
+            <p style="margin-top: 8px">
+              • <strong style="color: var(--emerald)">Earn GSTD</strong> for
+              processing AI tasks, sharing resources, and keeping your node
+              online.
+            </p>
+            <p style="margin-top: 8px">
+              •
+              <strong style="color: var(--cyan)">Collective Memory:</strong>
+              When any node finds a verified answer, all nodes benefit.
+            </p>
+            <p style="margin-top: 8px">
+              •
+              <strong style="color: var(--accent)">Resource sharing:</strong>
+              Sell your idle CPU/GPU time for GSTD tokens.
+            </p>
+          </div>
         </div>
-    </div>
+      </div>
 
-    <!-- ═══ PAGE: Memory ═══ -->
-    <div class="page" id="page-memory">
+      <!-- ═══ PAGE: Memory ═══ -->
+      <div class="page" id="page-memory">
         <div class="grid-3">
-            <div class="card"><div class="card-label">L1 — Local Memory</div><div class="card-value sm" id="mem-l1">0</div><div class="card-sub">In-memory cache (24h TTL)</div></div>
-            <div class="card"><div class="card-label">L2 — Redis</div><div class="card-value sm" id="mem-l2">—</div><div class="card-sub">Shared cache (7d TTL)</div></div>
-            <div class="card"><div class="card-label">L3 — Platform</div><div class="card-value sm" id="mem-l3">—</div><div class="card-sub">Global swarm knowledge</div></div>
+          <div class="card">
+            <div class="card-label">L1 — Local Memory</div>
+            <div class="card-value sm" id="mem-l1">0</div>
+            <div class="card-sub">In-memory cache (24h TTL)</div>
+          </div>
+          <div class="card">
+            <div class="card-label">L2 — Redis</div>
+            <div class="card-value sm" id="mem-l2">—</div>
+            <div class="card-sub">Shared cache (7d TTL)</div>
+          </div>
+          <div class="card">
+            <div class="card-label">L3 — Platform</div>
+            <div class="card-value sm" id="mem-l3">—</div>
+            <div class="card-sub">Global swarm knowledge</div>
+          </div>
         </div>
         <div class="card">
-            <div class="card-label">🔍 Search Memory</div>
-            <div style="display:flex;gap:8px;margin-top:8px;">
-                <input type="text" id="mem-search" class="chat-input" style="flex:1;" placeholder="Search the collective memory..." onkeydown="if(event.key==='Enter')searchMemory();">
-                <button class="chat-send" style="padding:10px 16px;" onclick="searchMemory()">Search</button>
-            </div>
-            <div id="mem-results" style="margin-top:12px;"></div>
+          <div class="card-label">🔍 Search Memory</div>
+          <div style="display: flex; gap: 8px; margin-top: 8px">
+            <input
+              type="text"
+              id="mem-search"
+              class="chat-input"
+              style="flex: 1"
+              placeholder="Search the collective memory..."
+              onkeydown="if (event.key === 'Enter') searchMemory();"
+            />
+            <button
+              class="chat-send"
+              style="padding: 10px 16px"
+              onclick="searchMemory()"
+            >
+              Search
+            </button>
+          </div>
+          <div id="mem-results" style="margin-top: 12px"></div>
         </div>
-    </div>
+      </div>
 
-    <!-- ═══ PAGE: Remote Access ═══ -->
-    <div class="page" id="page-access">
+      <!-- ═══ PAGE: Remote Access ═══ -->
+      <div class="page" id="page-access">
         <div class="grid-2">
-            <div class="card">
-                <div class="card-label">🌐 Access Methods</div>
-                <div class="info-row"><span class="k">LAN</span><span class="v" style="color:var(--emerald);">http://localhost:8080</span></div>
-                <div class="info-row"><span class="k">Relay</span><span class="v" id="acc-relay">—</span></div>
-                <div class="info-row"><span class="k">Tor (.onion)</span><span class="v" id="acc-tor">—</span></div>
-                <div class="info-row"><span class="k">WireGuard</span><span class="v" id="acc-wg">—</span></div>
+          <div class="card">
+            <div class="card-label">🌐 Access Methods</div>
+            <div class="info-row">
+              <span class="k">LAN</span
+              ><span class="v" style="color: var(--emerald)"
+                >http://localhost:8080</span
+              >
             </div>
-            <div class="card">
-                <div class="card-label">🔑 Access Tokens</div>
-                <div class="card-sub" style="margin-bottom:8px;">Use tokens to manage your node remotely from any device.</div>
-                <div id="token-list"></div>
+            <div class="info-row">
+              <span class="k">Relay</span
+              ><span class="v" id="acc-relay">—</span>
             </div>
+            <div class="info-row">
+              <span class="k">Tor (.onion)</span
+              ><span class="v" id="acc-tor">—</span>
+            </div>
+            <div class="info-row">
+              <span class="k">WireGuard</span
+              ><span class="v" id="acc-wg">—</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-label">🔑 Access Tokens</div>
+            <div class="card-sub" style="margin-bottom: 8px">
+              Use tokens to manage your node remotely from any device.
+            </div>
+            <div id="token-list"></div>
+          </div>
         </div>
-    </div>
+      </div>
 
-    <!-- ═══ PAGE: Resources ═══ -->
-    <div class="page" id="page-resources">
+      <!-- ═══ PAGE: Resources ═══ -->
+      <div class="page" id="page-resources">
         <div class="grid-3">
-            <div class="card"><div class="card-label">⏱ CPU Hours</div><div class="card-value sm" id="rs-cpu">0</div><div class="card-sub">Provided to swarm</div></div>
-            <div class="card"><div class="card-label">🔍 Queries</div><div class="card-value sm" id="rs-queries">0</div><div class="card-sub">Processed for other nodes</div></div>
-            <div class="card"><div class="card-label">💰 Earned</div><div class="card-value sm" id="rs-earned">0 GSTD</div><div class="card-sub">From resource sharing</div></div>
+          <div class="card">
+            <div class="card-label">⏱ CPU Hours</div>
+            <div class="card-value sm" id="rs-cpu">0</div>
+            <div class="card-sub">Provided to swarm</div>
+          </div>
+          <div class="card">
+            <div class="card-label">🔍 Queries</div>
+            <div class="card-value sm" id="rs-queries">0</div>
+            <div class="card-sub">Processed for other nodes</div>
+          </div>
+          <div class="card">
+            <div class="card-label">💰 Earned</div>
+            <div class="card-value sm" id="rs-earned">0 GSTD</div>
+            <div class="card-sub">From resource sharing</div>
+          </div>
         </div>
         <div class="card">
-            <div class="card-label">💡 Resource Pricing</div>
-            <div class="info-row"><span class="k">CPU Hour</span><span class="v">0.05 GSTD</span></div>
-            <div class="info-row"><span class="k">GPU Hour</span><span class="v">0.5 GSTD</span></div>
-            <div class="info-row"><span class="k">Inference Query</span><span class="v">0.001 GSTD</span></div>
-            <div class="info-row"><span class="k">Storage (GB/day)</span><span class="v">0.01 GSTD</span></div>
-            <div class="info-row"><span class="k">Bandwidth (GB)</span><span class="v">0.02 GSTD</span></div>
+          <div class="card-label">💡 Resource Pricing</div>
+          <div class="info-row">
+            <span class="k">CPU Hour</span><span class="v">0.05 GSTD</span>
+          </div>
+          <div class="info-row">
+            <span class="k">GPU Hour</span><span class="v">0.5 GSTD</span>
+          </div>
+          <div class="info-row">
+            <span class="k">Inference Query</span
+            ><span class="v">0.001 GSTD</span>
+          </div>
+          <div class="info-row">
+            <span class="k">Storage (GB/day)</span
+            ><span class="v">0.01 GSTD</span>
+          </div>
+          <div class="info-row">
+            <span class="k">Bandwidth (GB)</span
+            ><span class="v">0.02 GSTD</span>
+          </div>
         </div>
-    </div>
+      </div>
 
-    <!-- ═══ PAGE: Training ═══ -->
-    <div class="page" id="page-training">
+      <!-- ═══ PAGE: Training ═══ -->
+      <div class="page" id="page-training">
         <div class="grid-3">
-            <div class="card"><div class="card-label">🎓 Jobs Completed</div><div class="card-value sm" id="tr-done">0</div></div>
-            <div class="card"><div class="card-label">🔄 Active Jobs</div><div class="card-value sm" id="tr-active">0</div></div>
-            <div class="card"><div class="card-label">💰 Training Earned</div><div class="card-value sm" id="tr-earned">0 GSTD</div></div>
+          <div class="card">
+            <div class="card-label">🎓 Jobs Completed</div>
+            <div class="card-value sm" id="tr-done">0</div>
+          </div>
+          <div class="card">
+            <div class="card-label">🔄 Active Jobs</div>
+            <div class="card-value sm" id="tr-active">0</div>
+          </div>
+          <div class="card">
+            <div class="card-label">💰 Training Earned</div>
+            <div class="card-value sm" id="tr-earned">0 GSTD</div>
+          </div>
         </div>
         <div class="card">
-            <div class="card-label">📚 Training Types</div>
-            <div style="font-size:13px;line-height:1.7;color:var(--muted);margin-top:8px;">
-                <p>• <strong style="color:var(--text);">Federated Learning</strong> — Train on local data, share only gradients. Privacy preserved.</p>
-                <p style="margin-top:6px;">• <strong style="color:var(--cyan);">Fine-tuning</strong> — Customize models via Ollama. Earn GSTD for GPU time.</p>
-                <p style="margin-top:6px;">• <strong style="color:var(--accent);">Knowledge Distillation</strong> — Compress large models into smaller, faster ones.</p>
-                <p style="margin-top:6px;">• <strong style="color:var(--emerald);">Custom Embeddings</strong> — Train domain-specific embeddings for the swarm.</p>
-            </div>
+          <div class="card-label">📚 Training Types</div>
+          <div
+            style="
+              font-size: 13px;
+              line-height: 1.7;
+              color: var(--muted);
+              margin-top: 8px;
+            "
+          >
+            <p>
+              • <strong style="color: var(--text)">Federated Learning</strong> —
+              Train on local data, share only gradients. Privacy preserved.
+            </p>
+            <p style="margin-top: 6px">
+              • <strong style="color: var(--cyan)">Fine-tuning</strong> —
+              Customize models via Ollama. Earn GSTD for GPU time.
+            </p>
+            <p style="margin-top: 6px">
+              •
+              <strong style="color: var(--accent)"
+                >Knowledge Distillation</strong
+              >
+              — Compress large models into smaller, faster ones.
+            </p>
+            <p style="margin-top: 6px">
+              •
+              <strong style="color: var(--emerald)">Custom Embeddings</strong> —
+              Train domain-specific embeddings for the swarm.
+            </p>
+          </div>
         </div>
-    </div>
+      </div>
 
-    <!-- ═══ PAGE: Settings ═══ -->
-    <div class="page" id="page-settings">
+      <!-- ═══ PAGE: Settings ═══ -->
+      <div class="page" id="page-settings">
         <div class="grid-2">
-            <div class="card">
-                <div class="card-label">⚙️ Node Configuration</div>
-                <div class="info-row"><span class="k">Node ID</span><span class="v" id="set-id">—</span></div>
-                <div class="info-row"><span class="k">Node Name</span><span class="v" id="set-name">—</span></div>
-                <div class="info-row"><span class="k">Mode</span><span class="v" id="set-mode">—</span></div>
-                <div class="info-row"><span class="k">Dashboard Port</span><span class="v" id="set-port">8080</span></div>
-                <div class="info-row"><span class="k">Swarm</span><span class="v" id="set-swarm">—</span></div>
-                <div class="info-row"><span class="k">Memory</span><span class="v" id="set-memory">—</span></div>
+          <div class="card">
+            <div class="card-label">⚙️ Node Configuration</div>
+            <div class="info-row">
+              <span class="k">Node ID</span><span class="v" id="set-id">—</span>
             </div>
-            <div class="card">
-                <div class="card-label">📦 System Info</div>
-                <div class="info-row"><span class="k">Version</span><span class="v" id="set-ver">—</span></div>
-                <div class="info-row"><span class="k">Node.js</span><span class="v" id="set-node">—</span></div>
-                <div class="info-row"><span class="k">OS</span><span class="v" id="set-os">—</span></div>
-                <div class="info-row"><span class="k">Architecture</span><span class="v" id="set-arch">—</span></div>
+            <div class="info-row">
+              <span class="k">Node Name</span
+              ><span class="v" id="set-name">—</span>
             </div>
+            <div class="info-row">
+              <span class="k">Mode</span><span class="v" id="set-mode">—</span>
+            </div>
+            <div class="info-row">
+              <span class="k">Dashboard Port</span
+              ><span class="v" id="set-port">8080</span>
+            </div>
+            <div class="info-row">
+              <span class="k">Swarm</span
+              ><span class="v" id="set-swarm">—</span>
+            </div>
+            <div class="info-row">
+              <span class="k">Memory</span
+              ><span class="v" id="set-memory">—</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-label">📦 System Info</div>
+            <div class="info-row">
+              <span class="k">Version</span
+              ><span class="v" id="set-ver">—</span>
+            </div>
+            <div class="info-row">
+              <span class="k">Node.js</span
+              ><span class="v" id="set-node">—</span>
+            </div>
+            <div class="info-row">
+              <span class="k">OS</span><span class="v" id="set-os">—</span>
+            </div>
+            <div class="info-row">
+              <span class="k">Architecture</span
+              ><span class="v" id="set-arch">—</span>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <!-- ═══ PAGE: App Store ═══ -->
+      <div class="page" id="page-appstore">
+        <div style="margin-bottom:20px;">
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;">
+            Install apps to extend your node — like UmbrelOS, but for AI. All apps run on your hardware, earn you GSTD, and connect to the swarm.
+          </div>
+        </div>
+        <div class="app-grid" id="app-grid">
+          <div style="color:var(--muted);font-size:12px;padding:40px;text-align:center;">Loading apps...</div>
+        </div>
+      </div>
     </div>
-</div>
 
-<script>
-const API = window.location.origin;
-let connected = false, lastData = null;
+    <script>
+      const API = window.location.origin;
+      let connected = false,
+        lastData = null;
 
-function ts() { return new Date().toISOString().slice(11,19); }
-function log(msg, type='') {
-    const box = document.getElementById('log-box');
-    if (!box) return;
-    const el = document.createElement('div');
-    el.className = 'log-entry ' + type;
-    el.innerHTML = `<span class="ts">[${ts()}]</span> ${msg}`;
-    box.prepend(el);
-    while (box.children.length > 150) box.removeChild(box.lastChild);
-}
-function clearLog() { document.getElementById('log-box').innerHTML = ''; log('Log cleared.'); }
-function fmtBytes(b) { return (b / 1073741824).toFixed(1) + ' GB'; }
-function fmtUptime(s) {
-    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
-    if (d > 0) return d + 'd ' + h + 'h'; if (h > 0) return h + 'h ' + m + 'm'; return m + 'm';
-}
+      function ts() {
+        return new Date().toISOString().slice(11, 19);
+      }
+      function log(msg, type = "") {
+        const box = document.getElementById("log-box");
+        if (!box) return;
+        const el = document.createElement("div");
+        el.className = "log-entry " + type;
+        el.innerHTML = `<span class="ts">[${ts()}]</span> ${msg}`;
+        box.prepend(el);
+        while (box.children.length > 150) box.removeChild(box.lastChild);
+      }
+      function clearLog() {
+        document.getElementById("log-box").innerHTML = "";
+        log("Log cleared.");
+      }
+      function fmtBytes(b) {
+        return (b / 1073741824).toFixed(1) + " GB";
+      }
+      function fmtUptime(s) {
+        const d = Math.floor(s / 86400),
+          h = Math.floor((s % 86400) / 3600),
+          m = Math.floor((s % 3600) / 60);
+        if (d > 0) return d + "d " + h + "h";
+        if (h > 0) return h + "h " + m + "m";
+        return m + "m";
+      }
 
-// ─── Navigation ──────────────────────────────────────
-function showPage(name) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById('page-' + name)?.classList.add('active');
-    document.getElementById('nav-' + name)?.classList.add('active');
-    const titles = {dashboard:'Dashboard',chat:'AI Chat',wallet:'Wallet & GSTD',swarm:'Swarm Network',memory:'Collective Memory',access:'Remote Access',resources:'Resource Sharing',training:'Federated Training',settings:'Settings'};
-    document.getElementById('page-title').textContent = titles[name] || name;
-}
+      // ─── Navigation ──────────────────────────────────────
+      function showPage(name) {
+        document
+          .querySelectorAll(".page")
+          .forEach((p) => p.classList.remove("active"));
+        document
+          .querySelectorAll(".nav-item")
+          .forEach((n) => n.classList.remove("active"));
+        document.getElementById("page-" + name)?.classList.add("active");
+        document.getElementById("nav-" + name)?.classList.add("active");
+        const titles = {
+          dashboard: "Dashboard",
+          chat: "AI Chat",
+          wallet: "Wallet & GSTD",
+          swarm: "Swarm Network",
+          memory: "Collective Memory",
+          access: "Remote Access",
+          resources: "Resource Sharing",
+          training: "Federated Training",
+          settings: "Settings",
+          appstore: "App Store",
+        };
+        document.getElementById("page-title").textContent =
+          titles[name] || name;
+      }
 
-// ─── Dashboard Refresh ───────────────────────────────
-async function refresh() {
-    try {
-        const r = await fetch(API + '/api/node/status');
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const d = await r.json(); lastData = d;
-        if (!connected) { connected = true; log('Connected to node: ' + d.node.name, 'success'); }
+      // ─── Dashboard Refresh ───────────────────────────────
+      async function refresh() {
+        try {
+          const r = await fetch(API + "/api/node/status");
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const d = await r.json();
+          lastData = d;
+          if (!connected) {
+            connected = true;
+            log("Connected to node: " + d.node.name, "success");
+          }
 
-        document.getElementById('sb-status').textContent = d.node.name + ' · online';
-        document.getElementById('topbar-meta').textContent = d.node.name;
-        document.getElementById('topbar-dot').style.background = 'var(--emerald)';
+          document.getElementById("sb-status").textContent =
+            d.node.name + " · online";
+          document.getElementById("topbar-meta").textContent = d.node.name;
+          document.getElementById("topbar-dot").style.background =
+            "var(--emerald)";
 
-        // CPU
-        document.getElementById('cpu-val').textContent = d.hardware.cpu.usage + '%';
-        document.getElementById('cpu-sub').textContent = d.hardware.cpu.model.slice(0,30) + ' (' + d.hardware.cpu.cores + 'c)';
-        document.getElementById('cpu-bar').style.width = d.hardware.cpu.usage + '%';
-        // RAM
-        document.getElementById('ram-val').textContent = d.hardware.ram.usage + '%';
-        document.getElementById('ram-sub').textContent = fmtBytes(d.hardware.ram.used) + ' / ' + fmtBytes(d.hardware.ram.total);
-        document.getElementById('ram-bar').style.width = d.hardware.ram.usage + '%';
-        // Disk
-        if (d.hardware.disk?.total > 0) {
-            document.getElementById('disk-val').textContent = d.hardware.disk.usage + '%';
-            document.getElementById('disk-sub').textContent = fmtBytes(d.hardware.disk.used) + ' / ' + fmtBytes(d.hardware.disk.total);
-            document.getElementById('disk-bar').style.width = d.hardware.disk.usage + '%';
+          // CPU
+          document.getElementById("cpu-val").textContent =
+            d.hardware.cpu.usage + "%";
+          document.getElementById("cpu-sub").textContent =
+            d.hardware.cpu.model.slice(0, 30) +
+            " (" +
+            d.hardware.cpu.cores +
+            "c)";
+          document.getElementById("cpu-bar").style.width =
+            d.hardware.cpu.usage + "%";
+          // RAM
+          document.getElementById("ram-val").textContent =
+            d.hardware.ram.usage + "%";
+          document.getElementById("ram-sub").textContent =
+            fmtBytes(d.hardware.ram.used) +
+            " / " +
+            fmtBytes(d.hardware.ram.total);
+          document.getElementById("ram-bar").style.width =
+            d.hardware.ram.usage + "%";
+          // Disk
+          if (d.hardware.disk?.total > 0) {
+            document.getElementById("disk-val").textContent =
+              d.hardware.disk.usage + "%";
+            document.getElementById("disk-sub").textContent =
+              fmtBytes(d.hardware.disk.used) +
+              " / " +
+              fmtBytes(d.hardware.disk.total);
+            document.getElementById("disk-bar").style.width =
+              d.hardware.disk.usage + "%";
+          }
+          // GPU
+          const gpu = d.hardware.gpu;
+          document.getElementById("gpu-val").textContent = gpu.detected
+            ? gpu.usage || "✓"
+            : "None";
+          document.getElementById("gpu-sub").textContent = gpu.detected
+            ? gpu.model
+            : "No GPU";
+          // Balance
+          const bal = d.wallet?.balance;
+          document.getElementById("d-bal").textContent =
+            (bal?.gstd ?? 0).toFixed(2) + " GSTD";
+          document.getElementById("d-addr").textContent =
+            d.wallet?.address?.slice(0, 14) + "..." || "—";
+          document.getElementById("sb-balance").textContent =
+            (bal?.gstd ?? 0).toFixed(1) + " GSTD";
+          // Swarm
+          document.getElementById("swarm-val").textContent = d.swarm.enabled
+            ? "Connected"
+            : "Disabled";
+          document.getElementById("swarm-sub").textContent =
+            "Mode: " + (d.swarm.mode || "full");
+          // Node info
+          document.getElementById("n-host").textContent = d.node.name;
+          document.getElementById("n-plat").textContent = d.node.platform;
+          document.getElementById("n-arch").textContent = d.node.arch;
+          document.getElementById("n-uptime").textContent = fmtUptime(
+            d.node.uptime,
+          );
+          document.getElementById("n-ip").textContent = d.node.ip || "—";
+          document.getElementById("n-ver").textContent = "v" + d.node.version;
+          document.getElementById("n-mode").textContent = d.swarm?.mode || "—";
+          document.getElementById("n-pid").textContent = d.node.pid || "—";
+          // Wallet page
+          document.getElementById("w-gstd").textContent = (
+            bal?.gstd ?? 0
+          ).toFixed(4);
+          document.getElementById("w-ton").textContent = (
+            bal?.ton ?? 0
+          ).toFixed(4);
+          document.getElementById("w-addr").textContent =
+            d.wallet?.address || "—";
+        } catch (e) {
+          if (connected) {
+            connected = false;
+            log("Disconnected: " + e.message, "error");
+          }
+          document.getElementById("sb-status").textContent = "Offline";
+          document.getElementById("topbar-dot").style.background =
+            "var(--rose)";
         }
-        // GPU
-        const gpu = d.hardware.gpu;
-        document.getElementById('gpu-val').textContent = gpu.detected ? (gpu.usage || '✓') : 'None';
-        document.getElementById('gpu-sub').textContent = gpu.detected ? gpu.model : 'No GPU';
-        // Balance
-        const bal = d.wallet?.balance;
-        document.getElementById('d-bal').textContent = (bal?.gstd ?? 0).toFixed(2) + ' GSTD';
-        document.getElementById('d-addr').textContent = d.wallet?.address?.slice(0,14) + '...' || '—';
-        document.getElementById('sb-balance').textContent = (bal?.gstd ?? 0).toFixed(1) + ' GSTD';
-        // Swarm
-        document.getElementById('swarm-val').textContent = d.swarm.enabled ? 'Connected' : 'Disabled';
-        document.getElementById('swarm-sub').textContent = 'Mode: ' + (d.swarm.mode || 'full');
-        // Node info
-        document.getElementById('n-host').textContent = d.node.name;
-        document.getElementById('n-plat').textContent = d.node.platform;
-        document.getElementById('n-arch').textContent = d.node.arch;
-        document.getElementById('n-uptime').textContent = fmtUptime(d.node.uptime);
-        document.getElementById('n-ip').textContent = d.node.ip || '—';
-        document.getElementById('n-ver').textContent = 'v' + d.node.version;
-        document.getElementById('n-mode').textContent = d.swarm?.mode || '—';
-        document.getElementById('n-pid').textContent = d.node.pid || '—';
-        // Wallet page
-        document.getElementById('w-gstd').textContent = (bal?.gstd ?? 0).toFixed(4);
-        document.getElementById('w-ton').textContent = (bal?.ton ?? 0).toFixed(4);
-        document.getElementById('w-addr').textContent = d.wallet?.address || '—';
-    } catch (e) {
-        if (connected) { connected = false; log('Disconnected: ' + e.message, 'error'); }
-        document.getElementById('sb-status').textContent = 'Offline';
-        document.getElementById('topbar-dot').style.background = 'var(--rose)';
-    }
-}
+      }
 
-async function refreshTasks() {
-    try {
-        const r = await fetch(API + '/api/node/tasks'); if (!r.ok) return;
-        const d = await r.json();
-        document.getElementById('t-done').textContent = (d.completed || 0).toLocaleString();
-        document.getElementById('t-proc').textContent = (d.processing || 0).toLocaleString();
-        document.getElementById('t-pend').textContent = (d.pending || 0).toLocaleString();
-    } catch {}
-}
+      async function refreshTasks() {
+        try {
+          const r = await fetch(API + "/api/node/tasks");
+          if (!r.ok) return;
+          const d = await r.json();
+          document.getElementById("t-done").textContent = (
+            d.completed || 0
+          ).toLocaleString();
+          document.getElementById("t-proc").textContent = (
+            d.processing || 0
+          ).toLocaleString();
+          document.getElementById("t-pend").textContent = (
+            d.pending || 0
+          ).toLocaleString();
+        } catch {}
+      }
 
-async function refreshEarnings() {
-    try {
-        const r = await fetch(API + '/api/node/earnings'); if (!r.ok) return;
-        const d = await r.json();
-        document.getElementById('e-today').textContent = (d.today || 0).toFixed(2);
-        document.getElementById('e-week').textContent = (d.week || 0).toFixed(2);
-        document.getElementById('e-total').textContent = (d.total || 0).toFixed(2);
-    } catch {}
-}
+      async function refreshEarnings() {
+        try {
+          const r = await fetch(API + "/api/node/earnings");
+          if (!r.ok) return;
+          const d = await r.json();
+          document.getElementById("e-today").textContent = (
+            d.today || 0
+          ).toFixed(2);
+          document.getElementById("e-week").textContent = (d.week || 0).toFixed(
+            2,
+          );
+          document.getElementById("e-total").textContent = (
+            d.total || 0
+          ).toFixed(2);
+        } catch {}
+      }
 
-// ─── AI Chat ─────────────────────────────────────────
-async function sendChat() {
-    const input = document.getElementById('chat-input');
-    const msg = input.value.trim(); if (!msg) return;
-    input.value = '';
-    const model = document.getElementById('chat-model').value;
-    const messages = document.getElementById('chat-messages');
+      // ─── AI Chat ─────────────────────────────────────────
+      async function sendChat() {
+        const input = document.getElementById("chat-input");
+        const msg = input.value.trim();
+        if (!msg) return;
+        input.value = "";
+        const model = document.getElementById("chat-model").value;
+        const messages = document.getElementById("chat-messages");
 
-    // Add user message
-    const userEl = document.createElement('div');
-    userEl.className = 'chat-msg user';
-    userEl.innerHTML = `<div class="msg-text">${msg.replace(/</g,'&lt;')}</div>`;
-    messages.appendChild(userEl);
+        // Add user message
+        const userEl = document.createElement("div");
+        userEl.className = "chat-msg user";
+        userEl.innerHTML = `<div class="msg-text">${msg.replace(/</g, "&lt;")}</div>`;
+        messages.appendChild(userEl);
 
-    // Add AI placeholder
-    const aiEl = document.createElement('div');
-    aiEl.className = 'chat-msg ai';
-    aiEl.innerHTML = `<div class="msg-model">${model}</div><div class="msg-text" style="color:var(--muted);">Thinking...</div>`;
-    messages.appendChild(aiEl);
-    messages.scrollTop = messages.scrollHeight;
+        // Add AI placeholder
+        const aiEl = document.createElement("div");
+        aiEl.className = "chat-msg ai";
+        aiEl.innerHTML = `<div class="msg-model">${model}</div><div class="msg-text" style="color:var(--muted);">Thinking...</div>`;
+        messages.appendChild(aiEl);
+        messages.scrollTop = messages.scrollHeight;
 
-    try {
-        const r = await fetch(API + '/api/v1/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model, messages: [{role:'user',content:msg}], max_tokens: 2048 })
-        });
-        if (r.ok) {
+        try {
+          const r = await fetch(API + "/api/v1/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model,
+              messages: [{ role: "user", content: msg }],
+              max_tokens: 2048,
+            }),
+          });
+          if (r.ok) {
             const d = await r.json();
-            const text = d.choices?.[0]?.message?.content || d.response || 'No response';
-            aiEl.querySelector('.msg-text').style.color = '';
-            aiEl.querySelector('.msg-text').textContent = text;
-        } else {
-            aiEl.querySelector('.msg-text').textContent = 'Error: ' + r.status;
-            aiEl.querySelector('.msg-text').style.color = 'var(--rose)';
+            const text =
+              d.choices?.[0]?.message?.content || d.response || "No response";
+            aiEl.querySelector(".msg-text").style.color = "";
+            aiEl.querySelector(".msg-text").textContent = text;
+          } else {
+            aiEl.querySelector(".msg-text").textContent = "Error: " + r.status;
+            aiEl.querySelector(".msg-text").style.color = "var(--rose)";
+          }
+        } catch (e) {
+          aiEl.querySelector(".msg-text").textContent = "Error: " + e.message;
+          aiEl.querySelector(".msg-text").style.color = "var(--rose)";
         }
-    } catch (e) {
-        aiEl.querySelector('.msg-text').textContent = 'Error: ' + e.message;
-        aiEl.querySelector('.msg-text').style.color = 'var(--rose)';
-    }
-    messages.scrollTop = messages.scrollHeight;
-}
+        messages.scrollTop = messages.scrollHeight;
+      }
 
-// ─── Node Control ────────────────────────────────────
-async function nodeCmd(action) {
-    const out = document.getElementById('ctrl-out');
-    out.textContent = '⏳ ' + action + '...'; out.style.color = 'var(--amber)';
-    try {
-        const r = await fetch(API + '/api/node/control', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({action})
-        });
-        const d = await r.json();
-        out.textContent = d.ok ? '✅ ' + d.message : '❌ ' + d.message;
-        out.style.color = d.ok ? 'var(--emerald)' : 'var(--rose)';
-        log(d.message, d.ok ? 'success' : 'error');
-    } catch (e) { out.textContent = '❌ ' + e.message; out.style.color = 'var(--rose)'; }
-}
+      // ─── Node Control ────────────────────────────────────
+      async function nodeCmd(action) {
+        const out = document.getElementById("ctrl-out");
+        out.textContent = "⏳ " + action + "...";
+        out.style.color = "var(--amber)";
+        try {
+          const r = await fetch(API + "/api/node/control", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action }),
+          });
+          const d = await r.json();
+          out.textContent = d.ok ? "✅ " + d.message : "❌ " + d.message;
+          out.style.color = d.ok ? "var(--emerald)" : "var(--rose)";
+          log(d.message, d.ok ? "success" : "error");
+        } catch (e) {
+          out.textContent = "❌ " + e.message;
+          out.style.color = "var(--rose)";
+        }
+      }
 
-function copyDiag() {
-    if (!lastData) return;
-    navigator.clipboard.writeText(JSON.stringify(lastData,null,2)).then(() => {
-        document.getElementById('ctrl-out').textContent = '📋 Copied!';
-        document.getElementById('ctrl-out').style.color = 'var(--emerald)';
-    });
-}
+      function copyDiag() {
+        if (!lastData) return;
+        navigator.clipboard
+          .writeText(JSON.stringify(lastData, null, 2))
+          .then(() => {
+            document.getElementById("ctrl-out").textContent = "📋 Copied!";
+            document.getElementById("ctrl-out").style.color = "var(--emerald)";
+          });
+      }
 
-async function searchMemory() {
-    const q = document.getElementById('mem-search').value.trim();
-    if (!q) return;
-    const el = document.getElementById('mem-results');
-    el.innerHTML = '<div style="color:var(--muted);font-size:12px;">Searching...</div>';
-    // For now, display placeholder
-    el.innerHTML = '<div style="color:var(--muted);font-size:12px;margin-top:8px;">Memory search will query L1 + L2 + L3 layers. Feature connecting...</div>';
-}
+      async function searchMemory() {
+        const q = document.getElementById("mem-search").value.trim();
+        if (!q) return;
+        const el = document.getElementById("mem-results");
+        el.innerHTML =
+          '<div style="color:var(--muted);font-size:12px;">Searching...</div>';
+        // For now, display placeholder
+        el.innerHTML =
+          '<div style="color:var(--muted);font-size:12px;margin-top:8px;">Memory search will query L1 + L2 + L3 layers. Feature connecting...</div>';
+      }
 
-// ─── Boot ────────────────────────────────────────────
-log('GSTD Node OS v3.2 loaded.');
-refresh(); refreshTasks(); refreshEarnings();
-setInterval(refresh, 2000);
-setInterval(refreshTasks, 10000);
-setInterval(refreshEarnings, 30000);
-</script>
-</body>
+      // ─── App Store ───────────────────────────────────────
+      async function loadApps() {
+        try {
+          const r = await fetch(API + "/api/apps/available");
+          if (!r.ok) return;
+          const d = await r.json();
+          const grid = document.getElementById("app-grid");
+          grid.innerHTML = "";
+          const allApps = d.apps || [];
+          const installedMap = {};
+          (d.installed || []).forEach((a) => {
+            installedMap[a.manifest.id] = a;
+          });
+
+          allApps.forEach((app) => {
+            const inst = installedMap[app.id];
+            const isInstalled = !!inst;
+            const status = inst?.status || "";
+            const catClass = "cat-" + (app.category || "system");
+            const card = document.createElement("div");
+            card.className = "app-card";
+            card.innerHTML = `
+                <div class="app-icon">${app.icon || "📦"}</div>
+                <div class="app-name">${app.name}</div>
+                <div class="app-desc">${app.description || ""}</div>
+                <div class="app-meta">
+                    <span class="app-cat ${catClass}">${app.category || "system"}</span>
+                    <span>v${app.version}</span>
+                    ${app.gstd_cost > 0 ? "<span>" + app.gstd_cost + " GSTD</span>" : '<span style="color:var(--emerald)">FREE</span>'}
+                    ${isInstalled ? '<span class="app-status status-' + status + '">' + status + "</span>" : ""}
+                </div>
+                ${
+                  isInstalled
+                    ? '<div style="display:flex;gap:8px;"><button class="app-btn app-btn-open" onclick="appAction(\'start\',\'' +
+                      app.id +
+                      "')\">▶ Start</button><button class=\"app-btn app-btn-remove\" onclick=\"appAction('uninstall','" +
+                      app.id +
+                      "')\">✕ Remove</button></div>"
+                    : "<button class=\"app-btn app-btn-install\" onclick=\"appAction('install','" +
+                      app.id +
+                      "')\">⬇ Install</button>"
+                }
+            `;
+            grid.appendChild(card);
+          });
+          if (allApps.length === 0) {
+            grid.innerHTML =
+              '<div style="color:var(--muted);padding:40px;text-align:center;">No apps available</div>';
+          }
+        } catch (e) {
+          console.error("App store error:", e);
+        }
+      }
+
+      async function appAction(action, appId) {
+        try {
+          const r = await fetch(API + "/api/apps/" + action, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ appId }),
+          });
+          const d = await r.json();
+          log(
+            (d.ok ? "✅ " : "❌ ") + (d.message || action + " " + appId),
+            d.ok ? "success" : "error",
+          );
+          loadApps();
+        } catch (e) {
+          log("❌ " + e.message, "error");
+        }
+      }
+
+      // ─── Boot ────────────────────────────────────────────
+      log("GSTD Node OS v3.2 loaded.");
+      refresh();
+      refreshTasks();
+      refreshEarnings();
+      loadApps();
+      setInterval(refresh, 2000);
+      setInterval(refreshTasks, 10000);
+      setInterval(refreshEarnings, 30000);
+      setInterval(loadApps, 60000);
+    </script>
+  </body>
 </html>

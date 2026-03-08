@@ -22,9 +22,8 @@
  *  9. Dashboard (all-in-one control panel on :8080)
  */
 
-import { OmegaGateway } from './gateway/server.js';
+import { OmegaGateway, logActivity } from './gateway/server.js';
 import { TelegramChannel } from './channels/telegram.js';
-import { startDashboard, logActivity } from './dashboard/server.js';
 import { SwarmAgent } from './swarm/agent.js';
 import { CollectiveMemory } from './memory/collective.js';
 import { NodeWallet } from './wallet/manager.js';
@@ -173,11 +172,8 @@ async function main(): Promise<void> {
         console.log('    Telegram: disabled (no token)');
     }
 
-    // ── 9. Dashboard (All-in-One UI) ────────────────────────────
-    if (config.dashboard.enabled) {
-        console.log(`  [9/${TOTAL_STEPS}] Starting dashboard...`);
-        await startDashboard(config.dashboard.port, config.dashboard.host);
-    }
+    // ── 9. Node OS ready (Dashboard served via Gateway) ──────────
+    console.log(`  [9/${TOTAL_STEPS}] Node OS UI active on gateway port...`);
 
     // ── Boot complete ───────────────────────────────────────────
     const bootTime = ((Date.now() - startTime) / 1000).toFixed(1);

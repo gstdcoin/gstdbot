@@ -1,8 +1,9 @@
 /**
- * GSTD Bot — Omega Gateway
+ * GSTD Bot — Omega Gateway + Node OS
  * 
  * The sovereign control plane for the decentralized AI assistant.
- * Handles: WebSocket sessions, channel routing, tool dispatch, skills, swarm.
+ * Handles: WebSocket sessions, channel routing, tool dispatch, skills, swarm,
+ * Dashboard UI, App Store, and all Node OS functions — all on one port.
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -11,6 +12,10 @@ import http from 'http';
 import { v4 as uuid } from 'uuid';
 import { NeuralRouter, RouteResult } from './router.js';
 import { SessionManager, Session } from './sessions.js';
+import { cpus, totalmem, freemem, hostname, platform, arch, loadavg, uptime as osUptime, networkInterfaces } from 'os';
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
+import { AppManager, type AppManifest, type InstalledApp } from '../apps/manager.js';
 
 export interface GatewayConfig {
     port: number;
@@ -28,6 +33,65 @@ const DEFAULT_CONFIG: GatewayConfig = {
     sovereigntyMode: (process.env.GSTD_SOVEREIGNTY_MODE as any) || 'full',
 };
 
+// ─── CPU Tracking ────────────────────────────────────────────────
+let prevCpuIdle = 0;
+let prevCpuTotal = 0;
+let currentCpuUsage = 0;
+function updateCpuUsage(): void {
+    const cpuInfo = cpus();
+    let idle = 0, total = 0;
+    cpuInfo.forEach(cpu => {
+        for (const type in cpu.times) { total += (cpu.times as any)[type]; }
+        idle += cpu.times.idle;
+    });
+    if (prevCpuTotal > 0) {
+        const diffIdle = idle - prevCpuIdle;
+        const diffTotal = total - prevCpuTotal;
+        currentCpuUsage = diffTotal > 0 ? Math.round(100 - (diffIdle / diffTotal * 100)) : 0;
+    }
+    prevCpuIdle = idle;
+    prevCpuTotal = total;
+}
+setInterval(updateCpuUsage, 1000);
+updateCpuUsage();
+
+function detectGpu(): any {
+    try {
+        const { execSync } = require('child_process');
+        const output = execSync('nvidia-smi --query-gpu=name,memory.total,temperature.gpu,utilization.gpu --format=csv,noheader,nounits 2>/dev/null', { encoding: 'utf-8', timeout: 3000 });
+        const parts = output.trim().split(',').map((s: string) => s.trim());
+        return { detected: true, model: parts[0] || 'Unknown', memory: parts[1] ? parts[1] + ' MiB' : undefined, temperature: parts[2] ? parts[2] + '°C' : undefined, usage: parts[3] ? parts[3] + '%' : undefined };
+    } catch { return { detected: false }; }
+}
+function getDiskUsage(): any {
+    try {
+        const { execSync } = require('child_process');
+        const output = execSync("df -B1 / | tail -1", { encoding: 'utf-8', timeout: 3000 });
+        const parts = output.trim().split(/\s+/);
+        const total = parseInt(parts[1]) || 0, used = parseInt(parts[2]) || 0, available = parseInt(parts[3]) || 0;
+        return { total, used, available, usage: total > 0 ? Math.round(used / total * 100) : 0 };
+    } catch { return { total: 0, used: 0, available: 0, usage: 0 }; }
+}
+function getLocalIP(): string {
+    const nets = networkInterfaces();
+    for (const name of Object.keys(nets)) {
+        for (const net of nets[name] || []) {
+            if (net.family === 'IPv4' && !net.internal) return net.address;
+        }
+    }
+    return '127.0.0.1';
+}
+
+// ─── Activity Log ────────────────────────────────────────────────
+const activityLog: { ts: string; msg: string; type: string }[] = [];
+const MAX_LOG = 200;
+export function logActivity(msg: string, type: string = 'info'): void {
+    activityLog.unshift({ ts: new Date().toISOString(), msg, type });
+    if (activityLog.length > MAX_LOG) activityLog.length = MAX_LOG;
+}
+
+const nodeStartedAt = Date.now();
+
 export class OmegaGateway {
     private wss: WebSocketServer | null = null;
     private app = express();
@@ -36,6 +100,7 @@ export class OmegaGateway {
     private sessions: SessionManager;
     private config: GatewayConfig;
     private clients = new Map<string, WebSocket>();
+    private appManager: AppManager;
     private metrics = {
         totalRequests: 0,
         swarmRequests: 0,
@@ -48,8 +113,10 @@ export class OmegaGateway {
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.router = new NeuralRouter(this.config.swarmUrl, this.config.cocoonEnabled);
         this.sessions = new SessionManager();
+        this.appManager = new AppManager();
         this.server = http.createServer(this.app);
         this.setupAPI();
+        this.setupNodeOS();
     }
 
     private setupAPI(): void {
@@ -198,6 +265,162 @@ export class OmegaGateway {
                 gstd_distributed: 4521.5,
             });
         });
+
+        // ─── Chat API (for dashboard) ────────────────────────────
+        this.app.post('/api/v1/chat', async (req, res) => {
+            try {
+                const { model, messages, max_tokens } = req.body;
+                this.metrics.totalRequests++;
+                const result = await this.router.route(model || 'auto', messages);
+                this.updateMetrics(result);
+                res.json({
+                    choices: [{ message: { role: 'assistant', content: result.content } }],
+                    model: result.model,
+                    _gstd: { tier: result.tier, latency_ms: result.latencyMs },
+                });
+            } catch (err: any) {
+                res.status(500).json({ error: err.message });
+            }
+        });
+    }
+
+    // ─── Node OS: Dashboard + App Store + System APIs ────────────
+    private setupNodeOS(): void {
+        // CORS
+        this.app.use((_req, res, next) => {
+            res.header('Access-Control-Allow-Origin', '*');
+            res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+            res.header('Access-Control-Allow-Headers', 'Content-Type');
+            if (_req.method === 'OPTIONS') { res.sendStatus(204); return; }
+            next();
+        });
+
+        // ─── Serve static files from web/ ────────────────────────
+        this.app.use('/static', express.static(join(__dirname, '../../web')));
+
+        // ─── Dashboard UI at root ────────────────────────────────
+        this.app.get('/', (_req, res) => {
+            const htmlPath = join(__dirname, '../../web/dashboard.html');
+            if (existsSync(htmlPath)) {
+                res.sendFile(htmlPath);
+            } else {
+                res.send(this.getFallbackHTML());
+            }
+        });
+
+        // ─── Node Status API ─────────────────────────────────────
+        this.app.get('/api/node/status', async (_req, res) => {
+            const cpuInfo = cpus();
+            const gpu = detectGpu();
+            const disk = getDiskUsage();
+            const load = loadavg();
+            res.json({
+                node: {
+                    name: process.env.NODE_NAME || hostname(),
+                    platform: platform(), arch: arch(),
+                    uptime: process.uptime(), os_uptime: osUptime(),
+                    version: '3.2.0',
+                    started_at: new Date(nodeStartedAt).toISOString(),
+                    ip: getLocalIP(), pid: process.pid,
+                },
+                hardware: {
+                    cpu: { model: cpuInfo[0]?.model || 'Unknown', cores: cpuInfo.length, usage: currentCpuUsage, load_1m: Math.round(load[0] * 100) / 100 },
+                    ram: { total: totalmem(), free: freemem(), used: totalmem() - freemem(), usage: Math.round(((totalmem() - freemem()) / totalmem()) * 100) },
+                    gpu, disk,
+                },
+                wallet: null,
+                swarm: { enabled: process.env.SWARM_ENABLED !== 'false', status: 'connected', mode: process.env.GSTD_SOVEREIGNTY_MODE || 'full' },
+                gateway: { port: this.config.port, api_port: this.config.apiPort },
+            });
+        });
+
+        // ─── Activity Log ────────────────────────────────────────
+        this.app.get('/api/node/log', (_req, res) => { res.json({ entries: activityLog.slice(0, 100) }); });
+
+        // ─── Tasks ───────────────────────────────────────────────
+        this.app.get('/api/node/tasks', async (_req, res) => {
+            try {
+                const resp = await fetch('https://app.gstdtoken.com/api/v1/monitor/unified').catch(() => null);
+                if (resp?.ok) { const data: any = await resp.json(); res.json({ pending: data.ecosystem?.tasks_pending || 0, completed: data.ecosystem?.tasks_completed || 0, processing: data.ecosystem?.tasks_processing || 0 }); return; }
+            } catch { }
+            res.json({ pending: 0, completed: 0, processing: 0 });
+        });
+
+        // ─── Earnings ────────────────────────────────────────────
+        this.app.get('/api/node/earnings', async (_req, res) => { res.json({ earnings: [], total: 0, today: 0, week: 0 }); });
+
+        // ─── Node Control ────────────────────────────────────────
+        this.app.post('/api/node/control', async (req, res) => {
+            const { action } = req.body || {};
+            logActivity(`Control command: ${action}`, 'warn');
+            switch (action) {
+                case 'restart':
+                    logActivity('Node restart initiated...', 'warn');
+                    res.json({ ok: true, message: 'Restarting node...' });
+                    setTimeout(() => process.exit(0), 1000);
+                    break;
+                case 'update':
+                    try {
+                        const { execSync } = require('child_process');
+                        const cwd = join(__dirname, '../..');
+                        execSync('git pull', { cwd, encoding: 'utf-8', timeout: 30000 });
+                        execSync('npx tsc', { cwd, encoding: 'utf-8', timeout: 60000 });
+                        logActivity('Update complete! Restart to apply.', 'success');
+                        res.json({ ok: true, message: 'Updated. Restart to apply changes.' });
+                    } catch (e: any) {
+                        logActivity('Update failed: ' + e.message, 'error');
+                        res.json({ ok: false, message: 'Update failed: ' + e.message });
+                    }
+                    break;
+                default:
+                    res.json({ ok: false, message: `Unknown action: ${action}` });
+            }
+        });
+
+        // ─── App Store APIs ──────────────────────────────────────
+        this.app.get('/api/apps/available', async (_req, res) => {
+            const registry = await this.appManager.getRegistry();
+            const installed = this.appManager.getInstalled();
+            const installedIds = new Set(installed.map(a => a.manifest.id));
+            res.json({
+                apps: registry.map(app => ({ ...app, installed: installedIds.has(app.id) })),
+                installed: installed,
+            });
+        });
+
+        this.app.post('/api/apps/install', async (req, res) => {
+            const { appId } = req.body;
+            if (!appId) { res.json({ ok: false, message: 'Missing appId' }); return; }
+            const ok = await this.appManager.install(appId);
+            res.json({ ok, message: ok ? `${appId} installed` : `Failed to install ${appId}` });
+        });
+
+        this.app.post('/api/apps/uninstall', async (req, res) => {
+            const { appId } = req.body;
+            const ok = await this.appManager.uninstall(appId);
+            res.json({ ok, message: ok ? `${appId} uninstalled` : `Failed to uninstall ${appId}` });
+        });
+
+        this.app.post('/api/apps/start', async (req, res) => {
+            const { appId } = req.body;
+            const ok = await this.appManager.start(appId);
+            res.json({ ok });
+        });
+
+        this.app.post('/api/apps/stop', async (req, res) => {
+            const { appId } = req.body;
+            const ok = await this.appManager.stop(appId);
+            res.json({ ok });
+        });
+
+        logActivity('Node OS mounted on gateway — all-in-one on :' + this.config.apiPort);
+    }
+
+    private getFallbackHTML(): string {
+        return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>GSTD Node</title></head>
+<body style="font-family:sans-serif;background:#030014;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+<div style="text-align:center;"><h1>🐝 GSTD Node Online</h1><p>Dashboard UI not found. Check web/dashboard.html</p>
+<p><a href="/api/node/status" style="color:#06b6d4;">View API Status →</a></p></div></body></html>`;
     }
 
     private setupWebSocket(): void {
