@@ -24,10 +24,6 @@ const path_1 = require("path");
 const crypto_1 = require("crypto");
 const manager_js_1 = require("../apps/manager.js");
 const child_process_1 = require("child_process");
-// ─── Reward config ───────────────────────────────────────────────
-const REWARD_PER_QUERY = 0.001; // GSTD per AI query served
-const REWARD_PER_SMARTMIX = 0.003; // GSTD per multi-model query  
-const REWARD_PER_CACHE_HIT = 0.0005; // GSTD per cache hit
 const DEFAULT_CONFIG = {
     port: 18789,
     apiPort: 8080,
@@ -2424,22 +2420,21 @@ class OmegaGateway {
             case 'cache':
                 this.metrics.cacheHits++;
                 if (this.wallet) {
-                    this.wallet.addEarning(REWARD_PER_CACHE_HIT, 'inference', `Cache hit: ${result.model}`);
+                    this.wallet.recordQueryServed();
                 }
                 break;
             case 'swarm':
             case 'groq':
                 this.metrics.swarmRequests++;
                 if (this.wallet) {
-                    const reward = result.model?.includes('smartmix') ? REWARD_PER_SMARTMIX : REWARD_PER_QUERY;
-                    this.wallet.addEarning(reward, 'inference', `Query: ${result.model} (${result.latencyMs}ms)`);
+                    this.wallet.recordQueryServed();
                 }
                 break;
             case 'fallback':
             case 'commercial':
                 this.metrics.commercialRequests++;
                 if (this.wallet) {
-                    this.wallet.addEarning(REWARD_PER_QUERY, 'inference', `Fallback query: ${result.model}`);
+                    this.wallet.recordQueryServed();
                 }
                 break;
         }

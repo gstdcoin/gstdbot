@@ -99,13 +99,16 @@ export class NodeWallet {
             }
         }
 
-        // Fetch balance from platform
+        // Fetch real balance from platform
         await this.refreshBalance();
 
-        // Start uptime earnings timer (every hour)
-        setInterval(() => this.earnUptime(), 60 * 60 * 1000);
+        // Heartbeat to backend every hour — backend calculates reward
+        setInterval(() => this.sendHeartbeat(), 60 * 60 * 1000);
 
-        // Save earnings periodically
+        // Refresh balance from platform every 5 minutes
+        setInterval(() => this.refreshBalance(), 5 * 60 * 1000);
+
+        // Save earnings log periodically
         setInterval(() => this.saveEarnings(), 5 * 60 * 1000);
     }
 
@@ -143,14 +146,14 @@ export class NodeWallet {
             earningsHistory: this.earnings.slice(0, 50), // Last 50
             staking: {
                 staked: 0,
-                apy: 12,
+                apy: 0,
                 rewardsPending: 0,
             },
         };
     }
 
-    // ─── Earn GSTD ──────────────────────────────────────────────
-    addEarning(amount: number, type: EarningEntry['type'], description: string, taskId?: string): void {
+    // ─── Record verified earning (only called after backend confirms) ──
+    recordVerifiedEarning(amount: number, type: EarningEntry['type'], description: string, taskId?: string): void {
         const entry: EarningEntry = {
             timestamp: new Date().toISOString(),
             amount,
@@ -164,15 +167,47 @@ export class NodeWallet {
 
         this.localBalance.totalEarned += amount;
         this.localBalance.gstd += amount;
-        this.localBalance.pending += amount;
-        this.unsyncedAmount += amount;
 
-        logActivity(`+${amount.toFixed(4)} GSTD (${type}: ${description})`, 'success');
+        logActivity(`+${amount.toFixed(4)} GSTD (${type}: ${description}) [verified]`, 'success');
     }
 
-    private earnUptime(): void {
-        const reward = 0.1; // 0.1 GSTD per hour of uptime
-        this.addEarning(reward, 'uptime', '1 hour uptime reward');
+    /**
+     * Send heartbeat to backend — backend decides reward based on
+     * uptime, node status, and available reward pool.
+     * Node does NOT self-award tokens.
+     */
+    private async sendHeartbeat(): Promise<void> {
+        if (!this.wallet) return;
+        try {
+            const resp = await fetch(
+                `${this.config.swarm.apiUrl}/api/v1/nodes/heartbeat`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        wallet_address: this.wallet.address,
+                        node_version: '3.3.0',
+                        uptime_hours: Math.floor(process.uptime() / 3600),
+                        queries_served: this.queriesServedSinceLastHeartbeat,
+                    }),
+                    signal: AbortSignal.timeout(10000),
+                }
+            ).catch(() => null);
+            if (resp?.ok) {
+                const data: any = await resp.json();
+                if (data.reward && data.reward > 0) {
+                    this.recordVerifiedEarning(data.reward, 'uptime', `Backend-verified reward (${data.reason || 'heartbeat'})`);
+                }
+                this.queriesServedSinceLastHeartbeat = 0;
+                logActivity(`Heartbeat sent, reward: ${data.reward || 0} GSTD`, 'info');
+            }
+        } catch { }
+    }
+
+    // Track queries served for heartbeat reporting
+    private queriesServedSinceLastHeartbeat = 0;
+    recordQueryServed(): void {
+        this.queriesServedSinceLastHeartbeat++;
     }
 
     // ─── Wallet CRUD ─────────────────────────────────────────────
@@ -208,9 +243,6 @@ export class NodeWallet {
         try {
             writeFileSync(this.earningsFile, JSON.stringify(this.earnings, null, 2));
         } catch { }
-
-        // Sync pending earnings to backend
-        this.syncEarningsToBackend().catch(() => {});
     }
 
     /**

@@ -20,10 +20,8 @@ import { AppManager, type AppManifest, type InstalledApp } from '../apps/manager
 import { NodeWallet } from '../wallet/manager.js';
 import { execSync } from 'child_process';
 
-// ─── Reward config ───────────────────────────────────────────────
-const REWARD_PER_QUERY = 0.001;        // GSTD per AI query served
-const REWARD_PER_SMARTMIX = 0.003;     // GSTD per multi-model query  
-const REWARD_PER_CACHE_HIT = 0.0005;   // GSTD per cache hit
+// Rewards are calculated server-side via /api/v1/nodes/heartbeat
+// Node does NOT self-award tokens
 
 export interface GatewayConfig {
     port: number;
@@ -2351,22 +2349,21 @@ export class OmegaGateway {
             case 'cache':
                 this.metrics.cacheHits++;
                 if (this.wallet) {
-                    this.wallet.addEarning(REWARD_PER_CACHE_HIT, 'inference', `Cache hit: ${result.model}`);
+                    this.wallet.recordQueryServed();
                 }
                 break;
             case 'swarm':
             case 'groq':
                 this.metrics.swarmRequests++;
                 if (this.wallet) {
-                    const reward = result.model?.includes('smartmix') ? REWARD_PER_SMARTMIX : REWARD_PER_QUERY;
-                    this.wallet.addEarning(reward, 'inference', `Query: ${result.model} (${result.latencyMs}ms)`);
+                    this.wallet.recordQueryServed();
                 }
                 break;
             case 'fallback':
             case 'commercial':
                 this.metrics.commercialRequests++;
                 if (this.wallet) {
-                    this.wallet.addEarning(REWARD_PER_QUERY, 'inference', `Fallback query: ${result.model}`);
+                    this.wallet.recordQueryServed();
                 }
                 break;
         }

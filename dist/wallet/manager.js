@@ -57,11 +57,13 @@ class NodeWallet {
                 this.earnings = [];
             }
         }
-        // Fetch balance from platform
+        // Fetch real balance from platform
         await this.refreshBalance();
-        // Start uptime earnings timer (every hour)
-        setInterval(() => this.earnUptime(), 60 * 60 * 1000);
-        // Save earnings periodically
+        // Heartbeat to backend every hour — backend calculates reward
+        setInterval(() => this.sendHeartbeat(), 60 * 60 * 1000);
+        // Refresh balance from platform every 5 minutes
+        setInterval(() => this.refreshBalance(), 5 * 60 * 1000);
+        // Save earnings log periodically
         setInterval(() => this.saveEarnings(), 5 * 60 * 1000);
     }
     getAddress() {
@@ -94,13 +96,13 @@ class NodeWallet {
             earningsHistory: this.earnings.slice(0, 50), // Last 50
             staking: {
                 staked: 0,
-                apy: 12,
+                apy: 0,
                 rewardsPending: 0,
             },
         };
     }
-    // ─── Earn GSTD ──────────────────────────────────────────────
-    addEarning(amount, type, description, taskId) {
+    // ─── Record verified earning (only called after backend confirms) ──
+    recordVerifiedEarning(amount, type, description, taskId) {
         const entry = {
             timestamp: new Date().toISOString(),
             amount,
@@ -113,13 +115,43 @@ class NodeWallet {
             this.earnings.length = 1000;
         this.localBalance.totalEarned += amount;
         this.localBalance.gstd += amount;
-        this.localBalance.pending += amount;
-        this.unsyncedAmount += amount;
-        (0, server_js_1.logActivity)(`+${amount.toFixed(4)} GSTD (${type}: ${description})`, 'success');
+        (0, server_js_1.logActivity)(`+${amount.toFixed(4)} GSTD (${type}: ${description}) [verified]`, 'success');
     }
-    earnUptime() {
-        const reward = 0.1; // 0.1 GSTD per hour of uptime
-        this.addEarning(reward, 'uptime', '1 hour uptime reward');
+    /**
+     * Send heartbeat to backend — backend decides reward based on
+     * uptime, node status, and available reward pool.
+     * Node does NOT self-award tokens.
+     */
+    async sendHeartbeat() {
+        if (!this.wallet)
+            return;
+        try {
+            const resp = await fetch(`${this.config.swarm.apiUrl}/api/v1/nodes/heartbeat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    wallet_address: this.wallet.address,
+                    node_version: '3.3.0',
+                    uptime_hours: Math.floor(process.uptime() / 3600),
+                    queries_served: this.queriesServedSinceLastHeartbeat,
+                }),
+                signal: AbortSignal.timeout(10000),
+            }).catch(() => null);
+            if (resp?.ok) {
+                const data = await resp.json();
+                if (data.reward && data.reward > 0) {
+                    this.recordVerifiedEarning(data.reward, 'uptime', `Backend-verified reward (${data.reason || 'heartbeat'})`);
+                }
+                this.queriesServedSinceLastHeartbeat = 0;
+                (0, server_js_1.logActivity)(`Heartbeat sent, reward: ${data.reward || 0} GSTD`, 'info');
+            }
+        }
+        catch { }
+    }
+    // Track queries served for heartbeat reporting
+    queriesServedSinceLastHeartbeat = 0;
+    recordQueryServed() {
+        this.queriesServedSinceLastHeartbeat++;
     }
     // ─── Wallet CRUD ─────────────────────────────────────────────
     createWallet() {
@@ -150,8 +182,6 @@ class NodeWallet {
             (0, fs_1.writeFileSync)(this.earningsFile, JSON.stringify(this.earnings, null, 2));
         }
         catch { }
-        // Sync pending earnings to backend
-        this.syncEarningsToBackend().catch(() => { });
     }
     /**
      * Sync accumulated local earnings to the backend so they appear in

@@ -55,8 +55,15 @@ export declare class NodeWallet {
     getAddress(): string | null;
     getBalance(): WalletBalance;
     getStats(): WalletStats;
-    addEarning(amount: number, type: EarningEntry['type'], description: string, taskId?: string): void;
-    private earnUptime;
+    recordVerifiedEarning(amount: number, type: EarningEntry['type'], description: string, taskId?: string): void;
+    /**
+     * Send heartbeat to backend — backend decides reward based on
+     * uptime, node status, and available reward pool.
+     * Node does NOT self-award tokens.
+     */
+    private sendHeartbeat;
+    private queriesServedSinceLastHeartbeat;
+    recordQueryServed(): void;
     private createWallet;
     private refreshBalance;
     saveEarnings(): void;
