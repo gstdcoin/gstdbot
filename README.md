@@ -17,7 +17,7 @@ curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
 
 ```
 Your Hardware
-├── 📊 Dashboard (localhost:8080) — full node control panel with wallet/PIN auth
+├── 📊 Dashboard (localhost:8091) — full node control panel with wallet/PIN auth
 ├── 🤖 AI Engine — 8 Groq models + local Ollama + OpenClaw gateway
 ├── 🌐 Swarm Agent — P2P task processing → earn GSTD
 ├── 🧠 Collective Memory — Redis + ChromaDB, shared knowledge across nodes
@@ -99,7 +99,7 @@ npx tsc
 node dist/index.js
 ```
 
-After starting, open **http://localhost:8080** for the control panel.
+After starting, open **http://localhost:8091** for the control panel.
 
 ## 📦 App Store (77 apps, 11 ⭐ Premium)
 
@@ -161,14 +161,89 @@ When a node answers with high confidence → cached and shared with all nodes.
 
 Link your Telegram → manage node remotely:
 
-| Command      | Action                    |
-| ------------ | ------------------------- |
-| `/status`    | Node uptime, RAM, version |
-| `/restart`   | Restart node              |
-| `/update`    | Pull + build + restart    |
-| `/apps`      | List installed apps       |
-| `/earnings`  | GSTD earned               |
-| `/pin_reset` | 2FA PIN reset             |
+| Command   | Action               |
+| --------- | -------------------- |
+| `/start`  | Start bot, main menu |
+| `/new`    | New conversation     |
+| `/model`  | Switch AI model      |
+| `/status` | Session status       |
+| `/help`   | Help & commands      |
+
+Additional features: 💳 Balance, 💰 Top Up (Telegram Stars), 🔗 Link Wallet, 🧠 Smart Mix, 👥 Community Guardian.
+
+## 🔌 API Reference
+
+All endpoints available at `http://localhost:8091`
+
+### AI Chat
+
+| Method | Endpoint               | Description                  |
+| ------ | ---------------------- | ---------------------------- |
+| POST   | `/api/v1/chat`         | AI chat (auto model routing) |
+| POST   | `/v1/chat/completions` | OpenAI-compatible endpoint   |
+| GET    | `/v1/models`           | Available models list        |
+| POST   | `/v1/dashboard/chat`   | Quick dashboard AI chat      |
+| GET    | `/api/chat/history`    | Chat interaction log         |
+
+### Collective Memory
+
+| Method | Endpoint             | Description            |
+| ------ | -------------------- | ---------------------- |
+| POST   | `/api/memory/store`  | Store key/value + tags |
+| POST   | `/api/memory/recall` | Semantic recall        |
+| GET    | `/api/memory/stats`  | Memory module status   |
+
+### AI Training
+
+| Method | Endpoint               | Description            |
+| ------ | ---------------------- | ---------------------- |
+| GET    | `/api/training/status` | Training module status |
+| GET    | `/api/training/jobs`   | Active jobs list       |
+| POST   | `/api/training/start`  | Start training job     |
+
+### Resource Sharing
+
+| Method | Endpoint                   | Description                     |
+| ------ | -------------------------- | ------------------------------- |
+| GET    | `/api/resources/status`    | Module status + meter + pricing |
+| GET    | `/api/resources/available` | CPU, RAM, GPU, models           |
+| GET    | `/api/resources/meter`     | Usage metering                  |
+| GET    | `/api/resources/pricing`   | GSTD pricing per unit           |
+| POST   | `/api/resources/request`   | Submit resource request         |
+
+### App Store
+
+| Method | Endpoint              | Description     |
+| ------ | --------------------- | --------------- |
+| GET    | `/api/apps/available` | 77 apps catalog |
+| GET    | `/api/apps/status`    | Installed apps  |
+| POST   | `/api/apps/install`   | Install app     |
+
+### Node Control
+
+| Method | Endpoint             | Description                |
+| ------ | -------------------- | -------------------------- |
+| GET    | `/api/node/status`   | Full node status           |
+| GET    | `/api/node/log`      | Activity log               |
+| GET    | `/api/node/settings` | Current settings           |
+| GET    | `/api/node/config`   | Node configuration         |
+| POST   | `/api/node/control`  | Actions: diag, gc, restart |
+| GET    | `/api/check-update`  | Check for updates          |
+
+### Remote Access
+
+| Method | Endpoint             | Description                  |
+| ------ | -------------------- | ---------------------------- |
+| GET    | `/api/remote/status` | Relay, Tor, WireGuard status |
+| GET    | `/api/remote/info`   | Access methods               |
+
+### Security & Swarm
+
+| Method | Endpoint                  | Description         |
+| ------ | ------------------------- | ------------------- |
+| GET    | `/api/security/status`    | Security audit log  |
+| GET    | `/v1/swarm/status`        | Swarm connectivity  |
+| GET    | `/api/swarm/orchestrator` | Orchestrator status |
 
 ## 🔁 Reinstall / Reset
 
@@ -180,13 +255,27 @@ bash reinstall.sh
 bash reinstall.sh --reset
 ```
 
+## 📋 Changelog
+
+### v3.3.0 (March 2026)
+
+- ✅ Resource Sharing API (5 endpoints)
+- ✅ Collective Memory API (store/recall/stats)
+- ✅ AI Training API (status/jobs/start)
+- ✅ Dashboard chat + chat history
+- ✅ Remote access status/info endpoints
+- ✅ Node settings/config endpoints
+- ✅ App Store status endpoint
+- ✅ Graceful shutdown (SIGTERM handler)
+- ✅ 8 AI models (llama-3.3-70b, llama-4-scout/maverick, qwen3-32b, gpt-oss-120b/20b, kimi-k2)
+- ✅ Full security audit: SSL, auth, injection protection
+
 ## 📡 Links
 
 - 🌐 **Landing**: [gstdbot.gstdtoken.com](https://gstdbot.gstdtoken.com)
 - 🤖 **Telegram**: [@GstdAppBot](https://t.me/GstdAppBot)
 - 💬 **Web Chat**: [chat.gstdtoken.com](https://chat.gstdtoken.com)
-- 📊 **Monitor**: [monitor.gstdtoken.com](https://monitor.gstdtoken.com)
-- 🏠 **Dashboard**: [app.gstdtoken.com](https://app.gstdtoken.com)
+- 📊 **Dashboard**: [app.gstdtoken.com](https://app.gstdtoken.com)
 - ⭐ **GitHub**: [github.com/gstdcoin](https://github.com/gstdcoin)
 - 💎 **Tonkeeper**: [tonkeeper.com](https://tonkeeper.com)
 - 🔄 **Ston.fi**: [ston.fi](https://ston.fi)
