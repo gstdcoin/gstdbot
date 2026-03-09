@@ -165,6 +165,7 @@ export class NodeWallet {
         this.localBalance.totalEarned += amount;
         this.localBalance.gstd += amount;
         this.localBalance.pending += amount;
+        this.unsyncedAmount += amount;
 
         logActivity(`+${amount.toFixed(4)} GSTD (${type}: ${description})`, 'success');
     }
@@ -207,7 +208,69 @@ export class NodeWallet {
         try {
             writeFileSync(this.earningsFile, JSON.stringify(this.earnings, null, 2));
         } catch { }
+
+        // Sync pending earnings to backend
+        this.syncEarningsToBackend().catch(() => {});
     }
+
+    /**
+     * Sync accumulated local earnings to the backend so they appear in
+     * the user's pending_balance_gstd and can be withdrawn.
+     */
+    private unsyncedAmount = 0;
+    async syncEarningsToBackend(): Promise<void> {
+        if (this.unsyncedAmount <= 0 || !this.wallet) return;
+        const amount = this.unsyncedAmount;
+        try {
+            const resp = await fetch(
+                `${this.config.swarm.apiUrl}/api/v1/nodes/sync-earnings`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        wallet_address: this.wallet.address,
+                        amount,
+                        earning_type: 'node_sync',
+                        description: `Node earnings sync (${amount.toFixed(4)} GSTD)`,
+                    }),
+                    signal: AbortSignal.timeout(10000),
+                }
+            ).catch(() => null);
+            if (resp?.ok) {
+                this.unsyncedAmount = 0;
+                logActivity(`Earnings synced to backend: ${amount.toFixed(4)} GSTD`, 'success');
+            }
+        } catch { }
+    }
+
+    /**
+     * Link an external wallet (e.g. Tonkeeper) for receiving rewards.
+     * This calls the backend to update the node's wallet_address so
+     * all future rewards go to the external wallet.
+     */
+    async linkExternal(externalAddress: string): Promise<boolean> {
+        if (!this.wallet) return false;
+        try {
+            const resp = await fetch(
+                `${this.config.swarm.apiUrl}/api/v1/wallet/link-external`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        node_address: this.wallet.address,
+                        external_address: externalAddress,
+                    }),
+                    signal: AbortSignal.timeout(10000),
+                }
+            ).catch(() => null);
+            if (resp?.ok) {
+                logActivity(`External wallet linked: ${externalAddress.slice(0, 12)}...`, 'success');
+                return true;
+            }
+        } catch { }
+        return false;
+    }
+
 }
 
 // ─── Legacy compatibility exports ────────────────────────────────

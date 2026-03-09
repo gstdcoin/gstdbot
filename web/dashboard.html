@@ -593,9 +593,27 @@
         }
       }
       /* ─── App Store ─── */
-      .app-filter { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-family: 'Inter',sans-serif; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
-      .app-filter:hover { border-color: rgba(139,92,246,0.3); color: white; }
-      .app-filter.active { background: rgba(139,92,246,0.15); border-color: rgba(139,92,246,0.4); color: var(--accent); }
+      .app-filter {
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--muted);
+        font-family: "Inter", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .app-filter:hover {
+        border-color: rgba(139, 92, 246, 0.3);
+        color: white;
+      }
+      .app-filter.active {
+        background: rgba(139, 92, 246, 0.15);
+        border-color: rgba(139, 92, 246, 0.4);
+        color: var(--accent);
+      }
       .app-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -748,32 +766,148 @@
   </head>
   <body>
     <!-- PIN Lock Screen -->
-    <div id="pin-screen" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0a0a0f 0%,#0f1520 100%);display:flex;align-items:center;justify-content:center;">
-      <div style="text-align:center;max-width:380px;padding:40px;">
-        <img src="/static/logo.png" alt="GSTD" style="width:80px;height:80px;border-radius:20px;margin-bottom:16px;box-shadow:0 0 40px rgba(255,215,0,0.3);">
-        <h2 style="color:white;margin:0 0 4px;font-size:22px;font-weight:800;">GSTD Node OS</h2>
-        <p id="pin-subtitle" style="color:#888;margin:0 0 28px;font-size:13px;">Enter your PIN to access the dashboard</p>
-        <input id="pin-input" type="password" maxlength="8" placeholder="••••••" 
-          style="width:220px;padding:14px 16px;font-size:24px;text-align:center;letter-spacing:10px;border-radius:12px;border:1px solid rgba(255,215,0,0.2);background:rgba(255,255,255,0.04);color:white;outline:none;font-family:monospace;transition:border 0.3s;"
-          onfocus="this.style.borderColor='rgba(255,215,0,0.5)'" onblur="this.style.borderColor='rgba(255,215,0,0.2)'"
-          onkeyup="if(event.key==='Enter')submitPIN()">
-        <div id="pin-confirm-row" style="display:none;margin-top:12px;">
-          <input id="pin-confirm" type="password" maxlength="8" placeholder="Confirm PIN" 
-            style="width:220px;padding:14px 16px;font-size:24px;text-align:center;letter-spacing:10px;border-radius:12px;border:1px solid rgba(139,92,246,0.2);background:rgba(255,255,255,0.04);color:white;outline:none;font-family:monospace;"
-            onkeyup="if(event.key==='Enter')submitPIN()">
+    <div
+      id="pin-screen"
+      style="
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: linear-gradient(135deg, #0a0a0f 0%, #0f1520 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <div style="text-align: center; max-width: 380px; padding: 40px">
+        <img
+          src="/static/logo.png"
+          alt="GSTD"
+          style="
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
+          "
+        />
+        <h2
+          style="
+            color: white;
+            margin: 0 0 4px;
+            font-size: 22px;
+            font-weight: 800;
+          "
+        >
+          GSTD Node OS
+        </h2>
+        <p
+          id="pin-subtitle"
+          style="color: #888; margin: 0 0 28px; font-size: 13px"
+        >
+          Enter your PIN to access the dashboard
+        </p>
+        <input
+          id="pin-input"
+          type="password"
+          maxlength="8"
+          placeholder="••••••"
+          style="
+            width: 220px;
+            padding: 14px 16px;
+            font-size: 24px;
+            text-align: center;
+            letter-spacing: 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            background: rgba(255, 255, 255, 0.04);
+            color: white;
+            outline: none;
+            font-family: monospace;
+            transition: border 0.3s;
+          "
+          onfocus="this.style.borderColor = 'rgba(255,215,0,0.5)'"
+          onblur="this.style.borderColor = 'rgba(255,215,0,0.2)'"
+          onkeyup="if (event.key === 'Enter') submitPIN();"
+        />
+        <div id="pin-confirm-row" style="display: none; margin-top: 12px">
+          <input
+            id="pin-confirm"
+            type="password"
+            maxlength="8"
+            placeholder="Confirm PIN"
+            style="
+              width: 220px;
+              padding: 14px 16px;
+              font-size: 24px;
+              text-align: center;
+              letter-spacing: 10px;
+              border-radius: 12px;
+              border: 1px solid rgba(139, 92, 246, 0.2);
+              background: rgba(255, 255, 255, 0.04);
+              color: white;
+              outline: none;
+              font-family: monospace;
+            "
+            onkeyup="if (event.key === 'Enter') submitPIN();"
+          />
         </div>
-        <br>
-        <button id="pin-btn" onclick="submitPIN()" style="margin-top:16px;padding:12px 40px;border-radius:10px;border:none;background:linear-gradient(135deg,#FFD700,#FFB300);color:#0a0a0f;font-weight:800;cursor:pointer;font-size:14px;letter-spacing:0.5px;transition:transform 0.15s,box-shadow 0.3s;box-shadow:0 4px 20px rgba(255,215,0,0.3);"
-          onmousedown="this.style.transform='scale(0.97)'" onmouseup="this.style.transform='scale(1)'">Unlock</button>
-        <div id="pin-error" style="color:#f43f5e;font-size:12px;margin-top:14px;display:none;"></div>
-        <div style="margin-top:32px;color:#444;font-size:11px;">100% private · your data stays on your node</div>
+        <br />
+        <button
+          id="pin-btn"
+          onclick="submitPIN()"
+          style="
+            margin-top: 16px;
+            padding: 12px 40px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, #ffd700, #ffb300);
+            color: #0a0a0f;
+            font-weight: 800;
+            cursor: pointer;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            transition:
+              transform 0.15s,
+              box-shadow 0.3s;
+            box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
+          "
+          onmousedown="this.style.transform = 'scale(0.97)'"
+          onmouseup="this.style.transform = 'scale(1)'"
+        >
+          Unlock
+        </button>
+        <div
+          id="pin-error"
+          style="
+            color: #f43f5e;
+            font-size: 12px;
+            margin-top: 14px;
+            display: none;
+          "
+        ></div>
+        <div style="margin-top: 32px; color: #444; font-size: 11px">
+          100% private · your data stays on your node
+        </div>
       </div>
     </div>
 
     <!-- Sidebar Navigation -->
     <div class="sidebar">
       <div class="sidebar-brand">
-        <h1><img src="/static/logo.png" alt="" style="width:28px;height:28px;border-radius:6px;vertical-align:middle;margin-right:6px;"> <span>GSTD Node OS</span> <span class="ver">v3.3</span></h1>
+        <h1>
+          <img
+            src="/static/logo.png"
+            alt=""
+            style="
+              width: 28px;
+              height: 28px;
+              border-radius: 6px;
+              vertical-align: middle;
+              margin-right: 6px;
+            "
+          />
+          <span>GSTD Node OS</span> <span class="ver">v3.3</span>
+        </h1>
         <div class="status-line" id="sb-status">Connecting...</div>
       </div>
       <nav class="sidebar-nav">
@@ -829,7 +963,47 @@
         </div>
       </nav>
       <div class="sidebar-footer">
-        <button id="update-btn" onclick="runUpdate()" style="display:none;width:100%;padding:8px 12px;margin-bottom:8px;border-radius:8px;border:1px solid rgba(34,197,94,0.3);background:rgba(34,197,94,0.1);color:#22c55e;font-weight:700;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;">🔄 Check for Updates</button>
+        <button
+          id="update-btn"
+          onclick="runUpdate()"
+          style="
+            display: none;
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+            font-weight: 700;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: &quot;Inter&quot;, sans-serif;
+          "
+        >
+          🔄 Check for Updates
+        </button>
+        <button
+          onclick="doLogout()"
+          style="
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(244, 63, 94, 0.25);
+            background: rgba(244, 63, 94, 0.08);
+            color: #f43f5e;
+            font-weight: 700;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: &quot;Inter&quot;, sans-serif;
+            transition: all 0.2s;
+          "
+          onmouseenter="this.style.background = 'rgba(244,63,94,0.15)'"
+          onmouseleave="this.style.background = 'rgba(244,63,94,0.08)'"
+        >
+          🚪 Exit
+        </button>
         GSTD Node OS · Apache 2.0<br />
         <a href="https://github.com/gstdcoin/gstdbot" style="color: inherit"
           >GitHub</a
@@ -1755,87 +1929,356 @@
         <div class="grid-2">
           <div class="card">
             <div class="card-label">⚙️ Node Configuration</div>
-            <div class="info-row"><span class="k">Node ID</span><span class="v" id="set-id">—</span></div>
-            <div class="info-row"><span class="k">Node Name</span><span class="v" id="set-name">—</span></div>
-            <div class="info-row"><span class="k">Mode</span><span class="v" id="set-mode">—</span></div>
-            <div class="info-row"><span class="k">Dashboard Port</span><span class="v" id="set-port">8080</span></div>
-            <div class="info-row"><span class="k">Swarm</span><span class="v" id="set-swarm">—</span></div>
-            <div class="info-row"><span class="k">Memory</span><span class="v" id="set-memory">—</span></div>
+            <div class="info-row">
+              <span class="k">Node ID</span><span class="v" id="set-id">—</span>
+            </div>
+            <div class="info-row">
+              <span class="k">Node Name</span
+              ><span class="v" id="set-name">—</span>
+            </div>
+            <div class="info-row">
+              <span class="k">Mode</span><span class="v" id="set-mode">—</span>
+            </div>
+            <div class="info-row">
+              <span class="k">Dashboard Port</span
+              ><span class="v" id="set-port">8080</span>
+            </div>
+            <div class="info-row">
+              <span class="k">Swarm</span
+              ><span class="v" id="set-swarm">—</span>
+            </div>
+            <div class="info-row">
+              <span class="k">Memory</span
+              ><span class="v" id="set-memory">—</span>
+            </div>
           </div>
           <div class="card">
             <div class="card-label">📦 System Info</div>
-            <div class="info-row"><span class="k">Version</span><span class="v" id="set-ver">—</span></div>
-            <div class="info-row"><span class="k">Node.js</span><span class="v" id="set-node">—</span></div>
-            <div class="info-row"><span class="k">OS</span><span class="v" id="set-os">—</span></div>
-            <div class="info-row"><span class="k">Architecture</span><span class="v" id="set-arch">—</span></div>
+            <div class="info-row">
+              <span class="k">Version</span
+              ><span class="v" id="set-ver">—</span>
+            </div>
+            <div class="info-row">
+              <span class="k">Node.js</span
+              ><span class="v" id="set-node">—</span>
+            </div>
+            <div class="info-row">
+              <span class="k">OS</span><span class="v" id="set-os">—</span>
+            </div>
+            <div class="info-row">
+              <span class="k">Architecture</span
+              ><span class="v" id="set-arch">—</span>
+            </div>
           </div>
         </div>
 
         <!-- Telegram Linking -->
-        <div class="grid-2" style="margin-top:16px;">
+        <div class="grid-2" style="margin-top: 16px">
           <div class="card">
             <div class="card-label">✈️ Telegram Management</div>
-            <p style="color:var(--muted);font-size:12px;margin:0 0 12px;">Link your Telegram account to manage this node remotely. Commands: /status, /restart, /update, /apps, /earnings, /pin_reset</p>
-            <div id="tg-link-status" style="margin-bottom:12px;"></div>
-            <div style="display:flex;gap:8px;">
-              <input id="tg-chat-id" type="text" placeholder="Telegram Chat ID" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #333;background:#15151e;color:white;font-size:12px;">
-              <input id="tg-username" type="text" placeholder="@username" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #333;background:#15151e;color:white;font-size:12px;">
+            <p style="color: var(--muted); font-size: 12px; margin: 0 0 12px">
+              Link your Telegram account to manage this node remotely. Commands:
+              /status, /restart, /update, /apps, /earnings, /pin_reset
+            </p>
+            <div id="tg-link-status" style="margin-bottom: 12px"></div>
+            <div style="display: flex; gap: 8px">
+              <input
+                id="tg-chat-id"
+                type="text"
+                placeholder="Telegram Chat ID"
+                style="
+                  flex: 1;
+                  padding: 8px 12px;
+                  border-radius: 8px;
+                  border: 1px solid #333;
+                  background: #15151e;
+                  color: white;
+                  font-size: 12px;
+                "
+              />
+              <input
+                id="tg-username"
+                type="text"
+                placeholder="@username"
+                style="
+                  flex: 1;
+                  padding: 8px 12px;
+                  border-radius: 8px;
+                  border: 1px solid #333;
+                  background: #15151e;
+                  color: white;
+                  font-size: 12px;
+                "
+              />
             </div>
-            <button onclick="linkTelegram()" style="margin-top:10px;padding:8px 16px;border-radius:8px;border:1px solid rgba(0,136,204,0.3);background:rgba(0,136,204,0.1);color:#0088cc;font-weight:700;font-size:12px;cursor:pointer;">🔗 Link Telegram</button>
+            <button
+              onclick="linkTelegram()"
+              style="
+                margin-top: 10px;
+                padding: 8px 16px;
+                border-radius: 8px;
+                border: 1px solid rgba(0, 136, 204, 0.3);
+                background: rgba(0, 136, 204, 0.1);
+                color: #0088cc;
+                font-weight: 700;
+                font-size: 12px;
+                cursor: pointer;
+              "
+            >
+              🔗 Link Telegram
+            </button>
           </div>
 
           <!-- PIN Reset via 2FA -->
           <div class="card">
             <div class="card-label">🔐 Reset PIN (2FA)</div>
-            <p style="color:var(--muted);font-size:12px;margin:0 0 12px;">Reset your dashboard PIN via linked Telegram. A 6-digit confirmation code will be sent to your Telegram.</p>
-            <div id="pin-reset-status" style="margin-bottom:8px;"></div>
-            <button id="btn-request-reset" onclick="requestPinReset()" style="padding:8px 16px;border-radius:8px;border:1px solid rgba(244,63,94,0.3);background:rgba(244,63,94,0.1);color:#f43f5e;font-weight:700;font-size:12px;cursor:pointer;">📩 Send Reset Code</button>
-            <div id="pin-reset-form" style="display:none;margin-top:12px;">
-              <div style="display:flex;gap:8px;margin-bottom:8px;">
-                <input id="reset-code" type="text" maxlength="6" placeholder="Code from Telegram" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #333;background:#15151e;color:white;font-size:12px;font-family:monospace;letter-spacing:4px;">
-                <input id="reset-new-pin" type="password" maxlength="8" placeholder="New PIN" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #333;background:#15151e;color:white;font-size:12px;">
+            <p style="color: var(--muted); font-size: 12px; margin: 0 0 12px">
+              Reset your dashboard PIN via linked Telegram. A 6-digit
+              confirmation code will be sent to your Telegram.
+            </p>
+            <div id="pin-reset-status" style="margin-bottom: 8px"></div>
+            <button
+              id="btn-request-reset"
+              onclick="requestPinReset()"
+              style="
+                padding: 8px 16px;
+                border-radius: 8px;
+                border: 1px solid rgba(244, 63, 94, 0.3);
+                background: rgba(244, 63, 94, 0.1);
+                color: #f43f5e;
+                font-weight: 700;
+                font-size: 12px;
+                cursor: pointer;
+              "
+            >
+              📩 Send Reset Code
+            </button>
+            <div id="pin-reset-form" style="display: none; margin-top: 12px">
+              <div style="display: flex; gap: 8px; margin-bottom: 8px">
+                <input
+                  id="reset-code"
+                  type="text"
+                  maxlength="6"
+                  placeholder="Code from Telegram"
+                  style="
+                    flex: 1;
+                    padding: 8px 12px;
+                    border-radius: 8px;
+                    border: 1px solid #333;
+                    background: #15151e;
+                    color: white;
+                    font-size: 12px;
+                    font-family: monospace;
+                    letter-spacing: 4px;
+                  "
+                />
+                <input
+                  id="reset-new-pin"
+                  type="password"
+                  maxlength="8"
+                  placeholder="New PIN"
+                  style="
+                    flex: 1;
+                    padding: 8px 12px;
+                    border-radius: 8px;
+                    border: 1px solid #333;
+                    background: #15151e;
+                    color: white;
+                    font-size: 12px;
+                  "
+                />
               </div>
-              <button onclick="confirmPinReset()" style="padding:8px 16px;border-radius:8px;border:none;background:linear-gradient(135deg,#FFD700,#FFB300);color:#0a0a0f;font-weight:800;font-size:12px;cursor:pointer;">✅ Confirm Reset</button>
+              <button
+                onclick="confirmPinReset()"
+                style="
+                  padding: 8px 16px;
+                  border-radius: 8px;
+                  border: none;
+                  background: linear-gradient(135deg, #ffd700, #ffb300);
+                  color: #0a0a0f;
+                  font-weight: 800;
+                  font-size: 12px;
+                  cursor: pointer;
+                "
+              >
+                ✅ Confirm Reset
+              </button>
             </div>
           </div>
         </div>
 
         <!-- Component Updates -->
-        <div class="card" style="margin-top:16px;">
+        <div class="card" style="margin-top: 16px">
           <div class="card-label">🔄 Component Updates</div>
-          <p style="color:var(--muted);font-size:12px;margin:0 0 12px;">Update individual components or everything at once. Data is always preserved.</p>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button onclick="updateComponent('core')" class="app-btn" style="background:rgba(139,92,246,0.1);color:#a78bfa;border-color:rgba(139,92,246,0.2);">🧠 Core Engine</button>
-            <button onclick="updateComponent('dashboard')" class="app-btn" style="background:rgba(6,182,212,0.1);color:#06b6d4;border-color:rgba(6,182,212,0.2);">📺 Dashboard</button>
-            <button onclick="updateComponent('apps')" class="app-btn" style="background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.2);">📦 App Registry</button>
-            <button onclick="updateComponent('all')" class="app-btn" style="background:rgba(255,215,0,0.15);color:#FFD700;border-color:rgba(255,215,0,0.3);font-weight:800;">⚡ Update All</button>
+          <p style="color: var(--muted); font-size: 12px; margin: 0 0 12px">
+            Update individual components or everything at once. Data is always
+            preserved.
+          </p>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap">
+            <button
+              onclick="updateComponent('core')"
+              class="app-btn"
+              style="
+                background: rgba(139, 92, 246, 0.1);
+                color: #a78bfa;
+                border-color: rgba(139, 92, 246, 0.2);
+              "
+            >
+              🧠 Core Engine
+            </button>
+            <button
+              onclick="updateComponent('dashboard')"
+              class="app-btn"
+              style="
+                background: rgba(6, 182, 212, 0.1);
+                color: #06b6d4;
+                border-color: rgba(6, 182, 212, 0.2);
+              "
+            >
+              📺 Dashboard
+            </button>
+            <button
+              onclick="updateComponent('apps')"
+              class="app-btn"
+              style="
+                background: rgba(34, 197, 94, 0.1);
+                color: #22c55e;
+                border-color: rgba(34, 197, 94, 0.2);
+              "
+            >
+              📦 App Registry
+            </button>
+            <button
+              onclick="updateComponent('all')"
+              class="app-btn"
+              style="
+                background: rgba(255, 215, 0, 0.15);
+                color: #ffd700;
+                border-color: rgba(255, 215, 0, 0.3);
+                font-weight: 800;
+              "
+            >
+              ⚡ Update All
+            </button>
           </div>
-          <div id="update-log" style="margin-top:8px;font-size:11px;color:var(--muted);"></div>
+          <div
+            id="update-log"
+            style="margin-top: 8px; font-size: 11px; color: var(--muted)"
+          ></div>
         </div>
       </div>
 
       <!-- ═══ PAGE: App Store ═══ -->
       <div class="page" id="page-appstore">
-        <div style="margin-bottom:20px;">
-          <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;">
-            80+ apps powered by your AI node. Browsers, social media, AI models, DeFi wallets, TON services — all running locally. Install any app, it earns GSTD and connects to the swarm.
+        <div style="margin-bottom: 20px">
+          <div
+            style="
+              font-size: 13px;
+              color: var(--muted);
+              line-height: 1.6;
+              margin-bottom: 16px;
+            "
+          >
+            80+ apps powered by your AI node. Browsers, social media, AI models,
+            DeFi wallets, TON services — all running locally. Install any app,
+            it earns GSTD and connects to the swarm.
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;" id="app-filters">
-            <button class="app-filter active" onclick="filterApps('all')" data-cat="all" id="app-filter-all">All</button>
-            <button class="app-filter" onclick="filterApps('ai')" data-cat="ai">🤖 AI</button>
-            <button class="app-filter" onclick="filterApps('web')" data-cat="web">🌐 Web</button>
-            <button class="app-filter" onclick="filterApps('defi')" data-cat="defi">💎 DeFi</button>
-            <button class="app-filter" onclick="filterApps('tools')" data-cat="tools">🛠️ Tools</button>
-            <button class="app-filter" onclick="filterApps('media')" data-cat="media">🎬 Media</button>
-            <button class="app-filter" onclick="filterApps('cloud')" data-cat="cloud">☁️ Cloud</button>
-            <button class="app-filter" onclick="filterApps('communication')" data-cat="communication">💬 Social</button>
-            <button class="app-filter" onclick="filterApps('network')" data-cat="network">🌐 Network</button>
-            <button class="app-filter" onclick="filterApps('security')" data-cat="security">🛡️ Security</button>
-            <button class="app-filter" onclick="filterApps('system')" data-cat="system">⚙️ System</button>
+          <div
+            style="
+              display: flex;
+              gap: 8px;
+              flex-wrap: wrap;
+              margin-bottom: 16px;
+            "
+            id="app-filters"
+          >
+            <button
+              class="app-filter active"
+              onclick="filterApps('all')"
+              data-cat="all"
+              id="app-filter-all"
+            >
+              All
+            </button>
+            <button class="app-filter" onclick="filterApps('ai')" data-cat="ai">
+              🤖 AI
+            </button>
+            <button
+              class="app-filter"
+              onclick="filterApps('web')"
+              data-cat="web"
+            >
+              🌐 Web
+            </button>
+            <button
+              class="app-filter"
+              onclick="filterApps('defi')"
+              data-cat="defi"
+            >
+              💎 DeFi
+            </button>
+            <button
+              class="app-filter"
+              onclick="filterApps('tools')"
+              data-cat="tools"
+            >
+              🛠️ Tools
+            </button>
+            <button
+              class="app-filter"
+              onclick="filterApps('media')"
+              data-cat="media"
+            >
+              🎬 Media
+            </button>
+            <button
+              class="app-filter"
+              onclick="filterApps('cloud')"
+              data-cat="cloud"
+            >
+              ☁️ Cloud
+            </button>
+            <button
+              class="app-filter"
+              onclick="filterApps('communication')"
+              data-cat="communication"
+            >
+              💬 Social
+            </button>
+            <button
+              class="app-filter"
+              onclick="filterApps('network')"
+              data-cat="network"
+            >
+              🌐 Network
+            </button>
+            <button
+              class="app-filter"
+              onclick="filterApps('security')"
+              data-cat="security"
+            >
+              🛡️ Security
+            </button>
+            <button
+              class="app-filter"
+              onclick="filterApps('system')"
+              data-cat="system"
+            >
+              ⚙️ System
+            </button>
           </div>
         </div>
         <div class="app-grid" id="app-grid">
-          <div style="color:var(--muted);font-size:12px;padding:40px;text-align:center;">Loading apps...</div>
+          <div
+            style="
+              color: var(--muted);
+              font-size: 12px;
+              padding: 40px;
+              text-align: center;
+            "
+          >
+            Loading apps...
+          </div>
         </div>
       </div>
     </div>
@@ -1844,125 +2287,152 @@
       const API = window.location.origin;
       let connected = false,
         lastData = null;
-      let authToken = localStorage.getItem('gstd_pin_token') || '';
+      let authToken = localStorage.getItem("gstd_pin_token") || "";
+
+      // ─── Logout ─────────────────────────────────────────────
+      async function doLogout() {
+        try {
+          await fetch(API + "/api/auth/logout", {
+            method: "POST",
+            headers: authToken ? { Authorization: "Bearer " + authToken } : {},
+          });
+        } catch {}
+        authToken = "";
+        localStorage.removeItem("gstd_pin_token");
+        document.getElementById("pin-screen").style.display = "flex";
+        document.getElementById("pin-input").value = "";
+        document.getElementById("pin-error").style.display = "none";
+      }
       let isSetupMode = false;
 
       // ─── PIN Authentication (create or verify) ─────────
       async function checkAuth() {
         try {
-          const r = await fetch(API + '/api/auth/check', {
-            headers: authToken ? { 'Authorization': 'Bearer ' + authToken } : {}
+          const r = await fetch(API + "/api/auth/check", {
+            headers: authToken ? { Authorization: "Bearer " + authToken } : {},
           });
           const d = await r.json();
           if (d.authenticated) {
-            document.getElementById('pin-screen').style.display = 'none';
+            document.getElementById("pin-screen").style.display = "none";
             return true;
           }
           if (d.needs_setup) {
             // First login — show Create PIN mode
             isSetupMode = true;
-            document.getElementById('pin-subtitle').textContent = 'Create a PIN to secure your dashboard';
-            document.getElementById('pin-btn').textContent = 'Create PIN';
-            document.getElementById('pin-confirm-row').style.display = 'block';
-            document.getElementById('pin-input').placeholder = 'New PIN';
+            document.getElementById("pin-subtitle").textContent =
+              "Create a PIN to secure your dashboard";
+            document.getElementById("pin-btn").textContent = "Create PIN";
+            document.getElementById("pin-confirm-row").style.display = "block";
+            document.getElementById("pin-input").placeholder = "New PIN";
           }
         } catch {}
-        document.getElementById('pin-screen').style.display = 'flex';
-        document.getElementById('pin-input').focus();
+        document.getElementById("pin-screen").style.display = "flex";
+        document.getElementById("pin-input").focus();
         return false;
       }
 
       async function submitPIN() {
-        const pin = document.getElementById('pin-input').value;
-        const errEl = document.getElementById('pin-error');
+        const pin = document.getElementById("pin-input").value;
+        const errEl = document.getElementById("pin-error");
 
         if (!pin || pin.length < 4) {
-          errEl.textContent = 'PIN must be at least 4 digits';
-          errEl.style.display = 'block';
+          errEl.textContent = "PIN must be at least 4 digits";
+          errEl.style.display = "block";
           return;
         }
 
         if (isSetupMode) {
           // Create PIN flow
-          const confirm = document.getElementById('pin-confirm').value;
+          const confirm = document.getElementById("pin-confirm").value;
           if (pin !== confirm) {
-            errEl.textContent = 'PINs do not match. Try again.';
-            errEl.style.display = 'block';
+            errEl.textContent = "PINs do not match. Try again.";
+            errEl.style.display = "block";
             return;
           }
           try {
-            const r = await fetch(API + '/api/auth/setup', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ pin })
+            const r = await fetch(API + "/api/auth/setup", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ pin }),
             });
             const d = await r.json();
             if (d.success) {
               authToken = d.token;
-              localStorage.setItem('gstd_pin_token', authToken);
-              document.getElementById('pin-screen').style.display = 'none';
-              refresh(); checkUpdate();
+              localStorage.setItem("gstd_pin_token", authToken);
+              document.getElementById("pin-screen").style.display = "none";
+              refresh();
+              checkUpdate();
             } else {
-              errEl.textContent = d.error || 'Setup failed';
-              errEl.style.display = 'block';
+              errEl.textContent = d.error || "Setup failed";
+              errEl.style.display = "block";
             }
-          } catch { errEl.textContent = 'Connection error'; errEl.style.display = 'block'; }
+          } catch {
+            errEl.textContent = "Connection error";
+            errEl.style.display = "block";
+          }
         } else {
           // Login flow
           try {
-            const r = await fetch(API + '/api/auth/login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ pin })
+            const r = await fetch(API + "/api/auth/login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ pin }),
             });
             const d = await r.json();
             if (d.success) {
               authToken = d.token;
-              localStorage.setItem('gstd_pin_token', authToken);
-              document.getElementById('pin-screen').style.display = 'none';
-              refresh(); checkUpdate();
+              localStorage.setItem("gstd_pin_token", authToken);
+              document.getElementById("pin-screen").style.display = "none";
+              refresh();
+              checkUpdate();
             } else {
-              errEl.textContent = 'Wrong PIN. Try again.';
-              errEl.style.display = 'block';
-              document.getElementById('pin-input').value = '';
-              document.getElementById('pin-input').focus();
+              errEl.textContent = "Wrong PIN. Try again.";
+              errEl.style.display = "block";
+              document.getElementById("pin-input").value = "";
+              document.getElementById("pin-input").focus();
             }
-          } catch { errEl.textContent = 'Connection error'; errEl.style.display = 'block'; }
+          } catch {
+            errEl.textContent = "Connection error";
+            errEl.style.display = "block";
+          }
         }
       }
 
       // ─── OTA Update ─────────────────────────────────────
       async function checkUpdate() {
         try {
-          const r = await fetch(API + '/api/check-update');
+          const r = await fetch(API + "/api/check-update");
           const d = await r.json();
-          const btn = document.getElementById('update-btn');
+          const btn = document.getElementById("update-btn");
           if (btn && d.update_available) {
-            btn.style.display = 'block';
+            btn.style.display = "block";
             btn.textContent = `🔄 Update (${d.commits_behind} new)`;
           }
         } catch {}
       }
 
       async function runUpdate() {
-        const btn = document.getElementById('update-btn');
+        const btn = document.getElementById("update-btn");
         if (!btn) return;
-        btn.textContent = '⏳ Updating...';
+        btn.textContent = "⏳ Updating...";
         btn.disabled = true;
         try {
-          const r = await fetch(API + '/api/update', { method: 'POST' });
+          const r = await fetch(API + "/api/update", { method: "POST" });
           const d = await r.json();
           if (d.success) {
-            btn.textContent = '✅ Updated → v' + d.new_version;
-            log('Update applied: v' + d.new_version + '. Node is restarting...', 'success');
+            btn.textContent = "✅ Updated → v" + d.new_version;
+            log(
+              "Update applied: v" + d.new_version + ". Node is restarting...",
+              "success",
+            );
             setTimeout(() => location.reload(), 3000);
           } else {
-            btn.textContent = '❌ Failed';
-            log('Update failed: ' + (d.error || 'unknown'), 'error');
+            btn.textContent = "❌ Failed";
+            log("Update failed: " + (d.error || "unknown"), "error");
           }
-        } catch(e) {
-          btn.textContent = '❌ Error';
-          log('Update error: ' + e.message, 'error');
+        } catch (e) {
+          btn.textContent = "❌ Error";
+          log("Update error: " + e.message, "error");
         }
         btn.disabled = false;
       }
@@ -1970,14 +2440,20 @@
       // ─── App Launcher (embedded iframe) ─────────────────
       function openApp(appId, appName, port) {
         // Create overlay for app
-        let overlay = document.getElementById('app-overlay');
+        let overlay = document.getElementById("app-overlay");
         if (!overlay) {
-          overlay = document.createElement('div');
-          overlay.id = 'app-overlay';
-          overlay.style.cssText = 'position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;';
+          overlay = document.createElement("div");
+          overlay.id = "app-overlay";
+          overlay.style.cssText =
+            "position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;";
           document.body.appendChild(overlay);
         }
-        const appUrl = window.location.protocol + '//' + window.location.hostname + ':' + port;
+        const appUrl =
+          window.location.protocol +
+          "//" +
+          window.location.hostname +
+          ":" +
+          port;
         overlay.innerHTML = `
           <div style="display:flex;align-items:center;padding:8px 16px;background:#15151e;border-bottom:1px solid #222;">
             <img src="/static/logo.png" alt="" style="width:20px;height:20px;border-radius:4px;margin-right:8px;">
@@ -1988,11 +2464,16 @@
           </div>
           <iframe src="${appUrl}" style="flex:1;border:none;background:#0a0a0f;" allow="clipboard-write" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
         `;
-        overlay.style.display = 'flex';
+        overlay.style.display = "flex";
       }
 
       // ─── Init Auth ──────────────────────────────────────
-      checkAuth().then(ok => { if (ok) { refresh(); checkUpdate(); } });
+      checkAuth().then((ok) => {
+        if (ok) {
+          refresh();
+          checkUpdate();
+        }
+      });
 
       function ts() {
         return new Date().toISOString().slice(11, 19);
@@ -2113,9 +2594,12 @@
           document.getElementById("sb-balance").textContent =
             (bal?.gstd ?? 0).toFixed(1) + " GSTD";
           // Swarm
-          document.getElementById("swarm-val").textContent = d.swarm.status === 'connected'
-            ? "Connected (" + (d.swarm.peers || 0) + " peers)"
-            : d.swarm.enabled ? "Standalone" : "Disabled";
+          document.getElementById("swarm-val").textContent =
+            d.swarm.status === "connected"
+              ? "Connected (" + (d.swarm.peers || 0) + " peers)"
+              : d.swarm.enabled
+                ? "Standalone"
+                : "Disabled";
           document.getElementById("swarm-sub").textContent =
             "Mode: " + (d.swarm.mode || "full");
           // Memory
@@ -2123,17 +2607,25 @@
             const memEl = document.getElementById("mem-entries");
             if (memEl) memEl.textContent = (d.memory.entries || 0) + " entries";
             const hitEl = document.getElementById("mem-hitrate");
-            if (hitEl) hitEl.textContent = ((d.memory.stats?.hitRate || 0) * 100).toFixed(0) + "% hit rate";
+            if (hitEl)
+              hitEl.textContent =
+                ((d.memory.stats?.hitRate || 0) * 100).toFixed(0) +
+                "% hit rate";
           }
-          // Training  
+          // Training
           if (d.training) {
             const trainEl = document.getElementById("train-jobs");
-            if (trainEl) trainEl.textContent = d.training.activeJobs + " active jobs";
+            if (trainEl)
+              trainEl.textContent = d.training.activeJobs + " active jobs";
           }
           // Blockchain
           if (d.blockchain) {
             const bcEl = document.getElementById("bc-status");
-            if (bcEl) bcEl.textContent = "Connected · " + (d.blockchain.balance?.gstd?.toFixed(2) || "0") + " GSTD";
+            if (bcEl)
+              bcEl.textContent =
+                "Connected · " +
+                (d.blockchain.balance?.gstd?.toFixed(2) || "0") +
+                " GSTD";
           }
           // Node info
           document.getElementById("n-host").textContent = d.node.name;
@@ -2309,35 +2801,58 @@
             const inst = installedMap[app.id];
             const isInstalled = !!inst;
             const status = inst?.status || "";
-            const isRunning = status === 'running';
+            const isRunning = status === "running";
             const catClass = "cat-" + (app.category || "system");
-            const appPort = app.port || (3000 + Math.abs(hashCode(app.id)) % 5000);
+            const appPort =
+              app.port || 3000 + (Math.abs(hashCode(app.id)) % 5000);
             const isPremium = !!app.premium;
             const card = document.createElement("div");
             card.className = "app-card";
             card.dataset.category = app.category || "system";
-            if (isPremium) card.style.borderColor = 'rgba(255,215,0,0.3)';
+            if (isPremium) card.style.borderColor = "rgba(255,215,0,0.3)";
             card.innerHTML = `
-                <div class="app-icon">${app.icon || "📦"}${isPremium ? '<span style="position:absolute;top:4px;right:8px;font-size:14px;">⭐</span>' : ''}</div>
+                <div class="app-icon">${app.icon || "📦"}${isPremium ? '<span style="position:absolute;top:4px;right:8px;font-size:14px;">⭐</span>' : ""}</div>
                 <div class="app-name">${app.name}</div>
                 <div class="app-desc">${app.description || ""}</div>
                 <div class="app-meta">
                     <span class="app-cat ${catClass}">${app.category || "system"}</span>
                     <span>v${app.version}</span>
-                    ${isPremium ? '<span style="color:#FFD700;font-weight:700;">🔒 Premium</span>' : (app.gstd_cost > 0 ? "<span>" + app.gstd_cost + " GSTD</span>" : '<span style="color:var(--emerald)">FREE</span>')}
+                    ${isPremium ? '<span style="color:#FFD700;font-weight:700;">🔒 Premium</span>' : app.gstd_cost > 0 ? "<span>" + app.gstd_cost + " GSTD</span>" : '<span style="color:var(--emerald)">FREE</span>'}
                     ${isInstalled ? '<span class="app-status status-' + status + '">' + status + "</span>" : ""}
                 </div>
                 ${
                   isInstalled
-                    ? '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
-                      + (isRunning ? '<button class="app-btn" style="background:rgba(6,182,212,0.15);color:#06b6d4;border-color:rgba(6,182,212,0.3);" onclick="openApp(\'' + app.id + "','" + app.name.replace(/'/g,'') + "'," + appPort + ')\">\ud83d\udcfa Open</button>' : '')
-                      + '<button class="app-btn app-btn-open" onclick="appAction(\'' + (isRunning ? 'stop' : 'start') + "','" + app.id + "')\">" + (isRunning ? '\u23f9 Stop' : '\u25b6 Start') + "</button>"
-                      + '<button class="app-btn" style="background:rgba(139,92,246,0.1);color:#a78bfa;border-color:rgba(139,92,246,0.2);" onclick="appAction(\'update\',\'' + app.id + "')\">🔄 Update</button>"
-                      + '<button class="app-btn app-btn-remove" onclick="appAction(\'uninstall\',\'' + app.id + "')\">✕</button>"
-                      + "</div>"
-                    : "<button class=\"app-btn " + (isPremium ? 'app-btn-open' : 'app-btn-install') + "\" onclick=\"appAction('install','" +
+                    ? '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+                      (isRunning
+                        ? '<button class="app-btn" style="background:rgba(6,182,212,0.15);color:#06b6d4;border-color:rgba(6,182,212,0.3);" onclick="openApp(\'' +
+                          app.id +
+                          "','" +
+                          app.name.replace(/'/g, "") +
+                          "'," +
+                          appPort +
+                          ')\">\ud83d\udcfa Open</button>'
+                        : "") +
+                      '<button class="app-btn app-btn-open" onclick="appAction(\'' +
+                      (isRunning ? "stop" : "start") +
+                      "','" +
                       app.id +
-                      "')\">" + (isPremium ? "⭐ Install (1000 GSTD)" : "⬇ Install") + "</button>"
+                      "')\">" +
+                      (isRunning ? "\u23f9 Stop" : "\u25b6 Start") +
+                      "</button>" +
+                      '<button class="app-btn" style="background:rgba(139,92,246,0.1);color:#a78bfa;border-color:rgba(139,92,246,0.2);" onclick="appAction(\'update\',\'' +
+                      app.id +
+                      "')\">🔄 Update</button>" +
+                      "<button class=\"app-btn app-btn-remove\" onclick=\"appAction('uninstall','" +
+                      app.id +
+                      "')\">✕</button>" +
+                      "</div>"
+                    : '<button class="app-btn ' +
+                      (isPremium ? "app-btn-open" : "app-btn-install") +
+                      "\" onclick=\"appAction('install','" +
+                      app.id +
+                      "')\">" +
+                      (isPremium ? "⭐ Install (1000 GSTD)" : "⬇ Install") +
+                      "</button>"
                 }
             `;
             grid.appendChild(card);
@@ -2347,7 +2862,7 @@
               '<div style="color:var(--muted);padding:40px;text-align:center;">No apps available</div>';
           }
           // Update total count in filter
-          const allBtn = document.getElementById('app-filter-all');
+          const allBtn = document.getElementById("app-filter-all");
           if (allBtn) allBtn.textContent = `All (${allApps.length})`;
         } catch (e) {
           console.error("App store error:", e);
@@ -2356,15 +2871,21 @@
 
       function hashCode(s) {
         let h = 0;
-        for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+        for (let i = 0; i < s.length; i++)
+          h = ((h << 5) - h + s.charCodeAt(i)) | 0;
         return h;
       }
 
       function filterApps(cat) {
-        document.querySelectorAll('.app-filter').forEach(b => b.classList.remove('active'));
-        document.querySelector(`.app-filter[data-cat="${cat}"]`)?.classList.add('active');
-        document.querySelectorAll('.app-card').forEach(card => {
-          card.style.display = (cat === 'all' || card.dataset.category === cat) ? '' : 'none';
+        document
+          .querySelectorAll(".app-filter")
+          .forEach((b) => b.classList.remove("active"));
+        document
+          .querySelector(`.app-filter[data-cat="${cat}"]`)
+          ?.classList.add("active");
+        document.querySelectorAll(".app-card").forEach((card) => {
+          card.style.display =
+            cat === "all" || card.dataset.category === cat ? "" : "none";
         });
       }
 
@@ -2376,7 +2897,10 @@
             body: JSON.stringify({ appId }),
           });
           const d = await r.json();
-          log((d.ok ? "✅ " : "❌ ") + (d.message || action + " " + appId), d.ok ? "success" : "error");
+          log(
+            (d.ok ? "✅ " : "❌ ") + (d.message || action + " " + appId),
+            d.ok ? "success" : "error",
+          );
           loadApps();
         } catch (e) {
           log("❌ " + e.message, "error");
@@ -2386,9 +2910,9 @@
       // ─── Telegram Linking ──────────────────────────────
       async function loadTelegramStatus() {
         try {
-          const r = await fetch(API + '/api/telegram/status');
+          const r = await fetch(API + "/api/telegram/status");
           const d = await r.json();
-          const el = document.getElementById('tg-link-status');
+          const el = document.getElementById("tg-link-status");
           if (d.linked) {
             el.innerHTML = `<span style="color:#22c55e;">✅ Linked: @${d.telegram.username} (${d.telegram.chatId})</span>`;
           } else {
@@ -2398,84 +2922,105 @@
       }
 
       async function linkTelegram() {
-        const chatId = document.getElementById('tg-chat-id').value;
-        const username = document.getElementById('tg-username').value;
-        if (!chatId) { log('Enter your Telegram Chat ID', 'error'); return; }
+        const chatId = document.getElementById("tg-chat-id").value;
+        const username = document.getElementById("tg-username").value;
+        if (!chatId) {
+          log("Enter your Telegram Chat ID", "error");
+          return;
+        }
         try {
-          const r = await fetch(API + '/api/telegram/link', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatId, username })
+          const r = await fetch(API + "/api/telegram/link", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chatId, username }),
           });
           const d = await r.json();
           if (d.success) {
-            log('✅ Telegram linked: @' + username, 'success');
+            log("✅ Telegram linked: @" + username, "success");
             loadTelegramStatus();
           }
-        } catch (e) { log('❌ Link error: ' + e.message, 'error'); }
+        } catch (e) {
+          log("❌ Link error: " + e.message, "error");
+        }
       }
 
       // ─── PIN Reset via 2FA ──────────────────────────────
       async function requestPinReset() {
-        const el = document.getElementById('pin-reset-status');
+        const el = document.getElementById("pin-reset-status");
         try {
-          const r = await fetch(API + '/api/auth/reset-pin-request', { method: 'POST' });
+          const r = await fetch(API + "/api/auth/reset-pin-request", {
+            method: "POST",
+          });
           const d = await r.json();
           if (d.success) {
-            el.innerHTML = '<span style="color:#22c55e;">✅ Code sent to Telegram. Check your messages.</span>';
-            document.getElementById('pin-reset-form').style.display = 'block';
+            el.innerHTML =
+              '<span style="color:#22c55e;">✅ Code sent to Telegram. Check your messages.</span>';
+            document.getElementById("pin-reset-form").style.display = "block";
           } else {
             el.innerHTML = `<span style="color:#f43f5e;">❌ ${d.error}</span>`;
           }
-        } catch (e) { el.innerHTML = '<span style="color:#f43f5e;">❌ ' + e.message + '</span>'; }
+        } catch (e) {
+          el.innerHTML =
+            '<span style="color:#f43f5e;">❌ ' + e.message + "</span>";
+        }
       }
 
       async function confirmPinReset() {
-        const code = document.getElementById('reset-code').value;
-        const newPin = document.getElementById('reset-new-pin').value;
-        const el = document.getElementById('pin-reset-status');
-        if (!code || !newPin) { el.innerHTML = '<span style="color:#f43f5e;">Enter code and new PIN</span>'; return; }
+        const code = document.getElementById("reset-code").value;
+        const newPin = document.getElementById("reset-new-pin").value;
+        const el = document.getElementById("pin-reset-status");
+        if (!code || !newPin) {
+          el.innerHTML =
+            '<span style="color:#f43f5e;">Enter code and new PIN</span>';
+          return;
+        }
         try {
-          const r = await fetch(API + '/api/auth/reset-pin-confirm', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code, newPin })
+          const r = await fetch(API + "/api/auth/reset-pin-confirm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code, newPin }),
           });
           const d = await r.json();
           if (d.success) {
             authToken = d.token;
-            localStorage.setItem('gstd_pin_token', authToken);
-            el.innerHTML = '<span style="color:#22c55e;">✅ PIN reset successfully!</span>';
-            document.getElementById('pin-reset-form').style.display = 'none';
-            log('🔐 PIN reset via 2FA Telegram', 'success');
+            localStorage.setItem("gstd_pin_token", authToken);
+            el.innerHTML =
+              '<span style="color:#22c55e;">✅ PIN reset successfully!</span>';
+            document.getElementById("pin-reset-form").style.display = "none";
+            log("🔐 PIN reset via 2FA Telegram", "success");
           } else {
             el.innerHTML = `<span style="color:#f43f5e;">❌ ${d.error}</span>`;
           }
-        } catch (e) { el.innerHTML = '<span style="color:#f43f5e;">❌ ' + e.message + '</span>'; }
+        } catch (e) {
+          el.innerHTML =
+            '<span style="color:#f43f5e;">❌ ' + e.message + "</span>";
+        }
       }
 
       // ─── Component Updates ──────────────────────────────
       async function updateComponent(component) {
-        const el = document.getElementById('update-log');
+        const el = document.getElementById("update-log");
         el.innerHTML = `⏳ Updating ${component}...`;
         try {
-          const r = await fetch(API + '/api/update/component', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ component })
+          const r = await fetch(API + "/api/update/component", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ component }),
           });
           const d = await r.json();
           if (d.success) {
             el.innerHTML = `<span style="color:#22c55e;">✅ ${d.message}</span>`;
-            log('✅ ' + d.message, 'success');
-            if (component === 'core' || component === 'all') {
-              el.innerHTML += ' Restarting...';
+            log("✅ " + d.message, "success");
+            if (component === "core" || component === "all") {
+              el.innerHTML += " Restarting...";
               setTimeout(() => location.reload(), 3000);
             }
           } else {
             el.innerHTML = `<span style="color:#f43f5e;">❌ ${d.error}</span>`;
           }
-        } catch (e) { el.innerHTML = `<span style="color:#f43f5e;">❌ ${e.message}</span>`; }
+        } catch (e) {
+          el.innerHTML = `<span style="color:#f43f5e;">❌ ${e.message}</span>`;
+        }
       }
 
       // ─── Boot ────────────────────────────────────────────

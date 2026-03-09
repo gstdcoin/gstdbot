@@ -301,7 +301,7 @@ exports.SMARTMIX_TIERS = {
     ultra: { name: 'Swarm of 7', nameRU: 'Рой из 7', cost: 17.0, costUsd: 0.005, emoji: '🧠', expertCount: 7 },
 };
 // Cached GSTD price (refreshed every 60s)
-let _cachedGstdPrice = 0.0002946482;
+let _cachedGstdPrice = 0.000088; // real STON.fi DEX price (auto-refreshed every 60s)
 let _lastPriceFetch = 0;
 async function getGstdPrice() {
     if (Date.now() - _lastPriceFetch < 60_000 && _cachedGstdPrice > 0) {

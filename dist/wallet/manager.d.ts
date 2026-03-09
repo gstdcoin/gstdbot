@@ -60,6 +60,18 @@ export declare class NodeWallet {
     private createWallet;
     private refreshBalance;
     saveEarnings(): void;
+    /**
+     * Sync accumulated local earnings to the backend so they appear in
+     * the user's pending_balance_gstd and can be withdrawn.
+     */
+    private unsyncedAmount;
+    syncEarningsToBackend(): Promise<void>;
+    /**
+     * Link an external wallet (e.g. Tonkeeper) for receiving rewards.
+     * This calls the backend to update the node's wallet_address so
+     * all future rewards go to the external wallet.
+     */
+    linkExternal(externalAddress: string): Promise<boolean>;
 }
 export { getWallet } from './wallet.js';
 export declare function getBalance(): Promise<WalletBalance>;

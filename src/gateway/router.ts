@@ -348,7 +348,7 @@ export const SMARTMIX_TIERS: Record<string, {
 };
 
 // Cached GSTD price (refreshed every 60s)
-let _cachedGstdPrice = 0.0002946482;
+let _cachedGstdPrice = 0.000088; // real STON.fi DEX price (auto-refreshed every 60s)
 let _lastPriceFetch = 0;
 
 export async function getGstdPrice(): Promise<number> {

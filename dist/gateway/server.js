@@ -682,6 +682,15 @@ class OmegaGateway {
                 res.status(401).json({ authenticated: false });
             }
         });
+        // POST /api/auth/logout — invalidate session token
+        this.app.post('/api/auth/logout', (req, res) => {
+            const token = req.headers.authorization?.replace('Bearer ', '') || '';
+            if (token) {
+                authSessions.delete(token);
+            }
+            logActivity('Dashboard logout', 'info');
+            res.json({ success: true, message: 'Logged out successfully' });
+        });
         // ─── Telegram Node Management ────────────────────────────
         const telegramLinkFile = (0, path_1.join)(configDir, 'telegram_link.json');
         let linkedTelegram = null;
@@ -1359,6 +1368,67 @@ class OmegaGateway {
                 requiredBalance: 1000,
                 premiumApps: 11,
             });
+        });
+        // ─── Link External Wallet (dashboard UI) ────────────────
+        this.app.post('/api/wallet/link-external', async (req, res) => {
+            const { address } = req.body || {};
+            if (!address || address.length < 20) {
+                res.status(400).json({ error: 'Valid TON wallet address required' });
+                return;
+            }
+            // Link locally
+            const { linkExternalWallet } = require('../wallet/wallet.js');
+            linkExternalWallet(address);
+            // Link on backend
+            if (this.wallet) {
+                const linked = await this.wallet.linkExternal(address);
+                logActivity(`External wallet linked: ${address.slice(0, 12)}... (backend: ${linked ? '✅' : '⚠️ offline'})`, 'success');
+                res.json({
+                    success: true,
+                    address,
+                    backendSynced: linked,
+                    message: linked
+                        ? 'Wallet linked! Rewards will be credited to your external wallet.'
+                        : 'Wallet linked locally. Backend sync will happen on next heartbeat.',
+                });
+            }
+            else {
+                res.json({ success: true, address, backendSynced: false, message: 'Wallet linked locally.' });
+            }
+        });
+        // ─── Claim Balance (withdraw to wallet) ─────────────────
+        this.app.post('/api/wallet/claim', async (req, res) => {
+            if (!this.wallet) {
+                res.status(400).json({ error: 'No wallet configured' });
+                return;
+            }
+            const walletAddress = this.wallet.getAddress();
+            if (!walletAddress) {
+                res.status(400).json({ error: 'Wallet address not found' });
+                return;
+            }
+            try {
+                const resp = await fetch(`${this.config.swarmUrl}/api/v1/users/claim_balance`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Wallet-Address': walletAddress,
+                    },
+                    body: JSON.stringify({ wallet_address: walletAddress }),
+                    signal: AbortSignal.timeout(15000),
+                }).catch(() => null);
+                if (resp?.ok) {
+                    const data = await resp.json();
+                    logActivity(`Balance claimed: ${JSON.stringify(data)}`, 'success');
+                    res.json({ success: true, ...data });
+                }
+                else {
+                    res.json({ success: false, error: 'Backend claim failed. Try again later.' });
+                }
+            }
+            catch (e) {
+                res.json({ success: false, error: e.message || 'Claim failed' });
+            }
         });
         // ═══════════════════════════════════════════════════════════
         // ─── WALLET AUTH (TON Connect style) ─────────────────────
