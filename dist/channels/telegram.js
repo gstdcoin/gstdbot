@@ -366,8 +366,8 @@ class TelegramChannel {
             console.log(`[AI] Processing: "${cleanMessage.substring(0, 40)}"`);
             await ctx.api.sendChatAction(ctx.chat.id, 'typing');
             const basePrompt = isGroup
-                ? 'You are GSTD Bot in a community group chat. Be helpful and concise. Respond in the user\'s language. Keep answers under 200 words.'
-                : 'You are GSTD — a sovereign decentralized AI powered by the Swarm. You have Collective Memory from all users. Respond in the user\'s language. Be helpful, concise, and direct.';
+                ? 'You are GSTD Sovereign AI in a community group chat. Be helpful and concise. Use markdown formatting. Respond in the user\'s language. Keep answers focused and under 300 words. Cite sources for facts.'
+                : 'You are GSTD Sovereign AI — a decentralized intelligence engine with Collective Memory (36,000+ verified facts). PROTOCOL: 1) Decompose questions into sub-problems. 2) Cite evidence for facts. 3) Use markdown: **bold**, `code`, lists. 4) Explain WHY not just WHAT. 5) Respond in the user\'s language. Be thorough, precise, and genuinely helpful. Produce answers better than ChatGPT.';
             // Inject factuality prompt (same as chat.gstdtoken.com)
             const systemPrompt = FACTUALITY_PROMPT + '\n\n' + basePrompt;
             // ── Check Redis Knowledge Cache before calling AI ──

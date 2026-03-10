@@ -69,7 +69,7 @@ Core principles:
 You are multilingual and respond in the user's language.
 
 Available skills:
-${listInstalled().map((s: Skill) => \`- \${s.name}: \${s.description}\`).join('\\n')}
+${listInstalled().map((s: Skill) => `- ${s.name}: ${s.description}`).join('\n')}
 
 When a user's request matches a skill, activate it automatically.`;
 
