@@ -541,21 +541,46 @@ skillsCmd.command('scan <path>').description('Security scan a skill file').actio
 skillsCmd.command('install <id>').description('Install a skill from marketplace').action(async (id: string) => {
     const spinner = ora(`Installing skill: ${id}...`).start();
 
-    // Check local built-in skills first
+    // 1. Check local built-in skills first
     const builtinPath = path.join(process.cwd(), 'skills', id, 'SKILL.md');
     if (fs.existsSync(builtinPath)) {
-        const content = fs.readFileSync(builtinPath, 'utf-8');
         const result = await importSkill(builtinPath);
         if (result) {
-            spinner.succeed(`Installed: ${id} ${false ? chalk.yellow('(with warnings)') : chalk.green('✓ verified')}`);
+            spinner.succeed(`Installed: ${id} ${chalk.green('✓ verified (builtin)')}`);
         } else {
-            spinner.fail(`Failed: ${'Import failed'}`);
+            spinner.fail(`Failed to import builtin skill: ${id}`);
         }
         return;
     }
 
+    // 2. Try marketplace (importSkill handles marketplace lookup by ID)
+    try {
+        const result = await importSkill(id);
+        if (result) {
+            spinner.succeed(`Installed: ${result.name} ${chalk.green('✓ from marketplace')}`);
+            return;
+        }
+    } catch (e: any) {
+        // Fall through to URL attempt
+    }
+
+    // 3. If ID looks like a URL or GitHub shorthand, try direct import
+    if (id.startsWith('http') || id.includes('/')) {
+        try {
+            const result = await importSkill(id);
+            if (result) {
+                spinner.succeed(`Installed: ${result.name} ${chalk.green('✓ from URL')}`);
+                return;
+            }
+        } catch (e: any) {
+            spinner.fail(`Failed to import from URL: ${e.message}`);
+            return;
+        }
+    }
+
     spinner.fail(`Skill not found: ${id}`);
     console.log(chalk.gray('  Available: code-gen, web-research, defi-monitor, content-writer, token-analyzer, planetary-signals, image-gen'));
+    console.log(chalk.gray('  Or install from URL: gstdbot skills install https://github.com/user/skill'));
 });
 
 skillsCmd.command('create <name>').description('Create a new skill template').action(async (name: string) => {
