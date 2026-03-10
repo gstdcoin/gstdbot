@@ -34,7 +34,7 @@ export interface GatewayConfig {
 const DEFAULT_CONFIG: GatewayConfig = {
     port: 18789,
     apiPort: 8080,
-    swarmUrl: process.env.GSTD_SWARM_URL || 'http://localhost:11434',
+    swarmUrl: process.env.GSTD_SWARM_URL || 'https://api.gstdtoken.com',
     cocoonEnabled: process.env.GSTD_COCOON_ENABLED !== 'false',
     sovereigntyMode: (process.env.GSTD_SOVEREIGNTY_MODE as any) || 'full',
 };

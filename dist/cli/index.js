@@ -51,13 +51,20 @@ function getConfig() {
     if (fs_1.default.existsSync(configPath)) {
         return JSON.parse(fs_1.default.readFileSync(configPath, 'utf-8'));
     }
-    return { agent: { model: 'auto' }, swarm: { ollama_url: 'http://localhost:11434' } };
+    return { agent: { model: 'auto' }, swarm: { ollama_url: 'https://api.gstdtoken.com' } };
+}
+/** Resolve swarm URL in priority: config → env → GSTD platform (cloud mode) */
+function resolveSwarmUrl(config) {
+    return config.swarm?.ollama_url
+        || process.env.GSTD_SWARM_URL
+        || process.env.OLLAMA_URL
+        || 'https://api.gstdtoken.com';
 }
 function createAgent() {
     const config = getConfig();
     return new agent_js_1.Agent({
         model: config.agent?.model || 'auto',
-        ollamaUrl: config.swarm?.ollama_url || process.env.OLLAMA_URL || 'http://localhost:11434',
+        ollamaUrl: resolveSwarmUrl(config),
         memoryEnabled: true,
         maxContextMessages: 20,
         skillsDir: path_1.default.join(getConfigDir(), 'skills'),
@@ -160,7 +167,7 @@ program
         }
         catch (err) {
             spinner.fail(chalk_1.default.red(err.message));
-            console.log(chalk_1.default.gray('  Tip: Make sure Ollama is running (ollama serve)\n'));
+            console.log(chalk_1.default.gray('  Tip: Check internet connection or set GSTD_SWARM_URL\n'));
         }
         rl.prompt();
     });
@@ -182,6 +189,7 @@ program
         const result = await agent.chat(message, opts.model);
         spinner.stop();
         console.log(result.content);
+        process.exit(0);
     }
     catch (err) {
         spinner.fail(err.message);
@@ -194,7 +202,7 @@ program
     .description('Start the Omega Gateway (API server)')
     .option('-p, --port <port>', 'API port', '8080')
     .option('-H, --host <host>', 'Bind address (0.0.0.0 for all interfaces)', '0.0.0.0')
-    .option('--swarm-url <url>', 'Ollama URL', 'http://localhost:11434')
+    .option('--swarm-url <url>', 'Swarm/Platform URL', process.env.GSTD_SWARM_URL || 'https://api.gstdtoken.com')
     .option('--no-cocoon', 'Disable Cocoon TEE')
     .option('--mode <mode>', 'Sovereignty mode: full|hybrid|fallback', 'full')
     .action(async (opts) => {
@@ -255,7 +263,7 @@ program
     if (!fs_1.default.existsSync(configPath)) {
         fs_1.default.writeFileSync(configPath, JSON.stringify({
             agent: { model: 'auto', sovereignty: 'full' },
-            swarm: { enabled: true, contribute: true, ollama_url: 'http://localhost:11434' },
+            swarm: { enabled: true, contribute: true, ollama_url: 'https://api.gstdtoken.com' },
             channels: { telegram: { enabled: false, bot_token: '' } },
             gateway: { port: 18789, api_port: 8080 },
         }, null, 2));

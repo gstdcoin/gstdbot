@@ -120,7 +120,7 @@ async function main(): Promise<void> {
     const desiredPort = parseInt(process.env.GSTD_DASHBOARD_PORT || process.env.GSTD_API_PORT || '8080');
     const gateway = new OmegaGateway({
         apiPort: desiredPort,
-        swarmUrl: process.env.GSTD_SWARM_URL || process.env.OLLAMA_URL || 'http://localhost:11434',
+        swarmUrl: process.env.GSTD_SWARM_URL || process.env.OLLAMA_URL || 'https://api.gstdtoken.com',
         cocoonEnabled: process.env.GSTD_COCOON_ENABLED !== 'false',
         sovereigntyMode: (process.env.GSTD_SOVEREIGNTY_MODE as any) || 'full',
     });
@@ -172,7 +172,7 @@ async function main(): Promise<void> {
     if (telegramToken) {
         const telegram = new TelegramChannel({
             botToken: telegramToken,
-            swarmUrl: process.env.GSTD_SWARM_URL || 'http://localhost:11434',
+            swarmUrl: process.env.GSTD_SWARM_URL || 'https://api.gstdtoken.com',
             cocoonEnabled: process.env.GSTD_COCOON_ENABLED !== 'false',
             adminIds: (process.env.TELEGRAM_ADMIN_IDS || '').split(',').filter(Boolean).map(Number),
             communityChat: process.env.TELEGRAM_COMMUNITY_CHAT ? parseInt(process.env.TELEGRAM_COMMUNITY_CHAT) : undefined,
