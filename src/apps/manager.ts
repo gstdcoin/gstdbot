@@ -1113,10 +1113,11 @@ export class AppManager {
             }
         }
 
-        // Built-in apps just set status
+        // Built-in apps: served by the gateway server at /apps/{appId}
         app.status = 'running';
-        app.url = `http://localhost:${app.manifest.port}`;
+        app.url = `/apps/${appId}`;
         this.saveState();
+        logActivity(`App ${app.manifest.name} started at /apps/${appId}`, 'success');
         return true;
     }
 

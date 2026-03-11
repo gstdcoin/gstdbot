@@ -916,6 +916,19 @@ class OmegaGateway {
         });
         // ─── Serve static files from web/ ────────────────────────
         this.app.use('/static', express_1.default.static((0, path_1.join)(__dirname, '../../web')));
+        // ─── Built-in Apps: serve real web UIs at /apps/:appId ───
+        this.app.get('/apps/:appId', (req, res) => {
+            const { appId } = req.params;
+            const installed = this.appManager.getInstalled();
+            const app = installed.find(a => a.manifest.id === appId);
+            if (!app || app.status !== 'running') {
+                res.status(404).send(this.appPageShell(appId, '🚫 App Not Running', `<p>App <b>${appId}</b> is not installed or not running.</p>
+                     <p><a href="/" style="color:var(--accent)">← Back to Dashboard</a></p>`));
+                return;
+            }
+            const html = this.getBuiltinAppHTML(app);
+            res.send(html);
+        });
         // ─── Dashboard UI at root ────────────────────────────────
         this.app.get('/', (_req, res) => {
             const htmlPath = (0, path_1.join)(__dirname, '../../web/dashboard.html');
@@ -2498,6 +2511,227 @@ class OmegaGateway {
 <body style="font-family:sans-serif;background:#030014;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;">
 <div style="text-align:center;"><img src="/static/logo.png" alt="GSTD" style="width:64px;border-radius:12px;margin-bottom:12px;"><h1>GSTD Node Online</h1><p>Dashboard UI not found. Check web/dashboard.html</p>
 <p><a href="/api/node/status" style="color:#06b6d4;">View API Status →</a></p></div></body></html>`;
+    }
+    // ─── Built-in App HTML Generation ─────────────────────────────
+    appPageShell(appId, title, body) {
+        return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title} — GSTD Node OS</title>
+<style>
+:root{--bg:#030014;--card:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.08);--text:#f1f5f9;--muted:#64748b;--accent:#8b5cf6;--cyan:#06b6d4;--emerald:#22c55e;--rose:#f43f5e}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.app-header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.3)}
+.app-header a{color:var(--muted);text-decoration:none;font-size:13px;transition:color .2s}
+.app-header a:hover{color:var(--accent)}
+.app-title{font-size:16px;font-weight:700}
+.app-body{padding:20px;max-width:1200px;margin:0 auto;height:calc(100vh - 52px);display:flex;flex-direction:column}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+input,textarea,select{background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 14px;font-size:14px;outline:none;width:100%;font-family:inherit;transition:border .2s}
+input:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:120px}
+button{padding:10px 20px;border-radius:8px;border:none;font-weight:700;font-size:13px;cursor:pointer;transition:transform .15s,opacity .15s}
+button:hover{transform:scale(1.02)}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--cyan));color:#fff}
+.btn-secondary{background:var(--card);border:1px solid var(--border);color:var(--text)}
+.chat-messages{flex:1;overflow-y:auto;padding:12px 0;display:flex;flex-direction:column;gap:8px}
+.msg{padding:10px 14px;border-radius:10px;max-width:85%;font-size:14px;line-height:1.6;word-wrap:break-word;white-space:pre-wrap}
+.msg-user{background:rgba(139,92,246,0.15);align-self:flex-end;border:1px solid rgba(139,92,246,0.2)}
+.msg-ai{background:var(--card);border:1px solid var(--border);align-self:flex-start}
+.chat-input{display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border)}
+.chat-input input{flex:1}
+pre{background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;overflow-x:auto;font-size:13px}
+code{font-family:'Fira Code',monospace;font-size:13px}
+</style></head><body>
+<div class="app-header"><a href="/">← Dashboard</a><div class="app-title">${title}</div></div>
+<div class="app-body">${body}</div>
+</body></html>`;
+    }
+    getBuiltinAppHTML(app) {
+        const id = app.manifest.id;
+        const icon = app.manifest.icon;
+        const name = app.manifest.name;
+        // ═══ Chat App ═══
+        if (id === 'gstd-chat') {
+            return this.appPageShell(id, `${icon} ${name}`, `
+<div class="chat-messages" id="msgs"></div>
+<div class="chat-input">
+  <select id="model" style="width:auto;min-width:140px">
+    <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
+    <option value="llama-3.1-8b-instant" selected>Llama 3.1 8B</option>
+    <option value="qwen3-32b">Qwen3 32B</option>
+    <option value="deepseek-r1-distill-llama-70b">DeepSeek R1</option>
+  </select>
+  <input id="inp" placeholder="Ask anything..." onkeydown="if(event.key==='Enter')send()">
+  <button class="btn-primary" onclick="send()">Send</button>
+</div>
+<script>
+const msgs=document.getElementById('msgs');
+function addMsg(text,isUser){const d=document.createElement('div');d.className='msg '+(isUser?'msg-user':'msg-ai');d.textContent=text;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d}
+async function send(){const inp=document.getElementById('inp');const q=inp.value.trim();if(!q)return;inp.value='';addMsg(q,true);
+const ai=addMsg('...',false);try{const r=await fetch('/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({model:document.getElementById('model').value,messages:[{role:'user',content:q}],stream:false})});
+const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No response';}catch(e){ai.textContent='Error: '+e.message;}}
+</script>`);
+        }
+        // ═══ Notes App ═══
+        if (id === 'gstd-notes') {
+            return this.appPageShell(id, `${icon} ${name}`, `
+<div style="display:flex;gap:12px;flex:1;min-height:0">
+  <div class="card" style="width:200px;overflow-y:auto" id="note-list"></div>
+  <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+    <input id="note-title" placeholder="Note title..." style="font-size:16px;font-weight:700">
+    <textarea id="note-body" style="flex:1;font-size:14px;min-height:200px" placeholder="Write your note..."></textarea>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" onclick="saveNote()">💾 Save</button>
+      <button class="btn-secondary" onclick="newNote()">📝 New</button>
+      <button class="btn-secondary" onclick="deleteNote()" style="color:var(--rose)">🗑️ Delete</button>
+    </div>
+  </div>
+</div>
+<script>
+let notes=JSON.parse(localStorage.getItem('gstd-notes')||'[]'),currentId=null;
+function render(){const el=document.getElementById('note-list');
+el.innerHTML=notes.length?notes.map((n,i)=>'<div onclick="loadNote('+i+')" style="padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;'+(currentId===i?'background:rgba(139,92,246,0.1);color:var(--accent)':'')+'">'+
+(n.title||'Untitled')+'<div style="font-size:10px;color:var(--muted)">'+new Date(n.updated).toLocaleDateString()+'</div></div>').join(''):'<div style="padding:16px;color:var(--muted);text-align:center;font-size:12px">No notes yet</div>';}
+function loadNote(i){currentId=i;document.getElementById('note-title').value=notes[i].title;document.getElementById('note-body').value=notes[i].body;render()}
+function saveNote(){if(currentId===null){notes.unshift({title:'',body:'',updated:Date.now()});currentId=0}
+notes[currentId].title=document.getElementById('note-title').value||'Untitled';notes[currentId].body=document.getElementById('note-body').value;notes[currentId].updated=Date.now();
+localStorage.setItem('gstd-notes',JSON.stringify(notes));render()}
+function newNote(){currentId=null;document.getElementById('note-title').value='';document.getElementById('note-body').value='';render()}
+function deleteNote(){if(currentId!==null){notes.splice(currentId,1);localStorage.setItem('gstd-notes',JSON.stringify(notes));newNote()}}
+render();
+</script>`);
+        }
+        // ═══ Coder App ═══
+        if (id === 'gstd-coder') {
+            return this.appPageShell(id, `${icon} ${name}`, `
+<div style="display:flex;gap:12px;flex:1;min-height:0">
+  <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="lang" style="width:auto"><option>JavaScript</option><option>Python</option><option>Go</option><option>TypeScript</option><option>Rust</option><option>HTML/CSS</option><option>SQL</option><option>Bash</option></select>
+      <select id="action" style="width:auto"><option value="review">Review</option><option value="explain">Explain</option><option value="fix">Fix Bugs</option><option value="optimize">Optimize</option><option value="generate">Generate</option></select>
+      <button class="btn-primary" onclick="analyzeCode()">🚀 Run</button>
+    </div>
+    <textarea id="code-input" placeholder="Paste your code here..." style="flex:1;font-family:'Fira Code',monospace;font-size:13px;tab-size:4"></textarea>
+  </div>
+  <div class="card" style="flex:1;overflow-y:auto" id="code-output">
+    <div style="color:var(--muted);padding:20px;text-align:center">Paste code and click Run</div>
+  </div>
+</div>
+<script>
+async function analyzeCode(){const code=document.getElementById('code-input').value;if(!code)return;
+const lang=document.getElementById('lang').value;const action=document.getElementById('action').value;
+const out=document.getElementById('code-output');out.innerHTML='<div style="color:var(--cyan)">Analyzing...</div>';
+const prompts={review:'Review this '+lang+' code. Find issues, suggest improvements.',explain:'Explain this '+lang+' code step by step.',
+fix:'Find and fix bugs in this '+lang+' code. Show corrected version.',optimize:'Optimize this '+lang+' code for performance.',
+generate:'Based on this description, generate '+lang+' code:'};
+try{const r=await fetch('/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({model:'llama-3.1-8b-instant',messages:[{role:'system',content:'You are an expert '+lang+' programmer. Be concise and practical.'},
+{role:'user',content:prompts[action]+'\\n\\n\`\`\`'+lang+'\\n'+code+'\\n\`\`\`'}],stream:false})});
+const d=await r.json();const text=d.choices?.[0]?.message?.content||'No response';
+out.innerHTML='<pre style="white-space:pre-wrap">'+text.replace(/</g,'&lt;')+'</pre>';}catch(e){out.innerHTML='<div style="color:var(--rose)">Error: '+e.message+'</div>';}}
+</script>`);
+        }
+        // ═══ Translator App ═══
+        if (id === 'gstd-translator') {
+            return this.appPageShell(id, `${icon} ${name}`, `
+<div style="display:flex;gap:12px;flex:1;min-height:0">
+  <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="from-lang" style="width:auto"><option value="auto">Auto-Detect</option><option>English</option><option>Russian</option><option>Chinese</option><option>Spanish</option><option>French</option><option>German</option><option>Japanese</option><option>Korean</option><option>Arabic</option><option>Portuguese</option></select>
+      <span style="color:var(--muted)">→</span>
+      <select id="to-lang" style="width:auto"><option>English</option><option selected>Russian</option><option>Chinese</option><option>Spanish</option><option>French</option><option>German</option><option>Japanese</option><option>Korean</option><option>Arabic</option><option>Portuguese</option></select>
+      <button class="btn-primary" onclick="translate()">🌍 Translate</button>
+    </div>
+    <textarea id="tr-input" placeholder="Enter text to translate..." style="flex:1"></textarea>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+    <div style="height:38px;display:flex;align-items:center;color:var(--muted);font-size:13px">Translation</div>
+    <div class="card" style="flex:1;overflow-y:auto;font-size:14px;line-height:1.7" id="tr-output">
+      <span style="color:var(--muted)">Translation will appear here</span>
+    </div>
+  </div>
+</div>
+<script>
+async function translate(){const text=document.getElementById('tr-input').value;if(!text)return;
+const from=document.getElementById('from-lang').value;const to=document.getElementById('to-lang').value;
+const out=document.getElementById('tr-output');out.innerHTML='<span style="color:var(--cyan)">Translating...</span>';
+try{const r=await fetch('/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({model:'llama-3.1-8b-instant',messages:[{role:'system',content:'You are a professional translator. Translate the following text'+(from!=='auto'?' from '+from:'')+' to '+to+'. Output ONLY the translation, nothing else.'},
+{role:'user',content:text}],stream:false})});
+const d=await r.json();out.textContent=d.choices?.[0]?.message?.content||'No response';}catch(e){out.innerHTML='<span style="color:var(--rose)">Error: '+e.message+'</span>';}}
+</script>`);
+        }
+        // ═══ Search App ═══
+        if (id === 'gstd-search') {
+            return this.appPageShell(id, `${icon} ${name}`, `
+<div style="max-width:700px;margin:40px auto;text-align:center">
+  <div style="font-size:40px;margin-bottom:16px">${icon}</div>
+  <h2 style="margin-bottom:20px">Sovereign Search</h2>
+  <div style="display:flex;gap:8px">
+    <input id="search-q" placeholder="Search anything..." style="font-size:16px" onkeydown="if(event.key==='Enter')doSearch()">
+    <button class="btn-primary" onclick="doSearch()">🔍</button>
+  </div>
+  <div id="search-results" style="text-align:left;margin-top:24px"></div>
+</div>
+<script>
+async function doSearch(){const q=document.getElementById('search-q').value;if(!q)return;
+const out=document.getElementById('search-results');out.innerHTML='<div style="color:var(--cyan);text-align:center;padding:20px">Searching...</div>';
+try{const r=await fetch('/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({model:'llama-3.1-8b-instant',messages:[{role:'system',content:'You are a helpful search assistant. Answer the query comprehensively. Format with clear sections and bullet points.'},
+{role:'user',content:q}],stream:false})});
+const d=await r.json();const text=d.choices?.[0]?.message?.content||'No results';
+out.innerHTML='<div class="card" style="margin-top:8px"><div style="white-space:pre-wrap;line-height:1.7">'+text.replace(/</g,'&lt;')+'</div></div>';}
+catch(e){out.innerHTML='<div style="color:var(--rose)">Error: '+e.message+'</div>';}}
+</script>`);
+        }
+        // ═══ Voice App ═══
+        if (id === 'gstd-voice') {
+            return this.appPageShell(id, `${icon} ${name}`, `
+<div style="max-width:600px;margin:40px auto;text-align:center">
+  <div style="font-size:48px;margin-bottom:16px">${icon}</div>
+  <h2>Voice Assistant</h2>
+  <p style="color:var(--muted);margin:8px 0 24px">Speak and get AI responses read aloud</p>
+  <button class="btn-primary" id="voice-btn" onclick="toggleVoice()" style="padding:16px 40px;font-size:16px;border-radius:50px">🎙️ Hold to Speak</button>
+  <div id="voice-text" style="margin-top:24px;font-size:14px;color:var(--muted)"></div>
+  <div class="card" style="margin-top:16px;text-align:left;min-height:100px" id="voice-response"></div>
+</div>
+<script>
+let recognition;try{recognition=new(window.SpeechRecognition||window.webkitSpeechRecognition)();recognition.lang='en-US';recognition.continuous=false;
+recognition.onresult=(e)=>{const t=e.results[0][0].transcript;document.getElementById('voice-text').textContent='You said: '+t;askAI(t)};
+recognition.onerror=(e)=>{document.getElementById('voice-text').textContent='Error: '+e.error};}catch(e){document.getElementById('voice-btn').textContent='Browser not supported'}
+function toggleVoice(){try{recognition.start()}catch(e){}}
+async function askAI(text){const out=document.getElementById('voice-response');out.innerHTML='<span style="color:var(--cyan)">Thinking...</span>';
+try{const r=await fetch('/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({model:'llama-3.1-8b-instant',messages:[{role:'user',content:text}],stream:false})});
+const d=await r.json();const reply=d.choices?.[0]?.message?.content||'';out.textContent=reply;
+if(window.speechSynthesis){const u=new SpeechSynthesisUtterance(reply);u.rate=1;speechSynthesis.speak(u)}}catch(e){out.textContent='Error: '+e.message}}
+</script>`);
+        }
+        // ═══ Default: Generic App Template ═══
+        return this.appPageShell(id, `${icon} ${name}`, `
+<div style="max-width:700px;margin:40px auto;text-align:center">
+  <div style="font-size:48px;margin-bottom:16px">${icon}</div>
+  <h2>${name}</h2>
+  <p style="color:var(--muted);margin:12px 0">${app.manifest.description}</p>
+  <div class="card" style="margin-top:24px;text-align:left">
+    <div style="font-size:12px;color:var(--muted);text-transform:uppercase;font-weight:600;margin-bottom:8px">AI Assistant — ${name}</div>
+    <div class="chat-messages" id="msgs" style="min-height:200px;max-height:400px"></div>
+    <div class="chat-input">
+      <input id="inp" placeholder="Ask ${name}..." onkeydown="if(event.key==='Enter')send()">
+      <button class="btn-primary" onclick="send()">Send</button>
+    </div>
+  </div>
+</div>
+<script>
+const msgs=document.getElementById('msgs');
+function addMsg(t,u){const d=document.createElement('div');d.className='msg '+(u?'msg-user':'msg-ai');d.textContent=t;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d}
+async function send(){const inp=document.getElementById('inp');const q=inp.value.trim();if(!q)return;inp.value='';addMsg(q,true);
+const ai=addMsg('...',false);try{const r=await fetch('/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({model:'llama-3.1-8b-instant',messages:[{role:'system',content:'You are ${name}. ${app.manifest.description}. Be helpful and concise.'},
+{role:'user',content:q}],stream:false})});
+const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No response';}catch(e){ai.textContent='Error: '+e.message;}}
+</script>`);
     }
     getCertExpiry(certPath) {
         try {
