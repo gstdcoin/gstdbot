@@ -203,10 +203,68 @@ async function main() {
     console.log('     • To stop: press Ctrl+C');
     console.log('');
     (0, server_js_1.logActivity)('GSTD Node OS v' + config.version + ' booted in ' + bootTime + 's', 'success');
+    // ── Heartbeat: report to platform every 5 min ────────────────
+    const PLATFORM_API = config.swarm.apiUrl || 'https://api.gstdtoken.com/api/v1';
+    const walletAddr = wallet.getAddress() || '';
+    const sendHeartbeat = async () => {
+        try {
+            const resp = await fetch(`${PLATFORM_API}/nodes/heartbeat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    wallet_address: walletAddr,
+                    node_name: config.nodeName,
+                    node_version: config.version,
+                    uptime_hours: Math.floor((Date.now() - startTime) / 3600000),
+                    queries_served: 0,
+                }),
+                signal: AbortSignal.timeout(15000),
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.reward > 0) {
+                    wallet.recordVerifiedEarning(data.reward, 'uptime', `Heartbeat reward`);
+                }
+            }
+        }
+        catch { /* silent — network may be unavailable */ }
+    };
+    // First heartbeat after 30s, then every 5 minutes
+    setTimeout(sendHeartbeat, 30_000);
+    const hbInterval = setInterval(sendHeartbeat, 5 * 60 * 1000);
+    // ── Auto-update: check every hour ────────────────────────────
+    const checkAndUpdate = async () => {
+        try {
+            const { execSync } = require('child_process');
+            const installDir = config.installDir || (0, path_1.join)((0, os_2.homedir)(), 'gstdbot');
+            // Fetch latest from GitHub
+            execSync('git fetch origin main --quiet 2>/dev/null', { cwd: installDir, timeout: 30000 });
+            // Compare local HEAD with remote
+            const local = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
+            const remote = execSync('git rev-parse origin/main', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
+            if (local !== remote) {
+                (0, server_js_1.logActivity)('Update available — pulling from GitHub...', 'info');
+                console.log('  🔄 Update detected. Pulling latest code...');
+                // Pull and rebuild
+                execSync('git reset --hard origin/main', { cwd: installDir, timeout: 30000 });
+                execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 120000 });
+                (0, server_js_1.logActivity)('Update installed — restarting node...', 'success');
+                console.log('  ✅ Update installed. Restarting...');
+                // Systemd will restart us, or PM2, or the user manually
+                process.exit(0);
+            }
+        }
+        catch { /* silent — git may not be available in Docker */ }
+    };
+    // Check for updates after 2 min, then every hour
+    setTimeout(checkAndUpdate, 2 * 60 * 1000);
+    const updateInterval = setInterval(checkAndUpdate, 60 * 60 * 1000);
     // ── Graceful shutdown ───────────────────────────────────────
     const shutdown = async () => {
         console.log('\n  🛑 Shutting down GSTD Node OS...');
         (0, server_js_1.logActivity)('Node shutdown initiated', 'warn');
+        clearInterval(hbInterval);
+        clearInterval(updateInterval);
         await trainer.stop();
         await resources.stop();
         await remote.stop();
