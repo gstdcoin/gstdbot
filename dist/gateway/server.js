@@ -914,6 +914,22 @@ class OmegaGateway {
             }
             next();
         });
+        // ─── Bridge RPC Proxy → localhost:9090 ────────────────
+        this.app.use('/api/bridge', async (req, res) => {
+            try {
+                const bridgeUrl = `http://127.0.0.1:9090/api/bridge${req.path}`;
+                const response = await fetch(bridgeUrl, {
+                    method: req.method,
+                    headers: { 'Content-Type': 'application/json' },
+                    ...(req.method !== 'GET' ? { body: JSON.stringify(req.body) } : {}),
+                });
+                const data = await response.json();
+                res.json(data);
+            }
+            catch {
+                res.json({ status: 'bridge_offline', message: 'Bridge node not running' });
+            }
+        });
         // ─── Serve static files from web/ ────────────────────────
         this.app.use('/static', express_1.default.static((0, path_1.join)(__dirname, '../../web')));
         // ─── Built-in Apps: serve real web UIs at /apps/:appId ───
