@@ -1022,14 +1022,30 @@ class OmegaGateway {
         this.app.get('/api/node/wallet', async (_req, res) => {
             if (this.wallet) {
                 const stats = this.wallet.getStats();
-                // Also fetch binding info from backend
+                const addr = this.wallet.getAddress();
+                // Fetch binding for THIS node (search by node_address, not owner)
                 try {
-                    const addr = this.wallet.getAddress();
+                    // Check who owns this node via backend
                     const resp = await fetch(`${this.config.swarmUrl}/api/v1/nodes/my-nodes?wallet=${addr}`, { signal: AbortSignal.timeout(5000) }).catch(() => null);
+                    let binding = null;
                     if (resp?.ok) {
                         const data = await resp.json();
-                        stats.bindings = data;
+                        binding = data;
                     }
+                    // Also check local wallet.json for linkedExternalWallet
+                    const { getWallet } = require('../wallet/wallet.js');
+                    const localWallet = getWallet();
+                    const linkedExternal = localWallet?.linkedExternalWallet || null;
+                    // If we have a linked external wallet, try to get THEIR nodes
+                    if (linkedExternal && (!binding || binding.total_nodes === 0)) {
+                        const resp2 = await fetch(`${this.config.swarmUrl}/api/v1/nodes/my-nodes?wallet=${linkedExternal}`, { signal: AbortSignal.timeout(5000) }).catch(() => null);
+                        if (resp2?.ok) {
+                            binding = await resp2.json();
+                        }
+                    }
+                    stats.owner_wallet = linkedExternal;
+                    stats.bindings = binding;
+                    stats.is_bound = !!(linkedExternal || (binding?.total_nodes > 0));
                 }
                 catch { }
                 res.json(stats);
@@ -1201,18 +1217,25 @@ class OmegaGateway {
                 res.json({ ok: false, message: 'Missing appId' });
                 return;
             }
-            // Docker check (#7)
-            try {
-                (0, child_process_1.execSync)('docker info', { timeout: 5000, stdio: 'pipe' });
-            }
-            catch {
-                res.json({ ok: false, message: '🐳 Docker is not installed or not running. Install Docker first: https://docs.docker.com/get-docker/' });
+            // Look up the app first to check if it needs Docker
+            const registry = await this.appManager.getRegistry();
+            const appManifest = registry.find((a) => a.id === appId);
+            if (!appManifest) {
+                res.json({ ok: false, message: `App '${appId}' not found in registry` });
                 return;
             }
+            // Docker check — only if app requires Docker
+            if (appManifest.docker) {
+                try {
+                    (0, child_process_1.execSync)('docker info', { timeout: 5000, stdio: 'pipe' });
+                }
+                catch {
+                    res.json({ ok: false, message: '🐳 Docker is required for this app but not available. Install Docker first: https://docs.docker.com/get-docker/' });
+                    return;
+                }
+            }
             // Premium check: require 1000 GSTD balance
-            const registry = await this.appManager.getRegistry();
-            const app = registry.find((a) => a.id === appId);
-            if (app?.premium) {
+            if (appManifest?.premium) {
                 const wb = this.wallet?.getBalance?.();
                 const walletBalance = typeof wb === 'number' ? wb : (wb?.gstd || 0);
                 if (walletBalance < 1000) {
