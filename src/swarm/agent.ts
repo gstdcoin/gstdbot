@@ -14,11 +14,12 @@ import { logActivity } from '../gateway/server.js';
 import type { NodeConfig } from '../index.js';
 import type { NodeWallet } from '../wallet/manager.js';
 import type { CollectiveMemory } from '../memory/collective.js';
+import { CrossChainBridge } from '../blockchain/bridge.js';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface SwarmTask {
     id: string;
-    type: 'inference' | 'embedding' | 'verification' | 'storage';
+    type: 'inference' | 'embedding' | 'verification' | 'storage' | 'bridge_verify';
     model?: string;
     prompt?: string;
     payload?: any;
@@ -261,6 +262,9 @@ export class SwarmAgent {
                 case 'storage':
                     result = await this.processStorage(task);
                     break;
+                case 'bridge_verify':
+                    result = await this.processBridgeVerify(task);
+                    break;
                 default:
                     throw new Error(`Unknown task type: ${task.type}`);
             }
@@ -352,6 +356,13 @@ export class SwarmAgent {
         const value = task.payload?.value || '';
         await this.memory.store(key, value, 'storage', 1.0);
         return { stored: true, key };
+    }
+
+    private async processBridgeVerify(task: SwarmTask): Promise<any> {
+        // Run cross chain lock-and-unlock validation
+        const bridge = new CrossChainBridge();
+        const verification = await bridge.processBridgeTask(task.payload);
+        return verification;
     }
 
     // ─── Helpers ─────────────────────────────────────────────────
