@@ -514,21 +514,46 @@ skillsCmd.command('scan <path>').description('Security scan a skill file').actio
 });
 skillsCmd.command('install <id>').description('Install a skill from marketplace').action(async (id) => {
     const spinner = (0, ora_1.default)(`Installing skill: ${id}...`).start();
-    // Check local built-in skills first
+    // 1. Check local built-in skills first
     const builtinPath = path_1.default.join(process.cwd(), 'skills', id, 'SKILL.md');
     if (fs_1.default.existsSync(builtinPath)) {
-        const content = fs_1.default.readFileSync(builtinPath, 'utf-8');
         const result = await (0, marketplace_js_1.importSkill)(builtinPath);
         if (result) {
-            spinner.succeed(`Installed: ${id} ${false ? chalk_1.default.yellow('(with warnings)') : chalk_1.default.green('✓ verified')}`);
+            spinner.succeed(`Installed: ${id} ${chalk_1.default.green('✓ verified (builtin)')}`);
         }
         else {
-            spinner.fail(`Failed: ${'Import failed'}`);
+            spinner.fail(`Failed to import builtin skill: ${id}`);
         }
         return;
     }
+    // 2. Try marketplace (importSkill handles marketplace lookup by ID)
+    try {
+        const result = await (0, marketplace_js_1.importSkill)(id);
+        if (result) {
+            spinner.succeed(`Installed: ${result.name} ${chalk_1.default.green('✓ from marketplace')}`);
+            return;
+        }
+    }
+    catch (e) {
+        // Fall through to URL attempt
+    }
+    // 3. If ID looks like a URL or GitHub shorthand, try direct import
+    if (id.startsWith('http') || id.includes('/')) {
+        try {
+            const result = await (0, marketplace_js_1.importSkill)(id);
+            if (result) {
+                spinner.succeed(`Installed: ${result.name} ${chalk_1.default.green('✓ from URL')}`);
+                return;
+            }
+        }
+        catch (e) {
+            spinner.fail(`Failed to import from URL: ${e.message}`);
+            return;
+        }
+    }
     spinner.fail(`Skill not found: ${id}`);
     console.log(chalk_1.default.gray('  Available: code-gen, web-research, defi-monitor, content-writer, token-analyzer, planetary-signals, image-gen'));
+    console.log(chalk_1.default.gray('  Or install from URL: gstdbot skills install https://github.com/user/skill'));
 });
 skillsCmd.command('create <name>').description('Create a new skill template').action(async (name) => {
     const skillDir = path_1.default.join(getConfigDir(), 'skills', name);

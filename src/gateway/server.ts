@@ -583,7 +583,15 @@ export class OmegaGateway {
             try {
                 const { model, messages, max_tokens } = req.body;
                 this.metrics.totalRequests++;
-                const result = await this.router.route(model || 'auto', messages);
+
+                // Inject factuality system prompt (same quality as Telegram bot + frontend chat)
+                const hasSystemPrompt = messages?.some((m: any) => m.role === 'system');
+                const enrichedMessages = hasSystemPrompt ? messages : [
+                    { role: 'system', content: 'You are a knowledgeable AI assistant that ONLY provides verified, factual information.\n\nCRITICAL RULES:\n1. ONLY state facts you are confident are true\n2. When citing information, reference the source type\n3. If you are NOT CERTAIN about something, say "I\'m not sure"\n4. Distinguish between established facts, expert opinions, and inferences\n5. For code: production-quality with error handling\n6. Use markdown formatting for clarity\n7. Respond in the SAME LANGUAGE as the user\n\nYour goal is to be TRUSTWORTHY — being honest about uncertainty is better than being confidently wrong.' },
+                    ...messages,
+                ];
+
+                const result = await this.router.route(model || 'auto', enrichedMessages);
                 this.updateMetrics(result);
                 res.json({
                     choices: [{ message: { role: 'assistant', content: result.content } }],
@@ -1003,9 +1011,144 @@ export class OmegaGateway {
         // ─── Wallet Stats (full) ─────────────────────────────────
         this.app.get('/api/node/wallet', async (_req, res) => {
             if (this.wallet) {
-                res.json(this.wallet.getStats());
+                const stats = this.wallet.getStats();
+                // Also fetch binding info from backend
+                try {
+                    const addr = this.wallet.getAddress();
+                    const resp = await fetch(
+                        `${this.config.swarmUrl}/api/v1/nodes/my-nodes?wallet=${addr}`,
+                        { signal: AbortSignal.timeout(5000) }
+                    ).catch(() => null);
+                    if (resp?.ok) {
+                        const data: any = await resp.json();
+                        (stats as any).bindings = data;
+                    }
+                } catch {}
+                res.json(stats);
             } else {
                 res.json({ address: null, balance: { gstd: 0, ton: 0, pending: 0, totalEarned: 0 } });
+            }
+        });
+
+        // ─── Wallet Binding: Bind owner wallet to this node ──────
+        this.app.post('/api/node/bind-wallet', async (req, res) => {
+            const { owner_wallet } = req.body || {};
+            if (!owner_wallet || owner_wallet.length < 10) {
+                res.status(400).json({ error: 'Valid owner_wallet address required (min 10 chars)' });
+                return;
+            }
+            const nodeAddress = this.wallet?.getAddress();
+            if (!nodeAddress) {
+                res.status(500).json({ error: 'Node wallet not initialized' });
+                return;
+            }
+            try {
+                const resp = await fetch(`${this.config.swarmUrl}/api/v1/nodes/bind-wallet`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        node_id: (process.env.GSTD_NODE_ID || `node-${process.pid}`),
+                        owner_wallet,
+                        node_address: nodeAddress,
+                    }),
+                    signal: AbortSignal.timeout(10000),
+                });
+                const data: any = await resp.json();
+                if (resp.ok) {
+                    // Also link externally on the node itself
+                    await this.wallet?.linkExternal(owner_wallet);
+                    logActivity(`Wallet bound: ${owner_wallet.slice(0, 12)}... → node ${(process.env.GSTD_NODE_ID || `node-${process.pid}`).slice(0, 8)}`, 'success');
+                    res.json(data);
+                } else {
+                    res.status(resp.status).json(data);
+                }
+            } catch (err: any) {
+                res.status(500).json({ error: 'Backend unreachable', details: err.message });
+            }
+        });
+
+        // POST /api/node/unbind-wallet — unbind wallet from this node
+        this.app.post('/api/node/unbind-wallet', async (req, res) => {
+            const { owner_wallet } = req.body || {};
+            if (!owner_wallet) {
+                res.status(400).json({ error: 'owner_wallet required' });
+                return;
+            }
+            try {
+                const resp = await fetch(`${this.config.swarmUrl}/api/v1/nodes/unbind-wallet`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ node_id: (process.env.GSTD_NODE_ID || `node-${process.pid}`), owner_wallet }),
+                    signal: AbortSignal.timeout(10000),
+                });
+                const data: any = await resp.json();
+                res.status(resp.status).json(data);
+            } catch (err: any) {
+                res.status(500).json({ error: 'Backend unreachable' });
+            }
+        });
+
+        // GET /api/node/my-nodes — get all nodes bound to the current wallet
+        this.app.get('/api/node/my-nodes', async (req, res) => {
+            const wallet = (req.query.wallet as string) || this.wallet?.getAddress() || '';
+            if (!wallet) {
+                res.json({ nodes: [], total_nodes: 0, total_pending: 0 });
+                return;
+            }
+            try {
+                const resp = await fetch(
+                    `${this.config.swarmUrl}/api/v1/nodes/my-nodes?wallet=${wallet}`,
+                    { signal: AbortSignal.timeout(10000) }
+                );
+                const data: any = await resp.json();
+                res.json(data);
+            } catch {
+                res.json({ nodes: [], total_nodes: 0, total_pending: 0 });
+            }
+        });
+
+        // GET /api/node/pending-rewards — get unclaimed rewards
+        this.app.get('/api/node/pending-rewards', async (req, res) => {
+            const wallet = (req.query.wallet as string) || this.wallet?.getAddress() || '';
+            if (!wallet) {
+                res.json({ rewards: [], total_pending: 0, count: 0 });
+                return;
+            }
+            try {
+                const resp = await fetch(
+                    `${this.config.swarmUrl}/api/v1/nodes/pending-rewards?wallet=${wallet}`,
+                    { signal: AbortSignal.timeout(10000) }
+                );
+                const data: any = await resp.json();
+                res.json(data);
+            } catch {
+                res.json({ rewards: [], total_pending: 0, count: 0 });
+            }
+        });
+
+        // POST /api/node/claim-rewards — claim all pending rewards
+        this.app.post('/api/node/claim-rewards', async (req, res) => {
+            const { owner_wallet } = req.body || {};
+            const wallet = owner_wallet || this.wallet?.getAddress() || '';
+            if (!wallet) {
+                res.status(400).json({ error: 'owner_wallet required' });
+                return;
+            }
+            try {
+                const resp = await fetch(`${this.config.swarmUrl}/api/v1/nodes/claim-rewards`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ owner_wallet: wallet }),
+                    signal: AbortSignal.timeout(15000),
+                });
+                const data: any = await resp.json();
+                if (resp.ok && data.claimed_gstd > 0) {
+                    logActivity(`Claimed ${data.claimed_gstd} GSTD from ${data.rewards_count} rewards`, 'success');
+                    this.wallet?.recordVerifiedEarning(data.claimed_gstd, 'bonus', `Claimed ${data.rewards_count} node rewards`);
+                }
+                res.status(resp.status).json(data);
+            } catch (err: any) {
+                res.status(500).json({ error: 'Backend unreachable' });
             }
         });
 
@@ -1108,12 +1251,23 @@ export class OmegaGateway {
 
         // ─── App Status ──────────────────────────────────────────
         this.app.get('/api/apps/status', async (_req, res) => {
-            const installed = (this.appManager as any).getInstalled?.() || (this.appManager as any).installedApps || [];
-            const running = (this.appManager as any).runningApps || [];
+            const installed = this.appManager.getInstalled();
+            const running = installed.filter(a => a.status === 'running');
             res.json({
-                installed: Array.isArray(installed) ? installed.map((a: any) => ({ id: a.id || a, status: 'installed' })) : [],
-                total_installed: Array.isArray(installed) ? installed.length : 0,
-                total_running: Array.isArray(running) ? running.length : 0,
+                installed: installed.map((a) => ({
+                    id: a.manifest.id,
+                    name: a.manifest.name,
+                    icon: a.manifest.icon,
+                    status: a.status,
+                    port: a.manifest.port,
+                    url: a.url || null,
+                    installedAt: a.installedAt,
+                    category: a.manifest.category,
+                    premium: a.manifest.premium || false,
+                })),
+                total_installed: installed.length,
+                total_running: running.length,
+                total_available: 77,
             });
         });
 

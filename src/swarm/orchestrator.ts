@@ -249,7 +249,7 @@ export class SwarmOrchestrator {
             { id: 'llama-3.3-70b', name: 'Llama 3.3 70B', size: '40GB', type: 'inference', hostedBy: [], popularity: 100, minRamGb: 48, minVramGb: 24 },
             { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', size: '5GB', type: 'inference', hostedBy: [], popularity: 95, minRamGb: 8, minVramGb: 6 },
             { id: 'llama-4-scout', name: 'Llama 4 Scout', size: '35GB', type: 'inference', hostedBy: [], popularity: 90, minRamGb: 32, minVramGb: 16 },
-            { id: 'llama-4-maverick', name: 'Llama 4 Maverick', size: '35GB', type: 'inference', hostedBy: [], popularity: 85, minRamGb: 32, minVramGb: 16 },
+            { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', size: '70GB', type: 'inference', hostedBy: [], popularity: 85, minRamGb: 48, minVramGb: 24 },
             { id: 'qwen3-32b', name: 'Qwen3 32B', size: '20GB', type: 'inference', hostedBy: [], popularity: 80, minRamGb: 24, minVramGb: 12 },
             { id: 'mistral-7b', name: 'Mistral 7B', size: '4GB', type: 'inference', hostedBy: [], popularity: 75, minRamGb: 8, minVramGb: 4 },
             { id: 'phi-3-mini', name: 'Phi-3 Mini', size: '2.5GB', type: 'inference', hostedBy: [], popularity: 70, minRamGb: 4, minVramGb: 2 },
