@@ -344,7 +344,16 @@ step 7 "Starting GSTD Node OS..."
 
 # Kill any existing process
 pkill -f "node.*gstdbot.*dist/index.js" 2>/dev/null || true
+pkill -f "gstd-bridge" 2>/dev/null || true
 sleep 1
+
+# Download Bridge Node
+mkdir -p "$CONFIG_DIR/bridge"
+info "Downloading Bridge Validator..."
+(curl -fsSL https://app.gstdtoken.com/downloads/gstd-bridge.gz | gzip -d > "$CONFIG_DIR/bridge/gstd-bridge" && chmod +x "$CONFIG_DIR/bridge/gstd-bridge") || true
+if [ ! -f "$CONFIG_DIR/bridge/bridge.toml" ]; then
+    "$CONFIG_DIR/bridge/gstd-bridge" --init --config "$CONFIG_DIR/bridge/bridge.toml" 2>/dev/null || true
+fi
 
 # Try systemd first (Linux only)
 USED_SYSTEMD=false
@@ -372,10 +381,30 @@ ${GROQ_API_KEY:+Environment=GROQ_API_KEY=${GROQ_API_KEY}}
 WantedBy=multi-user.target
 SVCEOF
 
+    # ─── Bridge node service ───
+    BRIDGE_SERVICE_FILE="/etc/systemd/system/gstd-bridge.service"
+    sudo tee "$BRIDGE_SERVICE_FILE" > /dev/null 2>&1 << BRIDGESVCEOF
+[Unit]
+Description=GSTD Bridge Validator Node (TON<->SOL<->XRP)
+After=network.target
+
+[Service]
+Type=simple
+User=$(whoami)
+WorkingDirectory=${CONFIG_DIR}/bridge
+ExecStart=${CONFIG_DIR}/bridge/gstd-bridge
+Restart=always
+RestartSec=5
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=multi-user.target
+BRIDGESVCEOF
+
     if [ $? -eq 0 ]; then
         sudo systemctl daemon-reload 2>/dev/null
-        sudo systemctl enable gstd-node 2>/dev/null
-        sudo systemctl restart gstd-node 2>/dev/null
+        sudo systemctl enable gstd-node gstd-bridge 2>/dev/null
+        sudo systemctl restart gstd-node gstd-bridge 2>/dev/null
         sleep 3
         if sudo systemctl is-active --quiet gstd-node 2>/dev/null; then
             USED_SYSTEMD=true
@@ -391,6 +420,12 @@ if [ "$USED_SYSTEMD" = false ]; then
         nohup node dist/index.js >> "$CONFIG_DIR/node.log" 2>&1 &
     NODE_PID=$!
     echo "$NODE_PID" > "$CONFIG_DIR/node.pid"
+    
+    # Run Bridge in background
+    cd "$CONFIG_DIR/bridge"
+    nohup ./gstd-bridge >> bridge.log 2>&1 &
+    echo "$!" > bridge.pid
+    
     sleep 3
 
     if kill -0 "$NODE_PID" 2>/dev/null; then
