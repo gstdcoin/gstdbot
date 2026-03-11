@@ -230,6 +230,23 @@ All endpoints available at `http://localhost:8091`
 | POST   | `/api/node/control`  | Actions: diag, gc, restart |
 | GET    | `/api/check-update`  | Check for updates          |
 
+### Wallet Binding
+
+Bind your external TON wallet to collect rewards from multiple nodes.
+
+| Method | Endpoint                   | Description                                            |
+| ------ | -------------------------- | ------------------------------------------------------ |
+| POST   | `/api/node/bind-wallet`    | Bind your TON wallet (`{owner_wallet: "UQ..."}`)       |
+| POST   | `/api/node/unbind-wallet`  | Unbind wallet from this node                           |
+| GET    | `/api/node/my-nodes`       | List all nodes bound to your wallet                    |
+| GET    | `/api/node/pending-rewards`| Unclaimed rewards for your wallet                      |
+| POST   | `/api/node/claim-rewards`  | Claim all pending rewards to your balance              |
+| GET    | `/api/node/wallet`         | Full wallet stats + binding status                     |
+
+- **Multiple nodes**: One wallet → unlimited nodes, collect from all
+- **Auto-claim**: Rewards older than 90 days auto-credited to your balance
+- **Dashboard UI**: Wallet → Wallet Binding section (bind/unbind/claim)
+
 ### Remote Access
 
 | Method | Endpoint             | Description                  |
@@ -259,6 +276,10 @@ bash reinstall.sh --reset
 
 ### v3.3.0 (March 2026)
 
+- ✅ **Wallet Binding** — bind external TON wallet, collect rewards from N nodes
+- ✅ **Auto-Claim** — unclaimed rewards >90 days auto-credited (background goroutine)
+- ✅ **Dashboard Wallet Binding UI** — bind/unbind/claim directly from control panel
+- ✅ **App Install Fix** — built-in apps install without Docker requirement
 - ✅ Resource Sharing API (5 endpoints)
 - ✅ Collective Memory API (store/recall/stats)
 - ✅ AI Training API (status/jobs/start)
