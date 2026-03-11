@@ -1673,6 +1673,96 @@
             </button>
           </div>
         </div>
+
+        <!-- ═══ Wallet Binding ═══ -->
+        <div class="card" id="wallet-binding-card" style="border: 1px solid var(--border); position: relative; overflow: hidden;">
+          <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--cyan), var(--emerald));"></div>
+          <div class="card-label">
+            <span class="cic" style="background: rgba(139, 92, 246, 0.1)">🔗</span>
+            Wallet Binding
+          </div>
+
+          <!-- Status -->
+          <div id="bind-status" style="margin-top: 12px; padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600;">Status</span>
+              <span id="bind-badge" style="font-size: 10px; padding: 2px 10px; border-radius: 20px; font-weight: 700; background: rgba(239,68,68,0.15); color: #ef4444;">NOT BOUND</span>
+            </div>
+            <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+              <span style="color: var(--text); font-weight: 600;">Node Wallet:</span>
+              <span id="bind-node-addr" style="font-family: monospace; font-size: 11px;">—</span>
+            </div>
+            <div id="bind-owner-row" style="font-size: 12px; color: var(--muted); margin-top: 4px; display: none;">
+              <span style="color: var(--text); font-weight: 600;">Owner Wallet:</span>
+              <span id="bind-owner-addr" style="font-family: monospace; font-size: 11px; color: var(--emerald);">—</span>
+            </div>
+          </div>
+
+          <!-- Bind Form -->
+          <div id="bind-form" style="margin-top: 12px;">
+            <label style="font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600; display: block; margin-bottom: 6px;">
+              Your TON Wallet Address (Tonkeeper)
+            </label>
+            <div style="display: flex; gap: 8px;">
+              <input id="bind-input" type="text" placeholder="UQ... or EQ..." style="
+                flex: 1; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border);
+                background: var(--card); color: var(--text); font-family: monospace; font-size: 13px;
+                outline: none; transition: border-color 0.2s;
+              " onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" />
+              <button onclick="bindWallet()" style="
+                padding: 10px 20px; border-radius: 10px; border: none;
+                background: linear-gradient(135deg, var(--accent), var(--cyan));
+                color: white; font-weight: 700; font-size: 12px; cursor: pointer;
+                transition: transform 0.15s, opacity 0.15s; white-space: nowrap;
+              " onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+                🔗 Bind
+              </button>
+            </div>
+          </div>
+
+          <!-- Bound Info (visible when bound) -->
+          <div id="bind-info" style="margin-top: 12px; display: none;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
+              <div style="text-align: center; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                <div style="font-size: 18px; font-weight: 900; color: var(--cyan);" id="bind-nodes-count">0</div>
+                <div style="font-size: 9px; color: var(--muted); text-transform: uppercase;">Linked Nodes</div>
+              </div>
+              <div style="text-align: center; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                <div style="font-size: 18px; font-weight: 900; color: var(--emerald);" id="bind-pending">0.00</div>
+                <div style="font-size: 9px; color: var(--muted); text-transform: uppercase;">Pending GSTD</div>
+              </div>
+              <div style="text-align: center; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                <div style="font-size: 18px; font-weight: 900; color: var(--accent);" id="bind-earned">0.00</div>
+                <div style="font-size: 9px; color: var(--muted); text-transform: uppercase;">Total Earned</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+              <button onclick="claimRewards()" id="btn-claim" style="
+                flex: 1; padding: 10px; border-radius: 10px; border: none;
+                background: linear-gradient(135deg, var(--emerald), #059669);
+                color: white; font-weight: 700; font-size: 12px; cursor: pointer;
+                transition: transform 0.15s;
+              " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                💰 Claim Rewards
+              </button>
+              <button onclick="unbindWallet()" style="
+                padding: 10px 16px; border-radius: 10px; border: 1px solid rgba(239,68,68,0.3);
+                background: rgba(239,68,68,0.08); color: #ef4444;
+                font-weight: 700; font-size: 12px; cursor: pointer;
+                transition: transform 0.15s;
+              " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                ✂️ Unbind
+              </button>
+            </div>
+            <div style="font-size: 10px; color: var(--muted); margin-top: 8px; text-align: center;">
+              ⏰ Unclaimed rewards are auto-credited after 90 days
+            </div>
+          </div>
+
+          <!-- Feedback -->
+          <div id="bind-msg" style="margin-top: 8px; font-size: 12px; display: none; padding: 8px 12px; border-radius: 8px;"></div>
+        </div>
+
         <div class="card">
           <div class="card-label">Recent Transactions</div>
           <table class="tx-table">
@@ -2644,6 +2734,8 @@
           ).toFixed(4);
           document.getElementById("w-addr").textContent =
             d.wallet?.address || "—";
+          // Update binding section
+          refreshBindingUI(d);
         } catch (e) {
           if (connected) {
             connected = false;
@@ -2652,6 +2744,129 @@
           document.getElementById("sb-status").textContent = "Offline";
           document.getElementById("topbar-dot").style.background =
             "var(--rose)";
+        }
+      }
+
+      // ─── Wallet Binding ─────────────────────────────────
+      function refreshBindingUI(statusData) {
+        const addr = statusData?.wallet?.address;
+        if (addr) {
+          document.getElementById("bind-node-addr").textContent =
+            addr.slice(0, 16) + "..." + addr.slice(-6);
+        }
+        // Fetch wallet endpoint for binding info
+        fetch(API + "/api/node/wallet").then(r => r.json()).then(w => {
+          const ownerWallet = w.owner_wallet;
+          const isBound = w.is_bound;
+          const bindings = w.bindings;
+          const badge = document.getElementById("bind-badge");
+          const form = document.getElementById("bind-form");
+          const info = document.getElementById("bind-info");
+          const ownerRow = document.getElementById("bind-owner-row");
+
+          if (isBound && ownerWallet) {
+            badge.textContent = "BOUND ✓";
+            badge.style.background = "rgba(34,197,94,0.15)";
+            badge.style.color = "#22c55e";
+            ownerRow.style.display = "block";
+            document.getElementById("bind-owner-addr").textContent =
+              ownerWallet.slice(0, 16) + "..." + ownerWallet.slice(-6);
+            form.style.display = "none";
+            info.style.display = "block";
+
+            // Update stats
+            if (bindings) {
+              document.getElementById("bind-nodes-count").textContent =
+                bindings.total_nodes || 0;
+              document.getElementById("bind-pending").textContent =
+                (bindings.total_pending || 0).toFixed(2);
+              // Calculate total earned from nodes
+              let totalEarned = 0;
+              (bindings.nodes || []).forEach(n => { totalEarned += n.total_earned_gstd || 0; });
+              document.getElementById("bind-earned").textContent = totalEarned.toFixed(2);
+            }
+          } else {
+            badge.textContent = "NOT BOUND";
+            badge.style.background = "rgba(239,68,68,0.15)";
+            badge.style.color = "#ef4444";
+            ownerRow.style.display = "none";
+            form.style.display = "block";
+            info.style.display = "none";
+          }
+        }).catch(() => {});
+      }
+
+      function showBindMsg(text, type) {
+        const el = document.getElementById("bind-msg");
+        el.style.display = "block";
+        el.textContent = text;
+        el.style.background = type === "ok" ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)";
+        el.style.color = type === "ok" ? "#22c55e" : "#ef4444";
+        el.style.border = "1px solid " + (type === "ok" ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)");
+        setTimeout(() => { el.style.display = "none"; }, 5000);
+      }
+
+      async function bindWallet() {
+        const addr = document.getElementById("bind-input").value.trim();
+        if (!addr || (!addr.startsWith("UQ") && !addr.startsWith("EQ") && !addr.startsWith("0:"))) {
+          showBindMsg("Please enter a valid TON wallet address (UQ... or EQ...)", "err");
+          return;
+        }
+        try {
+          const r = await fetch(API + "/api/node/bind-wallet", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ owner_wallet: addr })
+          });
+          const d = await r.json();
+          if (d.ok) {
+            showBindMsg("✅ Wallet bound successfully! Rewards will accumulate.", "ok");
+            document.getElementById("bind-input").value = "";
+            setTimeout(() => refreshStatus(), 1000);
+          } else {
+            showBindMsg("❌ " + (d.error || d.message || "Binding failed"), "err");
+          }
+        } catch (e) {
+          showBindMsg("❌ Network error: " + e.message, "err");
+        }
+      }
+
+      async function unbindWallet() {
+        if (!confirm("Unbind your wallet from this node? Pending rewards are preserved.")) return;
+        try {
+          const r = await fetch(API + "/api/node/unbind-wallet", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({})
+          });
+          const d = await r.json();
+          if (d.ok) {
+            showBindMsg("✅ Wallet unbound. Pending rewards are preserved.", "ok");
+            setTimeout(() => refreshStatus(), 1000);
+          } else {
+            showBindMsg("❌ " + (d.error || d.message || "Unbind failed"), "err");
+          }
+        } catch (e) {
+          showBindMsg("❌ " + e.message, "err");
+        }
+      }
+
+      async function claimRewards() {
+        try {
+          const r = await fetch(API + "/api/node/claim-rewards", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({})
+          });
+          const d = await r.json();
+          if (d.ok) {
+            showBindMsg("💰 " + (d.message || `Claimed ${d.claimed_gstd || 0} GSTD`), "ok");
+            setTimeout(() => refreshStatus(), 1000);
+          } else {
+            showBindMsg("ℹ️ " + (d.message || "No rewards to claim"), "err");
+          }
+        } catch (e) {
+          showBindMsg("❌ " + e.message, "err");
         }
       }
 

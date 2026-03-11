@@ -1090,9 +1090,17 @@ export class OmegaGateway {
 
         // POST /api/node/unbind-wallet — unbind wallet from this node
         this.app.post('/api/node/unbind-wallet', async (req, res) => {
-            const { owner_wallet } = req.body || {};
+            let { owner_wallet } = req.body || {};
+            // Auto-resolve from local linked wallet if not provided
             if (!owner_wallet) {
-                res.status(400).json({ error: 'owner_wallet required' });
+                try {
+                    const { getWallet } = require('../wallet/wallet.js');
+                    const localWallet = getWallet();
+                    owner_wallet = localWallet?.linkedExternalWallet;
+                } catch {}
+            }
+            if (!owner_wallet) {
+                res.status(400).json({ error: 'No wallet bound to this node' });
                 return;
             }
             try {
@@ -1149,10 +1157,18 @@ export class OmegaGateway {
 
         // POST /api/node/claim-rewards — claim all pending rewards
         this.app.post('/api/node/claim-rewards', async (req, res) => {
-            const { owner_wallet } = req.body || {};
+            let { owner_wallet } = req.body || {};
+            // Auto-resolve: first try linked external, then node wallet address
+            if (!owner_wallet) {
+                try {
+                    const { getWallet } = require('../wallet/wallet.js');
+                    const localWallet = getWallet();
+                    owner_wallet = localWallet?.linkedExternalWallet;
+                } catch {}
+            }
             const wallet = owner_wallet || this.wallet?.getAddress() || '';
             if (!wallet) {
-                res.status(400).json({ error: 'owner_wallet required' });
+                res.status(400).json({ error: 'No wallet bound. Bind your wallet first.' });
                 return;
             }
             try {
