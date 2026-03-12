@@ -13,6 +13,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SwarmAgent = void 0;
 const os_1 = require("os");
 const server_js_1 = require("../gateway/server.js");
+const bridge_js_1 = require("../blockchain/bridge.js");
 // ─── Swarm Agent ─────────────────────────────────────────────────
 class SwarmAgent {
     config;
@@ -38,6 +39,14 @@ class SwarmAgent {
             uptimeSeconds: 0,
             lastHeartbeat: null,
             rank: 0,
+            tier: 'bronze',
+            tierIcon: '🥉',
+            streakDays: 0,
+            bestStreak: 0,
+            effectiveRate: 0.5,
+            nextTier: 'silver',
+            nextTierHours: 100,
+            tasksByType: {},
         };
     }
     async start() {
@@ -47,14 +56,20 @@ class SwarmAgent {
         }
         // Register with platform
         await this.register();
+        // Fetch initial rewards/tier info
+        await this.fetchRewardsInfo();
         // Start heartbeat (every 30 seconds)
         this.heartbeatTimer = setInterval(() => this.heartbeat(), 30_000);
         // Start task polling (every 5 seconds)
         this.taskPollTimer = setInterval(() => this.pollTasks(), 5_000);
+        // Refresh tier info every 5 minutes
+        setInterval(() => this.fetchRewardsInfo(), 5 * 60_000);
         // Initial heartbeat
         await this.heartbeat();
-        console.log('    Swarm agent started (node: ' + this.config.nodeId.slice(0, 8) + '...)');
-        (0, server_js_1.logActivity)('Joined swarm network', 'success');
+        const tierLine = `${this.stats.tierIcon} ${this.stats.tier.toUpperCase()} · ${this.stats.effectiveRate} GSTD/h · ${this.stats.streakDays}d streak`;
+        console.log(`    Swarm agent started (node: ${this.config.nodeId.slice(0, 8)}...)`);
+        console.log(`    Rewards: ${tierLine}`);
+        (0, server_js_1.logActivity)(`Joined swarm network | ${tierLine}`, 'success');
     }
     async stop() {
         if (this.heartbeatTimer)
@@ -78,7 +93,32 @@ class SwarmAgent {
         this.stats.uptimeSeconds = Math.round((Date.now() - this.startedAt) / 1000);
         return { ...this.stats };
     }
-    // ─── Registration ────────────────────────────────────────────
+    // ─── Rewards Info Sync ───────────────────────────────────────
+    static TIER_ICONS = {
+        bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎', diamond: '👑'
+    };
+    async fetchRewardsInfo() {
+        const walletAddr = this.wallet.getAddress();
+        if (!walletAddr)
+            return;
+        try {
+            const result = await this.apiCall('/nodes/rewards/my', {}, 'GET', `?wallet=${walletAddr}`);
+            if (!result || !result.registered)
+                return;
+            // Update stats from rewards API
+            this.stats.tier = result.tier?.name || 'bronze';
+            this.stats.tierIcon = SwarmAgent.TIER_ICONS[this.stats.tier] || '🥉';
+            this.stats.streakDays = result.streak?.days || 0;
+            this.stats.bestStreak = result.streak?.best || 0;
+            this.stats.effectiveRate = result.stats?.effective_rate_per_h || 0.5;
+            this.stats.totalEarnedGstd = result.earnings?.total || this.stats.totalEarnedGstd;
+            if (result.next_tier) {
+                this.stats.nextTier = result.next_tier.name;
+                this.stats.nextTierHours = result.next_tier.hours_needed || 0;
+            }
+        }
+        catch { }
+    }
     async register() {
         try {
             const caps = this.getCapabilities();
@@ -199,6 +239,9 @@ class SwarmAgent {
                 case 'storage':
                     result = await this.processStorage(task);
                     break;
+                case 'bridge_verify':
+                    result = await this.processBridgeVerify(task);
+                    break;
                 default:
                     throw new Error(`Unknown task type: ${task.type}`);
             }
@@ -211,7 +254,10 @@ class SwarmAgent {
             });
             this.stats.tasksCompleted++;
             this.stats.totalEarnedGstd += task.reward_gstd;
-            (0, server_js_1.logActivity)(`Task ${task.id.slice(0, 8)} completed → +${task.reward_gstd} GSTD`, 'success');
+            this.stats.tasksByType[task.type] = (this.stats.tasksByType[task.type] || 0) + 1;
+            (0, server_js_1.logActivity)(`${this.stats.tierIcon} Task ${task.id.slice(0, 8)} completed → +${task.reward_gstd} GSTD (${task.type}) [total: ${this.stats.tasksCompleted}]`, 'success');
+            // Record in wallet
+            this.wallet.recordVerifiedEarning(task.reward_gstd, task.type, `Task ${task.type}: ${task.id.slice(0, 8)}`, task.id);
             // Save to collective memory if inference
             if (task.type === 'inference' && task.prompt && result?.response) {
                 await this.memory.store(task.prompt, result.response, task.model || 'unknown', 0.8);
@@ -282,6 +328,12 @@ class SwarmAgent {
         await this.memory.store(key, value, 'storage', 1.0);
         return { stored: true, key };
     }
+    async processBridgeVerify(task) {
+        // Run cross chain lock-and-unlock validation
+        const bridge = new bridge_js_1.CrossChainBridge();
+        const verification = await bridge.processBridgeTask(task.payload);
+        return verification;
+    }
     // ─── Helpers ─────────────────────────────────────────────────
     getCapabilities() {
         const cpuInfo = (0, os_1.cpus)();
@@ -308,18 +360,19 @@ class SwarmAgent {
             version: this.config.version,
         };
     }
-    async apiCall(endpoint, data) {
-        const url = this.config.swarm.apiUrl + endpoint;
+    async apiCall(endpoint, data, method, query) {
+        const url = this.config.swarm.apiUrl + endpoint + (query || '');
         const walletAddr = this.wallet.getAddress() || '';
+        const isGet = method === 'GET' || endpoint.startsWith('/nodes/public');
         try {
             const resp = await fetch(url, {
-                method: endpoint.startsWith('/nodes/public') ? 'GET' : 'POST',
+                method: isGet ? 'GET' : 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Wallet-Address': walletAddr,
                     'X-Node-Id': this.config.nodeId,
                 },
-                body: endpoint.startsWith('/nodes/public') ? undefined : JSON.stringify(data),
+                body: isGet ? undefined : JSON.stringify(data),
                 signal: AbortSignal.timeout(10_000),
             });
             if (resp.ok)

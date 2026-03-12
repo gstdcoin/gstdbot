@@ -213,8 +213,12 @@ async function main() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     wallet_address: walletAddr,
+                    node_id: config.nodeId,
                     node_name: config.nodeName,
                     node_version: config.version,
+                    status: 'online',
+                    battery: 300,
+                    signal: 100,
                     uptime_hours: Math.floor((Date.now() - startTime) / 3600000),
                     queries_served: 0,
                 }),

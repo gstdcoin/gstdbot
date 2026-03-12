@@ -40,6 +40,15 @@ export interface SwarmStats {
     uptimeSeconds: number;
     lastHeartbeat: string | null;
     rank: number;
+    // Rewards system
+    tier: string;
+    tierIcon: string;
+    streakDays: number;
+    bestStreak: number;
+    effectiveRate: number;
+    nextTier: string | null;
+    nextTierHours: number;
+    tasksByType: Record<string, number>;
 }
 
 interface NodeCapabilities {
@@ -85,6 +94,14 @@ export class SwarmAgent {
             uptimeSeconds: 0,
             lastHeartbeat: null,
             rank: 0,
+            tier: 'bronze',
+            tierIcon: '🥉',
+            streakDays: 0,
+            bestStreak: 0,
+            effectiveRate: 0.5,
+            nextTier: 'silver',
+            nextTierHours: 100,
+            tasksByType: {},
         };
     }
 
@@ -97,17 +114,25 @@ export class SwarmAgent {
         // Register with platform
         await this.register();
 
+        // Fetch initial rewards/tier info
+        await this.fetchRewardsInfo();
+
         // Start heartbeat (every 30 seconds)
         this.heartbeatTimer = setInterval(() => this.heartbeat(), 30_000);
 
         // Start task polling (every 5 seconds)
         this.taskPollTimer = setInterval(() => this.pollTasks(), 5_000);
 
+        // Refresh tier info every 5 minutes
+        setInterval(() => this.fetchRewardsInfo(), 5 * 60_000);
+
         // Initial heartbeat
         await this.heartbeat();
 
-        console.log('    Swarm agent started (node: ' + this.config.nodeId.slice(0, 8) + '...)');
-        logActivity('Joined swarm network', 'success');
+        const tierLine = `${this.stats.tierIcon} ${this.stats.tier.toUpperCase()} · ${this.stats.effectiveRate} GSTD/h · ${this.stats.streakDays}d streak`;
+        console.log(`    Swarm agent started (node: ${this.config.nodeId.slice(0, 8)}...)`);
+        console.log(`    Rewards: ${tierLine}`);
+        logActivity(`Joined swarm network | ${tierLine}`, 'success');
     }
 
     async stop(): Promise<void> {
@@ -134,7 +159,33 @@ export class SwarmAgent {
         return { ...this.stats };
     }
 
-    // ─── Registration ────────────────────────────────────────────
+    // ─── Rewards Info Sync ───────────────────────────────────────
+    private static TIER_ICONS: Record<string, string> = {
+        bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎', diamond: '👑'
+    };
+
+    private async fetchRewardsInfo(): Promise<void> {
+        const walletAddr = this.wallet.getAddress();
+        if (!walletAddr) return;
+
+        try {
+            const result = await this.apiCall('/nodes/rewards/my', {}, 'GET', `?wallet=${walletAddr}`);
+            if (!result || !result.registered) return;
+
+            // Update stats from rewards API
+            this.stats.tier = result.tier?.name || 'bronze';
+            this.stats.tierIcon = SwarmAgent.TIER_ICONS[this.stats.tier] || '🥉';
+            this.stats.streakDays = result.streak?.days || 0;
+            this.stats.bestStreak = result.streak?.best || 0;
+            this.stats.effectiveRate = result.stats?.effective_rate_per_h || 0.5;
+            this.stats.totalEarnedGstd = result.earnings?.total || this.stats.totalEarnedGstd;
+
+            if (result.next_tier) {
+                this.stats.nextTier = result.next_tier.name;
+                this.stats.nextTierHours = result.next_tier.hours_needed || 0;
+            }
+        } catch { }
+    }
     private async register(): Promise<void> {
         try {
             const caps = this.getCapabilities();
@@ -279,7 +330,11 @@ export class SwarmAgent {
 
             this.stats.tasksCompleted++;
             this.stats.totalEarnedGstd += task.reward_gstd;
-            logActivity(`Task ${task.id.slice(0, 8)} completed → +${task.reward_gstd} GSTD`, 'success');
+            this.stats.tasksByType[task.type] = (this.stats.tasksByType[task.type] || 0) + 1;
+            logActivity(`${this.stats.tierIcon} Task ${task.id.slice(0, 8)} completed → +${task.reward_gstd} GSTD (${task.type}) [total: ${this.stats.tasksCompleted}]`, 'success');
+
+            // Record in wallet
+            this.wallet.recordVerifiedEarning(task.reward_gstd, task.type as any, `Task ${task.type}: ${task.id.slice(0, 8)}`, task.id);
 
             // Save to collective memory if inference
             if (task.type === 'inference' && task.prompt && result?.response) {
@@ -392,18 +447,19 @@ export class SwarmAgent {
         };
     }
 
-    private async apiCall(endpoint: string, data: any): Promise<any> {
-        const url = this.config.swarm.apiUrl + endpoint;
+    private async apiCall(endpoint: string, data: any, method?: string, query?: string): Promise<any> {
+        const url = this.config.swarm.apiUrl + endpoint + (query || '');
         const walletAddr = this.wallet.getAddress() || '';
+        const isGet = method === 'GET' || endpoint.startsWith('/nodes/public');
         try {
             const resp = await fetch(url, {
-                method: endpoint.startsWith('/nodes/public') ? 'GET' : 'POST',
+                method: isGet ? 'GET' : 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Wallet-Address': walletAddr,
                     'X-Node-Id': this.config.nodeId,
                 },
-                body: endpoint.startsWith('/nodes/public') ? undefined : JSON.stringify(data),
+                body: isGet ? undefined : JSON.stringify(data),
                 signal: AbortSignal.timeout(10_000),
             });
             if (resp.ok) return await resp.json().catch(() => ({ ok: true }));

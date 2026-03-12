@@ -286,6 +286,7 @@ export class TelegramChannel {
 
             const models = [
                 { id: 'auto', label: '🤖 Auto (best available)', labelRU: '🤖 Авто (лучшая доступная)' },
+                { id: 'deepseek-r1-distill-llama-70b', label: '🤔 DeepSeek R1 70B', labelRU: '🤔 DeepSeek R1 70B' },
                 { id: 'llama-3.3-70b-versatile', label: '🦙 Llama 3.3 70B', labelRU: '🦙 Llama 3.3 70B' },
                 { id: 'llama-3.1-8b-instant', label: '⚡ Llama 3.1 8B (fast)', labelRU: '⚡ Llama 3.1 8B (быстрая)' },
                 { id: 'meta-llama/llama-4-scout-17b-16e-instruct', label: '🔭 Llama 4 Scout', labelRU: '🔭 Llama 4 Scout' },
@@ -459,6 +460,32 @@ export class TelegramChannel {
                 const mixTier = (ctx.session as any).mixTier as SmartMixTier | undefined;
 
                 if (mixTier && mixTier !== 'free') {
+                    const tierInfo = SMARTMIX_TIERS[mixTier] || SMARTMIX_TIERS.free;
+                    
+                    if (tierInfo.cost > 0 && ctx.from?.id) {
+                        try {
+                            const walletData = await this.apiCall(`/api/v1/telegram/bot/wallet?telegram_id=${ctx.from.id}`);
+                            const walletAddress = walletData.wallet || `tg-${ctx.from.id}`;
+                            
+                            await this.apiCall('/api/v1/chat/deduct', {
+                                method: 'POST',
+                                body: { wallet_address: walletAddress, session_cost_gstd: tierInfo.cost }
+                            });
+                            console.log(`[AI] Deducted ${tierInfo.cost} GSTD for SmartMix ${mixTier} from ${walletAddress}`);
+                        } catch (err: any) {
+                            const errStr = String(err);
+                            if (errStr.includes('insufficient_funds') || errStr.includes('402')) {
+                                const msg = lang === 'ru' 
+                                    ? `⚠️ Недостаточно средств для уровня "${tierInfo.nameRU}" (${tierInfo.cost} GSTD).\nИспользуйте команду /buy чтобы пополнить баланс, или переключите уровень в меню 'Коллективный Интеллект'.`
+                                    : `⚠️ Insufficient funds for "${tierInfo.name}" tier (${tierInfo.cost} GSTD).\nUse /buy to top up, or switch tiers in the 'Collective Intelligence' menu.`;
+                                await ctx.reply(msg);
+                            } else {
+                                await ctx.reply(`⚠️ Deduction error: ${errStr.substring(0, 50)}. Please try later.`);
+                            }
+                            return;
+                        }
+                    }
+
                     console.log(`[AI] Using SmartMix tier: ${mixTier}`);
                     await ctx.api.sendChatAction(ctx.chat!.id, 'typing');
                     const mixResult = await this.router.routeSmartMix(mixTier, messages);
@@ -477,9 +504,9 @@ export class TelegramChannel {
                         }
                     }
 
-                    const tierInfo = SMARTMIX_TIERS[mixResult.tier] || SMARTMIX_TIERS.free;
+                    const resultTierInfo = SMARTMIX_TIERS[mixResult.tier] || SMARTMIX_TIERS.free;
                     const footer = isPrivate
-                        ? `\n\n${tierInfo.emoji} ${tierInfo.name} · ${mixResult.strategy} · ${mixResult.modelsUsed.length} models · ${mixResult.latencyMs}ms`
+                        ? `\n\n${resultTierInfo.emoji} ${resultTierInfo.name} · ${mixResult.strategy} · ${mixResult.modelsUsed.length} models · ${mixResult.latencyMs}ms`
                         : '';
 
                     try {
@@ -718,6 +745,7 @@ export class TelegramChannel {
 
                 const modelNames: Record<string, { en: string; ru: string }> = {
                     'auto': { en: '🤖 Auto (best available)', ru: '🤖 Авто (лучшая доступная)' },
+                    'deepseek-r1-distill-llama-70b': { en: '🤔 DeepSeek R1 70B', ru: '🤔 DeepSeek R1 70B' },
                     'llama-3.3-70b-versatile': { en: '🦙 Llama 3.3 70B', ru: '🦙 Llama 3.3 70B' },
                     'llama-3.1-8b-instant': { en: '⚡ Llama 3.1 8B', ru: '⚡ Llama 3.1 8B' },
                     'meta-llama/llama-4-scout-17b-16e-instruct': { en: '🔭 Llama 4 Scout', ru: '🔭 Llama 4 Scout' },

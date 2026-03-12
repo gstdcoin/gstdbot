@@ -13,7 +13,7 @@ import type { NodeWallet } from '../wallet/manager.js';
 import type { CollectiveMemory } from '../memory/collective.js';
 export interface SwarmTask {
     id: string;
-    type: 'inference' | 'embedding' | 'verification' | 'storage';
+    type: 'inference' | 'embedding' | 'verification' | 'storage' | 'bridge_verify';
     model?: string;
     prompt?: string;
     payload?: any;
@@ -33,6 +33,14 @@ export interface SwarmStats {
     uptimeSeconds: number;
     lastHeartbeat: string | null;
     rank: number;
+    tier: string;
+    tierIcon: string;
+    streakDays: number;
+    bestStreak: number;
+    effectiveRate: number;
+    nextTier: string | null;
+    nextTierHours: number;
+    tasksByType: Record<string, number>;
 }
 export declare class SwarmAgent {
     private config;
@@ -48,6 +56,8 @@ export declare class SwarmAgent {
     stop(): Promise<void>;
     isConnected(): boolean;
     getStats(): SwarmStats;
+    private static TIER_ICONS;
+    private fetchRewardsInfo;
     private register;
     private heartbeat;
     private pollTasks;
@@ -56,6 +66,7 @@ export declare class SwarmAgent {
     private processEmbedding;
     private processVerification;
     private processStorage;
+    private processBridgeVerify;
     private getCapabilities;
     private apiCall;
 }

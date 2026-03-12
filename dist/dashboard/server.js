@@ -202,6 +202,78 @@ async function startDashboard(port = 8080, host = '0.0.0.0') {
     app.get('/api/node/log', (_req, res) => {
         res.json({ entries: activityLog.slice(0, 100) });
     });
+    // ─── API: Rewards & Tier Info ──────────────────────────────
+    app.get('/api/node/rewards', async (_req, res) => {
+        const wallet = (0, manager_js_1.getWallet)();
+        if (!wallet) {
+            res.json({ registered: false, message: 'No wallet found' });
+            return;
+        }
+        try {
+            // Get personal rewards info
+            const rewardsResp = await fetch(`https://api.gstdtoken.com/api/v1/nodes/rewards/my?wallet=${wallet.address}`, { signal: AbortSignal.timeout(5000) }).catch(() => null);
+            let rewards = { registered: false };
+            if (rewardsResp?.ok) {
+                rewards = await rewardsResp.json();
+            }
+            // Get network stats
+            const networkResp = await fetch('https://api.gstdtoken.com/api/v1/nodes/rewards/network', { signal: AbortSignal.timeout(5000) }).catch(() => null);
+            let network = {};
+            if (networkResp?.ok) {
+                network = await networkResp.json();
+            }
+            // Get leaderboard position
+            const leaderResp = await fetch('https://api.gstdtoken.com/api/v1/nodes/rewards/leaderboard', { signal: AbortSignal.timeout(5000) }).catch(() => null);
+            let leaderboard = [];
+            let myRank = 0;
+            if (leaderResp?.ok) {
+                const data = await leaderResp.json();
+                leaderboard = (data.leaderboard || []).slice(0, 10);
+                // Find my rank
+                const fullLeader = data.leaderboard || [];
+                const myNode = fullLeader.find((n) => wallet.address?.includes(n.node?.replace('...', '')));
+                if (myNode)
+                    myRank = myNode.rank;
+            }
+            res.json({
+                ...rewards,
+                network,
+                leaderboard,
+                my_rank: myRank,
+                wallet_address: wallet.address,
+            });
+        }
+        catch {
+            res.json({ registered: false, error: 'Failed to fetch rewards info' });
+        }
+    });
+    // ─── API: Reward Program Details ─────────────────────────
+    app.get('/api/node/program', async (_req, res) => {
+        try {
+            const resp = await fetch('https://api.gstdtoken.com/api/v1/nodes/rewards/program', { signal: AbortSignal.timeout(5000) }).catch(() => null);
+            if (resp?.ok) {
+                res.json(await resp.json());
+                return;
+            }
+        }
+        catch { }
+        // Fallback hardcoded program
+        res.json({
+            tiers: [
+                { name: 'bronze', min_hours: 0, multiplier: 1.0, base_per_hour: 0.5 },
+                { name: 'silver', min_hours: 100, multiplier: 1.5, base_per_hour: 0.75 },
+                { name: 'gold', min_hours: 500, multiplier: 2.0, base_per_hour: 1.0 },
+                { name: 'platinum', min_hours: 2000, multiplier: 3.0, base_per_hour: 1.5 },
+                { name: 'diamond', min_hours: 5000, multiplier: 5.0, base_per_hour: 2.5 },
+            ],
+            streak_bonuses: [
+                { days: 7, bonus_percent: 10 },
+                { days: 30, bonus_percent: 25 },
+                { days: 90, bonus_percent: 50 },
+                { days: 365, bonus_percent: 100 },
+            ],
+        });
+    });
     // ─── API: Node Control ──────────────────────────────────────
     app.post('/api/node/control', async (req, res) => {
         const { action } = req.body || {};

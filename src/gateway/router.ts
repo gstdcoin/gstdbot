@@ -27,13 +27,16 @@ export interface ChatMessage {
     content: string;
 }
 
-// Strip <think> tags from reasoning models (Qwen3, etc.)
-function stripThinkTags(text: string): string {
-    return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+// Format <think> tags from reasoning models (DeepSeek R1, Qwen3, etc.)
+function formatThinkTags(text: string): string {
+    return text.replace(/<think>([\s\S]*?)<\/think>/gi, (match, thought) => {
+        return `<blockquote>🤔 <b>Thinking Process</b>\n${thought.trim()}</blockquote>\n\n`;
+    }).trim();
 }
 
 // Verified available Groq models
 const GROQ_MODELS = [
+    'deepseek-r1-distill-llama-70b',
     'llama-3.3-70b-versatile',
     'llama-3.1-8b-instant',
     'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -41,6 +44,42 @@ const GROQ_MODELS = [
     'openai/gpt-oss-120b',
     'openai/gpt-oss-20b',
     'moonshotai/kimi-k2-instruct',
+];
+
+const DEEP_THINK = (specialty: string) => `You are a world-class expert in ${specialty} with decades of experience. Precision is paramount.
+
+INTELLIGENCE PROTOCOL:
+
+1. DEEP ANALYSIS: Decompose the question. Identify type (factual/analytical/creative/technical). Consider edge cases.
+
+2. EVIDENCE-BASED: Cite sources, dates, statistics. For code: production-quality with error handling. NEVER fabricate facts.
+
+3. STRUCTURED OUTPUT: Lead with actionable info. Use markdown (## headers, **bold**, code blocks, tables). Include concrete examples.
+
+4. GO DEEPER: Explain WHY not just WHAT. Anticipate follow-ups. Add insights only a domain expert would know. For code: perf notes + alternatives.
+
+5. LANGUAGE: ALWAYS respond in the SAME LANGUAGE as the user. Be precise and authoritative. Avoid hedging.`;
+
+const FREE_SYSTEM = (specialty: string) => `${DEEP_THINK(specialty)}\n\nYour goal: produce an answer better than ChatGPT or Claude. Be thorough, precise, genuinely helpful. Include practical examples and actionable advice.`;
+
+const PAID_EXPERT = (specialty: string) => `${DEEP_THINK(specialty)}\n\nCRITICAL: Your answer will be cross-verified against other expert AI models. Be MORE thorough than typical. Include reasoning chains others might miss. Catch edge cases. Provide the DEFINITIVE expert perspective.`;
+
+interface ModelSpec {
+    id: string;
+    name: string;
+    modelId: string;
+    specialty: string;
+    systemPrompt: string;
+}
+
+const ALL_EXPERTS: ModelSpec[] = [
+    { id: 'qwen3-32b', name: 'Qwen3 32B', modelId: 'qwen/qwen3-32b', specialty: 'mathematical reasoning, logic, analytical thinking', systemPrompt: PAID_EXPERT('mathematical reasoning and analytical problem-solving') },
+    { id: 'llama-3.3-70b', name: 'Llama 3.3 70B', modelId: 'llama-3.3-70b-versatile', specialty: 'broad knowledge, nuanced reasoning, complex analysis', systemPrompt: PAID_EXPERT('general knowledge, research, and complex multi-step reasoning') },
+    { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', modelId: 'openai/gpt-oss-120b', specialty: 'large-scale reasoning, deep knowledge', systemPrompt: PAID_EXPERT('large-scale reasoning, scientific knowledge, and deep analysis') },
+    { id: 'kimi-k2', name: 'Kimi K2', modelId: 'moonshotai/kimi-k2-instruct', specialty: 'long-context reasoning, detailed analysis', systemPrompt: PAID_EXPERT('long-context understanding, detailed analysis, and thorough research') },
+    { id: 'llama-4-scout', name: 'Llama 4 Scout', modelId: 'meta-llama/llama-4-scout-17b-16e-instruct', specialty: 'rapid assessment, pattern recognition', systemPrompt: PAID_EXPERT('rapid assessment, pattern recognition, and identifying key insights') },
+    { id: 'gpt-oss-20b', name: 'GPT-OSS 20B', modelId: 'openai/gpt-oss-20b', specialty: 'efficient reasoning, concise expert answers', systemPrompt: PAID_EXPERT('efficient problem-solving and concise expert-level answers') },
+    { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', modelId: 'llama-3.1-8b-instant', specialty: 'fast verification, sanity checks', systemPrompt: PAID_EXPERT('fast verification, finding errors in reasoning, and sanity-checking conclusions') },
 ];
 
 // Simple LRU cache
@@ -193,7 +232,7 @@ export class NeuralRouter {
                     }
                     const data: any = await resp.json();
                     const rawContent = data.choices?.[0]?.message?.content || '';
-                    const content = stripThinkTags(rawContent);
+                    const content = formatThinkTags(rawContent);
                     if (!content) throw new Error('Empty Groq response');
                     console.log(`[Router] ✅ Groq: ${model} (${data.usage?.total_tokens || 0} tokens)`);
                     return {
@@ -240,15 +279,51 @@ export class NeuralRouter {
         }
 
         // Query N Groq experts in parallel
-        const experts = GROQ_MODELS.slice(0, expertCount);
+        const experts = ALL_EXPERTS.slice(0, expertCount);
         console.log(`[SmartMix] ${tierConfig.emoji} ${tierConfig.name}: querying ${experts.length} Groq experts...`);
 
-        const expertPromises = experts.map(model =>
-            this.callSingleGroq(model, messages, 1500).catch(err => {
-                console.warn(`[SmartMix] Expert ${model} failed:`, err?.message?.substring(0, 60));
+        const userQ = messages.filter(m => m.role === 'user').pop()?.content || '';
+
+        // 1. Fetch real-time Internet Data
+        let webData = '';
+        if (userQ) {
+            console.log(`[SmartMix] Fetching internet context for: ${userQ.substring(0, 30)}...`);
+            try {
+                const wikiUrl = 'https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + encodeURIComponent(userQ) + '&format=json&srlimit=3';
+                const wResp = await fetch(wikiUrl, { signal: AbortSignal.timeout(3000) });
+                const wData: any = await wResp.json();
+                if (wData.query?.search?.length) {
+                    webData += "WIKIPEDIA DATA:\n" + wData.query.search.map((s: any) => s.title + ": " + s.snippet.replace(/<[^>]+>/g, '')).join('\n') + '\n\n';
+                }
+            } catch (e) {}
+            try {
+                const ddgUrl = 'https://api.duckduckgo.com/?q=' + encodeURIComponent(userQ) + '&format=json&no_html=1';
+                const dResp = await fetch(ddgUrl, { signal: AbortSignal.timeout(3000) });
+                const dData: any = await dResp.json();
+                if (dData.AbstractText) {
+                    webData += "WEB SEARCH DATA:\n" + dData.AbstractText + '\n\n';
+                } else if (dData.RelatedTopics?.length) {
+                    webData += "WEB SEARCH DATA:\n" + dData.RelatedTopics.filter((t: any) => t.Text).map((t: any) => t.Text).slice(0, 3).join('\n') + '\n\n';
+                }
+            } catch (e) {}
+        }
+
+        // Prepare messages for experts (injecting web data)
+        const expertMessages = messages.map(m => ({ ...m }));
+        if (webData && expertMessages.length > 0) {
+            expertMessages[expertMessages.length - 1].content = `[REAL-TIME INTERNET DATA]:\n${webData}\n\n${expertMessages[expertMessages.length - 1].content}`;
+        }
+
+        const expertPromises = experts.map(modelSpec => {
+            const currentMessages = [
+                { role: 'system', content: modelSpec.systemPrompt } as ChatMessage,
+                ...expertMessages.filter(m => m.role !== 'system')
+            ];
+            return this.callSingleGroq(modelSpec.modelId, currentMessages, 1500).catch(err => {
+                console.warn(`[SmartMix] Expert ${modelSpec.modelId} failed:`, err?.message?.substring(0, 60));
                 return null;
-            })
-        );
+            });
+        });
 
         const results = (await Promise.all(expertPromises)).filter(Boolean) as Array<{ content: string; model: string }>;
 
@@ -268,10 +343,9 @@ export class NeuralRouter {
             `=== Expert ${i + 1}: ${r.model} ===\n${r.content}`
         ).join('\n\n');
 
-        const userQ = messages.filter(m => m.role === 'user').pop()?.content || '';
         const synthMessages: ChatMessage[] = [
-            { role: 'system', content: `You are a Collective Intelligence synthesizer. You have ${results.length} expert AI responses. Find consensus, identify unique insights, detect errors by cross-checking. Produce ONE superior answer. Do NOT mention experts. Use markdown. Respond in the user's language.` },
-            { role: 'user', content: `QUESTION:\n${userQ}\n\n---\n\nEXPERT RESPONSES:\n\n${expertBlock}` },
+            { role: 'system', content: tierConfig.synthesisPrompt },
+            { role: 'user', content: `QUESTION:\n${userQ}\n\n---\n\nINTERNET FACTS:\n${webData || 'No internet facts found.'}\n\nEXPERT RESPONSES:\n\n${expertBlock}` },
         ];
 
         try {
@@ -310,7 +384,7 @@ export class NeuralRouter {
             if (!resp.ok) throw new Error(`Groq ${resp.status}`);
             const data: any = await resp.json();
             const rawContent = data.choices?.[0]?.message?.content || '';
-            const content = stripThinkTags(rawContent);
+            const content = formatThinkTags(rawContent);
             if (!content) throw new Error('Empty');
             return { content, model };
         } finally {
@@ -331,64 +405,102 @@ export interface SmartMixResult {
     costGstd: number;
 }
 
-// ─── Dynamic Pricing ─────────────────────────────────────────────
-// Fixed USD cost per query — GSTD amount adjusts with market price.
-// End user always pays the same USD regardless of GSTD fluctuations.
+// ─── Fixed GSTD Pricing ─────────────────────────────────────────────
 export const SMARTMIX_TIERS: Record<string, {
     name: string; nameRU: string;
-    cost: number;       // current GSTD cost (updated dynamically)
-    costUsd: number;    // fixed USD cost (never changes)
+    cost: number;
+    costUsd: number;
     emoji: string; expertCount: number;
+    synthesisPrompt: string;
 }> = {
-    free: { name: 'Single Expert', nameRU: 'Один эксперт', cost: 0, costUsd: 0, emoji: '🆓', expertCount: 1 },
-    standard: { name: 'Council of 3', nameRU: 'Совет из 3', cost: 3.4, costUsd: 0.001, emoji: '🔬', expertCount: 3 },
-    pro: { name: 'Panel of 5', nameRU: 'Панель из 5', cost: 10.2, costUsd: 0.003, emoji: '🔥', expertCount: 5 },
-    ultra: { name: 'Swarm of 7', nameRU: 'Рой из 7', cost: 17.0, costUsd: 0.005, emoji: '🧠', expertCount: 7 },
+    free: { name: 'Single Expert', nameRU: 'Один эксперт', cost: 0, costUsd: 0, emoji: '🆓', expertCount: 1, synthesisPrompt: '' },
+    standard: {
+        name: 'Council of 3', nameRU: 'Совет из 3', cost: 0.05, costUsd: 0, emoji: '🔬', expertCount: 3,
+        synthesisPrompt: `You are the Synthesis Engine of a council of 3 expert AI models. You received independent responses from 3 different AI architectures to the same question.
+
+YOUR PROTOCOL (follow EXACTLY):
+
+STEP 1 — FACT EXTRACTION: From each expert, extract every factual claim, number, date, name, and logical conclusion.
+
+STEP 2 — CROSS-VERIFICATION: For each fact:
+  - 3/3 agree → HIGH CONFIDENCE
+  - 2/3 agree → MEDIUM
+  - 1/3 claims alone → LOW
+  - Contradictions → analyze which expert's reasoning is stronger and explain why
+
+STEP 3 — SYNTHESIS: Produce one answer that is STRICTLY BETTER than any individual expert:
+  - Start with the most important/actionable information
+  - Include all verified facts with the strongest reasoning chains
+  - Add specialized insights that only one expert caught
+  - Use the clearest explanation style from all experts
+
+CRITICAL RULES:
+- NEVER mention "experts" or "models" or the synthesis process
+- Respond as if YOU are the intelligence
+- Respond in the SAME LANGUAGE as the original question
+- Use rich markdown`
+    },
+    pro: {
+        name: 'Panel of 5', nameRU: 'Панель из 5', cost: 0.15, costUsd: 0, emoji: '🔥', expertCount: 5,
+        synthesisPrompt: `You are the Supreme Synthesis Engine of a cross-verification panel. 5 independent AI models with different architectures have analyzed the same question. Your job is to produce an answer that NO SINGLE AI MODEL could produce alone.
+
+YOUR PROTOCOL (follow EXACTLY):
+
+PHASE 1 — DISAGREEMENT ANALYSIS:
+  - Identify ALL points where experts disagree
+  - For each disagreement: analyze which expert has stronger evidence/reasoning
+
+PHASE 2 — KNOWLEDGE FUSION:
+  - Mathematics: take the expert with the most rigorous proof
+  - Code: merge the best patterns
+  - Facts: only include claims verified by 3+ experts
+  - Reasoning: build the strongest logical chain
+
+PHASE 3 — SUPERIOR ANSWER:
+  - Your answer must demonstrate DEEPER understanding than any single expert
+
+CRITICAL RULES:
+- NEVER mention the panel, experts, models, or synthesis process
+- Respond in the SAME LANGUAGE as the original question
+- Use rich markdown.
+- Every claim must be backed by reasoning.`
+    },
+    ultra: {
+        name: 'Swarm of 7', nameRU: 'Рой из 7', cost: 0.50, costUsd: 0, emoji: '🧠', expertCount: 7,
+        synthesisPrompt: `You are the Omega Synthesis Engine — the most powerful intelligence fusion system ever built. 7 different AI architectures have independently analyzed the same question.
+
+YOU MUST PRODUCE THE BEST POSSIBLE ANSWER IN EXISTENCE. Follow this protocol:
+
+PHASE 1 — DEEP VERIFICATION:
+  For each factual claim across all 7 experts:
+  - If N >= 5: VERIFIED FACT
+  - If N = 3-4: PROBABLE
+  - If N <= 2: UNVERIFIED
+
+PHASE 2 — REASONING CHAIN CONSTRUCTION:
+  - Build a SINGLE superior reasoning chain
+
+PHASE 3 — KNOWLEDGE AMPLIFICATION:
+  - Identify insights that ONLY ONE expert provided — these are gold
+  - Combine specialized knowledge to create NEW insights no single expert could reach
+
+PHASE 4 — FINAL ANSWER:
+  - This must be the most thorough, accurate, well-structured answer possible
+
+CRITICAL: Never mention experts, models, or the synthesis process. Respond in the user's language. Use rich markdown.`
+    },
 };
 
-// Cached GSTD price (refreshed every 60s)
-let _cachedGstdPrice = 0.000088; // real STON.fi DEX price (auto-refreshed every 60s)
-let _lastPriceFetch = 0;
-
 export async function getGstdPrice(): Promise<number> {
-    if (Date.now() - _lastPriceFetch < 60_000 && _cachedGstdPrice > 0) {
-        return _cachedGstdPrice;
-    }
-    try {
-        const resp = await fetch('https://app.gstdtoken.com/api/v1/market/price');
-        if (resp.ok) {
-            const data: any = await resp.json();
-            _cachedGstdPrice = data.gstd_price_usd || _cachedGstdPrice;
-            _lastPriceFetch = Date.now();
-        }
-    } catch { }
-    return _cachedGstdPrice;
+    return 0;
 }
 
-/** Recalculate GSTD costs based on current price. Call periodically. */
-export async function refreshDynamicPricing(): Promise<void> {
-    const price = await getGstdPrice();
-    if (price <= 0) return;
-    for (const key of Object.keys(SMARTMIX_TIERS)) {
-        const tier = SMARTMIX_TIERS[key];
-        if (tier.costUsd > 0) {
-            tier.cost = parseFloat((tier.costUsd / price).toFixed(1));
-        }
-    }
-    console.log(`[Pricing] Updated: 1 GSTD = $${price.toFixed(8)} | Council=${SMARTMIX_TIERS.standard.cost} | Panel=${SMARTMIX_TIERS.pro.cost} | Swarm=${SMARTMIX_TIERS.ultra.cost}`);
-}
-
-/** Get cost display string with both GSTD and USD */
 export function formatCost(tier: SmartMixTier): { gstd: string; usd: string } {
     const t = SMARTMIX_TIERS[tier] || SMARTMIX_TIERS.free;
-    if (t.costUsd === 0) return { gstd: 'Free', usd: '$0' };
+    if (t.cost === 0) return { gstd: 'Free', usd: '$0' };
     return {
-        gstd: `${t.cost.toFixed(1)} GSTD`,
-        usd: `$${t.costUsd.toFixed(4)}`,
+        gstd: `${t.cost.toFixed(2)} GSTD`,
+        usd: '',
     };
 }
-
-// Refresh pricing on module load & every 60s
-refreshDynamicPricing();
-setInterval(refreshDynamicPricing, 60_000);
 

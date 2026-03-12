@@ -51,11 +51,9 @@ export declare const SMARTMIX_TIERS: Record<string, {
     costUsd: number;
     emoji: string;
     expertCount: number;
+    synthesisPrompt: string;
 }>;
 export declare function getGstdPrice(): Promise<number>;
-/** Recalculate GSTD costs based on current price. Call periodically. */
-export declare function refreshDynamicPricing(): Promise<void>;
-/** Get cost display string with both GSTD and USD */
 export declare function formatCost(tier: SmartMixTier): {
     gstd: string;
     usd: string;

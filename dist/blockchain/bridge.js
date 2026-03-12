@@ -1,36 +1,15 @@
+"use strict";
 /**
  * GSTD Node OS — Cross-Chain Bridge Verifier
- * 
+ *
  * Performs REAL on-chain transaction verification by calling
  * the platform's verified bridge API endpoints.
  * Each node validates transactions independently.
  */
-
-import { createHash } from 'crypto';
-import { logActivity } from '../gateway/server.js';
-
-export interface BridgeTransaction {
-    txId: string;
-    sourceChain: 'TON' | 'Solana' | 'XRPL';
-    destChain: 'TON' | 'Solana' | 'XRPL';
-    amount: number;
-    userAddress: string;
-    status: 'locked' | 'unlocked' | 'failed' | 'processing';
-    timestamp: string;
-}
-
-interface VerifyResult {
-    verified: boolean;
-    chain: string;
-    tx_hash: string;
-    from?: string;
-    to?: string;
-    amount?: number;
-    token?: string;
-    block_time?: string;
-    error?: string;
-}
-
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CrossChainBridge = void 0;
+const crypto_1 = require("crypto");
+const server_js_1 = require("../gateway/server.js");
 // Chain RPC endpoints
 const CHAIN_APIS = {
     TON: {
@@ -46,21 +25,18 @@ const CHAIN_APIS = {
         gstdIssuer: 'ryHSvxUqpcTjoESHbCkMJoqzenjFgPQSf',
     },
 };
-
-export class CrossChainBridge {
-    private static CONTRACTS = {
+class CrossChainBridge {
+    static CONTRACTS = {
         TON: 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
         Solana: 'AzN7uPhQZgThxsRvhNGHPUPRjdEjScTbqQdf5gt6Fqby',
         XRPL_Issuer: 'ryHSvxUqpcTjoESHbCkMJoqzenjFgPQSf',
     };
-
     /**
      * Validate a transaction on-chain via the platform's verify-tx API.
      * Falls back to direct chain RPC if platform is unavailable.
      */
-    async validateLock(sourceChain: string, txHash: string, expectedAmount: number): Promise<boolean> {
-        logActivity(`[Bridge] Verifying TX on ${sourceChain}: ${txHash.slice(0, 16)}... (${expectedAmount} GSTD)`, 'info');
-
+    async validateLock(sourceChain, txHash, expectedAmount) {
+        (0, server_js_1.logActivity)(`[Bridge] Verifying TX on ${sourceChain}: ${txHash.slice(0, 16)}... (${expectedAmount} GSTD)`, 'info');
         // Strategy 1: Use platform verify-tx API (most reliable, pre-built)
         try {
             const apiUrl = process.env.SWARM_API_URL || process.env.GSTD_API_URL || 'https://api.gstdtoken.com/api/v1';
@@ -70,29 +46,28 @@ export class CrossChainBridge {
                 body: JSON.stringify({ chain: sourceChain, tx_hash: txHash, amount: expectedAmount }),
                 signal: AbortSignal.timeout(15000),
             });
-
             if (resp.ok) {
-                const result = await resp.json() as VerifyResult;
+                const result = await resp.json();
                 if (result.verified) {
-                    logActivity(`[Bridge] ✅ TX verified via platform: ${result.amount || expectedAmount} GSTD, token=${result.token}`, 'success');
+                    (0, server_js_1.logActivity)(`[Bridge] ✅ TX verified via platform: ${result.amount || expectedAmount} GSTD, token=${result.token}`, 'success');
                     return true;
-                } else {
-                    logActivity(`[Bridge] ❌ TX verification failed: ${result.error || 'unknown'}`, 'error');
+                }
+                else {
+                    (0, server_js_1.logActivity)(`[Bridge] ❌ TX verification failed: ${result.error || 'unknown'}`, 'error');
                     return false;
                 }
             }
-        } catch (e: any) {
-            logActivity(`[Bridge] Platform API unavailable, trying direct chain verification...`, 'warn');
         }
-
+        catch (e) {
+            (0, server_js_1.logActivity)(`[Bridge] Platform API unavailable, trying direct chain verification...`, 'warn');
+        }
         // Strategy 2: Direct chain RPC verification
         return this.verifyDirectOnChain(sourceChain, txHash, expectedAmount);
     }
-
     /**
      * Direct on-chain verification when platform API is not available.
      */
-    private async verifyDirectOnChain(chain: string, txHash: string, expectedAmount: number): Promise<boolean> {
+    async verifyDirectOnChain(chain, txHash, expectedAmount) {
         try {
             switch (chain.toUpperCase()) {
                 case 'TON':
@@ -102,46 +77,42 @@ export class CrossChainBridge {
                 case 'XRPL':
                     return await this.verifyXRPLDirect(txHash);
                 default:
-                    logActivity(`[Bridge] Unsupported chain: ${chain}`, 'error');
+                    (0, server_js_1.logActivity)(`[Bridge] Unsupported chain: ${chain}`, 'error');
                     return false;
             }
-        } catch (e: any) {
-            logActivity(`[Bridge] Direct verification error: ${e.message}`, 'error');
+        }
+        catch (e) {
+            (0, server_js_1.logActivity)(`[Bridge] Direct verification error: ${e.message}`, 'error');
             return false;
         }
     }
-
-    private async verifyTONDirect(txHash: string): Promise<boolean> {
+    async verifyTONDirect(txHash) {
         // URL-encode for base64 hash
         const encoded = encodeURIComponent(txHash);
         const url = `${CHAIN_APIS.TON.toncenter}/jetton/transfers?jetton_master=${CHAIN_APIS.TON.jettonMaster}&limit=1&transaction_hash=${encoded}`;
-
         const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
-        if (!resp.ok) return false;
-
-        const data: any = await resp.json();
+        if (!resp.ok)
+            return false;
+        const data = await resp.json();
         if (data.jetton_transfers && data.jetton_transfers.length > 0) {
             const tx = data.jetton_transfers[0];
             const amount = parseFloat(tx.amount) / 1e9;
-            logActivity(`[Bridge] TON TX verified: ${amount.toFixed(4)} GSTD from ${tx.source?.slice(0, 12)}...`, 'success');
+            (0, server_js_1.logActivity)(`[Bridge] TON TX verified: ${amount.toFixed(4)} GSTD from ${tx.source?.slice(0, 12)}...`, 'success');
             return true;
         }
-
         // Fallback: check if any transaction exists
         const txResp = await fetch(`${CHAIN_APIS.TON.toncenter}/transactions?hash=${encoded}&limit=1`, { signal: AbortSignal.timeout(10000) });
         if (txResp.ok) {
-            const txData: any = await txResp.json();
+            const txData = await txResp.json();
             if (txData.transactions && txData.transactions.length > 0) {
-                logActivity(`[Bridge] TON TX found (general transaction)`, 'success');
+                (0, server_js_1.logActivity)(`[Bridge] TON TX found (general transaction)`, 'success');
                 return true;
             }
         }
-
-        logActivity(`[Bridge] TON TX not found: ${txHash.slice(0, 16)}...`, 'error');
+        (0, server_js_1.logActivity)(`[Bridge] TON TX not found: ${txHash.slice(0, 16)}...`, 'error');
         return false;
     }
-
-    private async verifySolanaDirect(txHash: string): Promise<boolean> {
+    async verifySolanaDirect(txHash) {
         const resp = await fetch(CHAIN_APIS.Solana.rpc, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -152,74 +123,61 @@ export class CrossChainBridge {
             }),
             signal: AbortSignal.timeout(10000),
         });
-
-        if (!resp.ok) return false;
-        const data: any = await resp.json();
-
+        if (!resp.ok)
+            return false;
+        const data = await resp.json();
         if (data.result) {
             const meta = data.result.meta;
             if (meta?.err) {
-                logActivity(`[Bridge] Solana TX failed on-chain`, 'error');
+                (0, server_js_1.logActivity)(`[Bridge] Solana TX failed on-chain`, 'error');
                 return false;
             }
-            logActivity(`[Bridge] Solana TX verified on-chain`, 'success');
+            (0, server_js_1.logActivity)(`[Bridge] Solana TX verified on-chain`, 'success');
             return true;
         }
-
-        logActivity(`[Bridge] Solana TX not found: ${txHash.slice(0, 16)}...`, 'error');
+        (0, server_js_1.logActivity)(`[Bridge] Solana TX not found: ${txHash.slice(0, 16)}...`, 'error');
         return false;
     }
-
-    private async verifyXRPLDirect(txHash: string): Promise<boolean> {
+    async verifyXRPLDirect(txHash) {
         const resp = await fetch(CHAIN_APIS.XRPL.rpc, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ method: 'tx', params: [{ transaction: txHash, binary: false }] }),
             signal: AbortSignal.timeout(10000),
         });
-
-        if (!resp.ok) return false;
-        const data: any = await resp.json();
-
+        if (!resp.ok)
+            return false;
+        const data = await resp.json();
         if (data.result?.validated) {
-            logActivity(`[Bridge] XRPL TX verified and validated`, 'success');
+            (0, server_js_1.logActivity)(`[Bridge] XRPL TX verified and validated`, 'success');
             return true;
         }
-
-        logActivity(`[Bridge] XRPL TX not found or not validated`, 'error');
+        (0, server_js_1.logActivity)(`[Bridge] XRPL TX not found or not validated`, 'error');
         return false;
     }
-
     /**
      * Produce verification signature for a validated bridge task.
      */
-    async signVerification(destChain: string, targetAddress: string, amount: number): Promise<string> {
-        logActivity(`[Bridge] Signing verification for ${destChain}: ${targetAddress.slice(0, 12)}... (${amount} GSTD)`, 'info');
-
+    async signVerification(destChain, targetAddress, amount) {
+        (0, server_js_1.logActivity)(`[Bridge] Signing verification for ${destChain}: ${targetAddress.slice(0, 12)}... (${amount} GSTD)`, 'info');
         const rawPayload = `${destChain}:${targetAddress}:${amount}:${Date.now()}`;
-        const signature = createHash('sha256').update(rawPayload).digest('hex');
-
-        logActivity(`[Bridge] Verification signed: ${signature.slice(0, 16)}...`, 'success');
+        const signature = (0, crypto_1.createHash)('sha256').update(rawPayload).digest('hex');
+        (0, server_js_1.logActivity)(`[Bridge] Verification signed: ${signature.slice(0, 16)}...`, 'success');
         return signature;
     }
-
     /**
      * Full bridge verification task — used by SwarmAgent when processing bridge_verify tasks
      */
-    async processBridgeTask(payload: any): Promise<any> {
+    async processBridgeTask(payload) {
         const { source_chain, dest_chain, amount, tx_hash, user_address } = payload;
-
         if (!source_chain || !dest_chain || !amount || !tx_hash) {
             throw new Error('Invalid bridge payload: missing required fields');
         }
-
-        logActivity(`[Bridge] Processing bridge task: ${source_chain} → ${dest_chain}, ${amount} GSTD`, 'info');
-
+        (0, server_js_1.logActivity)(`[Bridge] Processing bridge task: ${source_chain} → ${dest_chain}, ${amount} GSTD`, 'info');
         // Step 1: Verify the lock transaction on the source chain
         const isValid = await this.validateLock(source_chain, tx_hash, amount);
-
         if (!isValid) {
-            logActivity(`[Bridge] Bridge task REJECTED: TX verification failed`, 'error');
+            (0, server_js_1.logActivity)(`[Bridge] Bridge task REJECTED: TX verification failed`, 'error');
             return {
                 status: 'rejected',
                 verified: false,
@@ -229,12 +187,9 @@ export class CrossChainBridge {
                 validator_timestamp: new Date().toISOString(),
             };
         }
-
         // Step 2: Sign the verification
         const signature = await this.signVerification(dest_chain, user_address, amount);
-
-        logActivity(`[Bridge] ✅ Bridge task APPROVED: ${amount} GSTD ${source_chain}→${dest_chain}`, 'success');
-
+        (0, server_js_1.logActivity)(`[Bridge] ✅ Bridge task APPROVED: ${amount} GSTD ${source_chain}→${dest_chain}`, 'success');
         return {
             status: 'approved',
             verified: true,
@@ -246,3 +201,5 @@ export class CrossChainBridge {
         };
     }
 }
+exports.CrossChainBridge = CrossChainBridge;
+//# sourceMappingURL=bridge.js.map

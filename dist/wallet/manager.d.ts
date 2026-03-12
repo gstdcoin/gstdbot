@@ -24,7 +24,7 @@ export interface WalletBalance {
 export interface EarningEntry {
     timestamp: string;
     amount: number;
-    type: 'uptime' | 'inference' | 'embedding' | 'verification' | 'storage' | 'staking' | 'bonus';
+    type: 'uptime' | 'inference' | 'embedding' | 'verification' | 'storage' | 'staking' | 'bonus' | 'bridge_verify';
     taskId?: string;
     description: string;
 }
