@@ -2736,6 +2736,9 @@
             d.wallet?.address || "—";
           // Update binding section
           refreshBindingUI(d);
+
+          // Rewards & Tier Info
+          refreshRewardsInfo();
         } catch (e) {
           if (connected) {
             connected = false;
@@ -2868,6 +2871,56 @@
         } catch (e) {
           showBindMsg("❌ " + e.message, "err");
         }
+      }
+
+      // ─── Rewards & Tier Info ─────────────────────────────
+      async function refreshRewardsInfo() {
+        try {
+          const r = await fetch(API + "/api/node/rewards");
+          if (!r.ok) return;
+          const d = await r.json();
+          if (!d.registered) return;
+
+          const tierIcons = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎', diamond: '👑' };
+          const tierName = d.tier?.name || 'bronze';
+          const icon = tierIcons[tierName] || '🥉';
+          const streak = d.streak?.days || 0;
+          const rate = d.stats?.effective_rate_per_h || 0.5;
+          const earned = d.earnings?.total || 0;
+          const today = d.earnings?.today || 0;
+
+          // Update sidebar balance with tier info
+          const sbBal = document.getElementById("sb-balance");
+          if (sbBal) sbBal.textContent = icon + " " + earned.toFixed(1) + " GSTD";
+
+          // Update status bar
+          const sbStatus = document.getElementById("sb-status");
+          if (sbStatus) {
+            const name = lastData?.node?.name || 'Node';
+            sbStatus.textContent = name + " · " + tierName.toUpperCase() + " " + icon;
+          }
+
+          // Update balance display on dashboard with tier
+          const balEl = document.getElementById("d-bal");
+          if (balEl) {
+            balEl.innerHTML = icon + " " + earned.toFixed(2) + " GSTD";
+          }
+
+          // Update earnings tab with tier-aware data
+          const eTodayEl = document.getElementById("e-today");
+          const eWeekEl = document.getElementById("e-week");
+          const eTotalEl = document.getElementById("e-total");
+          if (eTodayEl) eTodayEl.textContent = today.toFixed(2);
+          if (d.earnings?.last_7d && eWeekEl) eWeekEl.textContent = d.earnings.last_7d.toFixed(2);
+          if (eTotalEl) eTotalEl.textContent = earned.toFixed(2);
+
+          // Log tier changes
+          if (window._lastTier && window._lastTier !== tierName) {
+            log("🏆 Tier upgraded: " + window._lastTier + " → " + tierName + " " + icon, "success");
+          }
+          window._lastTier = tierName;
+
+        } catch { }
       }
 
       async function refreshTasks() {
