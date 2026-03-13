@@ -172,7 +172,7 @@ export class SovereignSuite {
             const peerIds = this.state.meshPeers.map(p => p.nodeId);
             const result = await this.apiPost('/sovereign/mesh/announce', {
                 node_id: this.config.nodeId,
-                endpoint: `${this.config.nodeId}:${this.config.port || 3000}`,
+                endpoint: `${this.config.nodeId}:${(this.config as any).port || 3000}`,
                 peer_ids: peerIds,
             });
 
