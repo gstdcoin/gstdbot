@@ -1005,6 +1005,9 @@ export class OmegaGateway {
                         uptimeSeconds: stats?.uptimeSeconds || 0,
                         lastHeartbeat: stats?.lastHeartbeat || null,
                         rank: stats?.rank || 0,
+                        // Sovereign Protocol data
+                        sovereign: (stats as any)?.sovereign || null,
+                        economics: (stats as any)?.economics || null,
                     };
                 })(),
                 gateway: { port: this.config.port, api_port: this.config.apiPort },
@@ -2447,7 +2450,124 @@ export class OmegaGateway {
             });
         });
 
+        // ─── SOVEREIGN PROTOCOL: Local Financial Instruments ─────
+        // All financial tools built directly into the node dashboard
+        this.app.get('/api/sovereign/economics', async (_req, res) => {
+            const agent = this.subsystems?.swarm;
+            if (agent?.sovereign) {
+                res.json(agent.sovereign.getNodeEconomics());
+            } else {
+                res.json({ error: 'Sovereign suite not initialized' });
+            }
+        });
+
+        this.app.get('/api/sovereign/state', async (_req, res) => {
+            const agent = this.subsystems?.swarm;
+            if (agent?.sovereign) {
+                res.json(agent.sovereign.getState());
+            } else {
+                res.json({ error: 'Sovereign suite not initialized' });
+            }
+        });
+
+        this.app.get('/api/sovereign/profit', async (_req, res) => {
+            const agent = this.subsystems?.swarm;
+            if (agent?.sovereign) {
+                res.json(agent.sovereign.getProfitReport());
+            } else {
+                res.json({ error: 'Sovereign suite not initialized' });
+            }
+        });
+
+        // Proxy sovereign protocol calls to platform API
+        this.app.get('/api/sovereign/tokenomics', async (_req, res) => {
+            try {
+                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/tokenomics`, { signal: AbortSignal.timeout(10000) });
+                res.json(await resp.json());
+            } catch { res.json({ error: 'Platform unreachable' }); }
+        });
+
+        this.app.get('/api/sovereign/protocol', async (_req, res) => {
+            try {
+                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/protocol`, { signal: AbortSignal.timeout(10000) });
+                res.json(await resp.json());
+            } catch { res.json({ error: 'Platform unreachable' }); }
+        });
+
+        this.app.get('/api/sovereign/staking', async (_req, res) => {
+            const wallet = this.wallet?.getAddress() || '';
+            try {
+                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/staking/info?wallet=${wallet}`, { signal: AbortSignal.timeout(10000) });
+                res.json(await resp.json());
+            } catch { res.json({ error: 'Platform unreachable' }); }
+        });
+
+        this.app.post('/api/sovereign/stake', async (req, res) => {
+            const wallet = this.wallet?.getAddress();
+            const { amount, lock_days } = req.body || {};
+            try {
+                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/stake`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet, amount, lock_days }),
+                    signal: AbortSignal.timeout(10000),
+                });
+                const data: any = await resp.json();
+                if (data.stake_id) logActivity(`💎 Staked ${amount} GSTD @ ${data.effective_apy}% APY`, 'success');
+                res.json(data);
+            } catch { res.json({ error: 'Platform unreachable' }); }
+        });
+
+        this.app.post('/api/sovereign/pay', async (req, res) => {
+            const agent = this.subsystems?.swarm;
+            const { receiver_wallet, amount, memo } = req.body || {};
+            if (!receiver_wallet || !amount) { res.status(400).json({ error: 'receiver_wallet and amount required' }); return; }
+            try {
+                const result = await agent?.sovereign?.sendPayment(receiver_wallet, amount, memo);
+                res.json(result || { error: 'Sovereign suite not initialized' });
+            } catch (e: any) { res.status(400).json({ error: e.message }); }
+        });
+
+        this.app.get('/api/sovereign/payments', async (_req, res) => {
+            const wallet = this.wallet?.getAddress() || '';
+            try {
+                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/payments?wallet=${wallet}`, { signal: AbortSignal.timeout(10000) });
+                res.json(await resp.json());
+            } catch { res.json({ payments: [], count: 0 }); }
+        });
+
+        this.app.get('/api/sovereign/governance', async (_req, res) => {
+            try {
+                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/governance/proposals`, { signal: AbortSignal.timeout(10000) });
+                res.json(await resp.json());
+            } catch { res.json({ proposals: [], count: 0 }); }
+        });
+
+        this.app.post('/api/sovereign/vote', async (req, res) => {
+            const agent = this.subsystems?.swarm;
+            const { proposal_id, vote } = req.body || {};
+            if (!proposal_id || !vote) { res.status(400).json({ error: 'proposal_id and vote required' }); return; }
+            try {
+                const result = await agent?.sovereign?.voteOnProposal(proposal_id, vote);
+                res.json(result || { error: 'Sovereign suite not initialized' });
+            } catch (e: any) { res.status(400).json({ error: e.message }); }
+        });
+
+        this.app.get('/api/sovereign/mesh', async (_req, res) => {
+            try {
+                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/mesh/peers?node_id=${process.env.GSTD_NODE_ID || ''}`, { signal: AbortSignal.timeout(10000) });
+                res.json(await resp.json());
+            } catch { res.json({ total_mesh_connections: 0, active_connections: 0 }); }
+        });
+
+        this.app.get('/api/sovereign/revenue', async (_req, res) => {
+            try {
+                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/revenue`, { signal: AbortSignal.timeout(10000) });
+                res.json(await resp.json());
+            } catch { res.json({ error: 'Platform unreachable' }); }
+        });
+
         logActivity('Node OS mounted on gateway — all-in-one on :' + this.config.apiPort);
+        logActivity('🏛️ Sovereign Protocol endpoints: /api/sovereign/* (12 endpoints)', 'success');
     }
 
     private getFallbackHTML(): string {

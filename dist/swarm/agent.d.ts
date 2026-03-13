@@ -7,10 +7,12 @@
  * - Reports hardware capabilities
  * - Earns GSTD tokens for completed tasks
  * - Heartbeat + health reporting
+ * - Sovereign Protocol integration (staking, P2P, governance, mesh)
  */
 import type { NodeConfig } from '../index.js';
 import type { NodeWallet } from '../wallet/manager.js';
 import type { CollectiveMemory } from '../memory/collective.js';
+import { SovereignSuite } from './sovereign.js';
 export interface SwarmTask {
     id: string;
     type: 'inference' | 'embedding' | 'verification' | 'storage' | 'bridge_verify';
@@ -51,11 +53,15 @@ export declare class SwarmAgent {
     private taskPollTimer;
     private startedAt;
     private stats;
+    sovereign: SovereignSuite;
     constructor(config: NodeConfig, wallet: NodeWallet, memory: CollectiveMemory);
     start(): Promise<void>;
     stop(): Promise<void>;
     isConnected(): boolean;
-    getStats(): SwarmStats;
+    getStats(): SwarmStats & {
+        sovereign?: any;
+        economics?: any;
+    };
     private static TIER_ICONS;
     private fetchRewardsInfo;
     private register;

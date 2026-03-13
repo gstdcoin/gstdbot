@@ -425,7 +425,10 @@ export class MobileNodeManager {
 
         // ── Serve Mini App HTML ──
         app.get('/tma', (req: Request, res: Response) => {
-            res.send(this.getMiniAppHTML());
+            const langParam = (req.query.lang as string) || '';
+            const acceptLang = req.headers['accept-language'] || '';
+            const lang = langParam === 'ru' || (!langParam && acceptLang.startsWith('ru')) ? 'ru' : 'en';
+            res.send(this.getMiniAppHTML(lang));
         });
 
         console.log('    Mobile Node: TMA routes registered (/tma/*)');
@@ -725,7 +728,8 @@ export class MobileNodeManager {
      *  - NetworkInformation API → connection type + speed
      *  - performance.memory → JS heap usage
      */
-    private getMiniAppHTML(): string {
+    private getMiniAppHTML(lang: string = 'en'): string {
+        const isRu = lang === 'ru';
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -840,11 +844,123 @@ export class MobileNodeManager {
 <body>
     <div class="container" id="app">
         <div class="loading"><div class="spinner"></div>
-        <div style="color: var(--text2)">Scanning device resources...</div></div>
+        <div style="color: var(--text2)" id="loading-text"></div></div>
     </div>
     <div class="toast" id="toast"></div>
 
     <script>
+        // ── i18n ──
+        const I18N = {
+            en: {
+                scanning: 'Scanning device resources...',
+                title: 'GSTD Mobile Node',
+                subtitle: 'Your phone becomes a node in the AI network',
+                gstd_per_hour: 'GSTD per hour (Bronze tier)',
+                hi: 'Hi',
+                contribute_msg: "Your phone's CPU, RAM and network<br>will contribute to the decentralized AI swarm.",
+                wallet_label: 'Wallet',
+                link_wallet_hint: 'Link wallet via @GSTDCoinBot to receive rewards',
+                start_node: '🚀 Start Node',
+                device_resources: '📱 Your Device Resources',
+                ai_models: 'AI Models',
+                earning: 'Earning',
+                node_running: 'Node Running',
+                earned_session: 'GSTD Earned This Session',
+                uptime: 'Uptime',
+                tasks_label: 'Tasks',
+                rate: 'Rate',
+                peers: 'Peers',
+                online: 'online',
+                not_linked: '⚠️ Not linked',
+                next_reward: 'Next Reward',
+                phone_resources: '📱 Phone Resources (Live)',
+                cores_shared: 'cores shared',
+                gb_shared: 'GB shared',
+                charging: 'charging',
+                network: 'Network',
+                quality: 'Quality',
+                low_battery: '🔋 Low battery',
+                connect_charger: 'Connect a charger to keep earning.',
+                claim_rewards: '💎 Claim Rewards',
+                stop_node: '⏹ Stop Node',
+                activated: 'Node activated!',
+                cores_contributing: 'CPU cores contributing.',
+                activation_failed: '❌ Activation failed',
+                node_stopped: 'Node stopped',
+                claimed: 'GSTD claimed!',
+                wallet_required: '⚠️ Link a TON wallet first',
+                nothing_to_claim: 'Nothing to claim yet',
+                claim_failed: '❌ Claim failed',
+                scanning_resources: 'Scanning device resources...',
+                platform: 'Platform',
+                screen: 'Screen',
+                cpu_cores: 'CPU Cores',
+                ram: 'RAM',
+                battery: 'Battery',
+                cpu: 'CPU',
+                min: 'min',
+            },
+            ru: {
+                scanning: 'Сканирование ресурсов устройства...',
+                title: 'GSTD Мобильная Нода',
+                subtitle: 'Ваш телефон становится узлом ИИ-сети',
+                gstd_per_hour: 'GSTD в час (Бронзовый тир)',
+                hi: 'Привет',
+                contribute_msg: 'CPU, RAM и сеть вашего телефона<br>будут работать в децентрализованном ИИ рое.',
+                wallet_label: 'Кошелёк',
+                link_wallet_hint: 'Привяжите кошелёк через @GSTDCoinBot для получения наград',
+                start_node: '🚀 Запустить ноду',
+                device_resources: '📱 Ресурсы устройства',
+                ai_models: 'ИИ Модели',
+                earning: 'Заработок',
+                node_running: 'Нода работает',
+                earned_session: 'GSTD заработано за сессию',
+                uptime: 'Аптайм',
+                tasks_label: 'Задачи',
+                rate: 'Ставка',
+                peers: 'Пиры',
+                online: 'онлайн',
+                not_linked: '⚠️ Не привязан',
+                next_reward: 'Следующая награда',
+                phone_resources: '📱 Ресурсы телефона (Live)',
+                cores_shared: 'ядер расшарено',
+                gb_shared: 'ГБ расшарено',
+                charging: 'заряжается',
+                network: 'Сеть',
+                quality: 'Качество',
+                low_battery: '🔋 Низкий заряд',
+                connect_charger: 'Подключите зарядку, чтобы продолжить заработок.',
+                claim_rewards: '💎 Получить награды',
+                stop_node: '⏹ Остановить ноду',
+                activated: 'Нода активирована!',
+                cores_contributing: 'ядер CPU вносят вклад.',
+                activation_failed: '❌ Ошибка активации',
+                node_stopped: 'Нода остановлена',
+                claimed: 'GSTD получено!',
+                wallet_required: '⚠️ Сначала привяжите TON-кошелёк',
+                nothing_to_claim: 'Пока нечего забирать',
+                claim_failed: '❌ Ошибка получения',
+                scanning_resources: 'Сканирование ресурсов...',
+                platform: 'Платформа',
+                screen: 'Экран',
+                cpu_cores: 'Ядра CPU',
+                ram: 'RAM',
+                battery: 'Батарея',
+                cpu: 'CPU',
+                min: 'мин',
+            }
+        };
+        // Detect language: from URL param, then from TG user, fallback to server-set
+        const urlLang = new URLSearchParams(location.search).get('lang');
+        const serverLang = '${isRu ? 'ru' : 'en'}';
+        const L = I18N[urlLang === 'ru' ? 'ru' : urlLang === 'en' ? 'en' : serverLang] || I18N.en;
+
+        // Set loading text
+        document.addEventListener('DOMContentLoaded', () => {
+            const lt = document.getElementById('loading-text');
+            if (lt) lt.textContent = L.scanning;
+        });
+
         // ── Telegram WebApp Init ──
         const tg = window.Telegram?.WebApp;
         if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#0a0e1a'); tg.setBackgroundColor('#0a0e1a'); }
@@ -974,7 +1090,7 @@ export class MobileNodeManager {
 
         async function startNode() {
             try {
-                document.getElementById('app').innerHTML = '<div class="loading"><div class="spinner"></div><div style="color:var(--text2)">Scanning device resources...</div></div>';
+                document.getElementById('app').innerHTML = '<div class="loading"><div class="spinner"></div><div style="color:var(--text2)">' + L.scanning_resources + '</div></div>';
                 // Collect real resources before activating
                 await collectDeviceResources();
                 // Fetch linked wallet from Telegram bot
@@ -995,13 +1111,13 @@ export class MobileNodeManager {
                 });
                 const d = await r.json();
                 if (d.status === 'active') {
-                    const walletMsg = linkedWallet ? ' Wallet: ' + linkedWallet.slice(0,6) + '...' + linkedWallet.slice(-4) : '';
-                    toast('🐝 Node activated! ' + deviceInfo.cpuCores + ' CPU cores contributing.' + walletMsg);
+                    const walletMsg = linkedWallet ? ' ' + L.wallet_label + ': ' + linkedWallet.slice(0,6) + '...' + linkedWallet.slice(-4) : '';
+                    toast('🐝 ' + L.activated + ' ' + deviceInfo.cpuCores + ' ' + L.cores_contributing + walletMsg);
                     startHeartbeat();
                 }
                 await checkStatus();
             } catch (e) {
-                toast('❌ Activation failed');
+                toast(L.activation_failed);
                 renderInactive();
             }
         }
@@ -1010,7 +1126,7 @@ export class MobileNodeManager {
             clearInterval(heartbeatTimer);
             try {
                 await fetch(API + '/tma/node/stop', { method: 'POST', headers: getHeaders(), body: '{}' });
-                toast('Node stopped');
+                toast(L.node_stopped);
             } catch {}
             nodeState = { active: false };
             render();
@@ -1020,11 +1136,11 @@ export class MobileNodeManager {
             try {
                 const r = await fetch(API + '/tma/node/claim', { method: 'POST', headers: getHeaders(), body: '{}' });
                 const d = await r.json();
-                if (d.status === 'claimed') toast('✅ ' + d.amount.toFixed(4) + ' GSTD claimed!');
-                else if (d.error === 'wallet_required') toast('⚠️ Link a TON wallet first');
-                else toast('Nothing to claim yet');
+                if (d.status === 'claimed') toast('✅ ' + d.amount.toFixed(4) + ' ' + L.claimed);
+                else if (d.error === 'wallet_required') toast(L.wallet_required);
+                else toast(L.nothing_to_claim);
                 await checkStatus();
-            } catch { toast('❌ Claim failed'); }
+            } catch { toast(L.claim_failed); }
         }
 
         function startHeartbeat() {
@@ -1059,56 +1175,55 @@ export class MobileNodeManager {
         const GSTD_LOGO_SVG = '<svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">' +
             '<defs><linearGradient id="gldG" x1="0%" y1="0%" x2="100%" y2="100%">' +
             '<stop offset="0%" stop-color="#FFD700"/><stop offset="50%" stop-color="#FFC91A"/><stop offset="100%" stop-color="#FFB300"/>' +
-            '</linearGradient></defs>' +
+            '<\\/linearGradient><\\/defs>' +
             '<circle cx="60" cy="60" r="55" fill="url(#gldG)" stroke="#FFD700" stroke-width="2"/>' +
             '<g opacity="0.25"><circle cx="25" cy="25" r="2" fill="#0a1929"/><circle cx="95" cy="25" r="2" fill="#0a1929"/>' +
             '<circle cx="25" cy="95" r="2" fill="#0a1929"/><circle cx="95" cy="95" r="2" fill="#0a1929"/>' +
             '<line x1="25" y1="25" x2="95" y2="25" stroke="#0a1929" stroke-width="1"/>' +
-            '<line x1="25" y1="95" x2="95" y2="95" stroke="#0a1929" stroke-width="1"/></g>' +
+            '<line x1="25" y1="95" x2="95" y2="95" stroke="#0a1929" stroke-width="1"/><\\/g>' +
             '<g transform="translate(60,60)"><ellipse cx="-12" cy="0" rx="8" ry="12" fill="url(#gldG)" stroke="#FFB300" stroke-width="0.5"/>' +
             '<ellipse cx="12" cy="0" rx="8" ry="12" fill="url(#gldG)" stroke="#FFB300" stroke-width="0.5"/>' +
-            '<circle cx="0" cy="0" r="2.5" fill="#FFD700"/></g></svg>';
+            '<circle cx="0" cy="0" r="2.5" fill="#FFD700"/><\\/g><\\/svg>';
 
         function renderInactive() {
             const name = tg?.initDataUnsafe?.user?.first_name || 'there';
             const di = deviceInfo;
             const hasDevice = di.cpuCores > 0;
             const walletInfo = linkedWallet
-                ? '<div class="row" style="margin-top:8px"><span class="row-label">💼 Wallet</span><span class="row-value green">' + linkedWallet.slice(0,6) + '...' + linkedWallet.slice(-4) + ' ✅</span></div>'
-                : '<div style="text-align:center;color:var(--text2);font-size:11px;margin-top:6px">💡 Link wallet via @GSTDCoinBot to receive rewards</div>';
+                ? '<div class="row" style="margin-top:8px"><span class="row-label">💼 ' + L.wallet_label + '</span><span class="row-value green">' + linkedWallet.slice(0,6) + '...' + linkedWallet.slice(-4) + ' ✅</span></div>'
+                : '<div style="text-align:center;color:var(--text2);font-size:11px;margin-top:6px">💡 ' + L.link_wallet_hint + '</div>';
             document.getElementById('app').innerHTML =
                 '<div class="header">' +
                     '<div class="logo">' + GSTD_LOGO_SVG + '</div>' +
-                    '<h1>GSTD Mobile Node</h1>' +
-                    '<div class="subtitle">Your phone becomes a node in the AI network</div>' +
+                    '<h1>' + L.title + '</h1>' +
+                    '<div class="subtitle">' + L.subtitle + '</div>' +
                 '</div>' +
                 '<div class="card">' +
                     '<div class="big-stat">' +
                         '<div class="number">0.5</div>' +
-                        '<div class="label">GSTD per hour (Bronze tier)</div>' +
+                        '<div class="label">' + L.gstd_per_hour + '</div>' +
                     '</div>' +
                     '<div style="text-align:center;color:var(--text2);font-size:12px;margin-bottom:14px">' +
-                        'Hi ' + name + '! Your phone\\'s CPU, RAM and network<br>' +
-                        'will contribute to the decentralized AI swarm.' +
+                        L.hi + ', ' + name + '! ' + L.contribute_msg +
                     '</div>' +
                     walletInfo +
                     '<button class="btn btn-primary" onclick="startNode()" style="margin-top:12px">' +
-                        '🚀 Start Node' +
+                        L.start_node +
                     '</button>' +
                 '</div>' +
                 (hasDevice ?
                 '<div class="card">' +
-                    '<div class="card-title">📱 Your Device Resources</div>' +
-                    gaugeHTML('CPU Cores', di.cpuCores, 8, 'cores', 'blue') +
-                    gaugeHTML('RAM', di.ramGb, 8, 'GB', 'accent') +
-                    gaugeHTML('Battery', di.batteryLevel, 100, '%' + (di.isCharging ? ' ⚡' : ''), di.batteryLevel < 20 ? 'danger' : 'green') +
-                    '<div class="row"><span class="row-label">Network</span><span class="row-value blue">' + (di.networkType || 'unknown') + ' (' + (di.downlinkMbps || '?') + ' Mbps)</span></div>' +
-                    '<div class="row"><span class="row-label">Platform</span><span class="row-value">' + (di.platform || 'unknown') + '</span></div>' +
-                    '<div class="row"><span class="row-label">Screen</span><span class="row-value">' + (di.screenRes || '?') + '</span></div>' +
+                    '<div class="card-title">' + L.device_resources + '</div>' +
+                    gaugeHTML(L.cpu_cores, di.cpuCores, 8, 'cores', 'blue') +
+                    gaugeHTML(L.ram, di.ramGb, 8, 'GB', 'accent') +
+                    gaugeHTML(L.battery, di.batteryLevel, 100, '%' + (di.isCharging ? ' ⚡' : ''), di.batteryLevel < 20 ? 'danger' : 'green') +
+                    '<div class="row"><span class="row-label">' + L.network + '</span><span class="row-value blue">' + (di.networkType || 'unknown') + ' (' + (di.downlinkMbps || '?') + ' Mbps)</span></div>' +
+                    '<div class="row"><span class="row-label">' + L.platform + '</span><span class="row-value">' + (di.platform || 'unknown') + '</span></div>' +
+                    '<div class="row"><span class="row-label">' + L.screen + '</span><span class="row-value">' + (di.screenRes || '?') + '</span></div>' +
                 '</div>' : '') +
                 '<div class="stats-grid">' +
-                    '<div class="stat-card"><div class="icon">🧠</div><div class="val">8</div><div class="lbl">AI Models</div></div>' +
-                    '<div class="stat-card"><div class="icon">💰</div><div class="val">24/7</div><div class="lbl">Earning</div></div>' +
+                    '<div class="stat-card"><div class="icon">🧠</div><div class="val">8</div><div class="lbl">' + L.ai_models + '</div></div>' +
+                    '<div class="stat-card"><div class="icon">💰</div><div class="val">24/7</div><div class="lbl">' + L.earning + '</div></div>' +
                 '</div>';
         }
 
@@ -1122,42 +1237,42 @@ export class MobileNodeManager {
             let html =
                 '<div class="header">' +
                     '<div class="logo pulse">' + GSTD_LOGO_SVG + '</div>' +
-                    '<h1>Node Running</h1>' +
+                    '<h1>' + L.node_running + '</h1>' +
                     '<div class="subtitle"><span class="tier-badge">' + (d.tier_emoji || '🥉') + ' ' + (d.tier || 'bronze').toUpperCase() + '</span></div>' +
                 '</div>' +
                 '<div class="card">' +
                     '<div class="big-stat">' +
                         '<div class="number">' + (d.earnings_session?.toFixed(4) || '0.0000') + '</div>' +
-                        '<div class="label">GSTD Earned This Session</div>' +
+                        '<div class="label">' + L.earned_session + '</div>' +
                     '</div>' +
-                    '<div class="row"><span class="row-label">⏱ Uptime</span><span class="row-value green">' + (d.uptime_formatted || '0m') + '</span></div>' +
-                    '<div class="row"><span class="row-label">📋 Tasks</span><span class="row-value">' + (d.tasks_completed || 0) + '</span></div>' +
-                    '<div class="row"><span class="row-label">💰 Rate</span><span class="row-value accent">' + (d.earnings_rate_hour || 0.5) + ' GSTD/h</span></div>' +
-                    '<div class="row"><span class="row-label">🌐 Peers</span><span class="row-value">' + (d.peers_online || 1) + ' online</span></div>' +
-                    '<div class="row"><span class="row-label">💼 Wallet</span><span class="row-value">' + (d.wallet_linked ? d.wallet_address?.slice(0,6)+'...'+d.wallet_address?.slice(-4) : '⚠️ Not linked') + '</span></div>' +
-                    '<div class="row"><span class="row-label">⏳ Next Reward</span><span class="row-value">' + (d.next_reward_in || 0) + ' min</span></div>' +
+                    '<div class="row"><span class="row-label">⏱ ' + L.uptime + '</span><span class="row-value green">' + (d.uptime_formatted || '0m') + '</span></div>' +
+                    '<div class="row"><span class="row-label">📋 ' + L.tasks_label + '</span><span class="row-value">' + (d.tasks_completed || 0) + '</span></div>' +
+                    '<div class="row"><span class="row-label">💰 ' + L.rate + '</span><span class="row-value accent">' + (d.earnings_rate_hour || 0.5) + ' GSTD/h</span></div>' +
+                    '<div class="row"><span class="row-label">🌐 ' + L.peers + '</span><span class="row-value">' + (d.peers_online || 1) + ' ' + L.online + '</span></div>' +
+                    '<div class="row"><span class="row-label">💼 ' + L.wallet_label + '</span><span class="row-value">' + (d.wallet_linked ? d.wallet_address?.slice(0,6)+'...'+d.wallet_address?.slice(-4) : L.not_linked) + '</span></div>' +
+                    '<div class="row"><span class="row-label">⏳ ' + L.next_reward + '</span><span class="row-value">' + (d.next_reward_in || 0) + ' ' + L.min + '</span></div>' +
                 '</div>';
 
             // Device resources card (real phone data)
             html +=
                 '<div class="card">' +
-                    '<div class="card-title">📱 Phone Resources (Live)</div>' +
-                    gaugeHTML('CPU', dev.cpu_cores || dev.cpuCores || 1, 8, 'cores shared', 'blue') +
-                    gaugeHTML('RAM', dev.ram_gb || dev.ramGb || 1, 8, 'GB shared', 'accent') +
-                    gaugeHTML('Battery', battPct, 100, '%' + (battCharging ? ' ⚡ charging' : ''), battColor) +
-                    '<div class="row"><span class="row-label">📶 Network</span><span class="row-value blue">' +
+                    '<div class="card-title">' + L.phone_resources + '</div>' +
+                    gaugeHTML(L.cpu, dev.cpu_cores || dev.cpuCores || 1, 8, L.cores_shared, 'blue') +
+                    gaugeHTML(L.ram, dev.ram_gb || dev.ramGb || 1, 8, L.gb_shared, 'accent') +
+                    gaugeHTML(L.battery, battPct, 100, '%' + (battCharging ? ' ⚡ ' + L.charging : ''), battColor) +
+                    '<div class="row"><span class="row-label">📶 ' + L.network + '</span><span class="row-value blue">' +
                         (dev.network || dev.networkType || '?') + ' · ' + (dev.downlink_mbps || dev.downlinkMbps || 0) + ' Mbps</span></div>' +
-                    '<div class="row"><span class="row-label">📡 Quality</span><span class="row-value">' + (dev.effective_type || dev.effectiveType || '4g') + '</span></div>' +
+                    '<div class="row"><span class="row-label">📡 ' + L.quality + '</span><span class="row-value">' + (dev.effective_type || dev.effectiveType || '4g') + '</span></div>' +
                 '</div>';
 
             // Low battery warning
             if (battPct < 15 && !battCharging) {
-                html += '<div class="warning-box">🔋 Low battery (' + battPct + '%)! Connect a charger to keep earning.</div>';
+                html += '<div class="warning-box">' + L.low_battery + ' (' + battPct + '%)! ' + L.connect_charger + '</div>';
             }
 
             html +=
-                '<button class="btn btn-primary" onclick="claimRewards()">💎 Claim Rewards</button>' +
-                '<button class="btn btn-secondary" onclick="stopNode()">⏹ Stop Node</button>';
+                '<button class="btn btn-primary" onclick="claimRewards()">' + L.claim_rewards + '</button>' +
+                '<button class="btn btn-secondary" onclick="stopNode()">' + L.stop_node + '</button>';
 
             document.getElementById('app').innerHTML = html;
         }

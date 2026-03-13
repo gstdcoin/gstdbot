@@ -7,14 +7,17 @@
  * - Reports hardware capabilities
  * - Earns GSTD tokens for completed tasks
  * - Heartbeat + health reporting
+ * - Sovereign Protocol integration (staking, P2P, governance, mesh)
  */
 
 import { cpus, totalmem, freemem, hostname, platform, arch, loadavg } from 'os';
+import { createHash } from 'crypto';
 import { logActivity } from '../gateway/server.js';
 import type { NodeConfig } from '../index.js';
 import type { NodeWallet } from '../wallet/manager.js';
 import type { CollectiveMemory } from '../memory/collective.js';
 import { CrossChainBridge } from '../blockchain/bridge.js';
+import { SovereignSuite } from './sovereign.js';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface SwarmTask {
@@ -78,11 +81,13 @@ export class SwarmAgent {
     private taskPollTimer: NodeJS.Timeout | null = null;
     private startedAt = Date.now();
     private stats: SwarmStats;
+    public sovereign: SovereignSuite;
 
     constructor(config: NodeConfig, wallet: NodeWallet, memory: CollectiveMemory) {
         this.config = config;
         this.wallet = wallet;
         this.memory = memory;
+        this.sovereign = new SovereignSuite(config, wallet);
         this.stats = {
             connected: false,
             nodeId: config.nodeId,
@@ -126,18 +131,28 @@ export class SwarmAgent {
         // Refresh tier info every 5 minutes
         setInterval(() => this.fetchRewardsInfo(), 5 * 60_000);
 
+        // Start Sovereign Protocol instruments (staking, P2P, mesh, governance, lending)
+        await this.sovereign.start();
+
         // Initial heartbeat
         await this.heartbeat();
 
         const tierLine = `${this.stats.tierIcon} ${this.stats.tier.toUpperCase()} · ${this.stats.effectiveRate} GSTD/h · ${this.stats.streakDays}d streak`;
+        const sovState = this.sovereign.getState();
+        const econData = this.sovereign.getNodeEconomics();
         console.log(`    Swarm agent started (node: ${this.config.nodeId.slice(0, 8)}...)`);
         console.log(`    Rewards: ${tierLine}`);
+        console.log(`    Sovereign: Mesh ${sovState.meshPeers.length} peers | Staked ${sovState.stakedAmount} GSTD | ${sovState.capabilities.length} capabilities`);
+        console.log(`    Economics: ${econData.summary.daily_gstd.toFixed(4)} GSTD/day | ${econData.revenue_streams.staking.desc}`);
         logActivity(`Joined swarm network | ${tierLine}`, 'success');
     }
 
     async stop(): Promise<void> {
         if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
         if (this.taskPollTimer) clearInterval(this.taskPollTimer);
+
+        // Stop sovereign instruments
+        await this.sovereign.stop();
 
         // Deregister from swarm
         try {
@@ -154,9 +169,13 @@ export class SwarmAgent {
         return this.connected;
     }
 
-    getStats(): SwarmStats {
+    getStats(): SwarmStats & { sovereign?: any; economics?: any } {
         this.stats.uptimeSeconds = Math.round((Date.now() - this.startedAt) / 1000);
-        return { ...this.stats };
+        return {
+            ...this.stats,
+            sovereign: this.sovereign.getState(),
+            economics: this.sovereign.getNodeEconomics(),
+        };
     }
 
     // ─── Rewards Info Sync ───────────────────────────────────────
@@ -335,6 +354,10 @@ export class SwarmAgent {
             this.stats.totalEarnedGstd += task.reward_gstd;
             this.stats.tasksByType[task.type] = (this.stats.tasksByType[task.type] || 0) + 1;
             logActivity(`${this.stats.tierIcon} Task ${task.id.slice(0, 8)} completed → +${task.reward_gstd} GSTD (${task.type}) [total: ${this.stats.tasksCompleted}]`, 'success');
+
+            // Submit consensus vote for this task result (mesh decentralization)
+            const resultHash = createHash('sha256').update(JSON.stringify(result)).digest('hex').slice(0, 16);
+            this.sovereign.submitConsensusVote(task.id, resultHash).catch(() => {});
 
             // Record in wallet
             this.wallet.recordVerifiedEarning(task.reward_gstd, task.type as any, `Task ${task.type}: ${task.id.slice(0, 8)}`, task.id);
