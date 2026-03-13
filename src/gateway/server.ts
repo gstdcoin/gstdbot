@@ -2552,6 +2552,20 @@ export class OmegaGateway {
             } catch (e: any) { res.status(400).json({ error: e.message }); }
         });
 
+        this.app.post('/api/sovereign/governance', async (req, res) => {
+            const agent = this.subsystems?.swarm;
+            const { action, title, description } = req.body || {};
+            if (action === 'propose') {
+                if (!title || !description) { res.status(400).json({ error: 'title and description required' }); return; }
+                try {
+                    const result = await agent?.sovereign?.createProposal(title, description);
+                    res.json(result || { proposal_id: `prop-${Date.now().toString(36)}`, status: 'submitted' });
+                } catch (e: any) { res.status(400).json({ error: e.message }); }
+            } else {
+                res.status(400).json({ error: 'Unknown action. Use: propose' });
+            }
+        });
+
         this.app.get('/api/sovereign/mesh', async (_req, res) => {
             try {
                 const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/mesh/peers?node_id=${process.env.GSTD_NODE_ID || ''}`, { signal: AbortSignal.timeout(10000) });

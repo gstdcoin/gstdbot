@@ -1700,6 +1700,20 @@
 
           <!-- Bind Form -->
           <div id="bind-form" style="margin-top: 12px;">
+            <!-- TonConnect Button -->
+            <div style="margin-bottom: 12px;">
+              <button onclick="connectTonWallet()" id="btn-tonconnect" style="
+                width: 100%; padding: 14px; border-radius: 12px; border: none;
+                background: linear-gradient(135deg, #0088cc, #0066aa);
+                color: white; font-weight: 800; font-size: 14px; cursor: pointer;
+                transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px;
+              " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 20px rgba(0,136,204,0.3)'"
+                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5zm0 2.18L18 8l-6 3.82L6 8l6-3.82zM5 16.18V9.28l6 3.82v6.72L5 16.18zm14 0l-6 3.64v-6.72l6-3.82v6.9z"/></svg>
+                Connect via TonConnect
+              </button>
+            </div>
+            <div style="text-align: center; font-size: 10px; color: var(--muted); margin-bottom: 10px;">or enter wallet address manually:</div>
             <label style="font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600; display: block; margin-bottom: 6px;">
               Your TON Wallet Address (Tonkeeper)
             </label>
@@ -2277,6 +2291,16 @@
             <div class="card-label"><span class="cic" style="background:rgba(6,182,212,0.12)">🗳️</span> GOVERNANCE</div>
             <div class="card-value sm" id="sov-proposals">0</div>
             <div class="card-sub" id="sov-votes">Votes: 0</div>
+            <!-- Active Proposals List -->
+            <div id="sov-prop-list" style="margin-top:10px;font-size:11px;color:var(--muted)"></div>
+            <!-- Create Proposal -->
+            <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Create Proposal</div>
+              <input id="gov-title" placeholder="Proposal title..." style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;margin-bottom:6px;outline:none;font-family:Inter,sans-serif" />
+              <input id="gov-desc" placeholder="Description..." style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;margin-bottom:6px;outline:none;font-family:Inter,sans-serif" />
+              <button onclick="createProposal()" style="width:100%;padding:8px;border-radius:8px;border:none;background:linear-gradient(135deg,rgba(6,182,212,0.15),rgba(6,182,212,0.05));border:1px solid rgba(6,182,212,0.3);color:var(--cyan);font-weight:700;font-size:11px;cursor:pointer;transition:all 0.2s">🗳️ Submit Proposal</button>
+              <div id="gov-msg" style="margin-top:6px;font-size:11px;display:none;padding:6px 10px;border-radius:6px"></div>
+            </div>
           </div>
           <div class="card">
             <div class="card-label"><span class="cic" style="background:rgba(245,158,11,0.12)">🔗</span> MESH NETWORK</div>
@@ -2292,7 +2316,7 @@
             <div id="sov-economics" style="font-size:12px;color:var(--muted)">Loading...</div>
           </div>
           <div class="card">
-            <div class="card-label"><span class="cic" style="background:rgba(245,158,11,0.12)">🔥</span> TOKENOMICS</div>
+            <div class="card-label"><span class="cic" style="background:rgba(245,158,11,0.12)">🔥</span> GSTD TOKENOMICS</div>
             <div id="sov-tokenomics" style="font-size:12px;color:var(--muted)">Loading...</div>
           </div>
         </div>
@@ -2309,7 +2333,30 @@
           </div>
         </div>
 
-        <!-- Advantages -->
+        <!-- GSTD Superiority over Bitcoin -->
+        <div class="card" style="margin-top:14px">
+          <div class="card-label"><span class="cic" style="background:rgba(255,215,0,0.12)">👑</span> GSTD vs BITCOIN — WHY GSTD IS SUPERIOR</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px">
+            <table style="width:100%;border-collapse:collapse;font-size:11px">
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.06)">
+                <th style="text-align:left;padding:6px 8px;color:var(--muted);font-weight:600">Feature</th>
+                <th style="text-align:center;padding:6px 8px;color:#FFD700;font-weight:700">GSTD</th>
+                <th style="text-align:center;padding:6px 8px;color:var(--muted);font-weight:600">Bitcoin</th>
+              </tr>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Backing</td><td style="text-align:center;color:var(--emerald)">Compute + Gold</td><td style="text-align:center;color:var(--rose)">Nothing</td></tr>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Utility</td><td style="text-align:center;color:var(--emerald)">AI, Storage, Bridge</td><td style="text-align:center;color:var(--rose)">None</td></tr>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Speed</td><td style="text-align:center;color:var(--emerald)">Instant</td><td style="text-align:center;color:var(--rose)">10 minutes</td></tr>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Fees</td><td style="text-align:center;color:var(--emerald)">0% P2P</td><td style="text-align:center;color:var(--rose)">$5+</td></tr>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Staking APY</td><td style="text-align:center;color:var(--emerald)">72%</td><td style="text-align:center;color:var(--rose)">0%</td></tr>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Node Cost</td><td style="text-align:center;color:var(--emerald)">$0.72/mo</td><td style="text-align:center;color:var(--rose)">$100+/mo</td></tr>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Energy</td><td style="text-align:center;color:var(--emerald)">Minimal</td><td style="text-align:center;color:var(--rose)">Enormous</td></tr>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Governance</td><td style="text-align:center;color:var(--emerald)">Democratic</td><td style="text-align:center;color:var(--rose)">Mining Pools</td></tr>
+              <tr><td style="padding:5px 8px;color:var(--text)">Revenue Streams</td><td style="text-align:center;color:var(--emerald);font-weight:800">6</td><td style="text-align:center;color:var(--rose)">1</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- Node Advantages -->
         <div class="card" style="margin-top:14px">
           <div class="card-label"><span class="cic" style="background:rgba(34,197,94,0.12)">⚡</span> WHY YOUR NODE IS PROFITABLE</div>
           <div id="sov-advantages" style="font-size:12px;color:var(--muted);line-height:1.8">Loading...</div>
@@ -3352,6 +3399,115 @@
 
       // ─── Boot ────────────────────────────────────────────
       log("GSTD Node OS v3.3 loaded.");
+
+      // ─── TonConnect Wallet Binding ─────────────────────
+      async function connectTonWallet() {
+        const btn = document.getElementById('btn-tonconnect');
+        if (btn) btn.textContent = '⏳ Connecting...';
+        try {
+          // Generate a challenge for this node
+          const ts = Date.now().toString();
+          const challenge = btoa(JSON.stringify({
+            app: 'GSTD Node OS',
+            action: 'bind-wallet',
+            timestamp: ts,
+            node_id: lastData?.node?.name || 'unknown',
+          }));
+          
+          // Create TonConnect URL
+          const connectUrl = `https://app.tonkeeper.com/ton-connect?r=gstd-node&id=${encodeURIComponent(challenge)}&ret=` + 
+            encodeURIComponent(window.location.origin + '/api/node/bind-wallet');
+          
+          // Try native TonConnect via node API first
+          const resp = await fetch(API + '/api/auth/wallet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              address: 'tonconnect-pending',
+              signature: 'pending',
+              timestamp: ts,
+            }),
+          }).catch(() => null);
+
+          // Open Tonkeeper
+          window.open(connectUrl, '_blank');
+          
+          if (btn) btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5zm0 2.18L18 8l-6 3.82L6 8l6-3.82zM5 16.18V9.28l6 3.82v6.72L5 16.18zm14 0l-6 3.64v-6.72l6-3.82v6.9z"/></svg> Open Tonkeeper to Connect';
+          log('TonConnect: Opening Tonkeeper...', 'info');
+          
+          // Show manual fallback after 3s
+          setTimeout(() => {
+            if (btn) btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5zm0 2.18L18 8l-6 3.82L6 8l6-3.82zM5 16.18V9.28l6 3.82v6.72L5 16.18zm14 0l-6 3.64v-6.72l6-3.82v6.9z"/></svg> Connect via TonConnect';
+          }, 5000);
+        } catch (e) {
+          if (btn) btn.textContent = '❌ Error — use manual input below';
+          log('TonConnect: Error — ' + e.message, 'error');
+        }
+      }
+
+      // ─── Governance Interaction ─────────────────────────
+      async function createProposal() {
+        const title = document.getElementById('gov-title')?.value?.trim();
+        const desc = document.getElementById('gov-desc')?.value?.trim();
+        const msgEl = document.getElementById('gov-msg');
+        
+        if (!title || !desc) {
+          if (msgEl) {
+            msgEl.style.display = 'block';
+            msgEl.style.background = 'rgba(244,63,94,0.1)';
+            msgEl.style.color = 'var(--rose)';
+            msgEl.textContent = 'Title and description required';
+          }
+          return;
+        }
+        
+        try {
+          const resp = await fetch(API + '/api/sovereign/governance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'propose', title, description: desc }),
+          });
+          const data = await resp.json();
+          
+          if (msgEl) {
+            msgEl.style.display = 'block';
+            if (resp.ok) {
+              msgEl.style.background = 'rgba(34,197,94,0.1)';
+              msgEl.style.color = 'var(--emerald)';
+              msgEl.textContent = '✅ Proposal submitted: ' + (data.proposal_id || 'pending');
+              document.getElementById('gov-title').value = '';
+              document.getElementById('gov-desc').value = '';
+              loadSovereign();
+            } else {
+              msgEl.style.background = 'rgba(244,63,94,0.1)';
+              msgEl.style.color = 'var(--rose)';
+              msgEl.textContent = '❌ ' + (data.error || 'Failed to submit');
+            }
+          }
+          log('Governance: ' + (resp.ok ? 'Proposal submitted' : 'Failed'), resp.ok ? 'success' : 'error');
+        } catch (e) {
+          if (msgEl) {
+            msgEl.style.display = 'block';
+            msgEl.style.background = 'rgba(244,63,94,0.1)';
+            msgEl.style.color = 'var(--rose)';
+            msgEl.textContent = '❌ Network error';
+          }
+        }
+      }
+      
+      async function voteOnProposal(proposalId, vote) {
+        try {
+          const resp = await fetch(API + '/api/sovereign/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ proposal_id: proposalId, vote }),
+          });
+          const data = await resp.json();
+          log('Vote ' + vote + ' on ' + proposalId.slice(0, 8) + ': ' + (resp.ok ? '✅' : '❌'), resp.ok ? 'success' : 'error');
+          loadSovereign();
+        } catch { log('Vote failed: network error', 'error'); }
+      }
+
       // ─── Sovereign Protocol Data ─────────────────────────
       async function loadSovereign() {
         try {
@@ -3389,6 +3545,31 @@
             // Payments
             const pay = document.getElementById('sov-payments');
             if (pay) pay.textContent = (state.paymentsSent || 0) + '/' + (state.paymentsReceived || 0);
+          }
+
+          // Render active proposals with vote buttons
+          if (proto?.governance?.proposals || state?.activeProposals) {
+            const propList = document.getElementById('sov-prop-list');
+            if (propList) {
+              try {
+                const govResp = await fetch(API + '/api/sovereign/governance').then(r => r.ok ? r.json() : null);
+                if (govResp?.proposals?.length) {
+                  propList.innerHTML = govResp.proposals.slice(0, 5).map(p => `
+                    <div style="padding:8px;margin-bottom:6px;background:rgba(255,255,255,0.02);border-radius:8px;border:1px solid var(--border)">
+                      <div style="font-weight:700;color:var(--text);font-size:12px">${p.title || 'Proposal'}</div>
+                      <div style="font-size:10px;margin:4px 0">${p.description?.slice(0,80) || ''}</div>
+                      <div style="display:flex;gap:4px;margin-top:6px">
+                        <button onclick="voteOnProposal('${p.id || p.proposal_id}','for')" style="flex:1;padding:4px 8px;border-radius:6px;border:1px solid rgba(34,197,94,0.3);background:rgba(34,197,94,0.05);color:var(--emerald);font-size:10px;font-weight:700;cursor:pointer">👍 For</button>
+                        <button onclick="voteOnProposal('${p.id || p.proposal_id}','against')" style="flex:1;padding:4px 8px;border-radius:6px;border:1px solid rgba(244,63,94,0.3);background:rgba(244,63,94,0.05);color:var(--rose);font-size:10px;font-weight:700;cursor:pointer">👎 Against</button>
+                        <button onclick="voteOnProposal('${p.id || p.proposal_id}','abstain')" style="flex:1;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer">⏸ Abstain</button>
+                      </div>
+                    </div>
+                  `).join('');
+                } else {
+                  propList.innerHTML = '<div style="font-size:10px;color:var(--muted);text-align:center;padding:8px">No active proposals — create one below!</div>';
+                }
+              } catch { propList.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px">Governance data loading...</div>'; }
+            }
           }
 
           // Economics card
