@@ -29,6 +29,8 @@ import { TelegramChannel } from './channels/telegram.js';
 import { SwarmAgent } from './swarm/agent.js';
 import { CollectiveMemory } from './memory/collective.js';
 import { NodeWallet } from './wallet/manager.js';
+import { TonConnectManager } from './wallet/tonconnect.js';
+import { MobileNodeManager } from './channels/miniapp.js';
 import { AppManager } from './apps/manager.js';
 import { BlockchainManager } from './blockchain/token.js';
 import { RemoteAccessManager } from './network/remote.js';
@@ -51,6 +53,8 @@ export interface NodeConfig {
     groq: { models: string[] };
     memory: { redisUrl: string; chromaUrl: string; enabled: boolean };
     apps: { enabled: boolean; dataDir: string };
+    tonconnect: { enabled: boolean; network: 'mainnet' | 'testnet'; bridgeUrl: string };
+    mobileNode: { enabled: boolean };
 }
 
 function loadConfig(): NodeConfig {
@@ -83,6 +87,14 @@ function loadConfig(): NodeConfig {
         apps: {
             enabled: process.env.GSTD_APPS !== 'false',
             dataDir: join(homedir(), '.config', 'gstdbot', 'apps'),
+        },
+        tonconnect: {
+            enabled: process.env.GSTD_TONCONNECT !== 'false',
+            network: (process.env.TON_NETWORK as any) || 'mainnet',
+            bridgeUrl: process.env.TON_BRIDGE_URL || 'https://connect.ton.org/bridge',
+        },
+        mobileNode: {
+            enabled: process.env.GSTD_MOBILE_NODE !== 'false',
         },
     };
 
@@ -182,8 +194,40 @@ async function main(): Promise<void> {
         console.log('    Telegram: disabled (no token)');
     }
 
-    // ── 9. Node OS ready (Dashboard served via Gateway) ──────────
-    console.log(`  [9/${TOTAL_STEPS}] Node OS UI active on gateway port...`);
+    // ── 9. TON Connect + Mobile Node ─────────────────────────────
+    const TOTAL_STEPS_NEW = 11;
+    console.log(`  [9/${TOTAL_STEPS_NEW}] Initializing TON Connect...`);
+    const tonConnect = new TonConnectManager({
+        network: config.tonconnect.network,
+        bridgeUrl: config.tonconnect.bridgeUrl,
+        gstdJettonAddress: process.env.GSTD_JETTON_ADDRESS || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
+    });
+    if (config.tonconnect.enabled) {
+        // Try to load wallet mnemonic for signing
+        const mnemonic = process.env.GSTD_WALLET_MNEMONIC?.split(' ');
+        await tonConnect.init(mnemonic).catch(() => {});
+    } else {
+        console.log('    TON Connect: disabled (set GSTD_TONCONNECT=true)');
+    }
+
+    // ── 10. Mobile Node TMA ──────────────────────────────────────
+    console.log(`  [10/${TOTAL_STEPS_NEW}] Enabling Mobile Node (TMA)...`);
+    let mobileNode: MobileNodeManager | null = null;
+    if (config.mobileNode.enabled) {
+        const telegramToken = process.env.TELEGRAM_BOT_TOKEN || '';
+        const apiUrl = process.env.GSTD_SWARM_URL || 'https://api.gstdtoken.com';
+        mobileNode = new MobileNodeManager({
+            botToken: telegramToken,
+            apiUrl: apiUrl.replace(/\/api\/v1$/, '') + '/api/v1',
+            gstdJettonAddress: process.env.GSTD_JETTON_ADDRESS || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
+        });
+        mobileNode.registerRoutes(gateway.getExpressApp());
+    } else {
+        console.log('    Mobile Node: disabled');
+    }
+
+    // ── 11. Node OS ready (Dashboard served via Gateway) ─────────
+    console.log(`  [11/${TOTAL_STEPS_NEW}] Node OS UI active on gateway port...`);
 
     // Initialize security and orchestrator
     const security = new SecurityHardening();
@@ -225,10 +269,13 @@ async function main(): Promise<void> {
     console.log('  🧠 Memory:      ' + (memory.isConnected() ? 'full (L1+L2+L3)' : 'local (L1) — Redis optional'));
     console.log('  📦 Resources:   sharing enabled');
     console.log('  🎓 Training:    ' + (trainer.getStats().activeJobs > 0 ? 'active' : 'ready'));
+    console.log('  🔗 TON Connect: ' + (tonConnect.isReady() ? '✓ ' + tonConnect.getAddress()?.slice(0,12) + '...' : 'ready (no wallet)'));
+    console.log('  📱 Mobile Node: ' + (mobileNode ? '✓ TMA enabled (/tma)' : 'disabled'));
     console.log('');
     console.log('  💡 Tips:');
     console.log('     • Your node earns GSTD tokens automatically while running');
     console.log('     • Open the dashboard to chat with 8 free AI models');
+    console.log('     • Mobile users can run nodes via Telegram Mini App');
     console.log('     • To stop: press Ctrl+C');
     console.log('');
 
@@ -309,6 +356,8 @@ async function main(): Promise<void> {
         logActivity('Node shutdown initiated', 'warn');
         clearInterval(hbInterval);
         clearInterval(updateInterval);
+        if (mobileNode) await mobileNode.stop();
+        await tonConnect.close();
         await trainer.stop();
         await resources.stop();
         await remote.stop();

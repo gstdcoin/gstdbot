@@ -172,6 +172,7 @@ export class TelegramChannel {
             { command: 'start', description: 'Start the bot' },
             { command: 'new', description: 'New conversation' },
             { command: 'model', description: 'Switch model' },
+            { command: 'node', description: '📱 Run mobile node' },
             { command: 'status', description: 'Session status' },
             { command: 'help', description: 'Help & commands' },
         ]);
@@ -196,7 +197,7 @@ export class TelegramChannel {
                 keyboard: [
                     [{ text: '💎 Баланс' }, { text: '⭐️ Пополнить' }],
                     [{ text: '🔗 Кошелек' }, { text: '🧠 Заработать' }],
-                    [{ text: '🧠 Интеллект' }, { text: '📖 Помощь' }],
+                    [{ text: '📱 Нода' }, { text: '🧠 Интеллект' }, { text: '📖 Помощь' }],
                 ],
                 resize_keyboard: true,
                 is_persistent: true,
@@ -206,7 +207,7 @@ export class TelegramChannel {
             keyboard: [
                 [{ text: '💎 Balance' }, { text: '⭐️ Top Up' }],
                 [{ text: '🔗 Wallet' }, { text: '🧠 Earn' }],
-                [{ text: '🧠 Intelligence' }, { text: '📖 Help' }],
+                [{ text: '📱 Node' }, { text: '🧠 Intelligence' }, { text: '📖 Help' }],
             ],
             resize_keyboard: true,
             is_persistent: true,
@@ -265,6 +266,38 @@ export class TelegramChannel {
                 reply_markup: this.mainKeyboard(lang),
             });
         });
+        // ── /node — Launch Mobile Node (Mini App) ──
+        this.bot.command('node', async (ctx) => {
+            if (ctx.chat?.type !== 'private') return;
+            const lang = this.lang(ctx);
+            const tmaUrl = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.com/tma';
+
+            const msg = lang === 'ru'
+                ? `📱 <b>GSTD Mobile Node</b>\n\n` +
+                  `Запусти ноду прямо в смартфоне!\n\n` +
+                  `🐝 Зарабатывай GSTD автоматически\n` +
+                  `⚡ Нулевая настройка — один клик\n` +
+                  `🔗 Кошелёк через TON Connect\n` +
+                  `💎 Тиры: Bronze → Silver → Gold → Platinum\n\n` +
+                  `<i>Нажми кнопку ниже чтобы запустить ноду:</i>`
+                : `📱 <b>GSTD Mobile Node</b>\n\n` +
+                  `Run a node right from your phone!\n\n` +
+                  `🐝 Earn GSTD automatically\n` +
+                  `⚡ Zero setup — one tap\n` +
+                  `🔗 Wallet via TON Connect\n` +
+                  `💎 Tiers: Bronze → Silver → Gold → Platinum\n\n` +
+                  `<i>Tap the button below to start your node:</i>`;
+
+            await ctx.reply(msg, {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🚀 Launch Node', web_app: { url: tmaUrl } }],
+                        [{ text: lang === 'ru' ? '📊 Статистика сети' : '📊 Network Stats', callback_data: 'node_stats' }],
+                    ],
+                },
+            });
+        });
 
         // ── /new ──
         this.bot.command('new', async (ctx) => {
@@ -286,7 +319,6 @@ export class TelegramChannel {
 
             const models = [
                 { id: 'auto', label: '🤖 Auto (best available)', labelRU: '🤖 Авто (лучшая доступная)' },
-                { id: 'deepseek-r1-distill-llama-70b', label: '🤔 DeepSeek R1 70B', labelRU: '🤔 DeepSeek R1 70B' },
                 { id: 'llama-3.3-70b-versatile', label: '🦙 Llama 3.3 70B', labelRU: '🦙 Llama 3.3 70B' },
                 { id: 'llama-3.1-8b-instant', label: '⚡ Llama 3.1 8B (fast)', labelRU: '⚡ Llama 3.1 8B (быстрая)' },
                 { id: 'meta-llama/llama-4-scout-17b-16e-instruct', label: '🔭 Llama 4 Scout', labelRU: '🔭 Llama 4 Scout' },
@@ -389,6 +421,22 @@ export class TelegramChannel {
                         ? '📱 <b>Откройте приложение:</b>\n\nhttps://app.gstdtoken.com'
                         : '📱 <b>Open the app:</b>\n\nhttps://app.gstdtoken.com';
                     return ctx.reply(msg, { parse_mode: 'HTML' });
+                }
+                // 📱 Node
+                if (text === '📱 Node' || text === '📱 Нода') {
+                    // Trigger /node command
+                    const tmaUrl = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.com/tma';
+                    const msg = lang === 'ru'
+                        ? `📱 <b>Запусти ноду в смартфоне!</b>\n\n🐝 Нажми кнопку ниже:`
+                        : `📱 <b>Run a node on your phone!</b>\n\n🐝 Tap the button below:`;
+                    return ctx.reply(msg, {
+                        parse_mode: 'HTML',
+                        reply_markup: {
+                            inline_keyboard: [
+                                [{ text: '🚀 Launch Node', web_app: { url: tmaUrl } }],
+                            ],
+                        },
+                    });
                 }
                 // 🔗 TON Wallet Address Detection (EQ... or UQ... or 0:...)
                 const tonAddressRegex = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
@@ -745,7 +793,6 @@ export class TelegramChannel {
 
                 const modelNames: Record<string, { en: string; ru: string }> = {
                     'auto': { en: '🤖 Auto (best available)', ru: '🤖 Авто (лучшая доступная)' },
-                    'deepseek-r1-distill-llama-70b': { en: '🤔 DeepSeek R1 70B', ru: '🤔 DeepSeek R1 70B' },
                     'llama-3.3-70b-versatile': { en: '🦙 Llama 3.3 70B', ru: '🦙 Llama 3.3 70B' },
                     'llama-3.1-8b-instant': { en: '⚡ Llama 3.1 8B', ru: '⚡ Llama 3.1 8B' },
                     'meta-llama/llama-4-scout-17b-16e-instruct': { en: '🔭 Llama 4 Scout', ru: '🔭 Llama 4 Scout' },
@@ -793,12 +840,12 @@ export class TelegramChannel {
         const keyboard = {
             inline_keyboard: [
                 [
-                    { text: `🆓 Free${currentTier === 'free' ? ' ✓' : ''}`, callback_data: 'smartmix_free' },
-                    { text: `🔬 Council${currentTier === 'standard' ? ' ✓' : ''} ($${sm.standard.costUsd})`, callback_data: 'smartmix_standard' },
+                    { text: `🆓 ${lang === 'ru' ? 'Один' : 'Free'}${currentTier === 'free' ? ' ✓' : ''}`, callback_data: 'smartmix_free' },
+                    { text: `🔬 ${lang === 'ru' ? 'Совет' : 'Council'} (${sm.standard.cost} G)${currentTier === 'standard' ? ' ✓' : ''}`, callback_data: 'smartmix_standard' },
                 ],
                 [
-                    { text: `🔥 Panel${currentTier === 'pro' ? ' ✓' : ''} ($${sm.pro.costUsd})`, callback_data: 'smartmix_pro' },
-                    { text: `🧠 Swarm${currentTier === 'ultra' ? ' ✓' : ''} ($${sm.ultra.costUsd})`, callback_data: 'smartmix_ultra' },
+                    { text: `🔥 ${lang === 'ru' ? 'Панель' : 'Panel'} (${sm.pro.cost} G)${currentTier === 'pro' ? ' ✓' : ''}`, callback_data: 'smartmix_pro' },
+                    { text: `🧠 ${lang === 'ru' ? 'Рой' : 'Swarm'} (${sm.ultra.cost} G)${currentTier === 'ultra' ? ' ✓' : ''}`, callback_data: 'smartmix_ultra' },
                 ],
             ],
         };
@@ -1080,26 +1127,38 @@ export class TelegramChannel {
         if (isPrivate) {
             const msg = lang === 'ru'
                 ? `📖 <b>Помощь</b>\n\n` +
-                `🆓 <b>Бесплатный ИИ</b> — просто пиши, всегда доступен (Kimi K2 · LLaMA4 · GPT-OSS-120B)\n` +
-                `⚡ <b>Sovereign Pro</b> — 0.1 GSTD/запрос, лучшие модели роя\n\n` +
+                `🆓 <b>Бесплатный ИИ</b> — просто пиши, всегда доступен (7 моделей)\n` +
+                `🧠 <b>Collective Intelligence</b> — мульти-модельный консенсус\n\n` +
                 `<b>Кнопки:</b>\n` +
                 `💎 Баланс — проверить GSTD + забрать награды\n` +
-                `⭐️ Пополнить — купить GSTD за Stars\n` +
+                `⭐️ Пополнить — купить GSTD за Telegram Stars\n` +
                 `🔗 Кошелек — привязать TON кошелек\n` +
-                `🧠 Заработать — включить майнинг\n` +
-                `📱 Приложение — открыть дашборд\n\n` +
-                `<i>Лучшая цена за Pro-качество!</i>`
+                `🧠 Заработать — включить майнинг нодой\n` +
+                `📱 Нода — запустить ноду в смартфоне\n` +
+                `🧠 Интеллект — выбрать уровень ИИ\n\n` +
+                `<b>Команды:</b>\n` +
+                `/new — новый диалог\n` +
+                `/model — сменить модель\n` +
+                `/node — мобильная нода\n` +
+                `/status — статус сеанса\n\n` +
+                `🌐 <a href="https://app.gstdtoken.com">Дашборд</a> · <a href="https://gstdbot.gstdtoken.com">Node OS</a>`
                 : `📖 <b>Help</b>\n\n` +
-                `🆓 <b>Free AI</b> — just type, always available (Kimi K2 · LLaMA4 · GPT-OSS-120B)\n` +
-                `⚡ <b>Sovereign Pro</b> — 0.1 GSTD/request, best swarm models\n\n` +
+                `🆓 <b>Free AI</b> — just type, always available (7 models)\n` +
+                `🧠 <b>Collective Intelligence</b> — multi-model consensus\n\n` +
                 `<b>Buttons:</b>\n` +
                 `💎 Balance — check GSTD + claim rewards\n` +
-                `⭐️ Top Up — buy GSTD via Stars\n` +
+                `⭐️ Top Up — buy GSTD via Telegram Stars\n` +
                 `🔗 Wallet — connect TON wallet\n` +
-                `🧠 Earn — start mining\n` +
-                `📱 App — open dashboard\n\n` +
-                `<i>Best price for Pro-quality AI!</i>`;
-            await ctx.reply(msg, { parse_mode: 'HTML' });
+                `🧠 Earn — start earning with node\n` +
+                `📱 Node — run a node on your phone\n` +
+                `🧠 Intelligence — choose AI tier\n\n` +
+                `<b>Commands:</b>\n` +
+                `/new — new conversation\n` +
+                `/model — switch model\n` +
+                `/node — mobile node\n` +
+                `/status — session status\n\n` +
+                `🌐 <a href="https://app.gstdtoken.com">Dashboard</a> · <a href="https://gstdbot.gstdtoken.com">Node OS</a>`;
+            await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
         } else {
             await ctx.reply(
                 `🐝 <b>GSTD Bot</b>\n\nTag @${this.bot.botInfo?.username} to ask me anything!`,

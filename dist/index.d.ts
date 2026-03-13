@@ -50,5 +50,13 @@ export interface NodeConfig {
         enabled: boolean;
         dataDir: string;
     };
+    tonconnect: {
+        enabled: boolean;
+        network: 'mainnet' | 'testnet';
+        bridgeUrl: string;
+    };
+    mobileNode: {
+        enabled: boolean;
+    };
 }
 //# sourceMappingURL=index.d.ts.map

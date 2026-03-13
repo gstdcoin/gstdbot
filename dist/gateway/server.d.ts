@@ -5,6 +5,7 @@
  * Handles: WebSocket sessions, channel routing, tool dispatch, skills, swarm,
  * Dashboard UI, App Store, and all Node OS functions — all on one port.
  */
+import express from 'express';
 import { NodeWallet } from '../wallet/manager.js';
 export interface GatewayConfig {
     port: number;
@@ -56,6 +57,8 @@ export declare class OmegaGateway {
     private splitIntoChunks;
     private isLocalRequest;
     start(): Promise<void>;
+    /** Expose Express app for external route registration (TMA, etc.) */
+    getExpressApp(): express.Express;
     stop(): Promise<void>;
 }
 //# sourceMappingURL=server.d.ts.map

@@ -2575,7 +2575,7 @@ code{font-family:'Fira Code',monospace;font-size:13px}
     <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
     <option value="llama-3.1-8b-instant" selected>Llama 3.1 8B</option>
     <option value="qwen3-32b">Qwen3 32B</option>
-    <option value="deepseek-r1-distill-llama-70b">DeepSeek R1</option>
+    <option value="openai/gpt-oss-120b">GPT-OSS 120B</option>
   </select>
   <input id="inp" placeholder="Ask anything..." onkeydown="if(event.key==='Enter')send()">
   <button class="btn-primary" onclick="send()">Send</button>
@@ -2950,6 +2950,10 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                 }
             }
         }
+    }
+    /** Expose Express app for external route registration (TMA, etc.) */
+    getExpressApp() {
+        return this.app;
     }
     async stop() {
         this.wss?.close();

@@ -30,6 +30,8 @@ const telegram_js_1 = require("./channels/telegram.js");
 const agent_js_1 = require("./swarm/agent.js");
 const collective_js_1 = require("./memory/collective.js");
 const manager_js_1 = require("./wallet/manager.js");
+const tonconnect_js_1 = require("./wallet/tonconnect.js");
+const miniapp_js_1 = require("./channels/miniapp.js");
 const token_js_1 = require("./blockchain/token.js");
 const remote_js_1 = require("./network/remote.js");
 const resources_js_1 = require("./network/resources.js");
@@ -68,6 +70,14 @@ function loadConfig() {
         apps: {
             enabled: process.env.GSTD_APPS !== 'false',
             dataDir: (0, path_1.join)((0, os_2.homedir)(), '.config', 'gstdbot', 'apps'),
+        },
+        tonconnect: {
+            enabled: process.env.GSTD_TONCONNECT !== 'false',
+            network: process.env.TON_NETWORK || 'mainnet',
+            bridgeUrl: process.env.TON_BRIDGE_URL || 'https://connect.ton.org/bridge',
+        },
+        mobileNode: {
+            enabled: process.env.GSTD_MOBILE_NODE !== 'false',
         },
     };
     if ((0, fs_1.existsSync)(configPath)) {
@@ -157,8 +167,40 @@ async function main() {
     else {
         console.log('    Telegram: disabled (no token)');
     }
-    // ── 9. Node OS ready (Dashboard served via Gateway) ──────────
-    console.log(`  [9/${TOTAL_STEPS}] Node OS UI active on gateway port...`);
+    // ── 9. TON Connect + Mobile Node ─────────────────────────────
+    const TOTAL_STEPS_NEW = 11;
+    console.log(`  [9/${TOTAL_STEPS_NEW}] Initializing TON Connect...`);
+    const tonConnect = new tonconnect_js_1.TonConnectManager({
+        network: config.tonconnect.network,
+        bridgeUrl: config.tonconnect.bridgeUrl,
+        gstdJettonAddress: process.env.GSTD_JETTON_ADDRESS || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
+    });
+    if (config.tonconnect.enabled) {
+        // Try to load wallet mnemonic for signing
+        const mnemonic = process.env.GSTD_WALLET_MNEMONIC?.split(' ');
+        await tonConnect.init(mnemonic).catch(() => { });
+    }
+    else {
+        console.log('    TON Connect: disabled (set GSTD_TONCONNECT=true)');
+    }
+    // ── 10. Mobile Node TMA ──────────────────────────────────────
+    console.log(`  [10/${TOTAL_STEPS_NEW}] Enabling Mobile Node (TMA)...`);
+    let mobileNode = null;
+    if (config.mobileNode.enabled) {
+        const telegramToken = process.env.TELEGRAM_BOT_TOKEN || '';
+        const apiUrl = process.env.GSTD_SWARM_URL || 'https://api.gstdtoken.com';
+        mobileNode = new miniapp_js_1.MobileNodeManager({
+            botToken: telegramToken,
+            apiUrl: apiUrl.replace(/\/api\/v1$/, '') + '/api/v1',
+            gstdJettonAddress: process.env.GSTD_JETTON_ADDRESS || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
+        });
+        mobileNode.registerRoutes(gateway.getExpressApp());
+    }
+    else {
+        console.log('    Mobile Node: disabled');
+    }
+    // ── 11. Node OS ready (Dashboard served via Gateway) ─────────
+    console.log(`  [11/${TOTAL_STEPS_NEW}] Node OS UI active on gateway port...`);
     // Initialize security and orchestrator
     const security = new hardening_js_1.SecurityHardening();
     const orchestrator = new orchestrator_js_1.SwarmOrchestrator(config);
@@ -196,10 +238,13 @@ async function main() {
     console.log('  🧠 Memory:      ' + (memory.isConnected() ? 'full (L1+L2+L3)' : 'local (L1) — Redis optional'));
     console.log('  📦 Resources:   sharing enabled');
     console.log('  🎓 Training:    ' + (trainer.getStats().activeJobs > 0 ? 'active' : 'ready'));
+    console.log('  🔗 TON Connect: ' + (tonConnect.isReady() ? '✓ ' + tonConnect.getAddress()?.slice(0, 12) + '...' : 'ready (no wallet)'));
+    console.log('  📱 Mobile Node: ' + (mobileNode ? '✓ TMA enabled (/tma)' : 'disabled'));
     console.log('');
     console.log('  💡 Tips:');
     console.log('     • Your node earns GSTD tokens automatically while running');
     console.log('     • Open the dashboard to chat with 8 free AI models');
+    console.log('     • Mobile users can run nodes via Telegram Mini App');
     console.log('     • To stop: press Ctrl+C');
     console.log('');
     (0, server_js_1.logActivity)('GSTD Node OS v' + config.version + ' booted in ' + bootTime + 's', 'success');
@@ -269,6 +314,9 @@ async function main() {
         (0, server_js_1.logActivity)('Node shutdown initiated', 'warn');
         clearInterval(hbInterval);
         clearInterval(updateInterval);
+        if (mobileNode)
+            await mobileNode.stop();
+        await tonConnect.close();
         await trainer.stop();
         await resources.stop();
         await remote.stop();

@@ -64,8 +64,16 @@ class ResourceSharing {
         try {
             await fetch(`${this.config.swarm.apiUrl}/resources/publish`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(resources),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Wallet-Address': this.config.nodeId,
+                },
+                body: JSON.stringify({
+                    cpu_available: resources.compute.cpuCores,
+                    ram_available: resources.compute.ramFreeMb,
+                    gpu: resources.compute.gpuModel || '',
+                    models: resources.models,
+                }),
                 signal: AbortSignal.timeout(5000),
             });
         }

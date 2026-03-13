@@ -18,9 +18,8 @@ function formatThinkTags(text) {
         return `<blockquote>🤔 <b>Thinking Process</b>\n${thought.trim()}</blockquote>\n\n`;
     }).trim();
 }
-// Verified available Groq models
+// Verified available Groq models (deepseek-r1-distill-llama-70b deprecated Oct 2025)
 const GROQ_MODELS = [
-    'deepseek-r1-distill-llama-70b',
     'llama-3.3-70b-versatile',
     'llama-3.1-8b-instant',
     'meta-llama/llama-4-scout-17b-16e-instruct',

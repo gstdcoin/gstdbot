@@ -158,14 +158,17 @@ class SwarmAgent {
             const load = (0, os_1.loadavg)();
             const ramUsage = Math.round((((0, os_1.totalmem)() - (0, os_1.freemem)()) / (0, os_1.totalmem)()) * 100);
             const walletAddr = this.wallet.getAddress();
-            // Platform heartbeat expects: { wallet, node_id, status, battery, signal }
+            // Platform heartbeat expects: { wallet_address, node_name, node_version, uptime_hours, queries_served }
             const payload = {
-                wallet: walletAddr || this.config.nodeId,
+                wallet_address: walletAddr || this.config.nodeId,
                 node_id: this.config.nodeId,
+                node_name: this.config.nodeName,
+                node_version: this.config.version,
                 status: 'online',
-                battery: 100 - Math.round(load[0] * 100 / (0, os_1.cpus)().length), // CPU as "battery" (inverse)
-                signal: 100 - ramUsage, // Available RAM as "signal"
-                // Extended fields (accepted but not required by platform)
+                uptime_hours: Math.round((Date.now() - this.startedAt) / 3600000),
+                queries_served: this.stats.tasksCompleted,
+                battery: 100 - Math.round(load[0] * 100 / (0, os_1.cpus)().length),
+                signal: 100 - ramUsage,
                 cpu_usage: Math.round(load[0] * 100 / (0, os_1.cpus)().length),
                 ram_usage: ramUsage,
                 ram_free_mb: Math.round((0, os_1.freemem)() / 1048576),
