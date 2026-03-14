@@ -59,7 +59,7 @@ class BlockchainManager {
                 this.walletAddress = data.address;
                 // Seed is encrypted in wallet_seed.enc, not in wallet.json
             }
-            catch { }
+            catch (_e) { }
         }
         // Load transaction history
         const txFile = (0, path_1.join)(this.configDir, 'transactions.json');
@@ -67,7 +67,7 @@ class BlockchainManager {
             try {
                 this.transactions = JSON.parse((0, fs_1.readFileSync)(txFile, 'utf-8'));
             }
-            catch {
+            catch (_e) {
                 this.transactions = [];
             }
         }
@@ -77,7 +77,7 @@ class BlockchainManager {
             try {
                 this.stakingInfo = JSON.parse((0, fs_1.readFileSync)(stakeFile, 'utf-8'));
             }
-            catch { }
+            catch (_e) { }
         }
         // Refresh balance and price
         await this.refreshBalance();
@@ -119,7 +119,7 @@ class BlockchainManager {
                 };
             }
         }
-        catch { }
+        catch (_e) { }
     }
     // ─── Price ───────────────────────────────────────────────────
     async getPrice() {
@@ -150,7 +150,7 @@ class BlockchainManager {
                 };
             }
         }
-        catch { }
+        catch (_e) { }
     }
     // ─── Transfer GSTD ──────────────────────────────────────────
     async transfer(toAddress, amount, memo) {
@@ -251,7 +251,7 @@ class BlockchainManager {
                 return true;
             }
         }
-        catch { }
+        catch (_e) { }
         (0, server_js_1.logActivity)('Staking failed', 'error');
         return false;
     }
@@ -294,7 +294,7 @@ class BlockchainManager {
                 return true;
             }
         }
-        catch { }
+        catch (_e) { }
         return false;
     }
     calculateStakingRewards() {
@@ -361,13 +361,13 @@ class BlockchainManager {
         try {
             (0, fs_1.writeFileSync)((0, path_1.join)(this.configDir, 'transactions.json'), JSON.stringify(this.transactions.slice(0, 1000), null, 2));
         }
-        catch { }
+        catch (_e) { }
     }
     saveStaking() {
         try {
             (0, fs_1.writeFileSync)((0, path_1.join)(this.configDir, 'staking.json'), JSON.stringify(this.stakingInfo, null, 2));
         }
-        catch { }
+        catch (_e) { }
     }
 }
 exports.BlockchainManager = BlockchainManager;

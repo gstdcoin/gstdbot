@@ -109,7 +109,7 @@ class SovereignSuite {
                 this.state.meshScore = result.mesh_size || 0;
             }
         }
-        catch { }
+        catch (_e) { }
     }
     // ─── 2. CAPABILITIES REGISTRATION ────────────────────────────
     async registerCapabilities() {
@@ -121,7 +121,7 @@ class SovereignSuite {
                 const { execSync } = await import('child_process');
                 gpuModel = execSync('nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null', { encoding: 'utf-8', timeout: 3000 }).trim();
             }
-            catch { }
+            catch (_e) { }
             const diskFree = Math.round(freemem() / (1024 * 1024 * 1024)); // rough estimate using free RAM as proxy
             const caps = {
                 node_id: this.config.nodeId,
@@ -142,7 +142,7 @@ class SovereignSuite {
             this.state.capabilities = ['ai_inference', 'bridge_verify', 'storage', 'p2p_relay', 'consensus'];
             this.state.autonomousMode = true;
         }
-        catch { }
+        catch (_e) { }
     }
     // ─── 3. AUTO-STAKING (compound rewards → maximum yield) ──────
     async syncStakingState() {
@@ -157,7 +157,7 @@ class SovereignSuite {
                 this.state.stakingAPY = this.state.stakedAmount > 0 ? 36 : 0; // Node operators get best rate
             }
         }
-        catch { }
+        catch (_e) { }
     }
     async autoCompoundRewards() {
         if (!this.state.autoCompound)
@@ -183,7 +183,7 @@ class SovereignSuite {
                 (0, server_js_1.logActivity)(`♻️ Auto-compound: ${rewards.total_pending.toFixed(4)} GSTD staked @ 72% APY`, 'success');
             }
         }
-        catch { }
+        catch (_e) { }
     }
     // ─── 4. P2P PAYMENTS ─────────────────────────────────────────
     async sendPayment(receiverWallet, amount, memo) {
@@ -220,7 +220,7 @@ class SovereignSuite {
                     (Math.round((Date.now() - 0) / 3600000) * 0.1); // uptime hours * 0.1
             }
         }
-        catch { }
+        catch (_e) { }
     }
     async voteOnProposal(proposalId, vote) {
         const wallet = this.wallet.getAddress();
@@ -265,7 +265,7 @@ class SovereignSuite {
                 this.state.loansGiven = loans.count || 0;
             }
         }
-        catch { }
+        catch (_e) { }
     }
     // ─── 8. PROFITABILITY ENGINE ─────────────────────────────────
     calculateProfitability() {
@@ -366,7 +366,7 @@ class SovereignSuite {
                 return resp.json().catch(() => ({ ok: true }));
             return null;
         }
-        catch {
+        catch (_e) {
             return null;
         }
     }
@@ -384,7 +384,7 @@ class SovereignSuite {
                 return resp.json().catch(() => null);
             return null;
         }
-        catch {
+        catch (_e) {
             return null;
         }
     }

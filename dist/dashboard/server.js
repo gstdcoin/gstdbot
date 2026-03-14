@@ -52,7 +52,7 @@ function detectGpu() {
             usage: parts[3] ? parts[3] + '%' : undefined,
         };
     }
-    catch {
+    catch (_e) {
         return { detected: false };
     }
 }
@@ -66,7 +66,7 @@ function getDiskUsage() {
         const available = parseInt(parts[3]) || 0;
         return { total, used, available, usage: total > 0 ? Math.round(used / total * 100) : 0 };
     }
-    catch {
+    catch (_e) {
         return { total: 0, used: 0, available: 0, usage: 0 };
     }
 }
@@ -113,7 +113,7 @@ async function startDashboard(port = 8080, host = '0.0.0.0') {
         try {
             balance = wallet ? await (0, manager_js_1.getBalance)() : null;
         }
-        catch { }
+        catch (_e) { }
         const cpuInfo = (0, os_1.cpus)();
         const gpu = detectGpu();
         const disk = getDiskUsage();
@@ -178,7 +178,7 @@ async function startDashboard(port = 8080, host = '0.0.0.0') {
                 return;
             }
         }
-        catch { }
+        catch (_e) { }
         res.json({ earnings: [], total: 0 });
     });
     // ─── API: Tasks ─────────────────────────────────────────────
@@ -195,7 +195,7 @@ async function startDashboard(port = 8080, host = '0.0.0.0') {
                 return;
             }
         }
-        catch { }
+        catch (_e) { }
         res.json({ pending: 0, completed: 0, processing: 0 });
     });
     // ─── API: Activity Log ──────────────────────────────────────
@@ -243,7 +243,7 @@ async function startDashboard(port = 8080, host = '0.0.0.0') {
                 wallet_address: wallet.address,
             });
         }
-        catch {
+        catch (_e) {
             res.json({ registered: false, error: 'Failed to fetch rewards info' });
         }
     });
@@ -256,7 +256,7 @@ async function startDashboard(port = 8080, host = '0.0.0.0') {
                 return;
             }
         }
-        catch { }
+        catch (_e) { }
         // Fallback hardcoded program
         res.json({
             tiers: [

@@ -241,7 +241,7 @@ class TonConnectManager {
                 }
             }
         }
-        catch { /* non-fatal */ }
+        catch (_e) { /* non-fatal */ }
         return { ...this.state };
     }
     // ─── Pending Requests (for TMA approval) ─────────────────────
@@ -263,7 +263,7 @@ class TonConnectManager {
             this.state.connectedDApps++;
             return true;
         }
-        catch {
+        catch (_e) {
             return false;
         }
     }
@@ -276,7 +276,7 @@ class TonConnectManager {
             this.pendingConnects.delete(requestId);
             return true;
         }
-        catch {
+        catch (_e) {
             return false;
         }
     }
@@ -296,7 +296,7 @@ class TonConnectManager {
             this.pendingTransactions.delete(requestId);
             return true;
         }
-        catch {
+        catch (_e) {
             return false;
         }
     }
@@ -309,7 +309,7 @@ class TonConnectManager {
             this.pendingTransactions.delete(requestId);
             return true;
         }
-        catch {
+        catch (_e) {
             return false;
         }
     }

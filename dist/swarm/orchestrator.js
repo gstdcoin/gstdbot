@@ -143,7 +143,7 @@ class SwarmOrchestrator {
                 .filter(p => p.relayAvailable)
                 .map(p => p.nodeId));
         }
-        catch { }
+        catch (_e) { }
     }
     async broadcastHeartbeat() {
         // Clean stale peers

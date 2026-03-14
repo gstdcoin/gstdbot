@@ -48,7 +48,7 @@ class SwarmClient {
                 models = (data.models || []).map((m) => m.name);
             }
         }
-        catch { /* Ollama not running */ }
+        catch (_e) { /* Ollama not running */ }
         // Basic GPU detection (checks expected patterns)
         const gpuDetected = this.detectGPU();
         return {
@@ -75,14 +75,14 @@ class SwarmClient {
                 execSync('nvidia-smi', { stdio: 'ignore' });
                 return true;
             }
-            catch { /* no NVIDIA GPU */ }
+            catch (_e) { /* no NVIDIA GPU */ }
             // macOS: check for Metal GPU
             if (os_1.default.platform() === 'darwin') {
                 return true; // Apple Silicon has GPU
             }
             return false;
         }
-        catch {
+        catch (_e) {
             return false;
         }
     }
@@ -141,7 +141,7 @@ class SwarmClient {
                     }),
                 });
             }
-            catch { /* silent — will retry next interval */ }
+            catch (_e) { /* silent — will retry next interval */ }
         }, intervalMs);
         console.log(`[Swarm] Heartbeat started (every ${intervalMs / 1000}s)`);
     }

@@ -55,7 +55,7 @@ async function getRedisClient() {
         console.log('[Knowledge Cache] Redis connected via', url.replace(/:[^:@]+@/, ':***@'));
         return _redisClient;
     }
-    catch {
+    catch (_e) {
         _redisClient = null;
         return null;
     }
@@ -70,7 +70,7 @@ async function redisGet(key) {
             return null;
         return await client.get(key);
     }
-    catch {
+    catch (_e) {
         return null;
     }
 }
@@ -81,7 +81,7 @@ async function redisSet(key, value, ttl) {
             return;
         await client.set(key, value, { EX: ttl });
     }
-    catch { /* ignore cache write failures */ }
+    catch (_e) { /* ignore cache write failures */ }
 }
 async function saveToKnowledge(question, answer, model) {
     try {
@@ -89,7 +89,7 @@ async function saveToKnowledge(question, answer, model) {
         const data = JSON.stringify({ answer, model, timestamp: Date.now() });
         await redisSet(key, data, KNOWLEDGE_CACHE_TTL);
     }
-    catch { /* ignore cache write failures */ }
+    catch (_e) { /* ignore cache write failures */ }
 }
 class TelegramChannel {
     bot;
@@ -133,7 +133,7 @@ class TelegramChannel {
         });
         this.bot.use((0, grammy_1.session)({
             initial: () => ({
-                model: 'auto',
+                model: 'groq/compound',
                 history: [],
             }),
         }));
@@ -199,7 +199,7 @@ class TelegramChannel {
             if (ctx.chat?.type !== 'private')
                 return;
             ctx.session.history = [];
-            ctx.session.model = 'auto';
+            ctx.session.model = 'groq/compound';
             const lang = this.lang(ctx);
             // Parse deep link payload: /start sponsor-{signalId}-{starsCost}
             const payload = ctx.match?.toString().trim() || '';
@@ -298,6 +298,7 @@ class TelegramChannel {
                 return;
             const lang = this.lang(ctx);
             const models = [
+                { id: 'groq/compound', label: '🌐 GSTD Compound AI', labelRU: '🌐 GSTD Compound AI' },
                 { id: 'auto', label: '🤖 Auto (best available)', labelRU: '🤖 Авто (лучшая доступная)' },
                 { id: 'llama-3.3-70b-versatile', label: '🦙 Llama 3.3 70B', labelRU: '🦙 Llama 3.3 70B' },
                 { id: 'llama-3.1-8b-instant', label: '⚡ Llama 3.1 8B (fast)', labelRU: '⚡ Llama 3.1 8B (быстрая)' },
@@ -305,7 +306,7 @@ class TelegramChannel {
                 { id: 'qwen/qwen3-32b', label: '🐉 Qwen3 32B', labelRU: '🐉 Qwen3 32B' },
                 { id: 'openai/gpt-oss-120b', label: '🧠 GPT-OSS 120B', labelRU: '🧠 GPT-OSS 120B' },
                 { id: 'openai/gpt-oss-20b', label: '💡 GPT-OSS 20B', labelRU: '💡 GPT-OSS 20B' },
-                { id: 'moonshotai/kimi-k2-instruct', label: '🌙 Kimi K2', labelRU: '🌙 Kimi K2' },
+                { id: 'moonshotai/kimi-k2-instruct-0905', label: '🌙 Kimi K2', labelRU: '🌙 Kimi K2' },
             ];
             const current = ctx.session.model || 'auto';
             const currentLabel = models.find(m => m.id === current)?.[lang === 'ru' ? 'labelRU' : 'label'] || current;
@@ -450,7 +451,7 @@ class TelegramChannel {
                             try {
                                 await this.sendFormattedReply(ctx, htmlResponse, isGroup);
                             }
-                            catch {
+                            catch (_e) {
                                 await ctx.reply(fullResponse.substring(0, 4000), {
                                     reply_to_message_id: isGroup ? ctx.message?.message_id : undefined,
                                 });
@@ -466,7 +467,7 @@ class TelegramChannel {
                         }
                     }
                 }
-                catch { /* cache miss, proceed normally */ }
+                catch (_e) { /* cache miss, proceed normally */ }
             }
             const messages = [
                 { role: 'system', content: systemPrompt },
@@ -526,7 +527,7 @@ class TelegramChannel {
                             reply_to_message_id: isGroup ? ctx.message?.message_id : undefined,
                         });
                     }
-                    catch {
+                    catch (_e) {
                         await ctx.reply((mixResult.content + footer).substring(0, 4000));
                     }
                     return;
@@ -657,7 +658,7 @@ class TelegramChannel {
                         : `📊 <b>Network Stats</b>\n\n🖥 Nodes: <b>${n.total_nodes || 0}</b> (online: ${n.online_nodes || 0})\n💰 Total rewards: <b>${(n.total_rewards_gstd || 0).toFixed(2)} GSTD</b>\n🏆 Top tier: ${n.tier_distribution?.[0]?.tier || 'bronze'}`;
                     return ctx.reply(msg, { parse_mode: 'HTML' });
                 }
-                catch {
+                catch (_e) {
                     return ctx.reply(lang === 'ru' ? '❌ Ошибка загрузки статистики' : '❌ Error loading stats');
                 }
             }
@@ -679,7 +680,7 @@ class TelegramChannel {
                         : `✅ <b>Reward Claimed!</b>\n\n💰 Received: <b>${result.claimed_net.toFixed(4)} GSTD</b>\n🏗 Development Fund: <b>${result.gold_reserve.toFixed(4)} GSTD</b> (10%)\n⚡ Sovereign AI Pool: <b>${result.burned.toFixed(4)} GSTD</b> (5%)`;
                     return ctx.reply(msg, { parse_mode: 'HTML' });
                 }
-                catch {
+                catch (_e) {
                     return ctx.reply('❌ Error claiming');
                 }
             }
@@ -704,7 +705,7 @@ class TelegramChannel {
                     const priceData = await this.apiCall('/api/v1/market/price');
                     gstdPrice = priceData.gstd_price_usd || 0;
                 }
-                catch { }
+                catch (_e) { }
                 const gstdPerStar = gstdPrice > 0 ? STAR_USD / gstdPrice : 10;
                 const gstdAmount = Math.floor(starsAmount * gstdPerStar);
                 const costPerReq = router_js_1.SMARTMIX_TIERS.standard.cost || 3.4;
@@ -746,6 +747,7 @@ class TelegramChannel {
                 const selectedModel = data.replace('model_', '');
                 ctx.session.model = selectedModel;
                 const modelNames = {
+                    'groq/compound': { en: '🌐 GSTD Compound AI', ru: '🌐 GSTD Compound AI' },
                     'auto': { en: '🤖 Auto (best available)', ru: '🤖 Авто (лучшая доступная)' },
                     'llama-3.3-70b-versatile': { en: '🦙 Llama 3.3 70B', ru: '🦙 Llama 3.3 70B' },
                     'llama-3.1-8b-instant': { en: '⚡ Llama 3.1 8B', ru: '⚡ Llama 3.1 8B' },
@@ -753,7 +755,7 @@ class TelegramChannel {
                     'qwen/qwen3-32b': { en: '🐉 Qwen3 32B', ru: '🐉 Qwen3 32B' },
                     'openai/gpt-oss-120b': { en: '🧠 GPT-OSS 120B', ru: '🧠 GPT-OSS 120B' },
                     'openai/gpt-oss-20b': { en: '💡 GPT-OSS 20B', ru: '💡 GPT-OSS 20B' },
-                    'moonshotai/kimi-k2-instruct': { en: '🌙 Kimi K2', ru: '🌙 Kimi K2' },
+                    'moonshotai/kimi-k2-instruct-0905': { en: '🌙 Kimi K2', ru: '🌙 Kimi K2' },
                 };
                 const name = modelNames[selectedModel]?.[lang === 'ru' ? 'ru' : 'en'] || selectedModel;
                 const msg = lang === 'ru'
@@ -808,7 +810,7 @@ class TelegramChannel {
             const priceData = await this.apiCall('/api/v1/market/price');
             gstdPrice = priceData.gstd_price_usd || 0;
         }
-        catch { }
+        catch (_e) { }
         const gstdPerStar = gstdPrice > 0 ? STAR_USD / gstdPrice : 10;
         const gstdReward = Math.floor(starsCost * gstdPerStar * 0.85); // 85% to workers
         const platformFee = Math.floor(starsCost * gstdPerStar * 0.15); // 15% platform
@@ -895,7 +897,7 @@ class TelegramChannel {
                 reply_markup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
             });
         }
-        catch {
+        catch (_e) {
             await ctx.reply(lang === 'ru' ? '❌ Ошибка загрузки баланса' : '❌ Error loading balance');
         }
     }
@@ -907,7 +909,7 @@ class TelegramChannel {
             const priceData = await this.apiCall('/api/v1/market/price');
             gstdPrice = priceData.gstd_price_usd || 0;
         }
-        catch { }
+        catch (_e) { }
         const gstdPerStar = gstdPrice > 0 ? STAR_USD / gstdPrice : 10;
         // Check wallet status
         let walletStatus = '';
@@ -927,7 +929,7 @@ class TelegramChannel {
                     : `💼 <b>Wallet:</b> not linked (will use internal balance)\n⚠️ <i>Link wallet via 🔗 Wallet button to receive GSTD to your address</i>`;
             }
         }
-        catch {
+        catch (_e) {
             walletStatus = lang === 'ru'
                 ? `💼 <b>Кошелёк:</b> не определён`
                 : `💼 <b>Wallet:</b> unknown`;
@@ -994,7 +996,7 @@ class TelegramChannel {
                 return ctx.reply(msg, { parse_mode: 'HTML' });
             }
         }
-        catch { }
+        catch (_e) { }
         const msg = lang === 'ru'
             ? `🔗 <b>Привязка кошелька</b>\n\n⚠️ Кошелёк не привязан.\n\nОтправьте адрес вашего TON-кошелька прямо в чат.\n\nНапример: <code>EQDv...</code>\n\n❓ Нет кошелька?\n• <a href="https://tonkeeper.com">Tonkeeper</a>\n• <a href="https://mytonwallet.io">MyTonWallet</a>\n\n💡 <i>После привязки кошелька все купленные GSTD будут зачисляться на него.</i>`
             : `🔗 <b>Connect Wallet</b>\n\n⚠️ No wallet linked.\n\nSend your TON wallet address in the chat.\n\nExample: <code>EQDv...</code>\n\n❓ No wallet?\n• <a href="https://tonkeeper.com">Tonkeeper</a>\n• <a href="https://mytonwallet.io">MyTonWallet</a>\n\n💡 <i>After linking, all purchased GSTD will be credited to your wallet.</i>`;

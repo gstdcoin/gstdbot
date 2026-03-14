@@ -71,7 +71,7 @@ When a user's request matches a skill, activate it automatically.`;
                     console.log(`[Agent] Loaded soul from: ${soulPath}`);
                     return content + '\n\n' + defaultSoul.split('Available skills:')[1];
                 }
-                catch { /* fallback */ }
+                catch (_e) { /* fallback */ }
             }
         }
         return defaultSoul;

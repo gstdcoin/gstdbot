@@ -71,7 +71,7 @@ class SwarmTrainer {
                 return data.id;
             }
         }
-        catch { }
+        catch (_e) { }
         return null;
     }
     async pollTrainingJobs() {
@@ -98,7 +98,7 @@ class SwarmTrainer {
                 }
             }
         }
-        catch { }
+        catch (_e) { }
     }
     async processTrainingJob(job) {
         this.activeJobs.set(job.id, job);
@@ -217,7 +217,7 @@ class SwarmTrainer {
                 this.sharedModels = data.models || [];
             }
         }
-        catch { }
+        catch (_e) { }
     }
     async shareModel(model) {
         try {
@@ -236,7 +236,7 @@ class SwarmTrainer {
                 return true;
             }
         }
-        catch { }
+        catch (_e) { }
         return false;
     }
     getModels() {
@@ -256,7 +256,7 @@ class SwarmTrainer {
             execSync('nvidia-smi', { encoding: 'utf-8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] });
             return true;
         }
-        catch {
+        catch (_e) {
             return false;
         }
     }
@@ -267,7 +267,7 @@ class SwarmTrainer {
             });
             return resp.ok;
         }
-        catch {
+        catch (_e) {
             return false;
         }
     }

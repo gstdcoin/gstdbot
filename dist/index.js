@@ -91,7 +91,7 @@ function loadConfig() {
                 apps: { ...defaults.apps, ...file.apps },
             };
         }
-        catch { }
+        catch (_e) { }
     }
     return defaults;
 }
@@ -132,7 +132,7 @@ async function main() {
     setInterval(() => { try {
         wallet.saveEarnings();
     }
-    catch { } }, 5 * 60 * 1000);
+    catch (_e) { } }, 5 * 60 * 1000);
     // ── 4. Collective Memory ────────────────────────────────────
     console.log(`  [4/${TOTAL_STEPS}] Connecting collective memory...`);
     const memory = new collective_js_1.CollectiveMemory(config);
@@ -276,7 +276,7 @@ async function main() {
                 }
             }
         }
-        catch { /* silent — network may be unavailable */ }
+        catch (_e) { /* silent — network may be unavailable */ }
     };
     // First heartbeat after 30s, then every 60 minutes (matches backend rate-limit of 54min)
     setTimeout(sendHeartbeat, 30_000);
@@ -303,7 +303,7 @@ async function main() {
                 process.exit(0);
             }
         }
-        catch { /* silent — git may not be available in Docker */ }
+        catch (_e) { /* silent — git may not be available in Docker */ }
     };
     // Check for updates after 2 min, then every hour
     setTimeout(checkAndUpdate, 2 * 60 * 1000);

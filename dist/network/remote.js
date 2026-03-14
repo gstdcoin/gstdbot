@@ -61,7 +61,7 @@ class RemoteAccessManager {
                 (0, fs_1.writeFileSync)(tokenFile, `GSTD Node OS — Admin Access Token\n\nToken: ${token.token}\nCreated: ${token.createdAt}\nPermissions: ${token.permissions.join(', ')}\n\n⚠ Keep this file safe! Anyone with this token can control your node.\n`);
                 console.log('    📄 Token saved to: ' + tokenFile);
             }
-            catch { }
+            catch (_e) { }
             (0, server_js_1.logActivity)('Admin access token generated and saved', 'warn');
         }
         if (!this.config.enabled) {
@@ -206,7 +206,7 @@ class RemoteAccessManager {
                     const msg = JSON.parse(data.toString());
                     await this.handleRelayMessage(msg);
                 }
-                catch { }
+                catch (_e) { }
             });
             this.relayWs.on('close', () => {
                 this.relayWs = null;
@@ -222,7 +222,7 @@ class RemoteAccessManager {
                 // Silently handle — will reconnect
             });
         }
-        catch {
+        catch (_e) {
             (0, server_js_1.logActivity)('Relay connection failed — will retry', 'warn');
         }
     }
@@ -267,7 +267,7 @@ class RemoteAccessManager {
             try {
                 execSync('which tor', { encoding: 'utf-8' });
             }
-            catch {
+            catch (_e) {
                 (0, server_js_1.logActivity)('Tor not installed — skipping .onion setup', 'warn');
                 return;
             }
@@ -291,7 +291,7 @@ HiddenServicePort 443 127.0.0.1:8080
                 (0, server_js_1.logActivity)('Tor hidden service will be created on Tor start', 'info');
             }
         }
-        catch { }
+        catch (_e) { }
     }
     // ─── Remote Access Info ──────────────────────────────────────
     getAccessInfo() {
@@ -322,7 +322,7 @@ HiddenServicePort 443 127.0.0.1:8080
             try {
                 this.tokens = JSON.parse((0, fs_1.readFileSync)(this.tokensFile, 'utf-8'));
             }
-            catch {
+            catch (_e) {
                 this.tokens = [];
             }
         }
@@ -331,7 +331,7 @@ HiddenServicePort 443 127.0.0.1:8080
         try {
             (0, fs_1.writeFileSync)(this.tokensFile, JSON.stringify(this.tokens, null, 2));
         }
-        catch { }
+        catch (_e) { }
     }
 }
 exports.RemoteAccessManager = RemoteAccessManager;

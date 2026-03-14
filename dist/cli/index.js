@@ -245,7 +245,7 @@ program
             spinner.warn('Ollama not responding');
         }
     }
-    catch {
+    catch (_e) {
         spinner.warn('Ollama not found — install from https://ollama.com');
     }
     // Create config
@@ -319,7 +319,7 @@ program
         const data = await resp.json();
         console.log(chalk_1.default.green(`  Gateway:  ✓  Running (uptime: ${Math.floor(data.uptime)}s, sessions: ${data.activeSessions})`));
     }
-    catch {
+    catch (_e) {
         console.log(chalk_1.default.yellow('  Gateway:  ✗  Not running (start with: gstdbot gateway)'));
     }
     // Ollama  
@@ -332,7 +332,7 @@ program
             console.log(chalk_1.default.gray(`            ${models.map((m) => m.name).join(', ')}`));
         }
     }
-    catch {
+    catch (_e) {
         console.log(chalk_1.default.yellow('  Ollama:   ✗  Not running (install from ollama.com)'));
     }
     // Config
@@ -414,7 +414,7 @@ program
                     console.log(chalk_1.default.gray(`    Fix: ${fix}`));
             }
         }
-        catch {
+        catch (_e) {
             console.log(`  ${chalk_1.default.red('✗')} ${name}`);
             if (fix)
                 console.log(chalk_1.default.gray(`    Fix: ${fix}`));
@@ -440,7 +440,7 @@ program
         console.log(chalk_1.default.gray(`  🛡️ Cocoon:     ${data.breakdown.cocoon}`));
         console.log(chalk_1.default.gray(`  🏢 Commercial: ${data.breakdown.commercial}\n`));
     }
-    catch {
+    catch (_e) {
         console.log(chalk_1.default.yellow('  Gateway not running. Start with: gstdbot gateway\n'));
     }
 });
@@ -473,7 +473,7 @@ skillsCmd.command('list').description('List installed and available skills').act
             }
         }
     }
-    catch {
+    catch (_e) {
         console.log(chalk_1.default.gray('    Cannot reach marketplace — using local skills only'));
     }
     console.log('');
@@ -596,7 +596,7 @@ skillsCmd.command('update').description('Auto-update skills from the marketplace
     try {
         registry = await Promise.resolve((0, marketplace_js_1.listMarketplace)());
     }
-    catch {
+    catch (_e) {
         spinner.fail('Cannot reach GSTD marketplace');
         console.log(chalk_1.default.gray('  Check internet connection and try again.\n'));
         return;
@@ -739,7 +739,7 @@ swarmCmd.command('status').description('Show swarm network status').action(async
         console.log(`  Tasks (24h): ${chalk_1.default.cyan(data.tasks_24h || 0)}`);
         console.log(`  Network IQ: ${chalk_1.default.magenta(data.network_iq || 'N/A')}\n`);
     }
-    catch {
+    catch (_e) {
         console.log(chalk_1.default.yellow('  Cannot reach GSTD network\n'));
     }
 });

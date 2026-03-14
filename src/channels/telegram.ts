@@ -147,7 +147,7 @@ export class TelegramChannel {
 
         this.bot.use(session({
             initial: (): SessionData => ({
-                model: 'auto',
+                model: 'groq/compound',
                 history: [],
             }),
         }));
@@ -220,7 +220,7 @@ export class TelegramChannel {
         this.bot.command('start', async (ctx) => {
             if (ctx.chat?.type !== 'private') return;
             ctx.session.history = [];
-            ctx.session.model = 'auto';
+            ctx.session.model = 'groq/compound';
             const lang = this.lang(ctx);
 
             // Parse deep link payload: /start sponsor-{signalId}-{starsCost}
@@ -328,6 +328,7 @@ export class TelegramChannel {
             const lang = this.lang(ctx);
 
             const models = [
+                { id: 'groq/compound', label: '🌐 GSTD Compound AI', labelRU: '🌐 GSTD Compound AI' },
                 { id: 'auto', label: '🤖 Auto (best available)', labelRU: '🤖 Авто (лучшая доступная)' },
                 { id: 'llama-3.3-70b-versatile', label: '🦙 Llama 3.3 70B', labelRU: '🦙 Llama 3.3 70B' },
                 { id: 'llama-3.1-8b-instant', label: '⚡ Llama 3.1 8B (fast)', labelRU: '⚡ Llama 3.1 8B (быстрая)' },
@@ -335,7 +336,7 @@ export class TelegramChannel {
                 { id: 'qwen/qwen3-32b', label: '🐉 Qwen3 32B', labelRU: '🐉 Qwen3 32B' },
                 { id: 'openai/gpt-oss-120b', label: '🧠 GPT-OSS 120B', labelRU: '🧠 GPT-OSS 120B' },
                 { id: 'openai/gpt-oss-20b', label: '💡 GPT-OSS 20B', labelRU: '💡 GPT-OSS 20B' },
-                { id: 'moonshotai/kimi-k2-instruct', label: '🌙 Kimi K2', labelRU: '🌙 Kimi K2' },
+                { id: 'moonshotai/kimi-k2-instruct-0905', label: '🌙 Kimi K2', labelRU: '🌙 Kimi K2' },
             ];
 
             const current = ctx.session.model || 'auto';
@@ -820,6 +821,7 @@ export class TelegramChannel {
                 ctx.session.model = selectedModel;
 
                 const modelNames: Record<string, { en: string; ru: string }> = {
+                    'groq/compound': { en: '🌐 GSTD Compound AI', ru: '🌐 GSTD Compound AI' },
                     'auto': { en: '🤖 Auto (best available)', ru: '🤖 Авто (лучшая доступная)' },
                     'llama-3.3-70b-versatile': { en: '🦙 Llama 3.3 70B', ru: '🦙 Llama 3.3 70B' },
                     'llama-3.1-8b-instant': { en: '⚡ Llama 3.1 8B', ru: '⚡ Llama 3.1 8B' },
@@ -827,7 +829,7 @@ export class TelegramChannel {
                     'qwen/qwen3-32b': { en: '🐉 Qwen3 32B', ru: '🐉 Qwen3 32B' },
                     'openai/gpt-oss-120b': { en: '🧠 GPT-OSS 120B', ru: '🧠 GPT-OSS 120B' },
                     'openai/gpt-oss-20b': { en: '💡 GPT-OSS 20B', ru: '💡 GPT-OSS 20B' },
-                    'moonshotai/kimi-k2-instruct': { en: '🌙 Kimi K2', ru: '🌙 Kimi K2' },
+                    'moonshotai/kimi-k2-instruct-0905': { en: '🌙 Kimi K2', ru: '🌙 Kimi K2' },
                 };
 
                 const name = modelNames[selectedModel]?.[lang === 'ru' ? 'ru' : 'en'] || selectedModel;

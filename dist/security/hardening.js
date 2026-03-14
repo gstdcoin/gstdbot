@@ -45,7 +45,7 @@ class SecurityHardening {
             try {
                 (0, fs_1.mkdirSync)(this.configDir, { recursive: true });
             }
-            catch { }
+            catch (_e) { }
         }
         this.auditLogPath = (0, path_1.join)(this.configDir, 'audit.log');
         this.encryptionKey = this.loadOrCreateKey();
@@ -56,7 +56,7 @@ class SecurityHardening {
                 const ips = JSON.parse((0, fs_1.readFileSync)(banFile, 'utf-8'));
                 ips.forEach((ip) => this.bannedIPs.add(ip));
             }
-            catch { }
+            catch (_e) { }
         }
         // Periodic cleanup
         this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
@@ -133,7 +133,7 @@ class SecurityHardening {
         try {
             (0, fs_1.writeFileSync)(banFile, JSON.stringify(Array.from(this.bannedIPs), null, 2));
         }
-        catch { }
+        catch (_e) { }
     }
     // ─── Encrypted Storage ───────────────────────────────────
     encrypt(data) {
@@ -162,7 +162,7 @@ class SecurityHardening {
         try {
             (0, fs_1.writeFileSync)(keyFile, key.toString('hex'), { mode: 0o600 });
         }
-        catch { }
+        catch (_e) { }
         return key;
     }
     // ─── Request Signing ─────────────────────────────────────
@@ -191,7 +191,7 @@ class SecurityHardening {
         try {
             (0, fs_1.appendFileSync)(this.auditLogPath, JSON.stringify(entry) + '\n');
         }
-        catch { }
+        catch (_e) { }
         if (severity === 'critical') {
             (0, server_js_1.logActivity)(`🚨 SECURITY: ${action} from ${ip} — ${details}`, 'error');
         }
@@ -201,7 +201,7 @@ class SecurityHardening {
             const lines = (0, fs_1.readFileSync)(this.auditLogPath, 'utf-8').trim().split('\n');
             return lines.slice(-limit).map(l => JSON.parse(l)).reverse();
         }
-        catch {
+        catch (_e) {
             return [];
         }
     }

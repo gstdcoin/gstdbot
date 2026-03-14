@@ -62,7 +62,7 @@ function detectGpu() {
         const parts = output.trim().split(',').map((s) => s.trim());
         return { detected: true, model: parts[0] || 'Unknown', memory: parts[1] ? parts[1] + ' MiB' : undefined, temperature: parts[2] ? parts[2] + '°C' : undefined, usage: parts[3] ? parts[3] + '%' : undefined };
     }
-    catch {
+    catch (_e) {
         return { detected: false };
     }
 }
@@ -74,7 +74,7 @@ function getDiskUsage() {
         const total = parseInt(parts[1]) || 0, used = parseInt(parts[2]) || 0, available = parseInt(parts[3]) || 0;
         return { total, used, available, usage: total > 0 ? Math.round(used / total * 100) : 0 };
     }
-    catch {
+    catch (_e) {
         return { total: 0, used: 0, available: 0, usage: 0 };
     }
 }
@@ -85,7 +85,7 @@ function getDefaultBranch(dir) {
         }).trim();
         return b || 'main';
     }
-    catch {
+    catch (_e) {
         try {
             (0, child_process_1.execSync)('git rev-parse origin/main', { cwd: dir, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
             return 'main';
@@ -120,11 +120,11 @@ try {
             try {
                 activityLog.push(JSON.parse(line));
             }
-            catch { }
+            catch (_e) { }
         }
     }
 }
-catch { }
+catch (_e) { }
 function logActivity(msg, type = 'info') {
     const entry = { ts: new Date().toISOString(), msg, type };
     activityLog.unshift(entry);
@@ -134,7 +134,7 @@ function logActivity(msg, type = 'info') {
     try {
         (0, fs_1.appendFileSync)(LOG_FILE, JSON.stringify(entry) + '\n');
     }
-    catch { }
+    catch (_e) { }
 }
 // ─── PIN Hashing Helpers ─────────────────────────────────────────
 function hashPin(pin) {
@@ -271,7 +271,7 @@ class OmegaGateway {
             const data = await resp.json().catch(() => ({}));
             return Number(data?.gstd || 0);
         }
-        catch {
+        catch (_e) {
             return 0;
         }
     }
@@ -361,7 +361,7 @@ class OmegaGateway {
                             cwd: installDir, encoding: 'utf-8', timeout: 5000,
                         }).trim().split('\n').filter(Boolean);
                     }
-                    catch { }
+                    catch (_e) { }
                 }
                 res.json({
                     update_available: localHash !== remoteHash,
@@ -390,14 +390,14 @@ class OmegaGateway {
                         encoding: 'utf-8', timeout: 5000,
                     });
                 }
-                catch { }
+                catch (_e) { }
                 // Step 1: Force-clean working directory before pull
                 // git reset --hard ensures NO local modifications block the update
                 try {
                     (0, child_process_1.execSync)('git reset --hard HEAD', { cwd: installDir, encoding: 'utf-8', timeout: 10000 });
                     (0, child_process_1.execSync)('git clean -fd 2>/dev/null || true', { cwd: installDir, encoding: 'utf-8', timeout: 10000 });
                 }
-                catch { }
+                catch (_e) { }
                 // Step 2: Pull latest
                 let pullOutput = '';
                 try {
@@ -405,7 +405,7 @@ class OmegaGateway {
                         cwd: installDir, encoding: 'utf-8', timeout: 30000,
                     });
                 }
-                catch {
+                catch (_e) {
                     // If ff-only fails (diverged), force reset to remote
                     (0, child_process_1.execSync)(`git fetch origin ${branch}`, { cwd: installDir, encoding: 'utf-8', timeout: 15000 });
                     pullOutput = (0, child_process_1.execSync)(`git reset --hard origin/${branch}`, {
@@ -426,7 +426,7 @@ class OmegaGateway {
                         encoding: 'utf-8', timeout: 3000,
                     });
                 }
-                catch { }
+                catch (_e) { }
                 const newHash = (0, child_process_1.execSync)('git rev-parse --short HEAD', { cwd: installDir, encoding: 'utf-8' }).trim();
                 const newVersion = JSON.parse(require('fs').readFileSync(installDir + '/package.json', 'utf-8')).version || 'unknown';
                 logActivity(`Update complete: v${newVersion} (${newHash})`, 'success');
@@ -446,7 +446,7 @@ class OmegaGateway {
                             encoding: 'utf-8', timeout: 10000,
                         });
                     }
-                    catch { }
+                    catch (_e) { }
                     setTimeout(() => process.exit(0), 1000);
                 }, 500);
             }
@@ -724,7 +724,7 @@ class OmegaGateway {
                     require('fs').unlinkSync(oldPinFile);
                     logActivity('PIN migrated to hashed storage', 'success');
                 }
-                catch { }
+                catch (_e) { }
             }
         }
         else if ((0, fs_1.existsSync)(pinFile)) {
@@ -736,7 +736,7 @@ class OmegaGateway {
             try {
                 (0, fs_1.mkdirSync)(configDir, { recursive: true });
             }
-            catch { }
+            catch (_e) { }
         }
         // POST /api/auth/setup — create PIN on first login
         this.app.post('/api/auth/setup', (req, res) => {
@@ -755,7 +755,7 @@ class OmegaGateway {
                 (0, fs_1.writeFileSync)(pinFile, pinHash);
                 logActivity('Dashboard PIN created (hashed)', 'success');
             }
-            catch { }
+            catch (_e) { }
             const token = createAuthToken();
             res.json({ success: true, token });
         });
@@ -818,7 +818,7 @@ class OmegaGateway {
             try {
                 linkedTelegram = JSON.parse((0, fs_1.readFileSync)(telegramLinkFile, 'utf-8'));
             }
-            catch { }
+            catch (_e) { }
         }
         // POST /api/telegram/link — link Telegram account to node
         this.app.post('/api/telegram/link', (req, res) => {
@@ -831,7 +831,7 @@ class OmegaGateway {
             try {
                 (0, fs_1.writeFileSync)(telegramLinkFile, JSON.stringify(linkedTelegram, null, 2));
             }
-            catch { }
+            catch (_e) { }
             logActivity(`Telegram linked: @${username} (${chatId})`, 'success');
             res.json({ success: true, linked: linkedTelegram });
         });
@@ -895,7 +895,7 @@ class OmegaGateway {
             try {
                 (0, fs_1.writeFileSync)(pinFile, pinHash);
             }
-            catch { }
+            catch (_e) { }
             logActivity('PIN reset via 2FA Telegram', 'success');
             const token = createAuthToken();
             res.json({ success: true, token });
@@ -926,7 +926,7 @@ class OmegaGateway {
                         body: JSON.stringify({ chat_id: chatId, text: reply, parse_mode: 'Markdown' })
                     });
                 }
-                catch { }
+                catch (_e) { }
             };
             if (text === '/status' || text === '/start') {
                 const used = process.memoryUsage();
@@ -980,7 +980,7 @@ class OmegaGateway {
                     const data = JSON.parse((0, fs_1.readFileSync)(earningsPath, 'utf-8'));
                     await sendReply(`💰 *Earnings*\n\n💎 Total: ${data.total_earned || 0} GSTD\n⏳ Pending: ${data.pending || 0} GSTD\n✅ Tasks: ${data.tasks_completed || 0}`);
                 }
-                catch {
+                catch (_e) {
                     await sendReply('💰 No earnings data yet.');
                 }
             }
@@ -1042,7 +1042,7 @@ class OmegaGateway {
                 const data = await response.json();
                 res.json(data);
             }
-            catch {
+            catch (_e) {
                 res.json({ status: 'bridge_offline', message: 'Bridge node not running' });
             }
         });
@@ -1108,7 +1108,7 @@ class OmegaGateway {
                     try {
                         return await this.subsystems.blockchain.getFullStatus();
                     }
-                    catch {
+                    catch (_e) {
                         return null;
                     }
                 })() : null,
@@ -1147,7 +1147,7 @@ class OmegaGateway {
                     return;
                 }
             }
-            catch { }
+            catch (_e) { }
             res.json({ pending: 0, completed: 0, processing: 0 });
         });
         // ─── Earnings (real from wallet) ────────────────────────────
@@ -1195,7 +1195,7 @@ class OmegaGateway {
                     stats.bindings = binding;
                     stats.is_bound = !!(linkedExternal || (binding?.total_nodes > 0));
                 }
-                catch { }
+                catch (_e) { }
                 res.json(stats);
             }
             else {
@@ -1261,7 +1261,7 @@ class OmegaGateway {
                     const localWallet = getWallet();
                     owner_wallet = localWallet?.linkedExternalWallet;
                 }
-                catch { }
+                catch (_e) { }
             }
             if (!owner_wallet) {
                 res.status(400).json({ error: 'No wallet bound to this node' });
@@ -1293,7 +1293,7 @@ class OmegaGateway {
                 const data = await resp.json();
                 res.json(data);
             }
-            catch {
+            catch (_e) {
                 res.json({ nodes: [], total_nodes: 0, total_pending: 0 });
             }
         });
@@ -1309,7 +1309,7 @@ class OmegaGateway {
                 const data = await resp.json();
                 res.json(data);
             }
-            catch {
+            catch (_e) {
                 res.json({ rewards: [], total_pending: 0, count: 0 });
             }
         });
@@ -1323,7 +1323,7 @@ class OmegaGateway {
                     const localWallet = getWallet();
                     owner_wallet = localWallet?.linkedExternalWallet;
                 }
-                catch { }
+                catch (_e) { }
             }
             const wallet = owner_wallet || this.wallet?.getAddress() || '';
             if (!wallet) {
@@ -1406,7 +1406,7 @@ class OmegaGateway {
                 try {
                     (0, child_process_1.execSync)('docker info', { timeout: 5000, stdio: 'pipe' });
                 }
-                catch {
+                catch (_e) {
                     res.json({ ok: false, message: '🐳 Docker is required for this app but not available. Install Docker first: https://docs.docker.com/get-docker/' });
                     return;
                 }
@@ -1810,7 +1810,7 @@ class OmegaGateway {
             try {
                 domain = (0, fs_1.readFileSync)((0, path_1.join)(sslDir, 'domain.txt'), 'utf-8').trim();
             }
-            catch { }
+            catch (_e) { }
             res.json({
                 enabled: hasCert && hasKey,
                 domain,
@@ -1857,7 +1857,7 @@ class OmegaGateway {
             try {
                 config = JSON.parse((0, fs_1.readFileSync)(dnsFile, 'utf-8'));
             }
-            catch { }
+            catch (_e) { }
             res.json({
                 configured: !!config,
                 provider: config?.provider || null,
@@ -1930,7 +1930,7 @@ class OmegaGateway {
                     return;
                 }
             }
-            catch { }
+            catch (_e) { }
             // Fallback: local data + orchestrator
             const orch = this.orchestrator;
             res.json({
@@ -1963,7 +1963,7 @@ class OmegaGateway {
             try {
                 config = { ...config, ...JSON.parse((0, fs_1.readFileSync)(configFile, 'utf-8')) };
             }
-            catch { }
+            catch (_e) { }
             // Earnings estimate
             const totalCPU = (0, os_1.cpus)().length;
             const totalRAM = Math.round((0, os_1.totalmem)() / 1024 / 1024 / 1024);
@@ -1996,7 +1996,7 @@ class OmegaGateway {
                 (0, fs_1.writeFileSync)(configFile, JSON.stringify(config, null, 2));
                 logActivity(`Resource sharing updated: CPU ${config.maxCPU}%, RAM ${config.maxRAM}%`, 'success');
             }
-            catch { }
+            catch (_e) { }
             res.json({ success: true, config });
         });
         // ═══════════════════════════════════════════════════════════
@@ -2015,7 +2015,7 @@ class OmegaGateway {
                         (0, child_process_1.execSync)('rm -rf /tmp/gstd-* 2>/dev/null; npm cache clean --force 2>/dev/null', { timeout: 10000, stdio: 'pipe' });
                         checks.push({ name: 'Disk Space', status: 'warning', message: `${usedPct}% used — temp files cleaned`, autoFixed: true });
                     }
-                    catch {
+                    catch (_e) {
                         checks.push({ name: 'Disk Space', status: 'critical', message: `${usedPct}% used — clean up manually` });
                     }
                 }
@@ -2023,7 +2023,7 @@ class OmegaGateway {
                     checks.push({ name: 'Disk Space', status: 'ok', message: `${usedPct}% used` });
                 }
             }
-            catch {
+            catch (_e) {
                 checks.push({ name: 'Disk Space', status: 'error', message: 'Could not check disk' });
             }
             // 2. Node.js version
@@ -2032,7 +2032,7 @@ class OmegaGateway {
                 const major = parseInt(nodeVer.slice(1));
                 checks.push({ name: 'Node.js', status: major >= 20 ? 'ok' : 'warning', message: nodeVer });
             }
-            catch {
+            catch (_e) {
                 checks.push({ name: 'Node.js', status: 'error', message: 'Unknown' });
             }
             // 3. Docker available
@@ -2040,7 +2040,7 @@ class OmegaGateway {
                 (0, child_process_1.execSync)('docker info', { timeout: 5000, stdio: 'pipe' });
                 checks.push({ name: 'Docker', status: 'ok', message: 'Running' });
             }
-            catch {
+            catch (_e) {
                 checks.push({ name: 'Docker', status: 'warning', message: 'Not available — apps cannot be installed' });
             }
             // 4. Git repository
@@ -2049,7 +2049,7 @@ class OmegaGateway {
                 const behind = (0, child_process_1.execSync)('git -C ' + (0, path_1.join)(__dirname, '../..') + ' rev-list HEAD..origin/' + branch + ' --count 2>/dev/null || echo 0', { encoding: 'utf-8', timeout: 10000 }).trim();
                 checks.push({ name: 'Git Repository', status: 'ok', message: `Branch: ${branch}, behind: ${behind} commits` });
             }
-            catch {
+            catch (_e) {
                 checks.push({ name: 'Git Repository', status: 'warning', message: 'Not a git repository' });
             }
             // 5. Memory pressure
@@ -2071,7 +2071,7 @@ class OmegaGateway {
                     checks.push({ name: 'Activity Log', status: 'ok', message: `${Math.round(logSize / 1024)}KB` });
                 }
             }
-            catch {
+            catch (_e) {
                 checks.push({ name: 'Activity Log', status: 'ok', message: 'No log file' });
             }
             // 8. Swarm connectivity
@@ -2155,7 +2155,7 @@ class OmegaGateway {
                 const port = sshConfig.find(l => l.match(/^\s*Port\s/i))?.trim() || 'Port 22';
                 res.json({ rootLogin, passwordAuth, port, status: 'readable' });
             }
-            catch {
+            catch (_e) {
                 res.json({ status: 'not_accessible', message: 'Cannot read SSH config' });
             }
         });
@@ -2685,7 +2685,7 @@ class OmegaGateway {
                 const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/tokenomics`, { signal: AbortSignal.timeout(10000) });
                 res.json(await resp.json());
             }
-            catch {
+            catch (_e) {
                 res.json({ error: 'Platform unreachable' });
             }
         });
@@ -2694,7 +2694,7 @@ class OmegaGateway {
                 const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/protocol`, { signal: AbortSignal.timeout(10000) });
                 res.json(await resp.json());
             }
-            catch {
+            catch (_e) {
                 res.json({ error: 'Platform unreachable' });
             }
         });
@@ -2704,7 +2704,7 @@ class OmegaGateway {
                 const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/staking/info?wallet=${wallet}`, { signal: AbortSignal.timeout(10000) });
                 res.json(await resp.json());
             }
-            catch {
+            catch (_e) {
                 res.json({ error: 'Platform unreachable' });
             }
         });
@@ -2722,7 +2722,7 @@ class OmegaGateway {
                     logActivity(`💎 Staked ${amount} GSTD @ ${data.effective_apy}% APY`, 'success');
                 res.json(data);
             }
-            catch {
+            catch (_e) {
                 res.json({ error: 'Platform unreachable' });
             }
         });
@@ -2747,7 +2747,7 @@ class OmegaGateway {
                 const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/payments?wallet=${wallet}`, { signal: AbortSignal.timeout(10000) });
                 res.json(await resp.json());
             }
-            catch {
+            catch (_e) {
                 res.json({ payments: [], count: 0 });
             }
         });
@@ -2756,7 +2756,7 @@ class OmegaGateway {
                 const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/governance/proposals`, { signal: AbortSignal.timeout(10000) });
                 res.json(await resp.json());
             }
-            catch {
+            catch (_e) {
                 res.json({ proposals: [], count: 0 });
             }
         });
@@ -2800,7 +2800,7 @@ class OmegaGateway {
                 const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/mesh/peers?node_id=${process.env.GSTD_NODE_ID || ''}`, { signal: AbortSignal.timeout(10000) });
                 res.json(await resp.json());
             }
-            catch {
+            catch (_e) {
                 res.json({ total_mesh_connections: 0, active_connections: 0 });
             }
         });
@@ -2809,7 +2809,7 @@ class OmegaGateway {
                 const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/revenue`, { signal: AbortSignal.timeout(10000) });
                 res.json(await resp.json());
             }
-            catch {
+            catch (_e) {
                 res.json({ error: 'Platform unreachable' });
             }
         });
@@ -3048,7 +3048,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             const output = (0, child_process_1.execSync)(`openssl x509 -enddate -noout -in ${certPath}`, { encoding: 'utf-8', timeout: 5000 });
             return output.replace('notAfter=', '').trim();
         }
-        catch {
+        catch (_e) {
             return null;
         }
     }

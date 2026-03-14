@@ -77,7 +77,7 @@ class ResourceSharing {
                 signal: AbortSignal.timeout(5000),
             });
         }
-        catch { }
+        catch (_e) { }
     }
     getAvailableResources() {
         const cpuInfo = (0, os_1.cpus)();
@@ -92,7 +92,7 @@ class ResourceSharing {
                 gpu = { available: true, model, vram: parseInt(vram) || 0 };
             }
         }
-        catch { }
+        catch (_e) { }
         let diskFree = 0;
         try {
             const { execSync } = require('child_process');
@@ -101,7 +101,7 @@ class ResourceSharing {
             }).trim().replace('G', '');
             diskFree = parseInt(out) || 0;
         }
-        catch { }
+        catch (_e) { }
         return {
             nodeId: this.config.nodeId,
             compute: {

@@ -116,7 +116,7 @@ function listInstalled() {
                     const meta = JSON.parse((0, fs_1.readFileSync)(metaFile, 'utf-8'));
                     skills.push({ ...meta, path: skillDir });
                 }
-                catch { }
+                catch (_e) { }
             }
         }
     }
@@ -179,7 +179,7 @@ async function importFromUrl(url) {
                 return skill;
             }
         }
-        catch { }
+        catch (_e) { }
         // Try git clone
         try {
             const cloneUrl = url.replace(/\/tree\/.*/, '.git');
@@ -202,7 +202,7 @@ async function importFromUrl(url) {
                 return skill;
             }
         }
-        catch { }
+        catch (_e) { }
     }
     // Generic URL fetch (SKILL.md file)
     try {
@@ -226,7 +226,7 @@ async function importFromUrl(url) {
             return skill;
         }
     }
-    catch { }
+    catch (_e) { }
     return null;
 }
 function importFromLocal(path) {

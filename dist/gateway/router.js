@@ -18,13 +18,14 @@ function formatThinkTags(text) {
 }
 // Verified available Groq models (deepseek-r1-distill-llama-70b deprecated Oct 2025)
 const GROQ_MODELS = [
+    'groq/compound',
     'llama-3.3-70b-versatile',
     'llama-3.1-8b-instant',
     'meta-llama/llama-4-scout-17b-16e-instruct',
     'qwen/qwen3-32b',
     'openai/gpt-oss-120b',
     'openai/gpt-oss-20b',
-    'moonshotai/kimi-k2-instruct',
+    'moonshotai/kimi-k2-instruct-0905',
 ];
 const DEEP_THINK = (specialty) => `You are a world-class expert in ${specialty} with decades of experience. Precision is paramount.
 
@@ -59,10 +60,11 @@ const ALL_EXPERTS = [
     { id: 'qwen3-32b', name: 'Qwen3 32B', modelId: 'qwen/qwen3-32b', specialty: 'mathematical reasoning, logic, analytical thinking', systemPrompt: PAID_EXPERT('mathematical reasoning and analytical problem-solving') },
     { id: 'llama-3.3-70b', name: 'Llama 3.3 70B', modelId: 'llama-3.3-70b-versatile', specialty: 'broad knowledge, nuanced reasoning, complex analysis', systemPrompt: PAID_EXPERT('general knowledge, research, and complex multi-step reasoning') },
     { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', modelId: 'openai/gpt-oss-120b', specialty: 'large-scale reasoning, deep knowledge', systemPrompt: PAID_EXPERT('large-scale reasoning, scientific knowledge, and deep analysis') },
-    { id: 'kimi-k2', name: 'Kimi K2', modelId: 'moonshotai/kimi-k2-instruct', specialty: 'long-context reasoning, detailed analysis', systemPrompt: PAID_EXPERT('long-context understanding, detailed analysis, and thorough research') },
+    { id: 'kimi-k2', name: 'Kimi K2', modelId: 'moonshotai/kimi-k2-instruct-0905', specialty: 'long-context reasoning, detailed analysis', systemPrompt: PAID_EXPERT('long-context understanding, detailed analysis, and thorough research') },
     { id: 'llama-4-scout', name: 'Llama 4 Scout', modelId: 'meta-llama/llama-4-scout-17b-16e-instruct', specialty: 'rapid assessment, pattern recognition', systemPrompt: PAID_EXPERT('rapid assessment, pattern recognition, and identifying key insights') },
     { id: 'gpt-oss-20b', name: 'GPT-OSS 20B', modelId: 'openai/gpt-oss-20b', specialty: 'efficient reasoning, concise expert answers', systemPrompt: PAID_EXPERT('efficient problem-solving and concise expert-level answers') },
     { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', modelId: 'llama-3.1-8b-instant', specialty: 'fast verification, sanity checks', systemPrompt: PAID_EXPERT('fast verification, finding errors in reasoning, and sanity-checking conclusions') },
+    { id: 'compound', name: 'GSTD Compound AI', modelId: 'groq/compound', specialty: 'web search, real-time data, tool use', systemPrompt: PAID_EXPERT('real-time information retrieval, web search, and compound reasoning') },
 ];
 // Simple LRU cache
 class ResponseCache {
@@ -112,12 +114,13 @@ class NeuralRouter {
             };
         }
         // Check if user requested a specific Groq model
-        const isSpecificGroqModel = GROQ_MODELS.includes(requestedModel);
+        const isSpecificGroqModel = GROQ_MODELS.includes(requestedModel) || requestedModel === 'compound' || requestedModel === 'groq/compound';
         if (isSpecificGroqModel && this.groqKey) {
             // ─── Direct Groq: user picked a specific model ────────────
             try {
-                console.log(`[Router] Direct Groq request: ${requestedModel}`);
-                const result = await this.callSingleGroq(requestedModel, messages, 2048);
+                const groqModelId = requestedModel === 'compound' ? 'groq/compound' : requestedModel;
+                console.log(`[Router] Direct Groq request: ${groqModelId}`);
+                const result = await this.callSingleGroq(groqModelId, messages, 2048);
                 this.cache.set(key, result.content, result.model);
                 return {
                     content: result.content, model: result.model, tier: 'groq',

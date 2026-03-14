@@ -107,7 +107,7 @@ class CommunityGuardian {
                             : '⚠️ You are not an admin. Only official admins can manage the chat.', { reply_to_message_id: ctx.message?.message_id });
                     }
                 }
-                catch { }
+                catch (_e) { }
                 return;
             }
             // Profanity check
@@ -128,7 +128,7 @@ class CommunityGuardian {
                             : `⚠️ Profanity is not allowed. Warning ${w}/3.`, { reply_to_message_id: undefined });
                     }
                 }
-                catch { }
+                catch (_e) { }
                 return;
             }
             // Spam check
@@ -137,7 +137,7 @@ class CommunityGuardian {
                     await ctx.deleteMessage();
                     this.warnUser(userId);
                 }
-                catch { }
+                catch (_e) { }
                 return;
             }
             // Flood check
@@ -145,7 +145,7 @@ class CommunityGuardian {
                 try {
                     await ctx.deleteMessage();
                 }
-                catch { }
+                catch (_e) { }
                 return;
             }
             this.trackMessage(userId);
@@ -163,7 +163,7 @@ class CommunityGuardian {
                         try {
                             await ctx.banChatMember(member.id);
                         }
-                        catch { }
+                        catch (_e) { }
                     }
                     continue;
                 }
@@ -405,7 +405,7 @@ class CommunityGuardian {
                             ? '⚠️ Произошла ошибка. Stars возвращены на ваш счёт.'
                             : '⚠️ An error occurred. Stars have been refunded.');
                     }
-                    catch {
+                    catch (_e) {
                         await ctx.reply(lang === 'ru'
                             ? '⚠️ Ошибка при доставке токенов. Обратитесь к @администратору.'
                             : '⚠️ Error delivering tokens. Contact an admin.');
@@ -587,7 +587,7 @@ RULES:
                 until_date: Math.floor(Date.now() / 1000) + seconds,
             });
         }
-        catch { }
+        catch (_e) { }
     }
     // ─── API methods ───
     async fetchPrice() {
@@ -599,7 +599,7 @@ RULES:
             this.priceCache = { price: data.gstd_price_usd || 0, ts: Date.now() };
             return this.priceCache.price;
         }
-        catch {
+        catch (_e) {
             return this.priceCache.price;
         }
     }
@@ -608,7 +608,7 @@ RULES:
             const res = await fetch(`${this.config.swarmUrl}/api/v1/network/stats`);
             return await res.json();
         }
-        catch {
+        catch (_e) {
             return { active_workers: 0, tasks_24h: 0, total_gstd_paid: 0, gstd_price_usd: 0 };
         }
     }
@@ -625,7 +625,7 @@ RULES:
                 }
                 lastPrice = price;
             }
-            catch { }
+            catch (_e) { }
         }, 30000);
         console.log(`[Guardian] Buy alerts for chat ${chatId}`);
     }

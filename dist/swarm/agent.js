@@ -95,7 +95,7 @@ class SwarmAgent {
                 node_id: this.config.nodeId,
             });
         }
-        catch { }
+        catch (_e) { }
         this.connected = false;
         (0, server_js_1.logActivity)('Left swarm network', 'warn');
     }
@@ -134,7 +134,7 @@ class SwarmAgent {
                 this.stats.nextTierHours = result.next_tier.hours_needed || 0;
             }
         }
-        catch { }
+        catch (_e) { }
     }
     async register() {
         try {
@@ -210,7 +210,7 @@ class SwarmAgent {
                 }
             }
         }
-        catch {
+        catch (_e) {
             if (this.connected) {
                 this.connected = false;
                 this.stats.connected = false;
@@ -239,7 +239,7 @@ class SwarmAgent {
                 await this.processTask(result.task);
             }
         }
-        catch { }
+        catch (_e) { }
     }
     async processTask(task) {
         this.stats.tasksProcessing++;
@@ -365,7 +365,7 @@ class SwarmAgent {
             const { execSync } = require('child_process');
             gpu = execSync('nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null', { encoding: 'utf-8', timeout: 3000 }).trim() || null;
         }
-        catch { }
+        catch (_e) { }
         return {
             node_id: this.config.nodeId,
             node_name: this.config.nodeName,
@@ -402,7 +402,7 @@ class SwarmAgent {
                 return await resp.json().catch(() => ({ ok: true }));
             return null;
         }
-        catch {
+        catch (_e) {
             return null;
         }
     }
