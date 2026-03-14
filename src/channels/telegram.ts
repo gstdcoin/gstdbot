@@ -196,8 +196,8 @@ export class TelegramChannel {
         if (lang === 'ru') {
             return {
                 keyboard: [
-                    [{ text: '💎 Баланс' }, { text: '⭐️ Пополнить' }],
-                    [{ text: '🔗 Кошелек' }, { text: '🧠 Заработать' }],
+                    [{ text: '💎 Баланс' }, { text: '⭐️ Пополнить' }, { text: '💸 Обмен' }],
+                    [{ text: '🔗 Кошелек' }, { text: '🥩 Стейкинг' }, { text: '🧠 Заработать' }],
                     [{ text: '📱 Нода' }, { text: '🧠 Интеллект' }, { text: '🔑 API' }, { text: '📖 Помощь' }],
                 ],
                 resize_keyboard: true,
@@ -206,8 +206,8 @@ export class TelegramChannel {
         }
         return {
             keyboard: [
-                [{ text: '💎 Balance' }, { text: '⭐️ Top Up' }],
-                [{ text: '🔗 Wallet' }, { text: '🧠 Earn' }],
+                [{ text: '💎 Balance' }, { text: '⭐️ Top Up' }, { text: '💸 Swap/Trade' }],
+                [{ text: '🔗 Wallet' }, { text: '🥩 Stake GSTD' }, { text: '🧠 Earn' }],
                 [{ text: '📱 Node' }, { text: '🧠 Intelligence' }, { text: '🔑 API' }, { text: '📖 Help' }],
             ],
             resize_keyboard: true,
@@ -425,6 +425,14 @@ export class TelegramChannel {
                 // 🧠 Collective Intelligence
                 if (text === '🧠 Интеллект' || text === '🧠 Intelligence' || text === '🔬 SmartMix') {
                     return this.handleSmartMixMenu(ctx, lang);
+                }
+                // 💸 Swap/Trade
+                if (text === '💸 Swap/Trade' || text === '💸 Обмен' || text.toLowerCase().includes('swap')) {
+                    return this.handleSwap(ctx, lang);
+                }
+                // 🥩 Stake
+                if (text === '🥩 Stake GSTD' || text === '🥩 Стейкинг' || text.toLowerCase().includes('stake')) {
+                    return this.handleStake(ctx, lang);
                 }
                 // 🔑 API key
                 if (text === '🔑 API' || text === '🔑 API Key') {
@@ -1087,6 +1095,38 @@ export class TelegramChannel {
         await ctx.reply(msg, {
             parse_mode: 'HTML',
             reply_markup: { inline_keyboard: inlineRows },
+        });
+    }
+
+    private async handleSwap(ctx: any, lang: string) {
+        const tmaUrl = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.com/tma';
+        const msg = lang === 'ru'
+            ? `💸 <b>Обмен Токенов (Swap)</b>\n\nМгновенно покупайте или продавайте GSTD на децентрализованной бирже STON.fi, не покидая Telegram.\n\n👇 Нажмите кнопку ниже, чтобы открыть торговый терминал TMA:`
+            : `💸 <b>Token Swap</b>\n\nInstantly buy or sell GSTD on the STON.fi decentralized exchange without leaving Telegram.\n\n👇 Tap the button below to open the TMA trading terminal:`;
+        
+        await ctx.reply(msg, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: lang === 'ru' ? '💱 Торговать GSTD' : '💱 Trade GSTD', web_app: { url: tmaUrl } }]
+                ]
+            }
+        });
+    }
+
+    private async handleStake(ctx: any, lang: string) {
+        const tmaUrl = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.com/tma';
+        const msg = lang === 'ru'
+            ? `🥩 <b>Стейкинг GSTD</b>\n\nЗаморозьте свои GSTD токены, чтобы получать пассивный доход из пула Golden Reserve, который собирает 50% комиссий от всех ИИ-запросов платформы.\n\n👇 Откройте панель стейкинга:`
+            : `🥩 <b>GSTD Staking</b>\n\nLock up your GSTD tokens to earn passive income from the Golden Reserve pool, which collects 50% of fees from all AI queries on the platform.\n\n👇 Open the Staking panel:`;
+        
+        await ctx.reply(msg, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: lang === 'ru' ? '🥩 Запустить Стейкинг' : '🥩 Launch Staking', web_app: { url: tmaUrl } }]
+                ]
+            }
         });
     }
 
