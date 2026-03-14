@@ -12,7 +12,7 @@
  *  5. Real-time stats: earnings, uptime, tier progression
  */
 
-import type { Express, Request, Response } from 'express';
+import type { Express, NextFunction, Request, Response } from 'express';
 import { createHmac } from 'crypto';
 import { logActivity } from '../gateway/server.js';
 
@@ -83,7 +83,7 @@ export class MobileNodeManager {
      */
     registerRoutes(app: Express): void {
         // ── TMA Init Data Validation Middleware ──
-        const validateTMA = (req: Request, res: Response, next: Function) => {
+        const validateTMA = (req: Request, res: Response, next: NextFunction) => {
             const initData = req.headers['x-tma-init-data'] as string;
             if (!initData) {
                 return res.status(401).json({ error: 'Missing Telegram Mini App init data' });
@@ -253,7 +253,7 @@ export class MobileNodeManager {
                     wallet_address,
                     proof: ton_connect_proof,
                 });
-            } catch { /* non-fatal */ }
+            } catch (_e) { /* non-fatal */ }
 
             // Also update the node in backend
             try {
@@ -265,7 +265,7 @@ export class MobileNodeManager {
                     status: 'online',
                     battery: session?.device?.batteryLevel || 100,
                 });
-            } catch { /* non-fatal */ }
+            } catch (_e) { /* non-fatal */ }
 
             res.json({
                 status: 'linked',
@@ -307,7 +307,7 @@ export class MobileNodeManager {
                     wallet_address: session.walletAddress || `tg-mobile-${user.id}`,
                     result,
                 });
-            } catch { /* non-fatal */ }
+            } catch (_e) { /* non-fatal */ }
 
             res.json({
                 status: 'completed',
@@ -336,7 +336,7 @@ export class MobileNodeManager {
             const amount = session.earningsSession;
 
             try {
-                const claimResult = await this.notifyBackend('/nodes/sync-earnings', {
+                await this.notifyBackend('/nodes/sync-earnings', {
                     wallet_address: session.walletAddress,
                     amount,
                     earning_type: 'mobile_node',
@@ -418,7 +418,7 @@ export class MobileNodeManager {
                 } else {
                     res.json({ linked: false, wallet_address: null });
                 }
-            } catch {
+            } catch (_e) {
                 res.json({ linked: false, wallet_address: null });
             }
         });
@@ -495,7 +495,7 @@ export class MobileNodeManager {
                         logActivity(`Mobile node auto-linked wallet from TG bot: ${walletAddress?.slice(0,12)}...`, 'info');
                     }
                 }
-            } catch { /* silent — will use tg-mobile-{id} fallback */ }
+            } catch (_e) { /* silent — will use tg-mobile-{id} fallback */ }
         }
 
         const session: MobileNodeSession = {
@@ -563,7 +563,7 @@ export class MobileNodeManager {
                         logActivity(`Mobile node ${s.nodeId}: +${data.reward} GSTD (${s.device.cpuCores}CPU/${s.device.ramGb}GB/${s.device.networkType})`, 'success');
                     }
                 }
-            } catch { /* silent */ }
+            } catch (_e) { /* silent */ }
         }, 5 * 60 * 1000);
 
         this.heartbeatIntervals.set(telegramId, interval);
@@ -593,7 +593,7 @@ export class MobileNodeManager {
                 body: JSON.stringify({ node_id: session.nodeId }),
                 signal: AbortSignal.timeout(5000),
             });
-        } catch { /* non-fatal */ }
+        } catch (_e) { /* non-fatal */ }
 
         logActivity(`Mobile node stopped: ${session.nodeId}`, 'info');
     }
@@ -619,7 +619,7 @@ export class MobileNodeManager {
                 const data: any = await resp.json();
                 return data.task || null;
             }
-        } catch { /* silent */ }
+        } catch (_e) { /* silent */ }
         return null;
     }
 
@@ -670,14 +670,14 @@ export class MobileNodeManager {
                 // In development, accept if user data is present  
                 const userData = params.get('user');
                 if (userData) {
-                    try { return JSON.parse(userData); } catch { return null; }
+                    try { return JSON.parse(userData); } catch (_e) { return null; }
                 }
                 return null;
             }
 
             const userStr = params.get('user');
             return userStr ? JSON.parse(userStr) : null;
-        } catch {
+        } catch (_e) {
             return null;
         }
     }
@@ -1016,7 +1016,7 @@ export class MobileNodeManager {
                         deviceInfo.isCharging = batt.charging;
                     });
                 }
-            } catch {}
+            } catch (_e) {}
 
             // Network Information API
             try {
@@ -1031,14 +1031,14 @@ export class MobileNodeManager {
                         deviceInfo.networkType = conn.type || (conn.downlink > 5 ? 'wifi' : 'cellular');
                     });
                 }
-            } catch {}
+            } catch (_e) {}
 
             // JS Heap (Chrome-based browsers)
             try {
                 if (performance.memory) {
                     info.jsHeapMb = Math.round(performance.memory.usedJSHeapSize / 1048576);
                 }
-            } catch {}
+            } catch (_e) {}
 
             deviceInfo = info;
             return info;
@@ -1068,14 +1068,14 @@ export class MobileNodeManager {
                 if (performance.memory) {
                     deviceInfo.jsHeapMb = Math.round(performance.memory.usedJSHeapSize / 1048576);
                 }
-            } catch {}
+            } catch (_e) {}
             try {
                 const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
                 if (conn) {
                     deviceInfo.downlinkMbps = conn.downlink || deviceInfo.downlinkMbps;
                     deviceInfo.effectiveType = conn.effectiveType || deviceInfo.effectiveType;
                 }
-            } catch {}
+            } catch (_e) {}
         }
         // ══════════════════════════════════════════════════════════
 
@@ -1085,7 +1085,7 @@ export class MobileNodeManager {
                 const d = await r.json();
                 nodeState = d;
                 render();
-            } catch { renderInactive(); }
+            } catch (_e) { renderInactive(); }
         }
 
         async function startNode() {
@@ -1101,7 +1101,7 @@ export class MobileNodeManager {
                         if (wd.linked && wd.wallet_address) {
                             linkedWallet = wd.wallet_address;
                         }
-                    } catch {}
+                    } catch (_e) {}
                 }
                 const body = { device: deviceInfo };
                 if (linkedWallet) body.wallet_address = linkedWallet;
@@ -1127,7 +1127,7 @@ export class MobileNodeManager {
             try {
                 await fetch(API + '/tma/node/stop', { method: 'POST', headers: getHeaders(), body: '{}' });
                 toast(L.node_stopped);
-            } catch {}
+            } catch (_e) {}
             nodeState = { active: false };
             render();
         }
@@ -1140,7 +1140,7 @@ export class MobileNodeManager {
                 else if (d.error === 'wallet_required') toast(L.wallet_required);
                 else toast(L.nothing_to_claim);
                 await checkStatus();
-            } catch { toast(L.claim_failed); }
+            } catch (_e) { toast(L.claim_failed); }
         }
 
         function startHeartbeat() {
@@ -1154,7 +1154,7 @@ export class MobileNodeManager {
                     });
                     const d = await r.json();
                     if (d.battery_warning) toast('🔋 ' + d.battery_warning);
-                } catch {}
+                } catch (_e) {}
                 await checkStatus();
             }, 30000);
         }
@@ -1287,7 +1287,7 @@ export class MobileNodeManager {
                 if (wd.linked && wd.wallet_address) {
                     linkedWallet = wd.wallet_address;
                 }
-            } catch {}
+            } catch (_e) {}
             await checkStatus();
         })();
     <\/script>
@@ -1306,7 +1306,7 @@ export class MobileNodeManager {
      * Cleanup on shutdown
      */
     async stop(): Promise<void> {
-        for (const [id, interval] of this.heartbeatIntervals) {
+        for (const [, interval] of this.heartbeatIntervals) {
             clearInterval(interval);
         }
         this.heartbeatIntervals.clear();

@@ -75,7 +75,7 @@ export class SecurityHardening {
 
         this.configDir = join(homedir(), '.config', 'gstdbot', 'security');
         if (!existsSync(this.configDir)) {
-            try { mkdirSync(this.configDir, { recursive: true }); } catch {}
+            try { mkdirSync(this.configDir, { recursive: true }); } catch (_e) {}
         }
 
         this.auditLogPath = join(this.configDir, 'audit.log');
@@ -87,7 +87,7 @@ export class SecurityHardening {
             try {
                 const ips = JSON.parse(readFileSync(banFile, 'utf-8'));
                 ips.forEach((ip: string) => this.bannedIPs.add(ip));
-            } catch {}
+            } catch (_e) {}
         }
 
         // Periodic cleanup
@@ -178,7 +178,7 @@ export class SecurityHardening {
 
     private saveBannedIPs(): void {
         const banFile = join(this.configDir, 'banned_ips.json');
-        try { writeFileSync(banFile, JSON.stringify(Array.from(this.bannedIPs), null, 2)); } catch {}
+        try { writeFileSync(banFile, JSON.stringify(Array.from(this.bannedIPs), null, 2)); } catch (_e) {}
     }
 
     // ─── Encrypted Storage ───────────────────────────────────
@@ -206,7 +206,7 @@ export class SecurityHardening {
             return Buffer.from(readFileSync(keyFile, 'utf-8').trim(), 'hex');
         }
         const key = randomBytes(32);
-        try { writeFileSync(keyFile, key.toString('hex'), { mode: 0o600 }); } catch {}
+        try { writeFileSync(keyFile, key.toString('hex'), { mode: 0o600 }); } catch (_e) {}
         return key;
     }
 
@@ -237,7 +237,7 @@ export class SecurityHardening {
 
         try {
             appendFileSync(this.auditLogPath, JSON.stringify(entry) + '\n');
-        } catch {}
+        } catch (_e) {}
 
         if (severity === 'critical') {
             logActivity(`🚨 SECURITY: ${action} from ${ip} — ${details}`, 'error');
@@ -248,7 +248,7 @@ export class SecurityHardening {
         try {
             const lines = readFileSync(this.auditLogPath, 'utf-8').trim().split('\n');
             return lines.slice(-limit).map(l => JSON.parse(l)).reverse();
-        } catch {
+        } catch (_e) {
             return [];
         }
     }

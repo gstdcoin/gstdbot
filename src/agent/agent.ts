@@ -86,7 +86,7 @@ When a user's request matches a skill, activate it automatically.`;
                     const content = fs.readFileSync(soulPath, 'utf-8');
                     console.log(`[Agent] Loaded soul from: ${soulPath}`);
                     return content + '\n\n' + defaultSoul.split('Available skills:')[1];
-                } catch { /* fallback */ }
+                } catch (_e) { /* fallback */ }
             }
         }
 
@@ -175,7 +175,7 @@ When a user's request matches a skill, activate it automatically.`;
     /**
      * Extract and store key facts as memories
      */
-    private extractMemories(userMsg: string, assistantMsg: string): void {
+    private extractMemories(userMsg: string, _assistantMsg: string): void {
         // Simple fact extraction
         const factPatterns = [
             /my name is (\w+)/i,

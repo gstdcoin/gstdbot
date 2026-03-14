@@ -27,7 +27,7 @@ const CONTRACTS = {
     DEX_POOL: process.env.GSTD_CONTRACT_DEX || 'EQ_DEX_POOL_PENDING',
     GOVERNANCE: process.env.GSTD_CONTRACT_GOV || 'EQ_GOVERNANCE_PENDING',
 };
-const PLATFORM_API = 'https://app.gstdtoken.com/api/v1';
+const PLATFORM_API = process.env.GSTD_API_URL || 'https://api.gstdtoken.com/api/v1';
 // ─── Blockchain Manager ─────────────────────────────────────────
 class BlockchainManager {
     walletAddress = null;

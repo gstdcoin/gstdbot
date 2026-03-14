@@ -37,8 +37,6 @@ const banner = chalk.magenta(`
 ║   Decentralized · Private · Unstoppable   ║
 ╚═══════════════════════════════════════════╝`);
 
-const SHORT_BANNER = chalk.magenta`🐝 GSTD Bot`;
-
 // ─── Helpers ──────────────────────────────────────────────────────
 function getConfigDir(): string {
     const dir = path.join(os.homedir(), '.gstdbot');
@@ -134,7 +132,7 @@ program
                         } else {
                             console.log(chalk.bold('\n  Installed Skills:'));
                             for (const s of skills) {
-                                const v = true ? chalk.green('✓') : chalk.yellow('⚠');
+                                const v = chalk.green('✓');
                                 console.log(`  ${v} ${chalk.white(s.name)} v${s.version} — ${s.description}`);
                             }
                         }
@@ -256,7 +254,7 @@ program
             } else {
                 spinner.warn('Ollama not responding');
             }
-        } catch {
+        } catch (_e) {
             spinner.warn('Ollama not found — install from https://ollama.com');
         }
 
@@ -336,7 +334,7 @@ program
             const resp = await fetch('http://localhost:8080/health');
             const data: any = await resp.json();
             console.log(chalk.green(`  Gateway:  ✓  Running (uptime: ${Math.floor(data.uptime)}s, sessions: ${data.activeSessions})`));
-        } catch {
+        } catch (_e) {
             console.log(chalk.yellow('  Gateway:  ✗  Not running (start with: gstdbot gateway)'));
         }
 
@@ -349,7 +347,7 @@ program
             if (models.length > 0) {
                 console.log(chalk.gray(`            ${models.map((m: any) => m.name).join(', ')}`));
             }
-        } catch {
+        } catch (_e) {
             console.log(chalk.yellow('  Ollama:   ✗  Not running (install from ollama.com)'));
         }
 
@@ -433,7 +431,7 @@ program
                     console.log(`  ${chalk.red('✗')} ${name}`);
                     if (fix) console.log(chalk.gray(`    Fix: ${fix}`));
                 }
-            } catch {
+            } catch (_e) {
                 console.log(`  ${chalk.red('✗')} ${name}`);
                 if (fix) console.log(chalk.gray(`    Fix: ${fix}`));
             }
@@ -459,7 +457,7 @@ program
             console.log(chalk.gray(`  🐝 Swarm:      ${data.breakdown.swarm}`));
             console.log(chalk.gray(`  🛡️ Cocoon:     ${data.breakdown.cocoon}`));
             console.log(chalk.gray(`  🏢 Commercial: ${data.breakdown.commercial}\n`));
-        } catch {
+        } catch (_e) {
             console.log(chalk.yellow('  Gateway not running. Start with: gstdbot gateway\n'));
         }
     });
@@ -475,8 +473,8 @@ skillsCmd.command('list').description('List installed and available skills').act
     if (installed.length > 0) {
         console.log(chalk.white('  Installed:'));
         for (const skill of installed) {
-            const v = true ? chalk.green('✓') : chalk.yellow('⚠');
-            const price = 0 === 0 ? chalk.green('FREE') : chalk.yellow(`${0} GSTD`);
+            const v = chalk.green('✓');
+            const price = chalk.green('FREE');
             console.log(`    ${v} ${chalk.white(skill.name.padEnd(20))} v${skill.version}  ${price}  ${chalk.gray(skill.description)}`);
         }
     } else {
@@ -495,7 +493,7 @@ skillsCmd.command('list').description('List installed and available skills').act
                 console.log(`    ${status.padEnd(20)} ${chalk.white(((skill as any).name || (skill as any).id || '').padEnd(20))} ${price}  ${chalk.gray(`${(skill as any).users || 0} users`)}`);
             }
         }
-    } catch {
+    } catch (_e) {
         console.log(chalk.gray('    Cannot reach marketplace — using local skills only'));
     }
 
@@ -511,7 +509,6 @@ skillsCmd.command('scan <path>').description('Security scan a skill file').actio
         return;
     }
 
-    const content = fs.readFileSync(resolved, 'utf-8');
     const scanResult = scanSkill(resolved);
     const threats = scanResult.warnings;
 
@@ -560,7 +557,7 @@ skillsCmd.command('install <id>').description('Install a skill from marketplace'
             spinner.succeed(`Installed: ${result.name} ${chalk.green('✓ from marketplace')}`);
             return;
         }
-    } catch (e: any) {
+    } catch (_e: any) {
         // Fall through to URL attempt
     }
 
@@ -572,8 +569,8 @@ skillsCmd.command('install <id>').description('Install a skill from marketplace'
                 spinner.succeed(`Installed: ${result.name} ${chalk.green('✓ from URL')}`);
                 return;
             }
-        } catch (e: any) {
-            spinner.fail(`Failed to import from URL: ${e.message}`);
+        } catch (_e: any) {
+            spinner.fail(`Failed to import from URL: ${_e.message}`);
             return;
         }
     }
@@ -631,7 +628,7 @@ skillsCmd.command('update').description('Auto-update skills from the marketplace
     let registry: any[];
     try {
         registry = await Promise.resolve(listMarketplace());
-    } catch {
+    } catch (_e) {
         spinner.fail('Cannot reach GSTD marketplace');
         console.log(chalk.gray('  Check internet connection and try again.\n'));
         return;
@@ -701,9 +698,7 @@ skillsCmd.command('update').description('Auto-update skills from the marketplace
             // Malware scan + install
             const result = await importSkill(remoteId);
             if (result) {
-                const status = false
-                    ? chalk.yellow('(with warnings)')
-                    : chalk.green('✓ verified');
+                const status = chalk.green('✓ verified');
                 actionSpinner.succeed(`${action}: ${remoteName} v${remoteVersion} ${status}`);
                 if (local) updated++; else freshInstalls++;
             } else {
@@ -789,7 +784,7 @@ swarmCmd.command('status').description('Show swarm network status').action(async
         console.log(`  Total GSTD paid: ${chalk.yellow(data.total_gstd_paid || 0)}`);
         console.log(`  Tasks (24h): ${chalk.cyan(data.tasks_24h || 0)}`);
         console.log(`  Network IQ: ${chalk.magenta(data.network_iq || 'N/A')}\n`);
-    } catch {
+    } catch (_e) {
         console.log(chalk.yellow('  Cannot reach GSTD network\n'));
     }
 });

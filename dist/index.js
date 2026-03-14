@@ -43,7 +43,7 @@ const os_2 = require("os");
 function loadConfig() {
     const configPath = (0, path_1.join)((0, os_2.homedir)(), '.config', 'gstdbot', 'config.json');
     const defaults = {
-        version: '3.3.0',
+        version: '3.4.0',
         mode: 'cloud',
         nodeId: process.env.GSTD_NODE_ID || `node-${Date.now()}`,
         nodeName: process.env.NODE_NAME || `${(0, os_1.hostname)()}-node`,
@@ -278,9 +278,9 @@ async function main() {
         }
         catch { /* silent — network may be unavailable */ }
     };
-    // First heartbeat after 30s, then every 5 minutes
+    // First heartbeat after 30s, then every 60 minutes (matches backend rate-limit of 54min)
     setTimeout(sendHeartbeat, 30_000);
-    const hbInterval = setInterval(sendHeartbeat, 5 * 60 * 1000);
+    const hbInterval = setInterval(sendHeartbeat, 60 * 60 * 1000);
     // ── Auto-update: check every hour ────────────────────────────
     const checkAndUpdate = async () => {
         try {

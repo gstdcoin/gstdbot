@@ -8,13 +8,12 @@
  * - All financial operations require external wallet signature
  */
 
-import { randomBytes, createHash } from 'crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { logActivity } from '../gateway/server.js';
 import type { NodeConfig } from '../index.js';
-import { initWallet, getWallet as getWalletSecure, type WalletConfig } from './wallet.js';
+import { initWallet, type WalletConfig } from './wallet.js';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface WalletData {
@@ -83,7 +82,7 @@ export class NodeWallet {
             try {
                 this.wallet = JSON.parse(readFileSync(this.walletFile, 'utf-8'));
                 console.log('    Wallet: ' + this.wallet!.address.slice(0, 12) + '...');
-            } catch {
+            } catch (_e) {
                 this.createWallet();
             }
         } else {
@@ -94,7 +93,7 @@ export class NodeWallet {
         if (existsSync(this.earningsFile)) {
             try {
                 this.earnings = JSON.parse(readFileSync(this.earningsFile, 'utf-8'));
-            } catch {
+            } catch (_e) {
                 this.earnings = [];
             }
         }
@@ -201,7 +200,7 @@ export class NodeWallet {
                 this.queriesServedSinceLastHeartbeat = 0;
                 logActivity(`Heartbeat sent, reward: ${data.reward || 0} GSTD`, 'info');
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     // Track queries served for heartbeat reporting
@@ -236,13 +235,13 @@ export class NodeWallet {
                     totalEarned: data.total_earned || 0,
                 };
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     saveEarnings(): void {
         try {
             writeFileSync(this.earningsFile, JSON.stringify(this.earnings, null, 2));
-        } catch { }
+        } catch (_e) { }
     }
 
     /**
@@ -272,7 +271,7 @@ export class NodeWallet {
                 this.unsyncedAmount = 0;
                 logActivity(`Earnings synced to backend: ${amount.toFixed(4)} GSTD`, 'success');
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     /**
@@ -283,6 +282,9 @@ export class NodeWallet {
     async linkExternal(externalAddress: string): Promise<boolean> {
         if (!this.wallet) return false;
         try {
+            const { linkExternalWallet } = require('./wallet.js');
+            linkExternalWallet(externalAddress);
+
             const resp = await fetch(
                 `${this.config.swarm.apiUrl}/api/v1/wallet/link-external`,
                 {
@@ -299,7 +301,26 @@ export class NodeWallet {
                 logActivity(`External wallet linked: ${externalAddress.slice(0, 12)}...`, 'success');
                 return true;
             }
-        } catch { }
+
+            // Fallback to node-binding endpoint used by Node OS flow.
+            const bindResp = await fetch(
+                `${this.config.swarm.apiUrl}/api/v1/nodes/bind-wallet`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        node_id: process.env.GSTD_NODE_ID || `node-${process.pid}`,
+                        owner_wallet: externalAddress,
+                        node_address: this.wallet.address,
+                    }),
+                    signal: AbortSignal.timeout(10000),
+                }
+            ).catch(() => null);
+            if (bindResp?.ok) {
+                logActivity(`External wallet linked via nodes/bind-wallet: ${externalAddress.slice(0, 12)}...`, 'success');
+                return true;
+            }
+        } catch (_e) { }
         return false;
     }
 

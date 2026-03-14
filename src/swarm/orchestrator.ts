@@ -9,7 +9,6 @@
  * - Automatic peer discovery & mesh networking
  */
 
-import { cpus, totalmem, freemem, loadavg } from 'os';
 import { logActivity } from '../gateway/server.js';
 import type { NodeConfig } from '../index.js';
 
@@ -214,7 +213,7 @@ export class SwarmOrchestrator {
                     .filter(p => p.relayAvailable)
                     .map(p => p.nodeId)
             );
-        } catch {}
+        } catch (_e) {}
     }
 
     private async broadcastHeartbeat(): Promise<void> {

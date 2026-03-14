@@ -23,7 +23,8 @@
         "docker:up": "docker compose up -d",
         "docker:down": "docker compose down",
         "docker:logs": "docker compose logs -f gstd-node",
-        "docker:build": "docker compose build --no-cache"
+        "docker:build": "docker compose build --no-cache",
+        "eval:quality": "tsx src/tools/quality-eval.ts"
     },
     "keywords": [
         "ai",

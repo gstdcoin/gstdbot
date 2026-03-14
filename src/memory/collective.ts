@@ -76,7 +76,7 @@ export class CollectiveMemory {
 
     async close(): Promise<void> {
         if (this.redisClient) {
-            try { await this.redisClient.quit(); } catch { }
+            try { await this.redisClient.quit(); } catch (_e) { }
         }
     }
 
@@ -143,7 +143,7 @@ export class CollectiveMemory {
                     this.L2_TTL,
                     JSON.stringify(entry)
                 );
-            } catch { }
+            } catch (_e) { }
         }
 
         // L3: Report to platform for global sync (high confidence only)
@@ -178,7 +178,7 @@ export class CollectiveMemory {
                     this.stats.hits++;
                     return entry;
                 }
-            } catch { }
+            } catch (_e) { }
         }
 
         // L3: Check platform API
@@ -218,7 +218,7 @@ export class CollectiveMemory {
                         return entry;
                     }
                 }
-            } catch { }
+            } catch (_e) { }
         }
 
         return null;
@@ -307,7 +307,7 @@ export class CollectiveMemory {
             await this.redisClient.ping();
             this.l2Connected = true;
             logActivity('Redis connected (L2 memory)', 'success');
-        } catch {
+        } catch (_e) {
             console.log('    Redis not available — using L1 + L3 only');
         }
     }
@@ -319,7 +319,7 @@ export class CollectiveMemory {
                 { signal: AbortSignal.timeout(5000) }
             ).catch(() => null);
             this.l3Connected = resp?.ok || false;
-        } catch {
+        } catch (_e) {
             this.l3Connected = false;
         }
     }
@@ -339,6 +339,6 @@ export class CollectiveMemory {
                 }),
                 signal: AbortSignal.timeout(5000),
             });
-        } catch { }
+        } catch (_e) { }
     }
 }

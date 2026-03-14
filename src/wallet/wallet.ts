@@ -41,7 +41,7 @@ function deriveKey(): Buffer {
     const machineId = (() => {
         try {
             return readFileSync('/etc/machine-id', 'utf-8').trim();
-        } catch {
+        } catch (_e) {
             return homedir() + ':gstd-node-wallet-key';
         }
     })();
@@ -82,14 +82,14 @@ export function initWallet(seed?: string): WalletConfig {
 
     try {
         // Generate real TON wallet address using @ton/ton SDK
-        const { mnemonicNew, mnemonicToPrivateKey } = require('@ton/crypto');
+        const { mnemonicNew, mnemonicToPrivateKey: _mnemonicToPrivateKey } = require('@ton/crypto');
         const { WalletContractV4 } = require('@ton/ton');
 
         // Use seed as mnemonic source or generate new mnemonic
-        const mnemonicPromise = (async () => {
+        const _mnemonicPromise = (async () => {
             if (seed) {
                 // Derive deterministic mnemonic from seed
-                const hash = createHash('sha256').update(seed).digest();
+                const _hash = createHash('sha256').update(seed).digest();
                 const { mnemonicNew: mn } = require('@ton/crypto');
                 return await mn(24);
             }
@@ -111,7 +111,7 @@ export function initWallet(seed?: string): WalletConfig {
                 publicKey: publicKey,
             });
             address = wallet.address.toString({ bounceable: false, testOnly: false });
-        } catch {
+        } catch (_e) {
             // Fallback: create raw TON-compatible address format using base64url
             const workchain = Buffer.from([0x51]); // 0x51 = non-bounceable + mainnet + workchain 0
             const addrHash = createHash('sha256').update(publicKey).digest();
@@ -120,7 +120,7 @@ export function initWallet(seed?: string): WalletConfig {
             const fullAddr = Buffer.concat([payload, crc]);
             address = 'UQ' + fullAddr.toString('base64url').replace(/=+$/, '');
         }
-    } catch {
+    } catch (_e) {
         // Pure fallback without @ton/ton
         walletSeed = seed || randomBytes(32).toString('hex');
         const publicKey = createHash('sha256').update(walletSeed).digest();
@@ -145,7 +145,7 @@ export function initWallet(seed?: string): WalletConfig {
 
     // Store encrypted seed separately (chmod 600)
     writeFileSync(SEED_FILE, encryptSeed(walletSeed!));
-    try { chmodSync(SEED_FILE, 0o600); } catch { /* Windows compat */ }
+    try { chmodSync(SEED_FILE, 0o600); } catch (_e) { /* Windows compat */ }
 
     return config;
 }
@@ -180,7 +180,7 @@ function migrateOldWallet(): void {
         if (raw.seed && !existsSync(SEED_FILE)) {
             // Move seed to encrypted file
             writeFileSync(SEED_FILE, encryptSeed(raw.seed));
-            try { chmodSync(SEED_FILE, 0o600); } catch { }
+            try { chmodSync(SEED_FILE, 0o600); } catch (_e) { }
 
             // Remove seed from wallet.json, add publicKey
             const publicKey = raw.publicKey || createHash('sha256').update(raw.seed).digest('hex').slice(0, 64);
@@ -192,7 +192,7 @@ function migrateOldWallet(): void {
             };
             writeFileSync(WALLET_FILE, JSON.stringify(clean, null, 2));
         }
-    } catch { /* Migration is best-effort */ }
+    } catch (_e) { /* Migration is best-effort */ }
 }
 
 export function getWallet(): WalletConfig | null {
@@ -201,7 +201,7 @@ export function getWallet(): WalletConfig | null {
         // Auto-migrate old format
         migrateOldWallet();
         return JSON.parse(readFileSync(WALLET_FILE, 'utf-8'));
-    } catch {
+    } catch (_e) {
         return null;
     }
 }
@@ -211,7 +211,7 @@ export function getSeed(): string | null {
         if (!existsSync(SEED_FILE)) return null;
         const encrypted = readFileSync(SEED_FILE, 'utf-8');
         return decryptSeed(encrypted);
-    } catch {
+    } catch (_e) {
         return null;
     }
 }
@@ -235,7 +235,7 @@ export async function getBalance(): Promise<WalletBalance> {
                 totalEarned: data.total_earned || 0,
             };
         }
-    } catch { }
+    } catch (_e) { }
 
     return { gstd: 0, ton: 0, pending: 0, totalEarned: 0 };
 }
@@ -276,7 +276,7 @@ export async function linkTelegram(userId: string): Promise<boolean> {
             writeFileSync(WALLET_FILE, JSON.stringify(wallet, null, 2));
             return true;
         }
-    } catch { }
+    } catch (_e) { }
 
     return false;
 }

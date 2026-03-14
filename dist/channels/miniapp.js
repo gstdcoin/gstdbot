@@ -251,7 +251,7 @@ class MobileNodeManager {
             }
             const amount = session.earningsSession;
             try {
-                const claimResult = await this.notifyBackend('/nodes/sync-earnings', {
+                await this.notifyBackend('/nodes/sync-earnings', {
                     wallet_address: session.walletAddress,
                     amount,
                     earning_type: 'mobile_node',
@@ -1186,7 +1186,7 @@ class MobileNodeManager {
      * Cleanup on shutdown
      */
     async stop() {
-        for (const [id, interval] of this.heartbeatIntervals) {
+        for (const [, interval] of this.heartbeatIntervals) {
             clearInterval(interval);
         }
         this.heartbeatIntervals.clear();

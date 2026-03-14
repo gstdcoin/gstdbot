@@ -10,7 +10,7 @@
  * - Sovereign Protocol integration (staking, P2P, governance, mesh)
  */
 
-import { cpus, totalmem, freemem, hostname, platform, arch, loadavg } from 'os';
+import { cpus, totalmem, freemem, platform, arch, loadavg } from 'os';
 import { createHash } from 'crypto';
 import { logActivity } from '../gateway/server.js';
 import type { NodeConfig } from '../index.js';
@@ -122,11 +122,11 @@ export class SwarmAgent {
         // Fetch initial rewards/tier info
         await this.fetchRewardsInfo();
 
-        // Start heartbeat (every 30 seconds)
-        this.heartbeatTimer = setInterval(() => this.heartbeat(), 30_000);
+        // Start heartbeat (every 60 minutes — backend rate-limits at 54min)
+        this.heartbeatTimer = setInterval(() => this.heartbeat(), 60 * 60_000);
 
-        // Start task polling (every 5 seconds)
-        this.taskPollTimer = setInterval(() => this.pollTasks(), 5_000);
+        // Start task polling (every 30 seconds)
+        this.taskPollTimer = setInterval(() => this.pollTasks(), 30_000);
 
         // Refresh tier info every 5 minutes
         setInterval(() => this.fetchRewardsInfo(), 5 * 60_000);
@@ -159,7 +159,7 @@ export class SwarmAgent {
             await this.apiCall('/nodes/deregister', {
                 node_id: this.config.nodeId,
             });
-        } catch { }
+        } catch (_e) { }
 
         this.connected = false;
         logActivity('Left swarm network', 'warn');
@@ -203,7 +203,7 @@ export class SwarmAgent {
                 this.stats.nextTier = result.next_tier.name;
                 this.stats.nextTierHours = result.next_tier.hours_needed || 0;
             }
-        } catch { }
+        } catch (_e) { }
     }
     private async register(): Promise<void> {
         try {
@@ -282,7 +282,7 @@ export class SwarmAgent {
                     logActivity(`Earned ${result.reward_gstd.toFixed(4)} GSTD (uptime)`, 'success');
                 }
             }
-        } catch {
+        } catch (_e) {
             if (this.connected) {
                 this.connected = false;
                 this.stats.connected = false;
@@ -312,7 +312,7 @@ export class SwarmAgent {
             if (result?.task) {
                 await this.processTask(result.task);
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     private async processTask(task: SwarmTask): Promise<void> {
@@ -453,7 +453,7 @@ export class SwarmAgent {
         try {
             const { execSync } = require('child_process');
             gpu = execSync('nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null', { encoding: 'utf-8', timeout: 3000 }).trim() || null;
-        } catch { }
+        } catch (_e) { }
 
         return {
             node_id: this.config.nodeId,
@@ -490,7 +490,7 @@ export class SwarmAgent {
             });
             if (resp.ok) return await resp.json().catch(() => ({ ok: true }));
             return null;
-        } catch {
+        } catch (_e) {
             return null;
         }
     }

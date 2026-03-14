@@ -145,7 +145,7 @@ When a user's request matches a skill, activate it automatically.`;
     /**
      * Extract and store key facts as memories
      */
-    extractMemories(userMsg, assistantMsg) {
+    extractMemories(userMsg, _assistantMsg) {
         // Simple fact extraction
         const factPatterns = [
             /my name is (\w+)/i,

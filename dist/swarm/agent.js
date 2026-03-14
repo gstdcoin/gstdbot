@@ -63,10 +63,10 @@ class SwarmAgent {
         await this.register();
         // Fetch initial rewards/tier info
         await this.fetchRewardsInfo();
-        // Start heartbeat (every 30 seconds)
-        this.heartbeatTimer = setInterval(() => this.heartbeat(), 30_000);
-        // Start task polling (every 5 seconds)
-        this.taskPollTimer = setInterval(() => this.pollTasks(), 5_000);
+        // Start heartbeat (every 60 minutes — backend rate-limits at 54min)
+        this.heartbeatTimer = setInterval(() => this.heartbeat(), 60 * 60_000);
+        // Start task polling (every 30 seconds)
+        this.taskPollTimer = setInterval(() => this.pollTasks(), 30_000);
         // Refresh tier info every 5 minutes
         setInterval(() => this.fetchRewardsInfo(), 5 * 60_000);
         // Start Sovereign Protocol instruments (staking, P2P, mesh, governance, lending)

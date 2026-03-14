@@ -38,7 +38,6 @@ const banner = chalk_1.default.magenta(`
 ║   🐝 GSTD Bot — Sovereign AI Assistant   ║
 ║   Decentralized · Private · Unstoppable   ║
 ╚═══════════════════════════════════════════╝`);
-const SHORT_BANNER = chalk_1.default.magenta `🐝 GSTD Bot`;
 // ─── Helpers ──────────────────────────────────────────────────────
 function getConfigDir() {
     const dir = path_1.default.join(os_1.default.homedir(), '.gstdbot');
@@ -129,7 +128,7 @@ program
                     else {
                         console.log(chalk_1.default.bold('\n  Installed Skills:'));
                         for (const s of skills) {
-                            const v = true ? chalk_1.default.green('✓') : chalk_1.default.yellow('⚠');
+                            const v = chalk_1.default.green('✓');
                             console.log(`  ${v} ${chalk_1.default.white(s.name)} v${s.version} — ${s.description}`);
                         }
                     }
@@ -453,8 +452,8 @@ skillsCmd.command('list').description('List installed and available skills').act
     if (installed.length > 0) {
         console.log(chalk_1.default.white('  Installed:'));
         for (const skill of installed) {
-            const v = true ? chalk_1.default.green('✓') : chalk_1.default.yellow('⚠');
-            const price = 0 === 0 ? chalk_1.default.green('FREE') : chalk_1.default.yellow(`${0} GSTD`);
+            const v = chalk_1.default.green('✓');
+            const price = chalk_1.default.green('FREE');
             console.log(`    ${v} ${chalk_1.default.white(skill.name.padEnd(20))} v${skill.version}  ${price}  ${chalk_1.default.gray(skill.description)}`);
         }
     }
@@ -486,7 +485,6 @@ skillsCmd.command('scan <path>').description('Security scan a skill file').actio
         console.log(chalk_1.default.red(`  File not found: ${resolved}`));
         return;
     }
-    const content = fs_1.default.readFileSync(resolved, 'utf-8');
     const scanResult = (0, marketplace_js_1.scanSkill)(resolved);
     const threats = scanResult.warnings;
     if (threats.length === 0) {
@@ -534,7 +532,7 @@ skillsCmd.command('install <id>').description('Install a skill from marketplace'
             return;
         }
     }
-    catch (e) {
+    catch (_e) {
         // Fall through to URL attempt
     }
     // 3. If ID looks like a URL or GitHub shorthand, try direct import
@@ -546,8 +544,8 @@ skillsCmd.command('install <id>').description('Install a skill from marketplace'
                 return;
             }
         }
-        catch (e) {
-            spinner.fail(`Failed to import from URL: ${e.message}`);
+        catch (_e) {
+            spinner.fail(`Failed to import from URL: ${_e.message}`);
             return;
         }
     }
@@ -655,9 +653,7 @@ skillsCmd.command('update').description('Auto-update skills from the marketplace
             // Malware scan + install
             const result = await (0, marketplace_js_1.importSkill)(remoteId);
             if (result) {
-                const status = false
-                    ? chalk_1.default.yellow('(with warnings)')
-                    : chalk_1.default.green('✓ verified');
+                const status = chalk_1.default.green('✓ verified');
                 actionSpinner.succeed(`${action}: ${remoteName} v${remoteVersion} ${status}`);
                 if (local)
                     updated++;

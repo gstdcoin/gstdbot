@@ -9,7 +9,7 @@
  * - WebSocket real-time remote control channel
  */
 
-import { randomBytes, createHash, createHmac } from 'crypto';
+import { randomBytes } from 'crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
@@ -91,7 +91,7 @@ export class RemoteAccessManager {
             try {
                 writeFileSync(tokenFile, `GSTD Node OS — Admin Access Token\n\nToken: ${token.token}\nCreated: ${token.createdAt}\nPermissions: ${token.permissions.join(', ')}\n\n⚠ Keep this file safe! Anyone with this token can control your node.\n`);
                 console.log('    📄 Token saved to: ' + tokenFile);
-            } catch { }
+            } catch (_e) { }
             logActivity('Admin access token generated and saved', 'warn');
         }
 
@@ -259,7 +259,7 @@ export class RemoteAccessManager {
                 try {
                     const msg = JSON.parse(data.toString());
                     await this.handleRelayMessage(msg);
-                } catch { }
+                } catch (_e) { }
             });
 
             this.relayWs.on('close', () => {
@@ -275,7 +275,7 @@ export class RemoteAccessManager {
             this.relayWs.on('error', () => {
                 // Silently handle — will reconnect
             });
-        } catch {
+        } catch (_e) {
             logActivity('Relay connection failed — will retry', 'warn');
         }
     }
@@ -320,7 +320,7 @@ export class RemoteAccessManager {
             const { execSync } = require('child_process');
 
             // Check if Tor is installed
-            try { execSync('which tor', { encoding: 'utf-8' }); } catch {
+            try { execSync('which tor', { encoding: 'utf-8' }); } catch (_e) {
                 logActivity('Tor not installed — skipping .onion setup', 'warn');
                 return;
             }
@@ -344,7 +344,7 @@ HiddenServicePort 443 127.0.0.1:8080
             } else {
                 logActivity('Tor hidden service will be created on Tor start', 'info');
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     // ─── Remote Access Info ──────────────────────────────────────
@@ -376,13 +376,13 @@ HiddenServicePort 443 127.0.0.1:8080
         if (existsSync(this.tokensFile)) {
             try {
                 this.tokens = JSON.parse(readFileSync(this.tokensFile, 'utf-8'));
-            } catch { this.tokens = []; }
+            } catch (_e) { this.tokens = []; }
         }
     }
 
     private saveTokens(): void {
         try {
             writeFileSync(this.tokensFile, JSON.stringify(this.tokens, null, 2));
-        } catch { }
+        } catch (_e) { }
     }
 }

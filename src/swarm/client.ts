@@ -69,7 +69,7 @@ export class SwarmClient {
                 ollamaAvailable = true;
                 models = (data.models || []).map((m: any) => m.name);
             }
-        } catch { /* Ollama not running */ }
+        } catch (_e) { /* Ollama not running */ }
 
         // Basic GPU detection (checks expected patterns)
         const gpuDetected = this.detectGPU();
@@ -98,7 +98,7 @@ export class SwarmClient {
             try {
                 execSync('nvidia-smi', { stdio: 'ignore' });
                 return true;
-            } catch { /* no NVIDIA GPU */ }
+            } catch (_e) { /* no NVIDIA GPU */ }
 
             // macOS: check for Metal GPU
             if (os.platform() === 'darwin') {
@@ -106,7 +106,7 @@ export class SwarmClient {
             }
 
             return false;
-        } catch {
+        } catch (_e) {
             return false;
         }
     }
@@ -138,7 +138,7 @@ export class SwarmClient {
                 console.warn(`[Swarm] Registration failed: ${response.status}`);
                 return false;
             }
-        } catch (err) {
+        } catch (_err) {
             console.warn('[Swarm] Cannot reach control plane — running in standalone mode');
             this.connected = false;
             return false;
@@ -167,7 +167,7 @@ export class SwarmClient {
                         uptime_s: (Date.now() - this.startTime) / 1000,
                     }),
                 });
-            } catch { /* silent — will retry next interval */ }
+            } catch (_e) { /* silent — will retry next interval */ }
         }, intervalMs);
 
         console.log(`[Swarm] Heartbeat started (every ${intervalMs / 1000}s)`);

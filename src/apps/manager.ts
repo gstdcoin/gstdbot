@@ -8,7 +8,7 @@
  * - Built-in apps: Chat, Monitor, Files
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { logActivity } from '../gateway/server.js';
@@ -970,7 +970,7 @@ export class AppManager {
                 for (const app of data) {
                     this.installed.set(app.manifest.id, app);
                 }
-            } catch { }
+            } catch (_e) { }
         }
 
         console.log(`    Apps: ${this.installed.size} installed, ${BUILTIN_APPS.length} built-in available`);
@@ -992,7 +992,7 @@ export class AppManager {
                 const data: any = await resp.json();
                 return data.apps || [];
             }
-        } catch { }
+        } catch (_e) { }
         return BUILTIN_APPS;
     }
 
@@ -1062,7 +1062,7 @@ export class AppManager {
         // Remove data
         const appDir = join(this.appsDir, appId);
         if (existsSync(appDir)) {
-            try { rmSync(appDir, { recursive: true, force: true }); } catch { }
+            try { rmSync(appDir, { recursive: true, force: true }); } catch (_e) { }
         }
 
         // Remove docker container/image
@@ -1073,7 +1073,7 @@ export class AppManager {
                     encoding: 'utf-8',
                     timeout: 30_000,
                 });
-            } catch { }
+            } catch (_e) { }
         }
 
         this.installed.delete(appId);
@@ -1129,7 +1129,7 @@ export class AppManager {
             try {
                 const { execSync } = require('child_process');
                 execSync(`docker stop gstd-${appId} 2>/dev/null || true`, { encoding: 'utf-8' });
-            } catch { }
+            } catch (_e) { }
         }
 
         app.status = 'stopped';
@@ -1152,6 +1152,6 @@ export class AppManager {
                 null,
                 2
             ));
-        } catch { }
+        } catch (_e) { }
     }
 }

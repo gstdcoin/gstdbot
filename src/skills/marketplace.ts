@@ -141,7 +141,7 @@ export function listInstalled(): Skill[] {
                 try {
                     const meta = JSON.parse(readFileSync(metaFile, 'utf-8'));
                     skills.push({ ...meta, path: skillDir });
-                } catch { }
+                } catch (_e) { }
             }
         }
     }
@@ -209,7 +209,7 @@ async function importFromUrl(url: string): Promise<Skill | null> {
                 writeFileSync(join(skillDir, 'meta.json'), JSON.stringify(skill, null, 2));
                 return skill;
             }
-        } catch { }
+        } catch (_e) { }
 
         // Try git clone
         try {
@@ -232,7 +232,7 @@ async function importFromUrl(url: string): Promise<Skill | null> {
                 writeFileSync(join(skillDir, 'meta.json'), JSON.stringify(skill, null, 2));
                 return skill;
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     // Generic URL fetch (SKILL.md file)
@@ -256,7 +256,7 @@ async function importFromUrl(url: string): Promise<Skill | null> {
             writeFileSync(join(skillDir, 'meta.json'), JSON.stringify(skill, null, 2));
             return skill;
         }
-    } catch { }
+    } catch (_e) { }
 
     return null;
 }

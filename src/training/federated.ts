@@ -134,7 +134,7 @@ export class SwarmTrainer {
                 logActivity(`Training job submitted: ${data.id}`, 'success');
                 return data.id;
             }
-        } catch { }
+        } catch (_e) { }
         return null;
     }
 
@@ -162,7 +162,7 @@ export class SwarmTrainer {
                     await this.processTrainingJob(data.job);
                 }
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     private async processTrainingJob(job: TrainingJob): Promise<void> {
@@ -296,7 +296,7 @@ export class SwarmTrainer {
                 const data: any = await resp.json();
                 this.sharedModels = data.models || [];
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     async shareModel(model: Partial<ModelEntry>): Promise<boolean> {
@@ -316,7 +316,7 @@ export class SwarmTrainer {
                 logActivity(`Model shared: ${model.name}`, 'success');
                 return true;
             }
-        } catch { }
+        } catch (_e) { }
         return false;
     }
 
@@ -339,7 +339,7 @@ export class SwarmTrainer {
             const { execSync } = require('child_process');
             execSync('nvidia-smi', { encoding: 'utf-8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] });
             return true;
-        } catch { return false; }
+        } catch (_e) { return false; }
     }
 
     private async checkOllama(): Promise<boolean> {
@@ -348,6 +348,6 @@ export class SwarmTrainer {
                 signal: AbortSignal.timeout(2000),
             });
             return resp.ok;
-        } catch { return false; }
+        } catch (_e) { return false; }
     }
 }

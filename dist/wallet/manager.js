@@ -41,7 +41,7 @@ class NodeWallet {
                 this.wallet = JSON.parse((0, fs_1.readFileSync)(this.walletFile, 'utf-8'));
                 console.log('    Wallet: ' + this.wallet.address.slice(0, 12) + '...');
             }
-            catch {
+            catch (_e) {
                 this.createWallet();
             }
         }
@@ -53,7 +53,7 @@ class NodeWallet {
             try {
                 this.earnings = JSON.parse((0, fs_1.readFileSync)(this.earningsFile, 'utf-8'));
             }
-            catch {
+            catch (_e) {
                 this.earnings = [];
             }
         }
@@ -146,7 +146,7 @@ class NodeWallet {
                 (0, server_js_1.logActivity)(`Heartbeat sent, reward: ${data.reward || 0} GSTD`, 'info');
             }
         }
-        catch { }
+        catch (_e) { }
     }
     // Track queries served for heartbeat reporting
     queriesServedSinceLastHeartbeat = 0;
@@ -175,13 +175,13 @@ class NodeWallet {
                 };
             }
         }
-        catch { }
+        catch (_e) { }
     }
     saveEarnings() {
         try {
             (0, fs_1.writeFileSync)(this.earningsFile, JSON.stringify(this.earnings, null, 2));
         }
-        catch { }
+        catch (_e) { }
     }
     /**
      * Sync accumulated local earnings to the backend so they appear in
@@ -209,7 +209,7 @@ class NodeWallet {
                 (0, server_js_1.logActivity)(`Earnings synced to backend: ${amount.toFixed(4)} GSTD`, 'success');
             }
         }
-        catch { }
+        catch (_e) { }
     }
     /**
      * Link an external wallet (e.g. Tonkeeper) for receiving rewards.
@@ -220,6 +220,8 @@ class NodeWallet {
         if (!this.wallet)
             return false;
         try {
+            const { linkExternalWallet } = require('./wallet.js');
+            linkExternalWallet(externalAddress);
             const resp = await fetch(`${this.config.swarm.apiUrl}/api/v1/wallet/link-external`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -233,8 +235,23 @@ class NodeWallet {
                 (0, server_js_1.logActivity)(`External wallet linked: ${externalAddress.slice(0, 12)}...`, 'success');
                 return true;
             }
+            // Fallback to node-binding endpoint used by Node OS flow.
+            const bindResp = await fetch(`${this.config.swarm.apiUrl}/api/v1/nodes/bind-wallet`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    node_id: process.env.GSTD_NODE_ID || `node-${process.pid}`,
+                    owner_wallet: externalAddress,
+                    node_address: this.wallet.address,
+                }),
+                signal: AbortSignal.timeout(10000),
+            }).catch(() => null);
+            if (bindResp?.ok) {
+                (0, server_js_1.logActivity)(`External wallet linked via nodes/bind-wallet: ${externalAddress.slice(0, 12)}...`, 'success');
+                return true;
+            }
         }
-        catch { }
+        catch (_e) { }
         return false;
     }
 }

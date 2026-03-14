@@ -9,8 +9,7 @@
  * - Settlement via GSTD tokens
  */
 
-import { cpus, totalmem, freemem, loadavg } from 'os';
-import { logActivity } from '../gateway/server.js';
+import { cpus, freemem, loadavg } from 'os';
 import type { NodeConfig } from '../index.js';
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -142,7 +141,7 @@ export class ResourceSharing {
                 }),
                 signal: AbortSignal.timeout(5000),
             });
-        } catch { }
+        } catch (_e) { }
     }
 
     getAvailableResources(): NodeResources {
@@ -161,7 +160,7 @@ export class ResourceSharing {
                 const [model, vram] = out.split(',').map((s: string) => s.trim());
                 gpu = { available: true, model, vram: parseInt(vram) || 0 };
             }
-        } catch { }
+        } catch (_e) { }
 
         let diskFree = 0;
         try {
@@ -170,7 +169,7 @@ export class ResourceSharing {
                 encoding: 'utf-8', timeout: 3000,
             }).trim().replace('G', '');
             diskFree = parseInt(out) || 0;
-        } catch { }
+        } catch (_e) { }
 
         return {
             nodeId: this.config.nodeId,

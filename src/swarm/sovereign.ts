@@ -184,19 +184,19 @@ export class SovereignSuite {
                 }));
                 this.state.meshScore = result.mesh_size || 0;
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     // ─── 2. CAPABILITIES REGISTRATION ────────────────────────────
     private async registerCapabilities(): Promise<void> {
         try {
-            const { cpus: getCpus, totalmem, freemem } = await import('os');
-            const cpuInfo = getCpus();
+            const { cpus: getCpus, totalmem: _totalmem, freemem } = await import('os');
+            const _cpuInfo = getCpus();
             let gpuModel = '';
             try {
                 const { execSync } = await import('child_process');
                 gpuModel = execSync('nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null', { encoding: 'utf-8', timeout: 3000 }).trim();
-            } catch { }
+            } catch (_e) { }
 
             const diskFree = Math.round(freemem() / (1024 * 1024 * 1024)); // rough estimate using free RAM as proxy
             const caps = {
@@ -218,7 +218,7 @@ export class SovereignSuite {
             await this.apiPost('/sovereign/node/capabilities', caps);
             this.state.capabilities = ['ai_inference', 'bridge_verify', 'storage', 'p2p_relay', 'consensus'];
             this.state.autonomousMode = true;
-        } catch { }
+        } catch (_e) { }
     }
 
     // ─── 3. AUTO-STAKING (compound rewards → maximum yield) ──────
@@ -233,7 +233,7 @@ export class SovereignSuite {
                 this.state.stakingEarned = result.your_earned || 0;
                 this.state.stakingAPY = this.state.stakedAmount > 0 ? 36 : 0; // Node operators get best rate
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     async autoCompoundRewards(): Promise<void> {
@@ -261,7 +261,7 @@ export class SovereignSuite {
                 this.state.stakedAmount += rewards.total_pending;
                 logActivity(`♻️ Auto-compound: ${rewards.total_pending.toFixed(4)} GSTD staked @ 72% APY`, 'success');
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     // ─── 4. P2P PAYMENTS ─────────────────────────────────────────
@@ -301,7 +301,7 @@ export class SovereignSuite {
                 this.state.governancePower = this.state.stakedAmount + 
                     (Math.round((Date.now() - 0) / 3600000) * 0.1); // uptime hours * 0.1
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     async voteOnProposal(proposalId: string, vote: 'for' | 'against' | 'abstain'): Promise<any> {
@@ -350,7 +350,7 @@ export class SovereignSuite {
             if (loans) {
                 this.state.loansGiven = loans.count || 0;
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     // ─── 8. PROFITABILITY ENGINE ─────────────────────────────────
@@ -456,7 +456,7 @@ export class SovereignSuite {
             });
             if (resp.ok) return resp.json().catch(() => ({ ok: true }));
             return null;
-        } catch { return null; }
+        } catch (_e) { return null; }
     }
 
     private async apiGet(endpoint: string): Promise<any> {
@@ -471,6 +471,6 @@ export class SovereignSuite {
             });
             if (resp.ok) return resp.json().catch(() => null);
             return null;
-        } catch { return null; }
+        } catch (_e) { return null; }
     }
 }

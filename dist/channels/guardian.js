@@ -306,7 +306,6 @@ class CommunityGuardian {
             const gstdPerStar = gstdPrice > 0 ? STAR_USD / gstdPrice : 10;
             const gstdAmount = Math.floor(totalStars * gstdPerStar);
             const usdPaid = (totalStars * STAR_USD).toFixed(2);
-            const proRequests = Math.floor(gstdAmount / 0.1);
             // Check if this is a monitor signal purchase
             const invoicePayload = payment.invoice_payload || '';
             const isMonitorLaunch = invoicePayload.startsWith('monitor_launch:');

@@ -6,7 +6,7 @@
 
 import express from 'express';
 import { cpus, totalmem, freemem, hostname, platform, arch, loadavg, uptime as osUptime, networkInterfaces } from 'os';
-import { existsSync, readFileSync, statSync } from 'fs';
+import { existsSync } from 'fs';
 import { join } from 'path';
 import { getWallet, getBalance } from '../wallet/manager.js';
 
@@ -66,7 +66,7 @@ function detectGpu(): GpuInfo {
             temperature: parts[2] ? parts[2] + '°C' : undefined,
             usage: parts[3] ? parts[3] + '%' : undefined,
         };
-    } catch {
+    } catch (_e) {
         return { detected: false };
     }
 }
@@ -88,7 +88,7 @@ function getDiskUsage(): DiskInfo {
         const used = parseInt(parts[2]) || 0;
         const available = parseInt(parts[3]) || 0;
         return { total, used, available, usage: total > 0 ? Math.round(used / total * 100) : 0 };
-    } catch {
+    } catch (_e) {
         return { total: 0, used: 0, available: 0, usage: 0 };
     }
 }
@@ -114,7 +114,7 @@ export function logActivity(msg: string, type: string = 'info'): void {
 }
 
 // ─── Node process state ──────────────────────────────────────────
-let nodeStartedAt = Date.now();
+const nodeStartedAt = Date.now();
 
 // ─── Main Server ─────────────────────────────────────────────────
 export async function startDashboard(port: number = 8080, host: string = '0.0.0.0'): Promise<void> {
@@ -134,7 +134,7 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
     app.get('/api/node/status', async (_req, res) => {
         const wallet = getWallet();
         let balance = null;
-        try { balance = wallet ? await getBalance() : null; } catch { }
+        try { balance = wallet ? await getBalance() : null; } catch (_e) { }
         const cpuInfo = cpus();
         const gpu = detectGpu();
         const disk = getDiskUsage();
@@ -196,7 +196,7 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
                 `https://app.gstdtoken.com/api/v1/wallet/${wallet.address}/earnings`
             ).catch(() => null);
             if (resp?.ok) { res.json(await resp.json()); return; }
-        } catch { }
+        } catch (_e) { }
         res.json({ earnings: [], total: 0 });
     });
 
@@ -213,7 +213,7 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
                 });
                 return;
             }
-        } catch { }
+        } catch (_e) { }
         res.json({ pending: 0, completed: 0, processing: 0 });
     });
 
@@ -279,7 +279,7 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
                 my_rank: myRank,
                 wallet_address: wallet.address,
             });
-        } catch {
+        } catch (_e) {
             res.json({ registered: false, error: 'Failed to fetch rewards info' });
         }
     });
@@ -295,7 +295,7 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
                 res.json(await resp.json());
                 return;
             }
-        } catch { }
+        } catch (_e) { }
         // Fallback hardcoded program
         res.json({
             tiers: [

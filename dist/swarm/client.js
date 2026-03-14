@@ -113,7 +113,7 @@ class SwarmClient {
                 return false;
             }
         }
-        catch (err) {
+        catch (_err) {
             console.warn('[Swarm] Cannot reach control plane — running in standalone mode');
             this.connected = false;
             return false;

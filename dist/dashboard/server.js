@@ -90,7 +90,7 @@ function logActivity(msg, type = 'info') {
         activityLog.length = MAX_LOG;
 }
 // ─── Node process state ──────────────────────────────────────────
-let nodeStartedAt = Date.now();
+const nodeStartedAt = Date.now();
 // ─── Main Server ─────────────────────────────────────────────────
 async function startDashboard(port = 8080, host = '0.0.0.0') {
     const app = (0, express_1.default)();

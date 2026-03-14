@@ -309,7 +309,7 @@ export class TonConnectManager {
                     this.state.balance.gstd = (Number(info.balance) / 1e9).toFixed(4);
                 }
             }
-        } catch { /* non-fatal */ }
+        } catch (_e) { /* non-fatal */ }
 
         return { ...this.state };
     }
@@ -334,7 +334,7 @@ export class TonConnectManager {
             this.pendingConnects.delete(requestId);
             this.state.connectedDApps++;
             return true;
-        } catch { return false; }
+        } catch (_e) { return false; }
     }
 
     async rejectConnect(requestId: string): Promise<boolean> {
@@ -345,7 +345,7 @@ export class TonConnectManager {
             await this.kit.rejectConnectRequest(pending.event, 'User rejected');
             this.pendingConnects.delete(requestId);
             return true;
-        } catch { return false; }
+        } catch (_e) { return false; }
     }
 
     getPendingTransactions(): Array<{ id: string; preview: any; timestamp: number }> {
@@ -364,7 +364,7 @@ export class TonConnectManager {
             await this.kit.approveTransactionRequest(pending.event);
             this.pendingTransactions.delete(requestId);
             return true;
-        } catch { return false; }
+        } catch (_e) { return false; }
     }
 
     async rejectTransaction(requestId: string): Promise<boolean> {
@@ -375,7 +375,7 @@ export class TonConnectManager {
             await this.kit.rejectTransactionRequest(pending.event, 'User rejected');
             this.pendingTransactions.delete(requestId);
             return true;
-        } catch { return false; }
+        } catch (_e) { return false; }
     }
 
     // ─── State ───────────────────────────────────────────────────

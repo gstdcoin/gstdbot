@@ -31,12 +31,11 @@ import { CollectiveMemory } from './memory/collective.js';
 import { NodeWallet } from './wallet/manager.js';
 import { TonConnectManager } from './wallet/tonconnect.js';
 import { MobileNodeManager } from './channels/miniapp.js';
-import { AppManager } from './apps/manager.js';
 import { BlockchainManager } from './blockchain/token.js';
 import { RemoteAccessManager } from './network/remote.js';
 import { ResourceSharing } from './network/resources.js';
 import { SwarmTrainer } from './training/federated.js';
-import { hostname, cpus, totalmem, platform, arch } from 'os';
+import { hostname } from 'os';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
@@ -60,7 +59,7 @@ export interface NodeConfig {
 function loadConfig(): NodeConfig {
     const configPath = join(homedir(), '.config', 'gstdbot', 'config.json');
     const defaults: NodeConfig = {
-        version: '3.3.0',
+        version: '3.4.0',
         mode: 'cloud',
         nodeId: process.env.GSTD_NODE_ID || `node-${Date.now()}`,
         nodeName: process.env.NODE_NAME || `${hostname()}-node`,
@@ -108,7 +107,7 @@ function loadConfig(): NodeConfig {
                 memory: { ...defaults.memory, ...file.memory },
                 apps: { ...defaults.apps, ...file.apps },
             };
-        } catch { }
+        } catch (_e) { }
     }
     return defaults;
 }
@@ -153,7 +152,7 @@ async function main(): Promise<void> {
     gateway.setWallet(wallet);
 
     // Auto-save earnings every 5 minutes
-    setInterval(() => { try { wallet.saveEarnings(); } catch {} }, 5 * 60 * 1000);
+    setInterval(() => { try { wallet.saveEarnings(); } catch (_e) {} }, 5 * 60 * 1000);
 
     // ── 4. Collective Memory ────────────────────────────────────
     console.log(`  [4/${TOTAL_STEPS}] Connecting collective memory...`);
@@ -309,12 +308,12 @@ async function main(): Promise<void> {
                     wallet.recordVerifiedEarning(data.reward, 'uptime', `Heartbeat reward`);
                 }
             }
-        } catch { /* silent — network may be unavailable */ }
+        } catch (_e) { /* silent — network may be unavailable */ }
     };
 
-    // First heartbeat after 30s, then every 5 minutes
+    // First heartbeat after 30s, then every 60 minutes (matches backend rate-limit of 54min)
     setTimeout(sendHeartbeat, 30_000);
-    const hbInterval = setInterval(sendHeartbeat, 5 * 60 * 1000);
+    const hbInterval = setInterval(sendHeartbeat, 60 * 60 * 1000);
 
     // ── Auto-update: check every hour ────────────────────────────
     const checkAndUpdate = async () => {
@@ -343,7 +342,7 @@ async function main(): Promise<void> {
                 // Systemd will restart us, or PM2, or the user manually
                 process.exit(0);
             }
-        } catch { /* silent — git may not be available in Docker */ }
+        } catch (_e) { /* silent — git may not be available in Docker */ }
     };
 
     // Check for updates after 2 min, then every hour

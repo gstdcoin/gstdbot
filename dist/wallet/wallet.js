@@ -32,7 +32,7 @@ function deriveKey() {
         try {
             return (0, fs_1.readFileSync)('/etc/machine-id', 'utf-8').trim();
         }
-        catch {
+        catch (_e) {
             return (0, os_1.homedir)() + ':gstd-node-wallet-key';
         }
     })();
@@ -66,13 +66,13 @@ function initWallet(seed) {
     let walletSeed;
     try {
         // Generate real TON wallet address using @ton/ton SDK
-        const { mnemonicNew, mnemonicToPrivateKey } = require('@ton/crypto');
+        const { mnemonicNew, mnemonicToPrivateKey: _mnemonicToPrivateKey } = require('@ton/crypto');
         const { WalletContractV4 } = require('@ton/ton');
         // Use seed as mnemonic source or generate new mnemonic
-        const mnemonicPromise = (async () => {
+        const _mnemonicPromise = (async () => {
             if (seed) {
                 // Derive deterministic mnemonic from seed
-                const hash = (0, crypto_1.createHash)('sha256').update(seed).digest();
+                const _hash = (0, crypto_1.createHash)('sha256').update(seed).digest();
                 const { mnemonicNew: mn } = require('@ton/crypto');
                 return await mn(24);
             }
@@ -92,7 +92,7 @@ function initWallet(seed) {
             });
             address = wallet.address.toString({ bounceable: false, testOnly: false });
         }
-        catch {
+        catch (_e) {
             // Fallback: create raw TON-compatible address format using base64url
             const workchain = Buffer.from([0x51]); // 0x51 = non-bounceable + mainnet + workchain 0
             const addrHash = (0, crypto_1.createHash)('sha256').update(publicKey).digest();
@@ -102,7 +102,7 @@ function initWallet(seed) {
             address = 'UQ' + fullAddr.toString('base64url').replace(/=+$/, '');
         }
     }
-    catch {
+    catch (_e) {
         // Pure fallback without @ton/ton
         walletSeed = seed || (0, crypto_1.randomBytes)(32).toString('hex');
         const publicKey = (0, crypto_1.createHash)('sha256').update(walletSeed).digest();
@@ -127,7 +127,7 @@ function initWallet(seed) {
     try {
         (0, fs_1.chmodSync)(SEED_FILE, 0o600);
     }
-    catch { /* Windows compat */ }
+    catch (_e) { /* Windows compat */ }
     return config;
 }
 /**
@@ -163,7 +163,7 @@ function migrateOldWallet() {
             try {
                 (0, fs_1.chmodSync)(SEED_FILE, 0o600);
             }
-            catch { }
+            catch (_e) { }
             // Remove seed from wallet.json, add publicKey
             const publicKey = raw.publicKey || (0, crypto_1.createHash)('sha256').update(raw.seed).digest('hex').slice(0, 64);
             const clean = {
@@ -175,7 +175,7 @@ function migrateOldWallet() {
             (0, fs_1.writeFileSync)(WALLET_FILE, JSON.stringify(clean, null, 2));
         }
     }
-    catch { /* Migration is best-effort */ }
+    catch (_e) { /* Migration is best-effort */ }
 }
 function getWallet() {
     if (!walletExists())
@@ -185,7 +185,7 @@ function getWallet() {
         migrateOldWallet();
         return JSON.parse((0, fs_1.readFileSync)(WALLET_FILE, 'utf-8'));
     }
-    catch {
+    catch (_e) {
         return null;
     }
 }
@@ -196,7 +196,7 @@ function getSeed() {
         const encrypted = (0, fs_1.readFileSync)(SEED_FILE, 'utf-8');
         return decryptSeed(encrypted);
     }
-    catch {
+    catch (_e) {
         return null;
     }
 }
@@ -217,7 +217,7 @@ async function getBalance() {
             };
         }
     }
-    catch { }
+    catch (_e) { }
     return { gstd: 0, ton: 0, pending: 0, totalEarned: 0 };
 }
 /**
@@ -252,7 +252,7 @@ async function linkTelegram(userId) {
             return true;
         }
     }
-    catch { }
+    catch (_e) { }
     return false;
 }
 //# sourceMappingURL=wallet.js.map

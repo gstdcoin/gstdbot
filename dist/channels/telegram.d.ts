@@ -16,6 +16,8 @@ export declare class TelegramChannel {
     private router;
     private guardian;
     private config;
+    private startInProgress;
+    private retryTimer;
     /** Authenticated API call to Go backend */
     private apiCall;
     constructor(config: TelegramConfig);
@@ -31,6 +33,7 @@ export declare class TelegramChannel {
     private handleWallet;
     private handleLinkWallet;
     private handleEarn;
+    private handleApiKeyIssue;
     private sendHelp;
     start(): Promise<void>;
     stop(): Promise<void>;

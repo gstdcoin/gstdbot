@@ -58,7 +58,7 @@ class CrossChainBridge {
                 }
             }
         }
-        catch (e) {
+        catch (_e) {
             (0, server_js_1.logActivity)(`[Bridge] Platform API unavailable, trying direct chain verification...`, 'warn');
         }
         // Strategy 2: Direct chain RPC verification
@@ -67,7 +67,7 @@ class CrossChainBridge {
     /**
      * Direct on-chain verification when platform API is not available.
      */
-    async verifyDirectOnChain(chain, txHash, expectedAmount) {
+    async verifyDirectOnChain(chain, txHash, _expectedAmount) {
         try {
             switch (chain.toUpperCase()) {
                 case 'TON':

@@ -114,8 +114,8 @@ class SovereignSuite {
     // ─── 2. CAPABILITIES REGISTRATION ────────────────────────────
     async registerCapabilities() {
         try {
-            const { cpus: getCpus, totalmem, freemem } = await import('os');
-            const cpuInfo = getCpus();
+            const { cpus: getCpus, totalmem: _totalmem, freemem } = await import('os');
+            const _cpuInfo = getCpus();
             let gpuModel = '';
             try {
                 const { execSync } = await import('child_process');

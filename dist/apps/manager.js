@@ -920,7 +920,7 @@ class AppManager {
                     this.installed.set(app.manifest.id, app);
                 }
             }
-            catch { }
+            catch (_e) { }
         }
         console.log(`    Apps: ${this.installed.size} installed, ${BUILTIN_APPS.length} built-in available`);
     }
@@ -939,7 +939,7 @@ class AppManager {
                 return data.apps || [];
             }
         }
-        catch { }
+        catch (_e) { }
         return BUILTIN_APPS;
     }
     // ─── Install ─────────────────────────────────────────────────
@@ -1004,7 +1004,7 @@ class AppManager {
             try {
                 (0, fs_1.rmSync)(appDir, { recursive: true, force: true });
             }
-            catch { }
+            catch (_e) { }
         }
         // Remove docker container/image
         if (app.manifest.docker) {
@@ -1015,7 +1015,7 @@ class AppManager {
                     timeout: 30_000,
                 });
             }
-            catch { }
+            catch (_e) { }
         }
         this.installed.delete(appId);
         this.saveState();
@@ -1064,7 +1064,7 @@ class AppManager {
                 const { execSync } = require('child_process');
                 execSync(`docker stop gstd-${appId} 2>/dev/null || true`, { encoding: 'utf-8' });
             }
-            catch { }
+            catch (_e) { }
         }
         app.status = 'stopped';
         app.url = undefined;
@@ -1081,7 +1081,7 @@ class AppManager {
         try {
             (0, fs_1.writeFileSync)(this.stateFile, JSON.stringify(Array.from(this.installed.values()), null, 2));
         }
-        catch { }
+        catch (_e) { }
     }
 }
 exports.AppManager = AppManager;

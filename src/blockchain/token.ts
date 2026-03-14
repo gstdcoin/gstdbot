@@ -10,7 +10,7 @@
  * - Transaction history
  */
 
-import { createHash, randomBytes } from 'crypto';
+import { randomBytes } from 'crypto';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
@@ -69,7 +69,7 @@ const CONTRACTS = {
     GOVERNANCE: process.env.GSTD_CONTRACT_GOV || 'EQ_GOVERNANCE_PENDING',
 };
 
-const PLATFORM_API = 'https://app.gstdtoken.com/api/v1';
+const PLATFORM_API = process.env.GSTD_API_URL || 'https://api.gstdtoken.com/api/v1';
 
 // ─── Blockchain Manager ─────────────────────────────────────────
 export class BlockchainManager {
@@ -103,7 +103,7 @@ export class BlockchainManager {
                 const data = JSON.parse(readFileSync(walletFile, 'utf-8'));
                 this.walletAddress = data.address;
                 // Seed is encrypted in wallet_seed.enc, not in wallet.json
-            } catch { }
+            } catch (_e) { }
         }
 
         // Load transaction history
@@ -111,7 +111,7 @@ export class BlockchainManager {
         if (existsSync(txFile)) {
             try {
                 this.transactions = JSON.parse(readFileSync(txFile, 'utf-8'));
-            } catch { this.transactions = []; }
+            } catch (_e) { this.transactions = []; }
         }
 
         // Load staking info
@@ -119,7 +119,7 @@ export class BlockchainManager {
         if (existsSync(stakeFile)) {
             try {
                 this.stakingInfo = JSON.parse(readFileSync(stakeFile, 'utf-8'));
-            } catch { }
+            } catch (_e) { }
         }
 
         // Refresh balance and price
@@ -168,7 +168,7 @@ export class BlockchainManager {
                     totalSpent: data.total_spent || 0,
                 };
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     // ─── Price ───────────────────────────────────────────────────
@@ -203,7 +203,7 @@ export class BlockchainManager {
                     lastUpdated: new Date().toISOString(),
                 };
             }
-        } catch { }
+        } catch (_e) { }
     }
 
     // ─── Transfer GSTD ──────────────────────────────────────────
@@ -313,7 +313,7 @@ export class BlockchainManager {
                 logActivity(`Staked ${amount} GSTD (APY: ${this.stakingInfo.apy}%)`, 'success');
                 return true;
             }
-        } catch { }
+        } catch (_e) { }
 
         logActivity('Staking failed', 'error');
         return false;
@@ -359,7 +359,7 @@ export class BlockchainManager {
                 logActivity(`Unstaked ${amount} GSTD`, 'success');
                 return true;
             }
-        } catch { }
+        } catch (_e) { }
         return false;
     }
 
@@ -433,7 +433,7 @@ export class BlockchainManager {
                 join(this.configDir, 'transactions.json'),
                 JSON.stringify(this.transactions.slice(0, 1000), null, 2)
             );
-        } catch { }
+        } catch (_e) { }
     }
 
     private saveStaking(): void {
@@ -442,6 +442,6 @@ export class BlockchainManager {
                 join(this.configDir, 'staking.json'),
                 JSON.stringify(this.stakingInfo, null, 2)
             );
-        } catch { }
+        } catch (_e) { }
     }
 }

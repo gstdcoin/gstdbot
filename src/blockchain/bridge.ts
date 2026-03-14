@@ -81,7 +81,7 @@ export class CrossChainBridge {
                     return false;
                 }
             }
-        } catch (e: any) {
+        } catch (_e: any) {
             logActivity(`[Bridge] Platform API unavailable, trying direct chain verification...`, 'warn');
         }
 
@@ -92,7 +92,7 @@ export class CrossChainBridge {
     /**
      * Direct on-chain verification when platform API is not available.
      */
-    private async verifyDirectOnChain(chain: string, txHash: string, expectedAmount: number): Promise<boolean> {
+    private async verifyDirectOnChain(chain: string, txHash: string, _expectedAmount: number): Promise<boolean> {
         try {
             switch (chain.toUpperCase()) {
                 case 'TON':

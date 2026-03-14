@@ -29,6 +29,8 @@ export declare class OmegaGateway {
     private orchestrator;
     private subsystems;
     private metrics;
+    private freeApiKeyHashes;
+    private readonly freeApiRequiredBalance;
     constructor(config?: Partial<GatewayConfig>);
     /** Inject wallet after it's initialized (wallet created after gateway) */
     setWallet(wallet: NodeWallet): void;
@@ -44,6 +46,11 @@ export declare class OmegaGateway {
     }): void;
     /** Get the actual port the gateway is listening on (may differ from requested if auto-reassigned) */
     getPort(): number;
+    private normalizeWalletAddress;
+    private isTonAddress;
+    private hashApiKey;
+    private extractApiKey;
+    private fetchWalletBalance;
     private setupAPI;
     private setupNodeOS;
     private getFallbackHTML;
