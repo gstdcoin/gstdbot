@@ -973,13 +973,13 @@ export class TelegramChannel {
 
             let msg: string;
             if (lang === 'ru') {
-                msg = `💎 <b>Мой Баланс</b>\n\n💰 <b>${(data.balance_gstd || 0).toFixed(4)} GSTD</b>\n⚡ Pro запросов: <b>${proReqs}</b>`;
+                msg = `💎 <b>Мой Баланс</b>\n\n💰 <b>${(data.balance_gstd || 0).toFixed(4)} GSTD</b> (L1 TON)\n🐝 <b>${(data.swarm_balance || 0).toFixed(4)} GSTD</b> (L1 Swarm / Zero Gas)\n\n⚡ Pro запросов: <b>${proReqs}</b>`;
                 if (pending > 0) {
                     msg += `\n\n⏳ <b>Награда: ${pending.toFixed(4)} GSTD</b>\n   └ После комиссии: <b>${(pending * 0.85).toFixed(4)} GSTD</b>\n   └ 10% → Фонд развития, 5% → Sovereign AI Pool`;
                 }
                 msg += `\n\n<i>🆓 Бесплатная модель всегда доступна\n⚡ Pro = ${costPerPro.toFixed(1)} GSTD/запрос ($${SMARTMIX_TIERS.standard.costUsd})</i>`;
             } else {
-                msg = `💎 <b>My Balance</b>\n\n💰 <b>${(data.balance_gstd || 0).toFixed(4)} GSTD</b>\n⚡ Pro requests: <b>${proReqs}</b>`;
+                msg = `💎 <b>My Balance</b>\n\n💰 <b>${(data.balance_gstd || 0).toFixed(4)} GSTD</b> (L1 TON)\n🐝 <b>${(data.swarm_balance || 0).toFixed(4)} GSTD</b> (L1 Swarm / Zero Gas)\n\n⚡ Pro requests: <b>${proReqs}</b>`;
                 if (pending > 0) {
                     msg += `\n\n⏳ <b>Mining reward: ${pending.toFixed(4)} GSTD</b>\n   └ After commission: <b>${(pending * 0.85).toFixed(4)} GSTD</b>\n   └ 10% → Development Fund, 5% → Sovereign AI Pool`;
                 }
