@@ -932,15 +932,21 @@ class AppManager {
         return BUILTIN_APPS.filter(app => !this.installed.has(app.id));
     }
     async getRegistry() {
+        // Always start with built-in apps as the base
+        const builtinById = new Map(BUILTIN_APPS.map(a => [a.id, a]));
         try {
             const resp = await fetch(REGISTRY_URL, { signal: AbortSignal.timeout(5000) });
             if (resp.ok) {
                 const data = await resp.json();
-                return data.apps || [];
+                const remoteApps = data.apps || [];
+                // Merge remote apps on top of built-in (remote overrides if same id)
+                for (const app of remoteApps) {
+                    builtinById.set(app.id, app);
+                }
             }
         }
         catch (_e) { }
-        return BUILTIN_APPS;
+        return Array.from(builtinById.values());
     }
     // ─── Install ─────────────────────────────────────────────────
     async install(appId) {
@@ -1075,6 +1081,41 @@ class AppManager {
     async restart(appId) {
         await this.stop(appId);
         return this.start(appId);
+    }
+    // ─── Bulk Install ────────────────────────────────────────────
+    async installAll(premiumToo = false) {
+        const results = { installed: [], failed: [], skipped: [] };
+        const registry = await this.getRegistry();
+        for (const app of registry) {
+            if (this.installed.has(app.id)) {
+                results.skipped.push(app.id);
+                continue;
+            }
+            if (app.premium && !premiumToo) {
+                results.skipped.push(app.id);
+                continue;
+            }
+            // Skip Docker-based apps that need docker pull (install them but mark as stopped)
+            const ok = await this.install(app.id);
+            if (ok) {
+                results.installed.push(app.id);
+                // Auto-start non-docker apps
+                if (!app.docker) {
+                    await this.start(app.id);
+                }
+            }
+            else {
+                results.failed.push(app.id);
+            }
+        }
+        (0, server_js_1.logActivity)(`Bulk install: ${results.installed.length} installed, ${results.skipped.length} skipped, ${results.failed.length} failed`, 'success');
+        return results;
+    }
+    async installAllFree() {
+        return this.installAll(false);
+    }
+    async installAllPremium() {
+        return this.installAll(true);
     }
     // ─── State Persistence ───────────────────────────────────────
     saveState() {

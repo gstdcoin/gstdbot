@@ -1093,7 +1093,7 @@ export class OmegaGateway {
                     name: process.env.NODE_NAME || hostname(),
                     platform: platform(), arch: arch(),
                     uptime: process.uptime(), os_uptime: osUptime(),
-                    version: '3.3.0',
+                    version: '3.4.0',
                     started_at: new Date(nodeStartedAt).toISOString(),
                     ip: getLocalIP(), pid: process.pid,
                 },
@@ -1487,6 +1487,36 @@ export class OmegaGateway {
                 total_running: running.length,
                 total_available: 77,
             });
+        });
+
+        // ─── Bulk Install (one-click install all) ────────────────
+        this.app.post('/api/apps/install-all', async (req, res) => {
+            const { includePremium } = req.body || {};
+            logActivity(`Bulk install started (premium: ${!!includePremium})...`, 'info');
+            try {
+                const results = await this.appManager.installAll(!!includePremium);
+                res.json({
+                    ok: true,
+                    ...results,
+                    message: `✅ Installed ${results.installed.length} apps, skipped ${results.skipped.length}, failed ${results.failed.length}`,
+                });
+            } catch (e: any) {
+                res.json({ ok: false, message: 'Bulk install failed: ' + e.message });
+            }
+        });
+
+        this.app.post('/api/apps/install-all-free', async (_req, res) => {
+            logActivity('Bulk install (free apps only)...', 'info');
+            try {
+                const results = await this.appManager.installAllFree();
+                res.json({
+                    ok: true,
+                    ...results,
+                    message: `✅ Installed ${results.installed.length} free apps`,
+                });
+            } catch (e: any) {
+                res.json({ ok: false, message: 'Bulk install failed: ' + e.message });
+            }
         });
 
         // ─── Memory APIs ─────────────────────────────────────────

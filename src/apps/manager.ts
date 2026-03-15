@@ -986,14 +986,20 @@ export class AppManager {
     }
 
     async getRegistry(): Promise<AppManifest[]> {
+        // Always start with built-in apps as the base
+        const builtinById = new Map(BUILTIN_APPS.map(a => [a.id, a]));
         try {
             const resp = await fetch(REGISTRY_URL, { signal: AbortSignal.timeout(5000) });
             if (resp.ok) {
                 const data: any = await resp.json();
-                return data.apps || [];
+                const remoteApps: AppManifest[] = data.apps || [];
+                // Merge remote apps on top of built-in (remote overrides if same id)
+                for (const app of remoteApps) {
+                    builtinById.set(app.id, app);
+                }
             }
         } catch (_e) { }
-        return BUILTIN_APPS;
+        return Array.from(builtinById.values());
     }
 
     // ─── Install ─────────────────────────────────────────────────
@@ -1142,6 +1148,43 @@ export class AppManager {
     async restart(appId: string): Promise<boolean> {
         await this.stop(appId);
         return this.start(appId);
+    }
+
+    // ─── Bulk Install ────────────────────────────────────────────
+    async installAll(premiumToo: boolean = false): Promise<{ installed: string[]; failed: string[]; skipped: string[] }> {
+        const results = { installed: [] as string[], failed: [] as string[], skipped: [] as string[] };
+        const registry = await this.getRegistry();
+        for (const app of registry) {
+            if (this.installed.has(app.id)) {
+                results.skipped.push(app.id);
+                continue;
+            }
+            if (app.premium && !premiumToo) {
+                results.skipped.push(app.id);
+                continue;
+            }
+            // Skip Docker-based apps that need docker pull (install them but mark as stopped)
+            const ok = await this.install(app.id);
+            if (ok) {
+                results.installed.push(app.id);
+                // Auto-start non-docker apps
+                if (!app.docker) {
+                    await this.start(app.id);
+                }
+            } else {
+                results.failed.push(app.id);
+            }
+        }
+        logActivity(`Bulk install: ${results.installed.length} installed, ${results.skipped.length} skipped, ${results.failed.length} failed`, 'success');
+        return results;
+    }
+
+    async installAllFree(): Promise<{ installed: string[]; failed: string[]; skipped: string[] }> {
+        return this.installAll(false);
+    }
+
+    async installAllPremium(): Promise<{ installed: string[]; failed: string[]; skipped: string[] }> {
+        return this.installAll(true);
     }
 
     // ─── State Persistence ───────────────────────────────────────

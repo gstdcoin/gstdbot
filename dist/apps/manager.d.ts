@@ -52,6 +52,21 @@ export declare class AppManager {
     start(appId: string): Promise<boolean>;
     stop(appId: string): Promise<boolean>;
     restart(appId: string): Promise<boolean>;
+    installAll(premiumToo?: boolean): Promise<{
+        installed: string[];
+        failed: string[];
+        skipped: string[];
+    }>;
+    installAllFree(): Promise<{
+        installed: string[];
+        failed: string[];
+        skipped: string[];
+    }>;
+    installAllPremium(): Promise<{
+        installed: string[];
+        failed: string[];
+        skipped: string[];
+    }>;
     private saveState;
 }
 //# sourceMappingURL=manager.d.ts.map

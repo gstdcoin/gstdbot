@@ -700,6 +700,18 @@
         background: rgba(168, 85, 247, 0.12);
         color: #a855f7;
       }
+      .cat-defi {
+        background: rgba(99, 102, 241, 0.12);
+        color: #818cf8;
+      }
+      .cat-finance {
+        background: rgba(245, 158, 11, 0.12);
+        color: var(--amber);
+      }
+      .cat-web {
+        background: rgba(56, 189, 248, 0.12);
+        color: #38bdf8;
+      }
       .app-btn {
         width: 100%;
         padding: 8px 0;
@@ -2378,6 +2390,54 @@
             DeFi wallets, TON services — all running locally. Install any app,
             it earns GSTD and connects to the swarm.
           </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+            <button id="btn-install-all-free" onclick="installAllApps(false)" style="
+              padding:10px 20px;
+              border-radius:12px;
+              border:1px solid rgba(34,197,94,0.3);
+              background:linear-gradient(135deg,rgba(34,197,94,0.15),rgba(34,197,94,0.05));
+              color:#22c55e;
+              font-family:'Inter',sans-serif;
+              font-size:13px;
+              font-weight:700;
+              cursor:pointer;
+              transition:all 0.2s;
+              display:flex;
+              align-items:center;
+              gap:8px;
+            ">⬇️ Install All Free Apps (1 Click)</button>
+            <button id="btn-install-all-premium" onclick="installAllApps(true)" style="
+              padding:10px 20px;
+              border-radius:12px;
+              border:1px solid rgba(255,215,0,0.3);
+              background:linear-gradient(135deg,rgba(255,215,0,0.12),rgba(255,215,0,0.04));
+              color:#FFD700;
+              font-family:'Inter',sans-serif;
+              font-size:13px;
+              font-weight:700;
+              cursor:pointer;
+              transition:all 0.2s;
+              display:flex;
+              align-items:center;
+              gap:8px;
+            ">⭐ Install All + Premium (1000 GSTD)</button>
+            <div id="bulk-install-status" style="
+              display:none;
+              padding:8px 16px;
+              border-radius:8px;
+              background:rgba(139,92,246,0.1);
+              border:1px solid rgba(139,92,246,0.2);
+              color:var(--accent);
+              font-size:12px;
+              font-weight:600;
+              align-items:center;
+              gap:8px;
+            ">
+              <span class="spinner" style="display:inline-block;width:14px;height:14px;border:2px solid rgba(139,92,246,0.3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></span>
+              <span id="bulk-install-text">Installing...</span>
+            </div>
+          </div>
+          <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
           <div
             style="
               display: flex;
@@ -2411,6 +2471,13 @@
               data-cat="defi"
             >
               💎 DeFi
+            </button>
+            <button
+              class="app-filter"
+              onclick="filterApps('finance')"
+              data-cat="finance"
+            >
+              💰 Finance
             </button>
             <button
               class="app-filter"
@@ -3279,6 +3346,63 @@
         } catch (e) {
           log("❌ " + e.message, "error");
         }
+      }
+
+      async function installAllApps(includePremium) {
+        const statusEl = document.getElementById("bulk-install-status");
+        const textEl = document.getElementById("bulk-install-text");
+        const freeBtn = document.getElementById("btn-install-all-free");
+        const premBtn = document.getElementById("btn-install-all-premium");
+        
+        // Show status, disable buttons
+        statusEl.style.display = "flex";
+        textEl.textContent = includePremium ? "Installing all apps (+ premium)..." : "Installing all free apps...";
+        freeBtn.disabled = true;
+        premBtn.disabled = true;
+        freeBtn.style.opacity = "0.5";
+        premBtn.style.opacity = "0.5";
+        
+        try {
+          const endpoint = includePremium ? "/api/apps/install-all" : "/api/apps/install-all-free";
+          const r = await fetch(API + endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ includePremium }),
+          });
+          const d = await r.json();
+          
+          if (d.ok) {
+            textEl.textContent = `✅ ${d.installed?.length || 0} installed, ${d.skipped?.length || 0} skipped`;
+            statusEl.style.background = "rgba(34,197,94,0.1)";
+            statusEl.style.borderColor = "rgba(34,197,94,0.3)";
+            statusEl.style.color = "#22c55e";
+            log("✅ " + (d.message || "Bulk install completed"), "success");
+          } else {
+            textEl.textContent = "❌ " + (d.message || "Failed");
+            statusEl.style.background = "rgba(244,63,94,0.1)";
+            statusEl.style.borderColor = "rgba(244,63,94,0.3)";
+            statusEl.style.color = "#f43f5e";
+            log("❌ " + (d.message || "Bulk install failed"), "error");
+          }
+          
+          loadApps();
+        } catch (e) {
+          textEl.textContent = "❌ " + e.message;
+          log("❌ " + e.message, "error");
+        } finally {
+          freeBtn.disabled = false;
+          premBtn.disabled = false;
+          freeBtn.style.opacity = "1";
+          premBtn.style.opacity = "1";
+          // Hide status after 8 seconds
+          setTimeout(() => { statusEl.style.display = "none"; }, 8000);
+        }
+      }
+
+      function openApp(appId, appName, port) {
+        // Built-in apps are served at /apps/{appId}
+        const appUrl = window.location.origin + "/apps/" + appId;
+        window.open(appUrl, "_blank");
       }
 
       // ─── Telegram Linking ──────────────────────────────
