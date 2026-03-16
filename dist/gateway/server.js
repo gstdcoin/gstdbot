@@ -1378,6 +1378,66 @@ class OmegaGateway {
                     res.json({ ok: false, message: `Unknown action: ${action}` });
             }
         });
+        // ─── Sovereign Liquidity Network (DLN) ───────────────────
+        this.app.get('/api/node/dln', (_req, res) => {
+            res.json({
+                enabled: process.env.GSTD_DLN_ENABLED === 'true',
+                stake: process.env.GSTD_DLN_STAKE || '1000',
+                fee: process.env.GSTD_DLN_MANAGEMENT_FEE || '0.15'
+            });
+        });
+        this.app.post('/api/node/dln', async (req, res) => {
+            const { enabled, stake, fee } = req.body || {};
+            try {
+                const envPath = (0, path_1.join)(process.env.GSTD_INSTALL_DIR || (0, path_1.join)(require('os').homedir(), 'gstdbot'), '.env');
+                let envContent = '';
+                if ((0, fs_1.existsSync)(envPath)) {
+                    envContent = (0, fs_1.readFileSync)(envPath, 'utf8');
+                }
+                else {
+                    res.json({ ok: false, message: '.env file not found' });
+                    return;
+                }
+                // Remove existing DLN keys
+                const lines = envContent.split('\n').filter(line => !line.startsWith('GSTD_DLN_ENABLED=') &&
+                    !line.startsWith('GSTD_DLN_STAKE=') &&
+                    !line.startsWith('GSTD_DLN_MANAGEMENT_FEE='));
+                if (enabled) {
+                    lines.push('GSTD_DLN_ENABLED=true');
+                    if (stake)
+                        lines.push(`GSTD_DLN_STAKE=${stake}`);
+                    if (fee)
+                        lines.push(`GSTD_DLN_MANAGEMENT_FEE=${fee}`);
+                    (0, fs_1.writeFileSync)(envPath, lines.join('\n').trim() + '\n');
+                    logActivity(`DLN Vault Activated (Stake: ${stake || 0}, Fee: ${fee || 0}%)`, 'success');
+                    // Post to general backend
+                    if (this.wallet) {
+                        fetch(`${this.config.swarmUrl}/api/v1/nodes/liquidity/vault`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                node_wallet: this.wallet.getAddress(),
+                                asset: 'GSTD',
+                                initial_stake: parseFloat(stake) || 0,
+                                fee_pct: parseFloat(fee) || 0
+                            })
+                        }).catch(() => { });
+                    }
+                    res.json({ ok: true, message: 'Vault Activated. Node will restart to apply...' });
+                    setTimeout(() => process.exit(0), 1000);
+                }
+                else {
+                    lines.push('GSTD_DLN_ENABLED=false');
+                    (0, fs_1.writeFileSync)(envPath, lines.join('\n').trim() + '\n');
+                    logActivity(`DLN Vault Deactivated`, 'warn');
+                    res.json({ ok: true, message: 'Vault Deactivated. Node will restart...' });
+                    setTimeout(() => process.exit(0), 1000);
+                }
+            }
+            catch (e) {
+                res.json({ ok: false, message: 'Failed to update DLN config: ' + e.message });
+            }
+        });
         // ─── App Store APIs ──────────────────────────────────────
         this.app.get('/api/apps/available', async (_req, res) => {
             const registry = await this.appManager.getRegistry();
