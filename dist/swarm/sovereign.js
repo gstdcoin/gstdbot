@@ -122,7 +122,17 @@ class SovereignSuite {
                 gpuModel = execSync('nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null', { encoding: 'utf-8', timeout: 3000 }).trim();
             }
             catch (_e) { }
-            const diskFree = Math.round(freemem() / (1024 * 1024 * 1024)); // rough estimate using free RAM as proxy
+            let diskFree = 0;
+            try {
+                const { execSync } = await import('child_process');
+                const out = execSync("df -BG / | tail -1 | awk '{print $4}'", {
+                    encoding: 'utf-8', timeout: 3000,
+                }).trim().replace('G', '');
+                diskFree = parseInt(out) || 0;
+            }
+            catch (_e2) {
+                diskFree = Math.round(freemem() / (1024 * 1024 * 1024)); // fallback
+            }
             const caps = {
                 node_id: this.config.nodeId,
                 can_ai_inference: true,
@@ -216,8 +226,9 @@ class SovereignSuite {
             if (result) {
                 this.state.activeProposals = result.count || 0;
                 // Calculate governance power (staked + uptime)
+                const uptimeHours = Math.round(process.uptime() / 3600);
                 this.state.governancePower = this.state.stakedAmount +
-                    (Math.round((Date.now() - 0) / 3600000) * 0.1); // uptime hours * 0.1
+                    (uptimeHours * 0.1); // uptime hours * 0.1
             }
         }
         catch (_e) { }

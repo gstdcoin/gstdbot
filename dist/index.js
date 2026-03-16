@@ -99,7 +99,7 @@ function loadConfig() {
 async function main() {
     const config = loadConfig();
     const startTime = Date.now();
-    const TOTAL_STEPS = 9;
+    const TOTAL_STEPS = 11;
     console.log('');
     console.log('  🐝 ═══════════════════════════════════════════════════');
     console.log('  🐝  GSTD Node OS v' + config.version);
@@ -168,8 +168,7 @@ async function main() {
         console.log('    Telegram: disabled (no token)');
     }
     // ── 9. TON Connect + Mobile Node ─────────────────────────────
-    const TOTAL_STEPS_NEW = 11;
-    console.log(`  [9/${TOTAL_STEPS_NEW}] Initializing TON Connect...`);
+    console.log(`  [9/${TOTAL_STEPS}] Initializing TON Connect...`);
     const tonConnect = new tonconnect_js_1.TonConnectManager({
         network: config.tonconnect.network,
         bridgeUrl: config.tonconnect.bridgeUrl,
@@ -184,7 +183,7 @@ async function main() {
         console.log('    TON Connect: disabled (set GSTD_TONCONNECT=true)');
     }
     // ── 10. Mobile Node TMA ──────────────────────────────────────
-    console.log(`  [10/${TOTAL_STEPS_NEW}] Enabling Mobile Node (TMA)...`);
+    console.log(`  [10/${TOTAL_STEPS}] Enabling Mobile Node (TMA)...`);
     let mobileNode = null;
     if (config.mobileNode.enabled) {
         const telegramToken = process.env.TELEGRAM_BOT_TOKEN || '';
@@ -200,7 +199,7 @@ async function main() {
         console.log('    Mobile Node: disabled');
     }
     // ── 11. Node OS ready (Dashboard served via Gateway) ─────────
-    console.log(`  [11/${TOTAL_STEPS_NEW}] Node OS UI active on gateway port...`);
+    console.log(`  [11/${TOTAL_STEPS}] Node OS UI active on gateway port...`);
     // Initialize security and orchestrator
     const security = new hardening_js_1.SecurityHardening();
     const orchestrator = new orchestrator_js_1.SwarmOrchestrator(config);
@@ -248,39 +247,10 @@ async function main() {
     console.log('     • To stop: press Ctrl+C');
     console.log('');
     (0, server_js_1.logActivity)('GSTD Node OS v' + config.version + ' booted in ' + bootTime + 's', 'success');
-    // ── Heartbeat: report to platform every 5 min ────────────────
-    const PLATFORM_API = config.swarm.apiUrl || 'https://api.gstdtoken.com/api/v1';
-    const walletAddr = wallet.getAddress() || '';
-    const sendHeartbeat = async () => {
-        try {
-            const resp = await fetch(`${PLATFORM_API}/nodes/heartbeat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    wallet_address: walletAddr,
-                    node_id: config.nodeId,
-                    node_name: config.nodeName,
-                    node_version: config.version,
-                    status: 'online',
-                    battery: 300,
-                    signal: 100,
-                    uptime_hours: Math.floor((Date.now() - startTime) / 3600000),
-                    queries_served: 0,
-                }),
-                signal: AbortSignal.timeout(15000),
-            });
-            if (resp.ok) {
-                const data = await resp.json();
-                if (data.reward > 0) {
-                    wallet.recordVerifiedEarning(data.reward, 'uptime', `Heartbeat reward`);
-                }
-            }
-        }
-        catch (_e) { /* silent — network may be unavailable */ }
-    };
-    // First heartbeat after 30s, then every 60 minutes (matches backend rate-limit of 54min)
-    setTimeout(sendHeartbeat, 30_000);
-    const hbInterval = setInterval(sendHeartbeat, 60 * 60 * 1000);
+    // ── Heartbeat: centralized in SwarmAgent (swarm/agent.ts) ─────
+    // SwarmAgent already sends heartbeats every 60 min with full node info,
+    // so no duplicate heartbeat is needed here. SwarmAgent calls
+    // wallet.recordVerifiedEarning() when backend returns a reward.
     // ── Auto-update: check every hour ────────────────────────────
     const checkAndUpdate = async () => {
         try {
@@ -312,7 +282,6 @@ async function main() {
     const shutdown = async () => {
         console.log('\n  🛑 Shutting down GSTD Node OS...');
         (0, server_js_1.logActivity)('Node shutdown initiated', 'warn');
-        clearInterval(hbInterval);
         clearInterval(updateInterval);
         if (mobileNode)
             await mobileNode.stop();

@@ -277,9 +277,12 @@ export class SwarmAgent {
                 this.stats.rank = result.rank || 0;
 
                 // Check if platform assigned any reward for uptime
-                if (result.reward_gstd && result.reward_gstd > 0) {
-                    this.stats.totalEarnedGstd += result.reward_gstd;
-                    logActivity(`Earned ${result.reward_gstd.toFixed(4)} GSTD (uptime)`, 'success');
+                // Backend returns 'reward', not 'reward_gstd'
+                const rewardAmount = result.reward ?? result.reward_gstd ?? 0;
+                if (rewardAmount > 0) {
+                    this.stats.totalEarnedGstd += rewardAmount;
+                    this.wallet.recordVerifiedEarning(rewardAmount, 'uptime', `Heartbeat reward (${result.reason || 'verified'})`);
+                    logActivity(`Earned ${rewardAmount.toFixed(4)} GSTD (uptime)`, 'success');
                 }
             }
         } catch (_e) {

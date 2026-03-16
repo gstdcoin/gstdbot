@@ -59,8 +59,8 @@ class NodeWallet {
         }
         // Fetch real balance from platform
         await this.refreshBalance();
-        // Heartbeat to backend every hour — backend calculates reward
-        setInterval(() => this.sendHeartbeat(), 60 * 60 * 1000);
+        // NOTE: Heartbeat is handled by SwarmAgent (swarm/agent.ts) — no duplicate here.
+        // Only wallet-level balance refresh and earnings persistence below.
         // Refresh balance from platform every 5 minutes
         setInterval(() => this.refreshBalance(), 5 * 60 * 1000);
         // Save earnings log periodically
@@ -122,32 +122,12 @@ class NodeWallet {
      * uptime, node status, and available reward pool.
      * Node does NOT self-award tokens.
      */
-    async sendHeartbeat() {
-        if (!this.wallet)
-            return;
-        try {
-            const resp = await fetch(`${this.config.swarm.apiUrl}/api/v1/nodes/heartbeat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    wallet_address: this.wallet.address,
-                    node_version: '3.3.0',
-                    uptime_hours: Math.floor(process.uptime() / 3600),
-                    queries_served: this.queriesServedSinceLastHeartbeat,
-                }),
-                signal: AbortSignal.timeout(10000),
-            }).catch(() => null);
-            if (resp?.ok) {
-                const data = await resp.json();
-                if (data.reward && data.reward > 0) {
-                    this.recordVerifiedEarning(data.reward, 'uptime', `Backend-verified reward (${data.reason || 'heartbeat'})`);
-                }
-                this.queriesServedSinceLastHeartbeat = 0;
-                (0, server_js_1.logActivity)(`Heartbeat sent, reward: ${data.reward || 0} GSTD`, 'info');
-            }
-        }
-        catch (_e) { }
-    }
+    /**
+     * Heartbeat is now centralized in SwarmAgent (swarm/agent.ts) to avoid
+     * triple-sending (index.ts + agent.ts + wallet.ts all had their own).
+     * The SwarmAgent calls wallet.recordVerifiedEarning() when backend
+     * returns a reward.
+     */
     // Track queries served for heartbeat reporting
     queriesServedSinceLastHeartbeat = 0;
     recordQueryServed() {

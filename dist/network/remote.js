@@ -195,7 +195,7 @@ class RemoteAccessManager {
             this.relayWs = new ws_1.default(url, {
                 headers: {
                     'X-Node-Id': this.nodeId,
-                    'X-Node-Version': '3.1.0',
+                    'X-Node-Version': require('../../package.json').version || '3.4.0',
                 },
             });
             this.relayWs.on('open', () => {

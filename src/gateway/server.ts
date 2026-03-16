@@ -328,7 +328,7 @@ export class OmegaGateway {
         this.app.get('/health', (_req, res) => {
             res.json({
                 status: 'ok',
-                version: '3.3.0',
+                version: require('../../package.json').version || '3.4.0',
                 uptime: process.uptime(),
                 activeSessions: this.sessions.count(),
                 connectedClients: this.clients.size,
@@ -547,9 +547,11 @@ export class OmegaGateway {
                 object: 'list',
                 data: [
                     { id: 'auto', object: 'model', owned_by: 'gstd-swarm', description: 'Sovereign neural router — auto-selects best model' },
-                    { id: 'gstd-flash', object: 'model', owned_by: 'gstd-swarm', description: 'Fast: qwen2.5-coder:7b' },
-                    { id: 'gstd-pro', object: 'model', owned_by: 'gstd-swarm', description: 'Balanced: llama3.1:8b' },
-                    { id: 'gstd-ultra', object: 'model', owned_by: 'gstd-swarm', description: 'Deep reasoning: deepseek-r1:14b' },
+                    { id: 'gstd-flash', object: 'model', owned_by: 'gstd-swarm', description: 'Fast: llama-3.1-8b-instant' },
+                    { id: 'gstd-pro', object: 'model', owned_by: 'gstd-swarm', description: 'Balanced: llama-3.3-70b-versatile' },
+                    { id: 'gstd-ultra', object: 'model', owned_by: 'gstd-swarm', description: 'Deep reasoning: qwen/qwen3-32b' },
+                    { id: 'llama-4-scout', object: 'model', owned_by: 'meta', description: 'Meta Llama 4 Scout 17B MoE' },
+                    { id: 'kimi-k2', object: 'model', owned_by: 'moonshot', description: 'Moonshot Kimi K2 Instruct' },
                     { id: 'cocoon-auto', object: 'model', owned_by: 'cocoon-tee', description: 'TEE confidential GPU compute' },
                 ],
             });
@@ -572,19 +574,69 @@ export class OmegaGateway {
             });
         });
 
-        // ─── Skills ──────────────────────────────────────────────
+        // ─── Skills (dynamic from filesystem) ────────────────────
+        // Cache skills list (refresh every 5 min)
+        let _skillsCache: any[] | null = null;
+        let _skillsCacheTime = 0;
+        const SKILLS_CACHE_TTL = 5 * 60 * 1000;
+
+        const loadSkills = (): any[] => {
+            const now = Date.now();
+            if (_skillsCache && (now - _skillsCacheTime) < SKILLS_CACHE_TTL) return _skillsCache;
+
+            // Skills dir: check Docker /app/skills, GSTD_INSTALL_DIR, and homedir
+            const candidateDirs = [
+                join(__dirname, '..', '..', 'skills'),                       // relative to dist/gateway/
+                join(process.env.GSTD_INSTALL_DIR || '', 'skills'),         // GSTD_INSTALL_DIR
+                join(require('os').homedir(), 'gstdbot', 'skills'),         // native install
+            ].filter(d => d && existsSync(d));
+            const skillsDir = candidateDirs[0] || join(require('os').homedir(), 'gstdbot', 'skills');
+            const skills: any[] = [];
+            try {
+                const { readdirSync } = require('fs');
+                const dirs = readdirSync(skillsDir, { withFileTypes: true })
+                    .filter((d: any) => d.isDirectory());
+
+                for (const dir of dirs) {
+                    const skillFile = join(skillsDir, dir.name, 'SKILL.md');
+                    if (!existsSync(skillFile)) continue;
+
+                    try {
+                        const content = readFileSync(skillFile, 'utf-8');
+                        // Parse YAML frontmatter
+                        const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+                        if (!fmMatch) continue;
+
+                        const fm = fmMatch[1];
+                        const getName = (key: string): string => {
+                            const m = fm.match(new RegExp(`^${key}:\\s*(.+)$`, 'm'));
+                            return m ? m[1].trim() : '';
+                        };
+
+                        skills.push({
+                            id: dir.name,
+                            name: getName('name') || getName('description')?.slice(0, 50) || dir.name,
+                            version: getName('version') || '1.0.0',
+                            price: parseFloat(getName('price')) || 0,
+                            currency: getName('currency') || 'GSTD',
+                            model: getName('model') || 'gstd-pro',
+                            active: true,
+                        });
+                    } catch (_e) { /* skip unreadable skill */ }
+                }
+            } catch (_e) { /* skills dir may not exist */ }
+
+            _skillsCache = skills;
+            _skillsCacheTime = now;
+            return skills;
+        };
+
         this.app.get('/v1/skills', (_req, res) => {
+            const skills = loadSkills();
             res.json({
                 object: 'list',
-                data: [
-                    { id: 'web-research', name: 'Web Researcher', version: '1.0.0', price: 0.02, active: true, users: 890 },
-                    { id: 'code-gen', name: 'Code Generator', version: '1.0.0', price: 0, active: true, users: 2400 },
-                    { id: 'defi-monitor', name: 'DeFi Monitor', version: '1.0.0', price: 0.01, active: true, users: 1200 },
-                    { id: 'planetary-signals', name: 'Planetary Signals', version: '1.0.0', price: 0.05, active: true, users: 450 },
-                    { id: 'content-writer', name: 'Content Writer', version: '1.0.0', price: 0.01, active: true, users: 1800 },
-                    { id: 'token-analyzer', name: 'Token Analyzer', version: '1.0.0', price: 0.03, active: true, users: 670 },
-                    { id: 'image-gen', name: 'Image Generator', version: '0.9.0', price: 0.1, active: true, users: 340, beta: true },
-                ],
+                total: skills.length,
+                data: skills,
             });
         });
 
@@ -1746,7 +1798,7 @@ export class OmegaGateway {
         this.app.get('/api/node/config', (_req, res) => {
             res.json({
                 nodeId: process.env.NODE_ID || 'unknown',
-                version: process.env.npm_package_version || '3.3.0',
+                version: process.env.npm_package_version || require('../../package.json').version || '3.4.0',
                 mode: process.env.AI_MODE || 'cloud',
                 platform: process.platform,
                 arch: process.arch,

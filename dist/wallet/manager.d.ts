@@ -61,7 +61,12 @@ export declare class NodeWallet {
      * uptime, node status, and available reward pool.
      * Node does NOT self-award tokens.
      */
-    private sendHeartbeat;
+    /**
+     * Heartbeat is now centralized in SwarmAgent (swarm/agent.ts) to avoid
+     * triple-sending (index.ts + agent.ts + wallet.ts all had their own).
+     * The SwarmAgent calls wallet.recordVerifiedEarning() when backend
+     * returns a reward.
+     */
     private queriesServedSinceLastHeartbeat;
     recordQueryServed(): void;
     private createWallet;
