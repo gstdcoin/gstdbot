@@ -3717,7 +3717,7 @@
             const el = document.getElementById('sov-tokenomics');
             if (el) {
               el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px">' +
-                '<div class="info-row"><span class="k">Max Supply</span><span class="v">' + (token.max_supply || 21000000).toLocaleString() + '</span></div>' +
+                '<div class="info-row"><span class="k">Max Supply</span><span class="v">' + (token.max_supply || 1000000000).toLocaleString() + '</span></div>' +
                 '<div class="info-row"><span class="k">Circulating</span><span class="v">' + (token.circulating_supply || 0).toFixed(2) + '</span></div>' +
                 '<div class="info-row"><span class="k">Burned</span><span class="v" style="color:var(--rose)">' + (token.total_burned || 0).toFixed(4) + '</span></div>' +
                 '<div class="info-row"><span class="k">Staked</span><span class="v" style="color:var(--accent)">' + (token.total_staked || 0).toFixed(2) + '</span></div>' +
