@@ -125,13 +125,18 @@ When a user's request matches a skill, activate it automatically.`;
     detectSkill(message) {
         const lower = message.toLowerCase();
         const skillPatterns = {
-            'code-gen': /\b(code|function|class|program|script|debug|implement|algorithm|refactor|typescript|python|javascript|rust|golang)\b/,
-            'web-research': /\b(research|search|find|article|paper|source|reference|news|latest|discover)\b/,
-            'defi-monitor': /\b(defi|liquidity|pool|yield|farming|apy|swap|dex|token price|whale|impermanent)\b/,
-            'content-writer': /\b(write|article|blog|content|copy|text|seo|headline|newsletter)\b/,
-            'token-analyzer': /\b(token|contract|holder|distribution|smart money|on.?chain|whale track|analyze.*token)\b/,
-            'planetary-signals': /\b(signal|threat|earthquake|weather|climate|disaster|global|planetary|warning)\b/,
-            'image-gen': /\b(image|picture|illustration|drawing|generate.*image|create.*img|visual)\b/,
+            'code-gen': /\b(code|function|class|program|script|debug|implement|algorithm|refactor|typescript|python|javascript|rust|golang|html|css|react|nextjs|docker|api)\b/,
+            'web-research': /\b(research|search|find|article|paper|source|reference|news|latest|discover|wikipedia|journal)\b/,
+            'defi-monitor': /\b(defi|liquidity|pool|yield|farming|apy|swap|dex|token price|whale|impermanent|amm|tvl)\b/,
+            'content-writer': /\b(write|article|blog|content|copy|text|seo|headline|newsletter|essay|report|summary|email)\b/,
+            'token-analyzer': /\b(token|contract|holder|distribution|smart money|on.?chain|whale track|analyze.*token|jetton|tokenomics)\b/,
+            'planetary-signals': /\b(signal|threat|earthquake|weather|climate|disaster|global|planetary|warning|monitor)\b/,
+            'image-gen': /\b(image|picture|illustration|drawing|generate.*image|create.*img|visual|logo|design)\b/,
+            'math-solver': /\b(calculate|solve|equation|integral|derivative|matrix|statistics|probability|percent|convert.*unit|formula)\b/,
+            'translator': /\b(translate|перевод|traduire|übersetzen|traducir|翻译|перевести)\b/,
+            'crypto-analyst': /\b(bitcoin|ethereum|solana|ton|blockchain|crypto|mining|staking|bridge|wallet|nft|dao|governance)\b/,
+            'devops': /\b(deploy|docker|kubernetes|nginx|ssl|server|ci.?cd|linux|ubuntu|systemd|pm2|logs)\b/,
+            'data-analyst': /\b(data|csv|json|excel|chart|graph|visualization|analytics|dashboard|pandas|sql|database)\b/,
         };
         for (const [skillId, pattern] of Object.entries(skillPatterns)) {
             if (pattern.test(lower)) {

@@ -315,6 +315,104 @@ export class TelegramChannel {
             await this.sendHelp(ctx);
         });
 
+        // ── /price — Live GSTD price ──
+        this.bot.command('price', async (ctx) => {
+            const lang = this.lang(ctx);
+            try {
+                const data = await this.apiCall('/api/v1/market/price');
+                const price = data.gstd_price_usd || 0;
+                const tonPrice = data.gstd_price_ton || 0;
+                const change24h = data.change_24h_pct || 0;
+                const changeIcon = change24h >= 0 ? '📈' : '📉';
+                const msg = lang === 'ru'
+                    ? `💰 <b>GSTD Цена</b>\n\n` +
+                      `💵 $${price > 0 ? price.toFixed(6) : 'N/A'}\n` +
+                      `💎 ${tonPrice > 0 ? tonPrice.toFixed(6) : 'N/A'} TON\n` +
+                      `${changeIcon} 24ч: ${change24h >= 0 ? '+' : ''}${change24h.toFixed(2)}%\n\n` +
+                      `<a href="https://app.ston.fi/swap?from=TON&to=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO">🔄 Купить на STON.fi</a>`
+                    : `💰 <b>GSTD Price</b>\n\n` +
+                      `💵 $${price > 0 ? price.toFixed(6) : 'N/A'}\n` +
+                      `💎 ${tonPrice > 0 ? tonPrice.toFixed(6) : 'N/A'} TON\n` +
+                      `${changeIcon} 24h: ${change24h >= 0 ? '+' : ''}${change24h.toFixed(2)}%\n\n` +
+                      `<a href="https://app.ston.fi/swap?from=TON&to=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO">🔄 Buy on STON.fi</a>`;
+                await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
+            } catch (_e) {
+                await ctx.reply(lang === 'ru' ? '❌ Ошибка загрузки цены' : '❌ Error loading price');
+            }
+        });
+
+        // ── /gstd — About the platform ──
+        this.bot.command('gstd', async (ctx) => {
+            const lang = this.lang(ctx);
+            const msg = lang === 'ru'
+                ? `🐝 <b>GSTD — Суверенная ИИ-Сеть</b>\n\n` +
+                  `🧠 8 бесплатных ИИ-моделей\n` +
+                  `⛏ Заработок через ноды (Desktop + Mobile)\n` +
+                  `🔗 P2P мост между TON · Solana · XRPL\n` +
+                  `🥩 Стейкинг до 36% APY\n` +
+                  `🏛 Суверенное управление (DAO)\n` +
+                  `🔐 163 навыка для ИИ-агентов\n\n` +
+                  `🌐 <a href="https://app.gstdtoken.com">Приложение</a> · <a href="https://gstdbot.gstdtoken.com">Node OS</a>`
+                : `🐝 <b>GSTD — Sovereign AI Network</b>\n\n` +
+                  `🧠 8 free AI models\n` +
+                  `⛏ Earn via nodes (Desktop + Mobile)\n` +
+                  `🔗 P2P bridge: TON · Solana · XRPL\n` +
+                  `🥩 Staking up to 36% APY\n` +
+                  `🏛 Sovereign governance (DAO)\n` +
+                  `🔐 163 AI agent skills\n\n` +
+                  `🌐 <a href="https://app.gstdtoken.com">App</a> · <a href="https://gstdbot.gstdtoken.com">Node OS</a>`;
+            await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
+        });
+
+        // ── /buy — How to buy GSTD ──
+        this.bot.command('buy', async (ctx) => {
+            const lang = this.lang(ctx);
+            if (ctx.chat?.type === 'private') {
+                return this.handleTopUp(ctx, lang);
+            }
+            const msg = lang === 'ru'
+                ? `💰 <b>Как купить GSTD</b>\n\n` +
+                  `1️⃣ <b>Telegram Stars</b> — прямо в боте, кнопка ⭐️ Пополнить\n` +
+                  `2️⃣ <b>STON.fi DEX</b> — обмен TON → GSTD\n` +
+                  `3️⃣ <b>P2P мост</b> — из Solana или XRPL\n\n` +
+                  `👉 <a href="https://t.me/GstdAppBot?start=buy">Купить в боте</a>`
+                : `💰 <b>How to Buy GSTD</b>\n\n` +
+                  `1️⃣ <b>Telegram Stars</b> — directly in bot, ⭐️ Top Up button\n` +
+                  `2️⃣ <b>STON.fi DEX</b> — swap TON → GSTD\n` +
+                  `3️⃣ <b>P2P Bridge</b> — from Solana or XRPL\n\n` +
+                  `👉 <a href="https://t.me/GstdAppBot?start=buy">Buy in bot</a>`;
+            await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
+        });
+
+        // ── /stats — Network statistics ──
+        this.bot.command('stats', async (ctx) => {
+            const lang = this.lang(ctx);
+            try {
+                const [health, staking] = await Promise.all([
+                    this.apiCall('/api/v1/health').catch(() => ({})),
+                    this.apiCall('/api/v1/staking/info').catch(() => ({ platform: {} })),
+                ]);
+                const contract = health.contract || {};
+                const platform = staking.platform || {};
+                const msg = lang === 'ru'
+                    ? `📊 <b>Статистика GSTD</b>\n\n` +
+                      `🏥 Статус: <b>${health.status === 'healthy' ? '✅ Онлайн' : '⚠️ Проблемы'}</b>\n` +
+                      `💎 TON баланс контракта: <b>${(contract.balance_ton || 0).toFixed(2)} TON</b>\n` +
+                      `🧠 ИИ: <b>${health.sovereign_ai?.inference || 'Groq Cloud'}</b>\n` +
+                      `🥩 APY стейкинга: <b>${platform.apy || 12}%</b>\n` +
+                      `🔒 Мин. стейк: <b>${platform.min_stake || 1} GSTD</b>`
+                    : `📊 <b>GSTD Statistics</b>\n\n` +
+                      `🏥 Status: <b>${health.status === 'healthy' ? '✅ Online' : '⚠️ Issues'}</b>\n` +
+                      `💎 Contract TON: <b>${(contract.balance_ton || 0).toFixed(2)} TON</b>\n` +
+                      `🧠 AI: <b>${health.sovereign_ai?.inference || 'Groq Cloud'}</b>\n` +
+                      `🥩 Staking APY: <b>${platform.apy || 12}%</b>\n` +
+                      `🔒 Min. stake: <b>${platform.min_stake || 1} GSTD</b>`;
+                await ctx.reply(msg, { parse_mode: 'HTML' });
+            } catch (_e) {
+                await ctx.reply(lang === 'ru' ? '❌ Ошибка загрузки статистики' : '❌ Error loading stats');
+            }
+        });
+
         // ── /apikey ──
         this.bot.command('apikey', async (ctx) => {
             if (ctx.chat?.type !== 'private') return;
@@ -484,7 +582,24 @@ export class TelegramChannel {
 
             const basePrompt = isGroup
                 ? 'You are GSTD Sovereign AI in a community group chat. Be helpful and concise. Use markdown formatting. Respond in the user\'s language. Keep answers focused and under 300 words. Cite sources for facts.'
-                : 'You are GSTD Sovereign AI — a decentralized intelligence engine with Collective Memory (36,000+ verified facts). PROTOCOL: 1) Decompose questions into sub-problems. 2) Cite evidence for facts. 3) Use markdown: **bold**, `code`, lists. 4) Explain WHY not just WHAT. 5) Respond in the user\'s language. Be thorough, precise, and genuinely helpful. Your free-mode quality target is to outperform the combined practical usefulness of leading commercial assistants.';
+                : `You are GSTD Sovereign AI — a decentralized intelligence engine with Collective Memory (36,000+ verified facts).
+
+BUILT-IN SKILLS (activate automatically when relevant):
+🧮 MATH & CALCULATIONS: Solve equations, unit conversions, percentages, statistics. Show work step by step.
+💻 CODE: Write, debug, explain code in any language. Always include language tag in code blocks.
+🌍 TRANSLATION: Translate between any languages. Explain cultural nuances when relevant.
+📊 CRYPTO & DeFi: Explain blockchain concepts, tokenomics, staking, yield farming, AMMs, bridges.
+🐝 GSTD KNOWLEDGE: GSTD is a sovereign AI network on TON blockchain. Token: EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO. Features: 8 free AI models, node mining, P2P bridge (TON/Solana/XRPL), staking (12% APY), 163 AI skills, governance DAO. Buy via STON.fi DEX or Telegram Stars in bot. Run nodes via gstdbot.gstdtoken.com or mobile TMA.
+📝 WRITING: Articles, summaries, essays, emails, reports. Adapt tone to context.
+🔬 RESEARCH: Analyze topics in depth, cite sources, compare viewpoints.
+
+PROTOCOL:
+1) Decompose questions into sub-problems.
+2) Cite evidence for facts.
+3) Use markdown: **bold**, \`code\`, lists.
+4) Explain WHY not just WHAT.
+5) Respond in the user's language.
+Be thorough, precise, and genuinely helpful. Your free-mode quality target is to outperform the combined practical usefulness of leading commercial assistants.`;
 
             // Inject factuality prompt (same as chat.gstdtoken.com)
             const systemPrompt = FACTUALITY_PROMPT + '\n\n' + basePrompt;
