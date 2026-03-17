@@ -3,7 +3,7 @@
 > **Sovereign AI Platform** — Your Personal Decentralized AI Node.  
 > Run AI models, earn GSTD tokens, join the collective intelligence swarm.
 
-[![Version](https://img.shields.io/badge/version-3.3.0-8b5cf6)](https://github.com/gstdcoin/gstdbot/releases)
+[![Version](https://img.shields.io/badge/version-3.4.0-8b5cf6)](https://github.com/gstdcoin/gstdbot/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-22c55e)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-06b6d4)](https://nodejs.org)
 
@@ -17,7 +17,7 @@ curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
 
 ```
 Your Hardware
-├── 📊 Dashboard (localhost:8091) — full node control panel with wallet/PIN auth
+├── 📊 Dashboard (localhost:8080) — full node control panel with wallet/PIN auth
 ├── 🤖 AI Engine — 8 Groq models + local Ollama + OpenClaw gateway
 ├── 🌐 Swarm Agent — P2P task processing → earn GSTD
 ├── 🧠 Collective Memory — Redis + ChromaDB, shared knowledge across nodes
@@ -99,7 +99,7 @@ npx tsc
 node dist/index.js
 ```
 
-After starting, open **http://localhost:8091** for the control panel.
+After starting, open **http://localhost:8080** for the control panel.
 
 ## 📦 App Store (77 apps, 11 ⭐ Premium)
 
@@ -173,7 +173,7 @@ Additional features: 💳 Balance, 💰 Top Up (Telegram Stars), 🔗 Link Walle
 
 ## 🔌 API Reference
 
-All endpoints available at `http://localhost:8091`
+All endpoints available at `http://localhost:8080`
 
 ### AI Chat
 
