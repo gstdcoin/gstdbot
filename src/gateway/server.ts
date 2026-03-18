@@ -1592,9 +1592,14 @@ export class OmegaGateway {
                     return;
                 }
             }
-            const ok = await this.appManager.install(appId);
-            logActivity(`App ${appId}: ${ok ? 'installed' : 'install failed'}`, ok ? 'success' : 'error');
-            res.json({ ok, message: ok ? `${appId} installed` : `Failed to install ${appId}` });
+            // Respond immediately — install runs in background
+            res.json({ ok: true, message: `Installing ${appId}...`, installing: true });
+            // Run install in background (frontend polls /api/apps/progress)
+            this.appManager.install(appId).then(ok => {
+                logActivity(`App ${appId}: ${ok ? 'installed ✓' : 'install failed'}`, ok ? 'success' : 'error');
+            }).catch(err => {
+                logActivity(`App ${appId} install error: ${err.message}`, 'error');
+            });
         });
 
         this.app.post('/api/apps/uninstall', async (req, res) => {
