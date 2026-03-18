@@ -765,15 +765,13 @@ const BUILTIN_APPS: AppManifest[] = [
     {
         id: 'openclaw',
         name: 'OpenClaw AI Gateway',
-        version: '2.0.0',
-        description: 'Full OpenClaw installation. Multi-provider AI gateway: OpenAI, Anthropic, Groq, Mistral, Gemini. All queries feed collective memory for swarm training.',
+        version: '2.1.0',
+        description: 'Full OpenClaw robot control panel. Manage agents, tasks, and use groq/compound AI for robot planning. Dashboard, agent list, task marketplace, compound model inference.',
         icon: '🦞',
         author: 'OpenClaw',
         category: 'ai',
         port: 3120,
         gstd_cost: 0,
-        premium: true,
-        docker: { image: 'ghcr.io/lobehub/lobe-chat:latest', ports: ['3120:3210'], volumes: ['openclaw_data:/root/.lobe-chat'], environment: {} },
     },
     {
         id: 'gstd-aihub',

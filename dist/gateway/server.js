@@ -3157,6 +3157,178 @@ const d=await r.json();const reply=d.choices?.[0]?.message?.content||'';out.text
 if(window.speechSynthesis){const u=new SpeechSynthesisUtterance(reply);u.rate=1;speechSynthesis.speak(u)}}catch(e){out.textContent='Error: '+e.message}}
 </script>`);
         }
+        // ═══ OpenClaw Control Panel ═══
+        if (id === 'openclaw') {
+            return this.appPageShell(id, `${icon} ${name}`, `
+<style>
+.oc-tabs{display:flex;gap:4px;padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto}
+.oc-tab{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--muted);transition:all 0.2s}
+.oc-tab.active{background:rgba(249,115,22,0.12);color:#f97316}
+.oc-tab:hover:not(.active){background:rgba(255,255,255,0.04);color:var(--text)}
+.oc-stat{text-align:center;padding:16px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,0.02)}
+.oc-stat .v{font-size:22px;font-weight:900;margin:4px 0}
+.oc-stat .l{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:700}
+.oc-card{padding:14px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,0.02);margin-bottom:8px;transition:border-color 0.2s}
+.oc-card:hover{border-color:rgba(255,255,255,0.1)}
+.oc-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase}
+.oc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+#oc-content{flex:1;overflow-y:auto}
+.oc-btn{padding:7px 14px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(249,115,22,0.3);background:rgba(249,115,22,0.1);color:#f97316;transition:all 0.2s}
+.oc-btn:hover{background:rgba(249,115,22,0.2)}
+</style>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+  <span style="font-size:28px">\ud83e\udd9e</span>
+  <div>
+    <div style="font-size:15px;font-weight:800">OpenClaw Control Panel</div>
+    <div style="font-size:10px;color:var(--muted)">openclaw-gstd/1.0 \u2022 Default: groq/compound</div>
+  </div>
+  <div style="margin-left:auto"><span class="oc-badge" style="background:rgba(16,185,129,0.1);color:#10b981">LIVE</span></div>
+</div>
+<div class="oc-tabs">
+  <button class="oc-tab active" onclick="ocTab('dashboard')">Dashboard</button>
+  <button class="oc-tab" onclick="ocTab('agents')">\ud83e\udd16 Agents</button>
+  <button class="oc-tab" onclick="ocTab('tasks')">\u26a1 Tasks</button>
+  <button class="oc-tab" onclick="ocTab('think')">\ud83e\udde0 Compound AI</button>
+  <button class="oc-tab" onclick="ocTab('models')">\u2699\ufe0f Models</button>
+</div>
+<div id="oc-content"></div>
+<script>
+const OC_API=window.GSTD_API||'https://app.gstdtoken.com';
+let ocData={};
+function ocTab(tab) {
+  document.querySelectorAll('.oc-tab').forEach(t=>t.classList.remove('active'));
+  event.target.classList.add('active');
+  if(tab==='dashboard') loadOcDash();
+  else if(tab==='agents') loadOcAgents();
+  else if(tab==='tasks') loadOcTasks();
+  else if(tab==='think') showOcThink();
+  else if(tab==='models') loadOcModels();
+}
+async function loadOcDash(){
+  const c=document.getElementById('oc-content');
+  c.innerHTML='<div style="text-align:center;color:var(--muted);padding:32px">Loading...</div>';
+  try{
+    const r=await fetch(OC_API+'/api/v1/openclaw/dashboard');
+    const d=await r.json();ocData=d;
+    c.innerHTML=\`
+      <div class="oc-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+        <div class="oc-stat"><div style="font-size:20px">\ud83e\udd16</div><div class="v" style="color:#22d3ee">\${d.agents?.total||0}</div><div class="l">Total Agents</div></div>
+        <div class="oc-stat"><div style="font-size:20px">\ud83d\udfe2</div><div class="v" style="color:#34d399">\${d.agents?.online||0}</div><div class="l">Online Now</div></div>
+        <div class="oc-stat"><div style="font-size:20px">\u26a1</div><div class="v" style="color:#facc15">\${d.tasks?.open||0}</div><div class="l">Open Tasks</div></div>
+        <div class="oc-stat"><div style="font-size:20px">\ud83d\udc8e</div><div class="v" style="color:#a78bfa">\${(d.total_earned_gstd||0).toFixed(2)}</div><div class="l">Total Earned</div></div>
+      </div>
+      <div class="oc-card">
+        <div style="font-size:12px;font-weight:700;margin-bottom:10px">\ud83d\udcca Task Statistics</div>
+        <div style="display:flex;gap:24px;justify-content:center">
+          <div style="text-align:center"><div style="font-size:18px;font-weight:900;color:#60a5fa">\${d.tasks?.total||0}</div><div class="l">Total</div></div>
+          <div style="text-align:center"><div style="font-size:18px;font-weight:900;color:#facc15">\${d.tasks?.open||0}</div><div class="l">Open</div></div>
+          <div style="text-align:center"><div style="font-size:18px;font-weight:900;color:#34d399">\${d.tasks?.completed||0}</div><div class="l">Done</div></div>
+        </div>
+        \${d.tasks?.total>0?'<div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.05);margin-top:12px;overflow:hidden"><div style="height:100%;border-radius:3px;background:linear-gradient(90deg,#34d399,#60a5fa);width:'+Math.min((d.tasks?.completed/d.tasks?.total)*100,100)+'%;transition:width 0.5s"></div></div>':''}
+      </div>
+      <div class="oc-card">
+        <div style="font-size:12px;font-weight:700;margin-bottom:10px">\ud83d\udee1\ufe0f RPC Capabilities</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          \${(d.capabilities||[]).map(c=>'<span style="font-size:10px;padding:3px 8px;border-radius:6px;background:rgba(139,92,246,0.1);color:#a78bfa;font-family:monospace;font-weight:600">'+c+'</span>').join('')}
+        </div>
+      </div>\`;
+  }catch(e){c.innerHTML='<div style="color:var(--rose);padding:32px;text-align:center">Failed to load: '+e.message+'</div>';}
+}
+async function loadOcAgents(){
+  const c=document.getElementById('oc-content');
+  c.innerHTML='<div style="text-align:center;color:var(--muted);padding:32px">Loading agents...</div>';
+  try{
+    const r=await fetch(OC_API+'/api/v1/openclaw/agents');
+    const d=await r.json();
+    const agents=d.agents||[];
+    if(agents.length===0){c.innerHTML='<div style="text-align:center;padding:48px;color:var(--muted)"><div style="font-size:40px;margin-bottom:12px;opacity:0.3">\ud83e\udd16</div>No agents registered yet<div style="font-size:10px;margin-top:4px">Agents register via claw.register RPC</div></div>';return;}
+    c.innerHTML=agents.map(a=>{
+      const sc=a.status==='online'?'#34d399':a.status==='busy'?'#facc15':'#ef4444';
+      return '<div class="oc-card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:8px;height:8px;border-radius:50%;background:'+sc+'"></div><span style="font-family:monospace;font-weight:700;font-size:12px">'+a.agent_id+'</span><span class="oc-badge" style="background:'+sc+'15;color:'+sc+'">'+a.status+'</span><span style="margin-left:auto;font-size:10px;color:var(--muted)">'+(a.agent_type||'generic')+'</span></div><div style="display:flex;gap:12px;font-size:10px;color:var(--muted)"><span>Tasks: <b style="color:var(--text)">'+a.total_tasks+'</b></span><span>Earned: <b style="color:#34d399">'+a.total_earned.toFixed(4)+' GSTD</b></span><span>Trust: <b style="color:#facc15">'+Math.round(a.trust_score*100)+'%</b></span></div></div>';
+    }).join('');
+  }catch(e){c.innerHTML='<div style="color:var(--rose);padding:32px;text-align:center">Failed: '+e.message+'</div>';}
+}
+async function loadOcTasks(){
+  const c=document.getElementById('oc-content');
+  c.innerHTML='<div style="text-align:center;color:var(--muted);padding:32px">Loading tasks...</div>';
+  try{
+    const r=await fetch(OC_API+'/api/v1/openclaw/tasks');
+    const d=await r.json();
+    const tasks=d.tasks||[];
+    let html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-size:13px;font-weight:700">Task Marketplace ('+tasks.length+')</span><button class="oc-btn" onclick="toggleCreateTask()">+ New Task</button></div>';
+    html+='<div id="create-task-form" style="display:none;margin-bottom:12px" class="oc-card"><div style="font-size:12px;font-weight:700;color:#f97316;margin-bottom:10px">Create New Task</div><select id="ct-type" style="width:100%;margin-bottom:6px"><option value="pick_and_place">Pick & Place</option><option value="inspect">Inspect</option><option value="navigate">Navigate</option><option value="custom">Custom</option><option value="text-processing">Text Processing</option></select><textarea id="ct-desc" placeholder="Description..." style="width:100%;height:50px;margin-bottom:6px;box-sizing:border-box"></textarea><div style="display:flex;gap:6px"><input id="ct-reward" type="number" value="1.0" step="0.1" min="0" placeholder="Reward GSTD" style="flex:1"><button class="oc-btn" onclick="createOcTask()">Create</button></div></div>';
+    if(tasks.length===0){html+='<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:36px;opacity:0.3;margin-bottom:8px">\u26a1</div>No tasks yet</div>';}
+    else{tasks.forEach(t=>{
+      const sc=t.status==='completed'?'#34d399':t.status==='open'?'#facc15':t.status==='claimed'?'#60a5fa':'#ef4444';
+      html+='<div class="oc-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="display:flex;gap:6px;align-items:center"><span class="oc-badge" style="background:'+sc+'15;color:'+sc+'">'+t.status+'</span><span style="font-size:10px;color:var(--muted);font-family:monospace">'+t.task_id.slice(0,20)+'...</span></div><span style="font-size:14px;font-weight:900;color:#a78bfa">'+t.reward_gstd+' <span style="font-size:9px">GSTD</span></span></div><p style="font-size:12px;color:var(--text);margin:4px 0">'+t.description+'</p><div style="display:flex;gap:10px;font-size:9px;color:var(--muted)"><span>Type: '+t.task_type+'</span>'+(t.assigned_agent?'<span>Agent: '+t.assigned_agent.slice(0,12)+'...</span>':'')+'<span>'+new Date(t.created_at).toLocaleString()+'</span></div></div>';
+    });}
+    c.innerHTML=html;
+  }catch(e){c.innerHTML='<div style="color:var(--rose);padding:32px;text-align:center">Failed: '+e.message+'</div>';}
+}
+function toggleCreateTask(){const f=document.getElementById('create-task-form');f.style.display=f.style.display==='none'?'block':'none';}
+async function createOcTask(){
+  try{
+    const r=await fetch(OC_API+'/api/v1/openclaw/tasks',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({task_type:document.getElementById('ct-type').value,description:document.getElementById('ct-desc').value,reward_gstd:parseFloat(document.getElementById('ct-reward').value)||1.0})});
+    const d=await r.json();
+    if(d.task_id){document.getElementById('ct-desc').value='';toggleCreateTask();loadOcTasks();}
+  }catch(e){alert('Error: '+e.message);}
+}
+function showOcThink(){
+  const c=document.getElementById('oc-content');
+  c.innerHTML=\`
+    <div style="margin-bottom:12px"><span style="font-size:13px;font-weight:700">\ud83e\udde0 Compound AI \u2014 Robot Planning</span></div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Use <b style="color:#f97316">groq/compound</b> for multi-step reasoning, web search, and robot planning.</p>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:10px;color:var(--muted);font-weight:700">MODEL:</span>
+      <select id="oc-model" style="width:auto">
+        <option value="groq/compound">groq/compound (Default)</option>
+        <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
+        <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout</option>
+        <option value="moonshotai/kimi-k2-instruct">Kimi K2</option>
+        <option value="qwen/qwen3-32b">Qwen3 32B</option>
+      </select>
+    </div>
+    <div style="position:relative;margin-bottom:12px">
+      <textarea id="oc-prompt" placeholder="Describe the robot task or ask for planning advice..." style="width:100%;height:100px;box-sizing:border-box;font-size:13px"></textarea>
+      <button onclick="ocThink()" class="oc-btn" style="position:absolute;bottom:8px;right:8px">\u27a4 Send</button>
+    </div>
+    <div id="oc-result"></div>
+    <div style="margin-top:16px"><span style="font-size:10px;color:var(--muted);font-weight:700">QUICK PROMPTS:</span>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+      <button onclick="document.getElementById('oc-prompt').value=this.textContent;document.getElementById('oc-prompt').focus()" style="font-size:10px;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.04);color:var(--muted);border:1px solid var(--border);cursor:pointer">Plan a pick-and-place sequence for sorting objects by color</button>
+      <button onclick="document.getElementById('oc-prompt').value=this.textContent;document.getElementById('oc-prompt').focus()" style="font-size:10px;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.04);color:var(--muted);border:1px solid var(--border);cursor:pointer">Analyze warehouse layout and suggest optimal robot pathfinding</button>
+      <button onclick="document.getElementById('oc-prompt').value=this.textContent;document.getElementById('oc-prompt').focus()" style="font-size:10px;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.04);color:var(--muted);border:1px solid var(--border);cursor:pointer">Generate a safety inspection checklist for industrial robots</button>
+    </div></div>\`;
+}
+async function ocThink(){
+  const prompt=document.getElementById('oc-prompt').value;if(!prompt)return;
+  const model=document.getElementById('oc-model').value;
+  const out=document.getElementById('oc-result');
+  out.innerHTML='<div class="oc-card" style="border-color:rgba(249,115,22,0.2);text-align:center;padding:20px;color:#f97316">Thinking with '+model+'...</div>';
+  try{
+    const r=await fetch(OC_API+'/api/v1/openclaw/think',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,model})});
+    const d=await r.json();
+    let text=d.error||'';if(!text){const res=d.result;text=typeof res==='object'&&res.response?res.response:typeof res==='string'?res:JSON.stringify(res,null,2);}
+    out.innerHTML='<div class="oc-card" style="border-color:rgba(249,115,22,0.15)"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:#f97316;text-transform:uppercase;letter-spacing:1px">Response \u2014 '+model+'</span></div><div style="font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap">'+text.replace(/</g,'&lt;')+'</div></div>';
+  }catch(e){out.innerHTML='<div style="color:var(--rose);padding:16px">Error: '+e.message+'</div>';}
+}
+async function loadOcModels(){
+  const c=document.getElementById('oc-content');
+  c.innerHTML='<div style="text-align:center;color:var(--muted);padding:32px">Loading models...</div>';
+  try{
+    const r=await fetch(OC_API+'/api/v1/openclaw/models');
+    const d=await r.json();
+    const models=d.models||[];
+    c.innerHTML=models.map(m=>'<div class="oc-card" style="'+(m.default?'border-color:rgba(249,115,22,0.2);background:rgba(249,115,22,0.02)':'')+'"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="display:flex;gap:6px;align-items:center"><span style="font-size:13px;font-weight:700">'+m.name+'</span>'+(m.default?'<span class="oc-badge" style="background:rgba(249,115,22,0.12);color:#f97316">DEFAULT</span>':'')+'</div><span style="font-size:10px;color:var(--muted);font-family:monospace">'+m.id+'</span></div><p style="font-size:11px;color:var(--muted);margin:4px 0">'+m.description+'</p><div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">'+m.capabilities.map(c=>'<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,0.04);color:var(--muted)">'+c+'</span>').join('')+'</div></div>').join('');
+  }catch(e){c.innerHTML='<div style="color:var(--rose);padding:32px;text-align:center">Failed: '+e.message+'</div>';}
+}
+// Auto-load dashboard
+loadOcDash();
+// Auto-refresh every 15s
+setInterval(()=>{if(document.querySelector('.oc-tab.active')?.textContent==='Dashboard')loadOcDash();},15000);
+</script>`);
+        }
         // ═══ Default: Generic App Template ═══
         return this.appPageShell(id, `${icon} ${name}`, `
 <div style="max-width:700px;margin:40px auto;text-align:center">
