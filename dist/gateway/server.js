@@ -1346,6 +1346,30 @@ class OmegaGateway {
                 res.json({ nodes: [], total_nodes: 0, total_pending: 0 });
             }
         });
+        // GET /api/node/rewards — full reward info (tier, streak, earnings)
+        this.app.get('/api/node/rewards', async (req, res) => {
+            const wallet = req.query.wallet || this.wallet?.getAddress() || '';
+            if (!wallet) {
+                res.json({ registered: false, tier: { name: 'bronze' }, streak: { days: 0 }, earnings: { total: 0, today: 0 }, stats: { effective_rate_per_h: 0.5 } });
+                return;
+            }
+            try {
+                const resp = await fetch(`${this.config.swarmUrl}/api/v1/nodes/rewards?wallet=${wallet}`, { signal: AbortSignal.timeout(10000) });
+                const data = await resp.json();
+                res.json({ registered: true, ...data });
+            }
+            catch (_e) {
+                // Fallback with local data
+                const earnings = this.wallet?.getEarnings?.() || { total: 0, today: 0 };
+                res.json({
+                    registered: true,
+                    tier: { name: 'bronze', level: 1 },
+                    streak: { days: 0 },
+                    earnings: { total: earnings.total || 0, today: earnings.today || 0 },
+                    stats: { effective_rate_per_h: 0.5, uptime_hours: process.uptime() / 3600 },
+                });
+            }
+        });
         // GET /api/node/pending-rewards — get unclaimed rewards
         this.app.get('/api/node/pending-rewards', async (req, res) => {
             const wallet = req.query.wallet || this.wallet?.getAddress() || '';

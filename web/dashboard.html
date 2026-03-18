@@ -3349,11 +3349,33 @@
         const q = document.getElementById("mem-search").value.trim();
         if (!q) return;
         const el = document.getElementById("mem-results");
-        el.innerHTML =
-          '<div style="color:var(--muted);font-size:12px;">Searching...</div>';
-        // For now, display placeholder
-        el.innerHTML =
-          '<div style="color:var(--muted);font-size:12px;margin-top:8px;">Memory search will query L1 + L2 + L3 layers. Feature connecting...</div>';
+        el.innerHTML = '<div style="color:var(--muted);font-size:12px;">🔍 Searching L1 + L2 + L3...</div>';
+        try {
+          const r = await fetch(API + "/api/memory/recall", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: q, limit: 20 }),
+          });
+          const d = await r.json();
+          if (d.error) {
+            el.innerHTML = '<div style="color:var(--rose);font-size:12px;">⚠ ' + d.error + '</div>';
+            return;
+          }
+          const results = d.results || [];
+          if (results.length === 0) {
+            el.innerHTML = '<div style="color:var(--muted);font-size:12px;">No results found for "' + q + '"</div>';
+            return;
+          }
+          el.innerHTML = results.map(function(r) {
+            return '<div style="padding:8px 12px;margin-bottom:4px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);font-size:12px;">' +
+              '<div style="color:var(--emerald);font-weight:700;font-size:10px;margin-bottom:4px;">' + (r.key || r.id || 'entry') + '</div>' +
+              '<div style="color:var(--fg)">' + (typeof r.value === 'string' ? r.value : JSON.stringify(r.value)).slice(0, 200) + '</div>' +
+              (r.tags ? '<div style="margin-top:4px;">' + r.tags.map(function(t) { return '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:rgba(139,92,246,0.15);color:#a78bfa;margin-right:4px;">' + t + '</span>'; }).join('') + '</div>' : '') +
+              '</div>';
+          }).join('');
+        } catch (e) {
+          el.innerHTML = '<div style="color:var(--rose);font-size:12px;">❌ ' + e.message + '</div>';
+        }
       }
 
       // ─── Active install progress trackers ───
