@@ -83,8 +83,9 @@ export class TonConnectManager {
      */
     async init(mnemonic?: string[]): Promise<void> {
         try {
-            // Dynamic import — @ton/walletkit is ESM-only
-            const walletkit = await import('@ton/walletkit');
+            // CJS require — @ton/walletkit ESM bundle is broken (0.0.10 has missing dist/esm/core/TonWalletKit)
+            // CJS works correctly via dist/cjs/index.js
+            const walletkit = require('@ton/walletkit') as any;
             const {
                 TonWalletKit,
                 Signer,
@@ -299,11 +300,12 @@ export class TonConnectManager {
 
             // Try to get GSTD jetton balance 
             if (this.kit?.jettons) {
-                const info = this.kit.jettons.getJettonInfo(
-                    this.config.gstdJettonAddress,
-                    this.config.network === 'testnet' 
-                        ? (await import('@ton/walletkit')).Network.testnet()
-                        : (await import('@ton/walletkit')).Network.mainnet()
+                    const { Network } = require('@ton/walletkit') as any;
+                    const info = this.kit.jettons.getJettonInfo(
+                        this.config.gstdJettonAddress,
+                        this.config.network === 'testnet' 
+                            ? Network.testnet()
+                            : Network.mainnet()
                 );
                 if (info?.balance) {
                     this.state.balance.gstd = (Number(info.balance) / 1e9).toFixed(4);
