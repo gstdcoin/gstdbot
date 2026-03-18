@@ -12,7 +12,7 @@
 # ═══════════════════════════════════════════════════════════════
 set -euo pipefail
 
-VERSION="3.3.0"
+VERSION="3.4.0"
 INSTALL_DIR="${GSTD_INSTALL_DIR:-$HOME/gstdbot}"
 CONFIG_DIR="$HOME/.config/gstdbot"
 STATE_FILE="$CONFIG_DIR/.install_state"

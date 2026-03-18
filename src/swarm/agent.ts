@@ -284,6 +284,16 @@ export class SwarmAgent {
                     this.wallet.recordVerifiedEarning(rewardAmount, 'uptime', `Heartbeat reward (${result.reason || 'verified'})`);
                     logActivity(`Earned ${rewardAmount.toFixed(4)} GSTD (uptime)`, 'success');
                 }
+
+                // ─── OTA Update Check ────────────────────────────
+                if (result.update?.update_available) {
+                    logActivity(`⬆️ Update available: v${result.update.latest_version} (current: ${this.config.version})`, 'warn');
+                    console.log(`\n  🔄 Update available: v${result.update.latest_version}`);
+                    console.log(`     Run: curl -fsSL ${result.update.update_url} | bash`);
+                    
+                    // Auto-update if git is available (non-Docker installs)
+                    this.tryAutoUpdate().catch(() => {});
+                }
             }
         } catch (_e) {
             if (this.connected) {
@@ -291,6 +301,56 @@ export class SwarmAgent {
                 this.stats.connected = false;
                 logActivity('Heartbeat failed — connection lost', 'error');
             }
+        }
+    }
+
+    // ─── OTA Auto-Update (for remote bare-metal nodes) ───────────
+    private updateAttempted = false;
+    private async tryAutoUpdate(): Promise<void> {
+        if (this.updateAttempted) return; // Only try once per session
+        this.updateAttempted = true;
+
+        try {
+            const { execSync } = require('child_process');
+            const installDir = this.config.installDir || require('os').homedir() + '/gstdbot';
+            const fs = require('fs');
+
+            // Skip in Docker (no git, managed externally)
+            if (fs.existsSync('/.dockerenv')) {
+                logActivity('Update available but running in Docker — skip auto-update', 'info');
+                return;
+            }
+
+            // Must have .git directory
+            if (!fs.existsSync(installDir + '/.git')) {
+                logActivity('Update available but no .git — run install.sh manually', 'warn');
+                return;
+            }
+
+            logActivity('⬆️ Starting auto-update...', 'info');
+            console.log('  🔄 Auto-updating from GitHub...');
+
+            // Pull latest code
+            execSync('git fetch origin main --quiet 2>/dev/null', { cwd: installDir, timeout: 30000 });
+            const local = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
+            const remote = execSync('git rev-parse origin/main', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
+
+            if (local === remote) {
+                logActivity('Already at latest commit — no update needed', 'info');
+                return;
+            }
+
+            execSync('git reset --hard origin/main', { cwd: installDir, timeout: 30000 });
+            execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 120000 });
+            execSync('npx tsc --skipLibCheck 2>/dev/null || npx tsc 2>/dev/null', { cwd: installDir, timeout: 60000 });
+
+            logActivity('✅ Update installed — restarting node...', 'success');
+            console.log('  ✅ Update installed. Restarting...');
+
+            // Systemd will restart us, or pm2, or the user manually
+            process.exit(0);
+        } catch (e: any) {
+            logActivity(`Auto-update failed: ${e.message || 'unknown'} — run install.sh manually`, 'error');
         }
     }
 
