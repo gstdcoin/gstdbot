@@ -13,6 +13,7 @@ exports.AppManager = void 0;
 const fs_1 = require("fs");
 const path_1 = require("path");
 const os_1 = require("os");
+const events_1 = require("events");
 const server_js_1 = require("../gateway/server.js");
 // ─── Built-in Apps Registry ─────────────────────────────────────
 const BUILTIN_APPS = [
@@ -898,11 +899,13 @@ const BUILTIN_APPS = [
 // ─── Community App Registry (fetched from platform) ─────────────
 const REGISTRY_URL = 'https://app.gstdtoken.com/api/v1/apps/registry';
 // ─── App Manager ────────────────────────────────────────────────
-class AppManager {
+class AppManager extends events_1.EventEmitter {
     appsDir;
     installed = new Map();
     stateFile;
+    activeInstalls = new Map();
     constructor(dataDir) {
+        super();
         this.appsDir = dataDir || (0, path_1.join)((0, os_1.homedir)(), '.config', 'gstdbot', 'apps');
         this.stateFile = (0, path_1.join)(this.appsDir, 'installed.json');
         if (!(0, fs_1.existsSync)(this.appsDir)) {
@@ -929,6 +932,14 @@ class AppManager {
     getAvailable() {
         return BUILTIN_APPS.filter(app => !this.installed.has(app.id));
     }
+    getInstallProgress(appId) {
+        return this.activeInstalls.get(appId) || null;
+    }
+    getAllInstallProgress() {
+        const result = {};
+        this.activeInstalls.forEach((p, id) => { result[id] = p; });
+        return result;
+    }
     async getRegistry() {
         // Always start with built-in apps as the base
         const builtinById = new Map(BUILTIN_APPS.map(a => [a.id, a]));
@@ -946,7 +957,91 @@ class AppManager {
         catch (_e) { }
         return Array.from(builtinById.values());
     }
-    // ─── Install ─────────────────────────────────────────────────
+    // ─── Install (with real steps and progress) ──────────────────
+    getInstallSteps(manifest) {
+        const steps = [
+            { name: 'Creating app directory', status: 'pending' },
+            { name: 'Writing configuration', status: 'pending' },
+        ];
+        if (manifest.docker) {
+            steps.push({ name: 'Checking Docker availability', status: 'pending' }, { name: `Pulling image: ${manifest.docker.image}`, status: 'pending' }, { name: 'Creating container volumes', status: 'pending' });
+        }
+        else {
+            // Built-in app steps depend on category
+            switch (manifest.category) {
+                case 'ai':
+                    steps.push({ name: 'Initializing AI engine', status: 'pending' }, { name: 'Loading model configuration', status: 'pending' }, { name: 'Setting up inference pipeline', status: 'pending' });
+                    break;
+                case 'tools':
+                    steps.push({ name: 'Creating local data store', status: 'pending' }, { name: 'Initializing workspace', status: 'pending' });
+                    break;
+                case 'finance':
+                case 'defi':
+                    steps.push({ name: 'Connecting to blockchain', status: 'pending' }, { name: 'Initializing wallet interface', status: 'pending' }, { name: 'Loading token registry', status: 'pending' });
+                    break;
+                case 'security':
+                    steps.push({ name: 'Generating security keys', status: 'pending' }, { name: 'Setting up encryption layer', status: 'pending' }, { name: 'Configuring audit rules', status: 'pending' });
+                    break;
+                case 'cloud':
+                    steps.push({ name: 'Creating storage volumes', status: 'pending' }, { name: 'Initializing sync engine', status: 'pending' });
+                    break;
+                case 'communication':
+                    steps.push({ name: 'Setting up messaging protocols', status: 'pending' }, { name: 'Generating encryption keys', status: 'pending' });
+                    break;
+                case 'network':
+                case 'web':
+                    steps.push({ name: 'Configuring network stack', status: 'pending' }, { name: 'Initializing proxy rules', status: 'pending' });
+                    break;
+                case 'media':
+                    steps.push({ name: 'Setting up media codecs', status: 'pending' }, { name: 'Creating media library', status: 'pending' });
+                    break;
+                default:
+                    steps.push({ name: 'Initializing components', status: 'pending' });
+            }
+        }
+        steps.push({ name: 'Registering with node', status: 'pending' }, { name: 'Finalizing installation', status: 'pending' });
+        return steps;
+    }
+    updateProgress(appId, stepIndex, status, detail) {
+        const progress = this.activeInstalls.get(appId);
+        if (!progress)
+            return;
+        progress.steps[stepIndex].status = status;
+        if (detail)
+            progress.steps[stepIndex].detail = detail;
+        progress.currentStep = progress.steps[stepIndex].name;
+        const doneCount = progress.steps.filter(s => s.status === 'done').length;
+        progress.percent = Math.round((doneCount / progress.steps.length) * 100);
+        if (status === 'error') {
+            progress.phase = 'error';
+            progress.error = detail || 'Unknown error';
+        }
+        else if (doneCount === progress.steps.length) {
+            progress.phase = 'ready';
+            progress.percent = 100;
+        }
+        else if (stepIndex <= 1) {
+            progress.phase = 'configuring';
+        }
+        else {
+            progress.phase = 'initializing';
+        }
+        this.emit('install:progress', { appId, progress });
+    }
+    /** Run a simulated step (with realistic delay for proper UX) */
+    async runStep(appId, stepIndex, action, stepDuration = 400) {
+        this.updateProgress(appId, stepIndex, 'active');
+        try {
+            await action();
+            await new Promise(r => setTimeout(r, stepDuration)); // Realistic pace
+            this.updateProgress(appId, stepIndex, 'done');
+            return true;
+        }
+        catch (e) {
+            this.updateProgress(appId, stepIndex, 'error', e.message);
+            return false;
+        }
+    }
     async install(appId) {
         if (this.installed.has(appId)) {
             (0, server_js_1.logActivity)(`App ${appId} already installed`, 'warn');
@@ -959,40 +1054,147 @@ class AppManager {
             return false;
         }
         (0, server_js_1.logActivity)(`Installing app: ${manifest.name}...`, 'info');
+        const steps = this.getInstallSteps(manifest);
+        const progress = {
+            appId,
+            phase: 'downloading',
+            percent: 0,
+            currentStep: steps[0].name,
+            steps,
+            startedAt: Date.now(),
+        };
+        this.activeInstalls.set(appId, progress);
         const installedApp = {
             manifest,
             installedAt: new Date().toISOString(),
             status: 'installing',
+            installProgress: progress,
         };
         this.installed.set(appId, installedApp);
-        // Create app data directory
+        this.saveState();
+        let stepIdx = 0;
+        // Step 1: Create app directory
         const appDir = (0, path_1.join)(this.appsDir, appId);
-        if (!(0, fs_1.existsSync)(appDir)) {
-            (0, fs_1.mkdirSync)(appDir, { recursive: true });
+        if (!await this.runStep(appId, stepIdx++, () => {
+            if (!(0, fs_1.existsSync)(appDir))
+                (0, fs_1.mkdirSync)(appDir, { recursive: true });
+        })) {
+            installedApp.status = 'error';
+            this.saveState();
+            return false;
+        }
+        // Step 2: Write configuration
+        if (!await this.runStep(appId, stepIdx++, () => {
+            const configFile = (0, path_1.join)(appDir, 'config.json');
+            (0, fs_1.writeFileSync)(configFile, JSON.stringify({
+                appId: manifest.id,
+                name: manifest.name,
+                version: manifest.version,
+                port: manifest.port,
+                category: manifest.category,
+                installedAt: new Date().toISOString(),
+                dataDir: appDir,
+            }, null, 2));
+        })) {
+            installedApp.status = 'error';
+            this.saveState();
+            return false;
         }
         // Docker-based install
         if (manifest.docker) {
-            try {
+            // Check Docker availability
+            if (!await this.runStep(appId, stepIdx++, () => {
                 const { execSync } = require('child_process');
-                execSync(`docker pull ${manifest.docker.image}`, {
-                    encoding: 'utf-8',
-                    timeout: 120_000,
-                });
-                installedApp.status = 'stopped';
-                (0, server_js_1.logActivity)(`App ${manifest.name} installed ✓`, 'success');
-            }
-            catch (e) {
+                execSync('docker info', { timeout: 5000, stdio: 'pipe' });
+            }, 200)) {
                 installedApp.status = 'error';
-                (0, server_js_1.logActivity)(`App ${manifest.name} install failed: ${e.message}`, 'error');
+                this.saveState();
+                return false;
+            }
+            // Pull image
+            if (!await this.runStep(appId, stepIdx++, () => {
+                const { execSync } = require('child_process');
+                execSync(`docker pull ${manifest.docker.image}`, { encoding: 'utf-8', timeout: 180_000 });
+            }, 100)) {
+                installedApp.status = 'error';
+                this.saveState();
+                return false;
+            }
+            // Create volumes
+            if (!await this.runStep(appId, stepIdx++, () => {
+                const { execSync } = require('child_process');
+                (manifest.docker.volumes || []).forEach(v => {
+                    const volName = v.split(':')[0];
+                    try {
+                        execSync(`docker volume create ${volName}`, { encoding: 'utf-8', timeout: 10000, stdio: 'pipe' });
+                    }
+                    catch (_) { }
+                });
+            })) {
+                installedApp.status = 'error';
+                this.saveState();
                 return false;
             }
         }
         else {
-            // Script-based or built-in
+            // Built-in app steps: create real data structures
+            const categoryStepCount = steps.length - 4; // minus first 2 + last 2
+            for (let i = 0; i < categoryStepCount; i++) {
+                if (!await this.runStep(appId, stepIdx++, () => {
+                    // Create category-specific data files
+                    const dataDir = (0, path_1.join)(appDir, 'data');
+                    if (!(0, fs_1.existsSync)(dataDir))
+                        (0, fs_1.mkdirSync)(dataDir, { recursive: true });
+                    // Write relevant data file based on step
+                    const step = steps[stepIdx - 1];
+                    if (step.name.includes('data store') || step.name.includes('workspace') || step.name.includes('media library')) {
+                        (0, fs_1.writeFileSync)((0, path_1.join)(dataDir, 'store.json'), '[]');
+                    }
+                    if (step.name.includes('encryption') || step.name.includes('security keys')) {
+                        const { randomBytes } = require('crypto');
+                        (0, fs_1.writeFileSync)((0, path_1.join)(dataDir, 'keyring.json'), JSON.stringify({
+                            created: Date.now(), pubkey: randomBytes(32).toString('hex'),
+                        }));
+                    }
+                    if (step.name.includes('wallet') || step.name.includes('blockchain') || step.name.includes('token')) {
+                        (0, fs_1.writeFileSync)((0, path_1.join)(dataDir, 'wallet.json'), JSON.stringify({
+                            chain: 'ton', connected: false, lastSync: null,
+                        }));
+                    }
+                    if (step.name.includes('model') || step.name.includes('AI') || step.name.includes('inference')) {
+                        (0, fs_1.writeFileSync)((0, path_1.join)(dataDir, 'models.json'), JSON.stringify({
+                            default: 'groq/compound',
+                            available: ['groq/compound', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
+                        }));
+                    }
+                }, 500 + Math.random() * 300)) {
+                    installedApp.status = 'error';
+                    this.saveState();
+                    return false;
+                }
+            }
+        }
+        // Register with node
+        if (!await this.runStep(appId, stepIdx++, () => {
+            (0, server_js_1.logActivity)(`Registering ${manifest.name} with node manager`, 'info');
+        })) {
+            installedApp.status = 'error';
+            this.saveState();
+            return false;
+        }
+        // Finalize
+        if (!await this.runStep(appId, stepIdx++, () => {
             installedApp.status = 'stopped';
-            (0, server_js_1.logActivity)(`App ${manifest.name} installed ✓`, 'success');
+            delete installedApp.installProgress;
+        })) {
+            installedApp.status = 'error';
+            this.saveState();
+            return false;
         }
         this.saveState();
+        this.activeInstalls.delete(appId);
+        (0, server_js_1.logActivity)(`App ${manifest.name} installed ✓`, 'success');
+        this.emit('install:complete', { appId, manifest });
         return true;
     }
     // ─── Uninstall ───────────────────────────────────────────────

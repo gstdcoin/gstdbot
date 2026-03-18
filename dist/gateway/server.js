@@ -1488,6 +1488,45 @@ class OmegaGateway {
             }
         });
         // ─── App Store APIs ──────────────────────────────────────
+        // Install progress polling
+        this.app.get('/api/apps/progress', (_req, res) => {
+            const progress = this.appManager.getAllInstallProgress();
+            res.json({ progress });
+        });
+        this.app.get('/api/apps/progress/:appId', (req, res) => {
+            const p = this.appManager.getInstallProgress(req.params.appId);
+            res.json(p || { phase: 'none', percent: 0 });
+        });
+        // Real-time wallet sync for all components
+        this.app.get('/api/wallet/live', async (_req, res) => {
+            if (!this.wallet) {
+                res.json({ connected: false, balance: { gstd: 0, ton: 0, pending: 0 } });
+                return;
+            }
+            const stats = this.wallet.getStats();
+            const addr = this.wallet.getAddress();
+            let liveBalance = null;
+            // Try to get real-time balance from platform
+            try {
+                const { getWallet } = require('../wallet/wallet.js');
+                const localWallet = getWallet();
+                const linked = localWallet?.linkedExternalWallet || addr;
+                if (linked) {
+                    const resp = await fetch(`${this.config.swarmUrl}/api/v1/users/balance?wallet=${linked}`, { signal: AbortSignal.timeout(3000) });
+                    if (resp.ok)
+                        liveBalance = await resp.json();
+                }
+            }
+            catch (_e) { }
+            res.json({
+                connected: true,
+                address: addr,
+                balance: liveBalance || stats.balance || { gstd: 0, ton: 0, pending: 0 },
+                earningsToday: stats.earningsToday || 0,
+                earningsTotal: stats.earningsTotal || 0,
+                lastSync: new Date().toISOString(),
+            });
+        });
         this.app.get('/api/apps/available', async (_req, res) => {
             const registry = await this.appManager.getRegistry();
             const installed = this.appManager.getInstalled();

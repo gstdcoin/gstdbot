@@ -7,6 +7,7 @@
  * - App manifest format (gstd-app.yml)
  * - Built-in apps: Chat, Monitor, Files
  */
+import { EventEmitter } from 'events';
 export interface AppManifest {
     id: string;
     name: string;
@@ -37,16 +38,38 @@ export interface InstalledApp {
     status: 'running' | 'stopped' | 'error' | 'installing';
     pid?: number;
     url?: string;
+    installProgress?: InstallProgress;
 }
-export declare class AppManager {
+export interface InstallProgress {
+    appId: string;
+    phase: 'pending' | 'downloading' | 'configuring' | 'initializing' | 'ready' | 'error';
+    percent: number;
+    currentStep: string;
+    steps: InstallStep[];
+    startedAt: number;
+    error?: string;
+}
+export interface InstallStep {
+    name: string;
+    status: 'pending' | 'active' | 'done' | 'error';
+    detail?: string;
+}
+export declare class AppManager extends EventEmitter {
     private appsDir;
     private installed;
     private stateFile;
+    private activeInstalls;
     constructor(dataDir?: string);
     init(): Promise<void>;
     getInstalled(): InstalledApp[];
     getAvailable(): AppManifest[];
+    getInstallProgress(appId: string): InstallProgress | null;
+    getAllInstallProgress(): Record<string, InstallProgress>;
     getRegistry(): Promise<AppManifest[]>;
+    private getInstallSteps;
+    private updateProgress;
+    /** Run a simulated step (with realistic delay for proper UX) */
+    private runStep;
     install(appId: string): Promise<boolean>;
     uninstall(appId: string): Promise<boolean>;
     start(appId: string): Promise<boolean>;

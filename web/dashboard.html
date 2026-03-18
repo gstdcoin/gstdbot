@@ -3356,7 +3356,10 @@
           '<div style="color:var(--muted);font-size:12px;margin-top:8px;">Memory search will query L1 + L2 + L3 layers. Feature connecting...</div>';
       }
 
-      // ─── App Store ───────────────────────────────────────
+      // ─── Active install progress trackers ───
+      const activeInstalls = new Map();
+      let progressPollTimer = null;
+
       async function loadApps() {
         try {
           const r = await fetch(API + "/api/apps/available");
@@ -3375,68 +3378,65 @@
             const isInstalled = !!inst;
             const status = inst?.status || "";
             const isRunning = status === "running";
+            const isInstalling = status === "installing";
             const catClass = "cat-" + (app.category || "system");
-            const appPort =
-              app.port || 3000 + (Math.abs(hashCode(app.id)) % 5000);
+            const appPort = app.port || 3000 + (Math.abs(hashCode(app.id)) % 5000);
             const isPremium = !!app.premium;
             const card = document.createElement("div");
             card.className = "app-card";
+            card.id = "app-card-" + app.id;
             card.dataset.category = app.category || "system";
             if (isPremium) card.style.borderColor = "rgba(255,215,0,0.3)";
-            card.innerHTML = `
-                <div class="app-icon">${app.icon || "📦"}${isPremium ? '<span style="position:absolute;top:4px;right:8px;font-size:14px;">⭐</span>' : ""}</div>
-                <div class="app-name">${app.name}</div>
-                <div class="app-desc">${app.description || ""}</div>
-                <div class="app-meta">
-                    <span class="app-cat ${catClass}">${app.category || "system"}</span>
-                    <span>v${app.version}</span>
-                    ${isPremium ? '<span style="color:#FFD700;font-weight:700;">🔒 Premium</span>' : app.gstd_cost > 0 ? "<span>" + app.gstd_cost + " GSTD</span>" : '<span style="color:var(--emerald)">FREE</span>'}
-                    ${isInstalled ? '<span class="app-status status-' + status + '">' + status + "</span>" : ""}
-                </div>
-                ${
-                  isInstalled
-                    ? '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
-                      (isRunning
-                        ? '<button class="app-btn" style="background:rgba(6,182,212,0.15);color:#06b6d4;border-color:rgba(6,182,212,0.3);" onclick="openApp(\'' +
-                          app.id +
-                          "','" +
-                          app.name.replace(/'/g, "") +
-                          "'," +
-                          appPort +
-                          ')\">\ud83d\udcfa Open</button>'
-                        : "") +
-                      '<button class="app-btn app-btn-open" onclick="appAction(\'' +
-                      (isRunning ? "stop" : "start") +
-                      "','" +
-                      app.id +
-                      "')\">" +
-                      (isRunning ? "\u23f9 Stop" : "\u25b6 Start") +
-                      "</button>" +
-                      '<button class="app-btn" style="background:rgba(139,92,246,0.1);color:#a78bfa;border-color:rgba(139,92,246,0.2);" onclick="appAction(\'update\',\'' +
-                      app.id +
-                      "')\">🔄 Update</button>" +
-                      "<button class=\"app-btn app-btn-remove\" onclick=\"appAction('uninstall','" +
-                      app.id +
-                      "')\">✕</button>" +
-                      "</div>"
-                    : '<button class="app-btn ' +
-                      (isPremium ? "app-btn-open" : "app-btn-install") +
-                      "\" onclick=\"appAction('install','" +
-                      app.id +
-                      "')\">" +
-                      (isPremium ? "⭐ Install (1000 GSTD)" : "⬇ Install") +
-                      "</button>"
+            if (isInstalling) card.style.borderColor = "rgba(6,182,212,0.4)";
+
+            let progressHTML = '';
+            if (isInstalling) {
+              activeInstalls.set(app.id, true);
+              progressHTML = '<div id="install-progress-' + app.id + '" style="margin-top:8px">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+                '<span style="font-size:10px;font-weight:700;color:#06b6d4;text-transform:uppercase;letter-spacing:1px">Installing...</span>' +
+                '<span style="font-size:10px;font-weight:900;color:#06b6d4" id="install-pct-' + app.id + '">0%</span></div>' +
+                '<div style="height:4px;border-radius:2px;background:rgba(255,255,255,0.06);overflow:hidden;margin-bottom:8px">' +
+                '<div id="install-bar-' + app.id + '" style="height:100%;border-radius:2px;background:linear-gradient(90deg,#06b6d4,#8b5cf6);width:0%;transition:width 0.3s ease"></div></div>' +
+                '<div id="install-step-' + app.id + '" style="font-size:10px;color:var(--muted)">Preparing...</div>' +
+                '<div id="install-steps-list-' + app.id + '" style="margin-top:6px;font-size:9px;color:var(--muted);max-height:100px;overflow-y:auto"></div></div>';
+              startProgressPolling();
+            }
+
+            let actionsHTML = "";
+            if (isInstalled) {
+              if (isInstalling) {
+                actionsHTML = progressHTML;
+              } else {
+                actionsHTML = '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+                if (isRunning) {
+                  actionsHTML += '<button class="app-btn" style="background:rgba(6,182,212,0.15);color:#06b6d4;border-color:rgba(6,182,212,0.3);" onclick="openApp(\'' + app.id + "','" + app.name.replace(/'/g, "") + "'," + appPort + ')">📺 Open</button>';
                 }
-            `;
+                actionsHTML += '<button class="app-btn app-btn-open" onclick="appAction(\'' + (isRunning ? "stop" : "start") + "','" + app.id + "')\">" + (isRunning ? "⏹ Stop" : "▶ Start") + "</button>";
+                actionsHTML += '<button class="app-btn" style="background:rgba(139,92,246,0.1);color:#a78bfa;border-color:rgba(139,92,246,0.2);" onclick="appAction(\'update\',\'' + app.id + "')\">" + "🔄 Update</button>";
+                actionsHTML += '<button class="app-btn app-btn-remove" onclick="appAction(\'uninstall\',\'' + app.id + "')\">" + "✕</button>";
+                actionsHTML += "</div>";
+              }
+            } else {
+              actionsHTML = '<button class="app-btn ' + (isPremium ? "app-btn-open" : "app-btn-install") + '" id="install-btn-' + app.id + '" onclick="appAction(\'install\',\'' + app.id + '\')">' + (isPremium ? "⭐ Install (1000 GSTD)" : "⬇ Install") + "</button>";
+            }
+
+            card.innerHTML = '<div class="app-icon">' + (app.icon || "📦") + (isPremium ? '<span style="position:absolute;top:4px;right:8px;font-size:14px;">⭐</span>' : "") + '</div>' +
+              '<div class="app-name">' + app.name + '</div>' +
+              '<div class="app-desc">' + (app.description || "") + '</div>' +
+              '<div class="app-meta">' +
+              '<span class="app-cat ' + catClass + '">' + (app.category || "system") + '</span>' +
+              '<span>v' + app.version + '</span>' +
+              (isPremium ? '<span style="color:#FFD700;font-weight:700;">🔒 Premium</span>' : app.gstd_cost > 0 ? '<span>' + app.gstd_cost + ' GSTD</span>' : '<span style="color:var(--emerald)">FREE</span>') +
+              (isInstalled ? '<span class="app-status status-' + status + '">' + (isInstalling ? '⏳ installing' : status) + '</span>' : '') +
+              '</div>' + actionsHTML;
             grid.appendChild(card);
           });
           if (allApps.length === 0) {
-            grid.innerHTML =
-              '<div style="color:var(--muted);padding:40px;text-align:center;">No apps available</div>';
+            grid.innerHTML = '<div style="color:var(--muted);padding:40px;text-align:center;">No apps available</div>';
           }
-          // Update total count in filter
           const allBtn = document.getElementById("app-filter-all");
-          if (allBtn) allBtn.textContent = `All (${allApps.length})`;
+          if (allBtn) allBtn.textContent = "All (" + allApps.length + ")";
         } catch (e) {
           console.error("App store error:", e);
         }
@@ -3444,25 +3444,70 @@
 
       function hashCode(s) {
         let h = 0;
-        for (let i = 0; i < s.length; i++)
-          h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+        for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
         return h;
       }
 
       function filterApps(cat) {
-        document
-          .querySelectorAll(".app-filter")
-          .forEach((b) => b.classList.remove("active"));
-        document
-          .querySelector(`.app-filter[data-cat="${cat}"]`)
-          ?.classList.add("active");
+        document.querySelectorAll(".app-filter").forEach((b) => b.classList.remove("active"));
+        document.querySelector('.app-filter[data-cat="' + cat + '"]')?.classList.add("active");
         document.querySelectorAll(".app-card").forEach((card) => {
-          card.style.display =
-            cat === "all" || card.dataset.category === cat ? "" : "none";
+          card.style.display = cat === "all" || card.dataset.category === cat ? "" : "none";
         });
       }
 
+      function startProgressPolling() {
+        if (progressPollTimer) return;
+        progressPollTimer = setInterval(async () => {
+          if (activeInstalls.size === 0) { clearInterval(progressPollTimer); progressPollTimer = null; return; }
+          try {
+            const r = await fetch(API + "/api/apps/progress");
+            const d = await r.json();
+            const progress = d.progress || {};
+            let hasActive = false;
+            activeInstalls.forEach((_, appId) => {
+              const p = progress[appId];
+              if (p && p.phase !== 'none') { hasActive = true; updateInstallUI(appId, p); }
+              else { activeInstalls.delete(appId); loadApps(); }
+            });
+            if (!hasActive && activeInstalls.size > 0) { activeInstalls.clear(); loadApps(); }
+          } catch (e) { console.error("Progress poll:", e); }
+        }, 800);
+      }
+
+      function updateInstallUI(appId, progress) {
+        const bar = document.getElementById("install-bar-" + appId);
+        const pct = document.getElementById("install-pct-" + appId);
+        const step = document.getElementById("install-step-" + appId);
+        const list = document.getElementById("install-steps-list-" + appId);
+        if (bar) bar.style.width = progress.percent + "%";
+        if (pct) pct.textContent = progress.percent + "%";
+        if (step) step.textContent = progress.currentStep || "Processing...";
+        if (list && progress.steps) {
+          list.innerHTML = progress.steps.map(function(s) {
+            var icon = s.status === 'done' ? '✅' : s.status === 'active' ? '⏳' : s.status === 'error' ? '❌' : '⬜';
+            var color = s.status === 'done' ? 'var(--emerald)' : s.status === 'active' ? '#06b6d4' : s.status === 'error' ? 'var(--rose)' : 'var(--muted)';
+            return '<div style="display:flex;gap:4px;align-items:center;padding:2px 0;color:' + color + '">' + icon + ' ' + s.name + '</div>';
+          }).join('');
+        }
+        if (progress.phase === 'error') {
+          if (pct) { pct.textContent = "ERROR"; pct.style.color = "var(--rose)"; }
+          if (step) { step.textContent = progress.error || "Failed"; step.style.color = "var(--rose)"; }
+          activeInstalls.delete(appId);
+          setTimeout(function() { loadApps(); }, 3000);
+        }
+        if (progress.phase === 'ready') {
+          activeInstalls.delete(appId);
+          setTimeout(function() { loadApps(); }, 1500);
+        }
+      }
+
       async function appAction(action, appId) {
+        var btn = document.getElementById("install-btn-" + appId);
+        if (btn && action === 'install') {
+          btn.disabled = true; btn.textContent = '⏳ Installing...';
+          btn.style.opacity = '0.6'; btn.style.cursor = 'not-allowed';
+        }
         try {
           const r = await fetch(API + "/api/apps/" + action, {
             method: "POST",
@@ -3470,13 +3515,12 @@
             body: JSON.stringify({ appId }),
           });
           const d = await r.json();
-          log(
-            (d.ok ? "✅ " : "❌ ") + (d.message || action + " " + appId),
-            d.ok ? "success" : "error",
-          );
+          log((d.ok ? "✅ " : "❌ ") + (d.message || action + " " + appId), d.ok ? "success" : "error");
+          if (action === 'install' && d.ok) { activeInstalls.set(appId, true); }
           loadApps();
         } catch (e) {
           log("❌ " + e.message, "error");
+          if (btn) { btn.disabled = false; btn.textContent = '⬇ Install'; btn.style.opacity = '1'; }
         }
       }
 
@@ -3485,57 +3529,55 @@
         const textEl = document.getElementById("bulk-install-text");
         const freeBtn = document.getElementById("btn-install-all-free");
         const premBtn = document.getElementById("btn-install-all-premium");
-        
-        // Show status, disable buttons
         statusEl.style.display = "flex";
         textEl.textContent = includePremium ? "Installing all apps (+ premium)..." : "Installing all free apps...";
-        freeBtn.disabled = true;
-        premBtn.disabled = true;
-        freeBtn.style.opacity = "0.5";
-        premBtn.style.opacity = "0.5";
-        
+        freeBtn.disabled = true; premBtn.disabled = true;
+        freeBtn.style.opacity = "0.5"; premBtn.style.opacity = "0.5";
         try {
           const endpoint = includePremium ? "/api/apps/install-all" : "/api/apps/install-all-free";
-          const r = await fetch(API + endpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ includePremium }),
-          });
+          const r = await fetch(API + endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ includePremium }) });
           const d = await r.json();
-          
           if (d.ok) {
-            textEl.textContent = `✅ ${d.installed?.length || 0} installed, ${d.skipped?.length || 0} skipped`;
-            statusEl.style.background = "rgba(34,197,94,0.1)";
-            statusEl.style.borderColor = "rgba(34,197,94,0.3)";
-            statusEl.style.color = "#22c55e";
-            log("✅ " + (d.message || "Bulk install completed"), "success");
+            textEl.textContent = "✅ " + (d.installed?.length || 0) + " installed, " + (d.skipped?.length || 0) + " skipped";
+            statusEl.style.background = "rgba(34,197,94,0.1)"; statusEl.style.borderColor = "rgba(34,197,94,0.3)"; statusEl.style.color = "#22c55e";
           } else {
             textEl.textContent = "❌ " + (d.message || "Failed");
-            statusEl.style.background = "rgba(244,63,94,0.1)";
-            statusEl.style.borderColor = "rgba(244,63,94,0.3)";
-            statusEl.style.color = "#f43f5e";
-            log("❌ " + (d.message || "Bulk install failed"), "error");
+            statusEl.style.background = "rgba(244,63,94,0.1)"; statusEl.style.borderColor = "rgba(244,63,94,0.3)"; statusEl.style.color = "#f43f5e";
           }
-          
           loadApps();
-        } catch (e) {
-          textEl.textContent = "❌ " + e.message;
-          log("❌ " + e.message, "error");
-        } finally {
-          freeBtn.disabled = false;
-          premBtn.disabled = false;
-          freeBtn.style.opacity = "1";
-          premBtn.style.opacity = "1";
-          // Hide status after 8 seconds
-          setTimeout(() => { statusEl.style.display = "none"; }, 8000);
+        } catch (e) { textEl.textContent = "❌ " + e.message; } finally {
+          freeBtn.disabled = false; premBtn.disabled = false;
+          freeBtn.style.opacity = "1"; premBtn.style.opacity = "1";
+          setTimeout(function() { statusEl.style.display = "none"; }, 8000);
         }
       }
 
       function openApp(appId, appName, port) {
-        // Built-in apps are served at /apps/{appId}
-        const appUrl = window.location.origin + "/apps/" + appId;
-        window.open(appUrl, "_blank");
+        window.open(window.location.origin + "/apps/" + appId, "_blank");
       }
+
+      // ─── Live wallet sync ───
+      let walletData = { connected: false, balance: { gstd: 0, ton: 0 } };
+      async function syncWallet() {
+        try {
+          const r = await fetch(API + "/api/wallet/live");
+          walletData = await r.json();
+          document.querySelectorAll('.wallet-balance-gstd').forEach(function(el) {
+            el.textContent = (walletData.balance?.gstd || 0).toLocaleString(undefined, { maximumFractionDigits: 4 });
+          });
+          document.querySelectorAll('.wallet-balance-ton').forEach(function(el) {
+            el.textContent = (walletData.balance?.ton || 0).toFixed(4);
+          });
+          document.querySelectorAll('.wallet-address').forEach(function(el) {
+            el.textContent = walletData.address ? (walletData.address.slice(0, 6) + '...' + walletData.address.slice(-4)) : 'Not connected';
+          });
+          document.querySelectorAll('.wallet-status-dot').forEach(function(el) {
+            el.style.background = walletData.connected ? '#22c55e' : '#f43f5e';
+          });
+        } catch (e) {}
+      }
+      setInterval(syncWallet, 10000);
+      syncWallet();
 
       // ─── Telegram Linking ──────────────────────────────
       async function loadTelegramStatus() {
