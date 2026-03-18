@@ -31,6 +31,13 @@ export declare class OmegaGateway {
     private metrics;
     private freeApiKeyHashes;
     private readonly freeApiRequiredBalance;
+    private eventBus;
+    private platformLink;
+    private modelFailover;
+    private diagnostics;
+    private usageTracker;
+    private scheduler;
+    private nodeId;
     constructor(config?: Partial<GatewayConfig>);
     /** Inject wallet after it's initialized (wallet created after gateway) */
     setWallet(wallet: NodeWallet): void;
@@ -63,6 +70,7 @@ export declare class OmegaGateway {
     private updateMetrics;
     private splitIntoChunks;
     private isLocalRequest;
+    private setupCoreEndpoints;
     start(): Promise<void>;
     /** Expose Express app for external route registration (TMA, etc.) */
     getExpressApp(): express.Express;

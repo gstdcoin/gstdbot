@@ -24,6 +24,12 @@ const path_1 = require("path");
 const crypto_1 = require("crypto");
 const manager_js_1 = require("../apps/manager.js");
 const child_process_1 = require("child_process");
+const event_bus_js_1 = require("../core/event-bus.js");
+const platform_link_js_1 = require("../core/platform-link.js");
+const model_failover_js_1 = require("../core/model-failover.js");
+const diagnostics_js_1 = require("../core/diagnostics.js");
+const usage_tracker_js_1 = require("../core/usage-tracker.js");
+const scheduler_js_1 = require("../core/scheduler.js");
 const DEFAULT_CONFIG = {
     port: 18789,
     apiPort: 8080,
@@ -216,14 +222,46 @@ class OmegaGateway {
     };
     freeApiKeyHashes = new Map();
     freeApiRequiredBalance = 10_000;
+    // ─── Core Modules (v4.0) ─────────────────────────────────────
+    eventBus;
+    platformLink;
+    modelFailover;
+    diagnostics;
+    usageTracker;
+    scheduler;
+    nodeId;
     constructor(config = {}) {
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.router = new router_js_1.NeuralRouter(this.config.swarmUrl, this.config.cocoonEnabled);
         this.sessions = new sessions_js_1.SessionManager();
         this.appManager = new manager_js_1.AppManager();
         this.server = http_1.default.createServer(this.app);
+        // ─── Core Module Init ────────────────────────────
+        this.nodeId = `gstd-${(0, os_1.hostname)()}-${process.pid}`;
+        this.eventBus = new event_bus_js_1.NodeEventBus(this.nodeId);
+        this.modelFailover = new model_failover_js_1.ModelFailover([
+            'groq/compound',
+            'llama-3.3-70b-versatile',
+            'meta-llama/llama-4-scout-17b-16e-instruct',
+            'qwen/qwen3-32b',
+            'moonshotai/kimi-k2-instruct',
+        ]);
+        this.usageTracker = new usage_tracker_js_1.UsageTracker();
+        this.diagnostics = new diagnostics_js_1.Diagnostics({
+            nodeId: this.nodeId,
+            version: '3.4.0',
+            platformUrl: this.config.swarmUrl,
+        });
+        this.platformLink = new platform_link_js_1.PlatformLink({
+            platformUrl: this.config.swarmUrl,
+            nodeId: this.nodeId,
+            walletAddress: '', // Set later when wallet connects
+            version: '3.4.0',
+        });
+        this.scheduler = new scheduler_js_1.Scheduler();
         this.setupAPI();
         this.setupNodeOS();
+        this.setupCoreEndpoints();
     }
     /** Inject wallet after it's initialized (wallet created after gateway) */
     setWallet(wallet) {
@@ -3562,6 +3600,106 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             || ip.startsWith('192.168.') || ip.startsWith('10.')
             || ip.startsWith('172.16.') || ip.startsWith('172.17.');
     }
+    // ═════════════════════════════════════════════════════════════════
+    // Core Module Endpoints (v4.0 — beyond OpenClaw)
+    // ═════════════════════════════════════════════════════════════════
+    setupCoreEndpoints() {
+        // GET /api/node/diagnostics — self-diagnostics (like openclaw doctor)
+        this.app.get('/api/node/diagnostics', async (_req, res) => {
+            // Register data getters for diagnostics
+            this.diagnostics.registerGetter('wallet', () => ({
+                address: this.wallet?.getAddress(),
+                balance: this.wallet?.getBalance?.(),
+            }));
+            this.diagnostics.registerGetter('memory', () => ({
+                connected: this.subsystems?.memory?.isConnected?.() || false,
+                entries: this.subsystems?.memory?.getEntryCount?.() || 0,
+            }));
+            this.diagnostics.registerGetter('apps', () => ({
+                available: 89,
+                installed: this.appManager.getInstalled?.()?.length || 0,
+            }));
+            const report = await this.diagnostics.runFull();
+            res.json(report);
+        });
+        // GET /api/node/models/health — model failover health
+        this.app.get('/api/node/models/health', (_req, res) => {
+            res.json({
+                models: this.modelFailover.getHealth(),
+                bestModel: this.modelFailover.getBestModel(),
+            });
+        });
+        // GET /api/node/usage — usage analytics
+        this.app.get('/api/node/usage', (_req, res) => {
+            res.json(this.usageTracker.getSummary());
+        });
+        // GET /api/node/usage/recent — recent usage records
+        this.app.get('/api/node/usage/recent', (req, res) => {
+            const limit = parseInt(req.query.limit) || 20;
+            res.json({ records: this.usageTracker.getRecent(limit) });
+        });
+        // GET /api/node/scheduler — scheduled tasks
+        this.app.get('/api/node/scheduler', (_req, res) => {
+            res.json({ tasks: this.scheduler.getTasks() });
+        });
+        // POST /api/node/scheduler/:id/run — run a task now
+        this.app.post('/api/node/scheduler/:id/run', async (req, res) => {
+            const ok = await this.scheduler.runNow(req.params.id);
+            res.json({ ok, message: ok ? `Task ${req.params.id} executed` : 'Task not found' });
+        });
+        // GET /api/node/events — recent event log
+        this.app.get('/api/node/events', (req, res) => {
+            const limit = parseInt(req.query.limit) || 50;
+            res.json({ events: this.eventBus.getEventLog(limit) });
+        });
+        // GET /api/node/ws/clients — WebSocket client info
+        this.app.get('/api/node/ws/clients', (_req, res) => {
+            res.json({
+                clients: this.eventBus.getClients(),
+                count: this.eventBus.getClientCount(),
+            });
+        });
+        // GET /api/node/platform — platform link status
+        this.app.get('/api/node/platform', (_req, res) => {
+            res.json(this.platformLink.getStatus());
+        });
+        // GET /api/node/overview — comprehensive node overview (all-in-one)
+        this.app.get('/api/node/overview', async (_req, res) => {
+            const uptime = process.uptime();
+            res.json({
+                nodeId: this.nodeId,
+                version: '3.4.0',
+                uptime,
+                uptimeFormatted: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m`,
+                wallet: {
+                    address: this.wallet?.getAddress() || null,
+                    balance: this.wallet?.getBalance?.() || { gstd: 0, ton: 0 },
+                },
+                models: {
+                    health: this.modelFailover.getHealth(),
+                    bestModel: this.modelFailover.getBestModel(),
+                },
+                usage: this.usageTracker.getSummary(),
+                scheduler: { tasks: this.scheduler.getTasks() },
+                platform: this.platformLink.getStatus(),
+                wsClients: this.eventBus.getClientCount(),
+                apps: {
+                    installed: this.appManager.getInstalled?.()?.length || 0,
+                },
+                capabilities: {
+                    openclaw: true,
+                    swarm: true,
+                    memory: !!this.subsystems?.memory,
+                    dln: !!this.subsystems?.blockchain,
+                    eventBus: true,
+                    modelFailover: true,
+                    diagnostics: true,
+                    scheduler: true,
+                },
+            });
+        });
+        logActivity('Core modules v4.0 initialized: EventBus, PlatformLink, ModelFailover, Diagnostics, UsageTracker, Scheduler', 'info');
+    }
     async start() {
         const MAX_PORT_ATTEMPTS = 10;
         let port = this.config.apiPort;
@@ -3578,6 +3716,60 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                         this.config.apiPort = port;
                         // Now that server is bound, attach WebSocket
                         this.setupWebSocket();
+                        // ─── Core modules boot ─────────────────────
+                        // Attach EventBus WebSocket to the same server
+                        this.eventBus.attachToServer(this.server, '/ws/events');
+                        // Start platform heartbeat
+                        this.platformLink.setStatsCollector(() => ({
+                            queryCount: this.metrics.totalRequests,
+                            wsClients: this.eventBus.getClientCount(),
+                        }));
+                        this.platformLink.setCapabilitiesProvider(() => ({
+                            models: ['groq/compound', 'llama-3.3-70b-versatile', 'qwen/qwen3-32b'],
+                            channels: ['telegram', 'webchat'],
+                            apps: this.appManager.getInstalled?.()?.length || 0,
+                            memory: !!this.subsystems?.memory,
+                            openclaw: true,
+                            dln: !!this.subsystems?.blockchain,
+                            maxConcurrentTasks: 5,
+                        }));
+                        this.platformLink.start(60000).catch(() => { });
+                        // Register scheduled tasks
+                        this.scheduler.register('platform-heartbeat', {
+                            name: 'Platform Heartbeat Verify',
+                            interval: 300000, // 5 min
+                            category: 'system',
+                            fn: async () => {
+                                this.eventBus.broadcast('system', 'heartbeat', { time: new Date().toISOString() });
+                            },
+                        });
+                        this.scheduler.register('memory-cleanup', {
+                            name: 'Memory Cleanup',
+                            interval: 3600000, // 1 hour
+                            category: 'maintenance',
+                            fn: async () => {
+                                const memory = this.subsystems?.memory;
+                                if (memory?.cleanup)
+                                    memory.cleanup();
+                            },
+                        });
+                        this.scheduler.register('model-health-check', {
+                            name: 'Model Health Check',
+                            interval: 600000, // 10 min
+                            category: 'system',
+                            fn: async () => {
+                                const health = this.modelFailover.getHealth();
+                                this.eventBus.broadcast('models', 'health', health);
+                            },
+                        });
+                        this.scheduler.startAll();
+                        // Wire EventBus to internal events
+                        this.appManager.on?.('install:progress', (data) => {
+                            this.eventBus.broadcast('app', 'install:progress', data);
+                        });
+                        this.appManager.on?.('install:complete', (data) => {
+                            this.eventBus.broadcast('app', 'install:complete', data);
+                        });
                         console.log(`    Gateway ready on port ${port}`);
                         resolve();
                     });
