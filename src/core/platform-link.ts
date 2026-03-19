@@ -67,6 +67,7 @@ export class PlatformLink extends EventEmitter {
 
     setStatsCollector(fn: () => Partial<HeartbeatData['stats']>) { this.statsCollector = fn; }
     setCapabilitiesProvider(fn: () => NodeCapabilities) { this.capabilitiesProvider = fn; }
+    setWalletAddress(address: string) { this.walletAddress = address; }
 
     async start(intervalMs = 60000) {
         // Register

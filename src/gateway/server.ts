@@ -268,7 +268,14 @@ export class OmegaGateway {
     /** Inject wallet after it's initialized (wallet created after gateway) */
     setWallet(wallet: NodeWallet): void {
         this.wallet = wallet;
-        logActivity('Wallet connected to gateway — rewards active', 'success');
+        // Inject wallet address into PlatformLink so heartbeats include valid TON address
+        const addr = wallet.getAddress?.() || '';
+        if (addr) {
+            this.platformLink.setWalletAddress(addr);
+            logActivity(`Wallet connected to gateway — heartbeat will use ${addr.slice(0,8)}...`, 'success');
+        } else {
+            logActivity('Wallet connected to gateway — rewards active', 'success');
+        }
     }
 
     /** Inject subsystems for full status reporting */
