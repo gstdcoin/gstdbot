@@ -25,7 +25,7 @@ class SwarmClient {
     gstdEarned = 0;
     heartbeatInterval = null;
     connected = false;
-    constructor(controlPlaneUrl = 'https://app.gstdtoken.com', ollamaUrl = 'http://localhost:11434') {
+    constructor(controlPlaneUrl = process.env.GSTD_API_URL?.replace(/\/api\/v1$/, '') || 'https://app.gstdtoken.com', ollamaUrl = 'http://localhost:11434') {
         this.nodeId = (0, uuid_1.v4)();
         this.startTime = Date.now();
         this.controlPlaneUrl = controlPlaneUrl;

@@ -977,6 +977,12 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                 return ctx.reply(msg, { parse_mode: 'HTML' });
             }
 
+            // Handle check_balance callback (from Earn section)
+            if (data === 'check_balance') {
+                await ctx.answerCallbackQuery();
+                return this.handleBalance(ctx, lang);
+            }
+
             await ctx.answerCallbackQuery();
         });
     }
@@ -1228,32 +1234,77 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
     }
 
     private async handleSwap(ctx: any, lang: string) {
-        const tmaUrl = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.com/tma';
+        const stonfiUrl = 'https://app.ston.fi/swap?from=TON&to=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO';
+        const bridgeUrl = 'https://app.gstdtoken.com/bridge';
+
+        let priceInfo = '';
+        try {
+            const data = await this.apiCall('/api/v1/market/price');
+            if (data.gstd_price_usd > 0) {
+                priceInfo = lang === 'ru'
+                    ? `\n📊 Текущая цена: <b>$${data.gstd_price_usd.toFixed(6)}</b> (${(data.gstd_price_ton || 0).toFixed(6)} TON)`
+                    : `\n📊 Current price: <b>$${data.gstd_price_usd.toFixed(6)}</b> (${(data.gstd_price_ton || 0).toFixed(6)} TON)`;
+            }
+        } catch (_e) { }
+
         const msg = lang === 'ru'
-            ? `💸 <b>Обмен Токенов (Swap)</b>\n\nМгновенно покупайте или продавайте GSTD на децентрализованной бирже STON.fi, не покидая Telegram.\n\n👇 Нажмите кнопку ниже, чтобы открыть торговый терминал TMA:`
-            : `💸 <b>Token Swap</b>\n\nInstantly buy or sell GSTD on the STON.fi decentralized exchange without leaving Telegram.\n\n👇 Tap the button below to open the TMA trading terminal:`;
+            ? `💸 <b>Обмен Токенов (Swap)</b>${priceInfo}\n\n` +
+              `🔄 <b>STON.fi DEX</b> — мгновенный обмен TON ↔ GSTD\n` +
+              `🌉 <b>P2P Мост</b> — перевод из Solana / XRPL\n` +
+              `⭐ <b>Telegram Stars</b> — покупка прямо в боте\n\n` +
+              `👇 Выберите способ:`
+            : `💸 <b>Token Swap</b>${priceInfo}\n\n` +
+              `🔄 <b>STON.fi DEX</b> — instant TON ↔ GSTD swap\n` +
+              `🌉 <b>P2P Bridge</b> — transfer from Solana / XRPL\n` +
+              `⭐ <b>Telegram Stars</b> — buy directly in bot\n\n` +
+              `👇 Choose your method:`;
         
         await ctx.reply(msg, {
             parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: lang === 'ru' ? '💱 Торговать GSTD' : '💱 Trade GSTD', web_app: { url: tmaUrl } }]
+                    [{ text: lang === 'ru' ? '🔄 STON.fi DEX (TON → GSTD)' : '🔄 STON.fi DEX (TON → GSTD)', url: stonfiUrl }],
+                    [{ text: lang === 'ru' ? '🌉 P2P Мост (SOL / XRP)' : '🌉 P2P Bridge (SOL / XRP)', url: bridgeUrl }],
+                    [{ text: lang === 'ru' ? '⭐ Купить за Stars' : '⭐ Buy with Stars', callback_data: 'buy_stars' }],
                 ]
             }
         });
     }
 
     private async handleStake(ctx: any, lang: string) {
-        const tmaUrl = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.com/tma';
+        const stakingUrl = 'https://app.gstdtoken.com/staking';
+
+        let stakingInfo = '';
+        try {
+            const data = await this.apiCall('/api/v1/staking/info');
+            const p = data.platform || {};
+            stakingInfo = lang === 'ru'
+                ? `\n\n📊 <b>Текущие условия:</b>\n` +
+                  `• APY: <b>${p.apy || 12}%</b>\n` +
+                  `• Мин. стейк: <b>${p.min_stake || 1} GSTD</b>\n` +
+                  `• Период: <b>${p.lock_period_days || 30} дней</b>`
+                : `\n\n📊 <b>Current terms:</b>\n` +
+                  `• APY: <b>${p.apy || 12}%</b>\n` +
+                  `• Min. stake: <b>${p.min_stake || 1} GSTD</b>\n` +
+                  `• Period: <b>${p.lock_period_days || 30} days</b>`;
+        } catch (_e) { }
+
         const msg = lang === 'ru'
-            ? `🥩 <b>Стейкинг GSTD</b>\n\nЗаморозьте свои GSTD токены, чтобы получать пассивный доход из пула Golden Reserve, который собирает 50% комиссий от всех ИИ-запросов платформы.\n\n👇 Откройте панель стейкинга:`
-            : `🥩 <b>GSTD Staking</b>\n\nLock up your GSTD tokens to earn passive income from the Golden Reserve pool, which collects 50% of fees from all AI queries on the platform.\n\n👇 Open the Staking panel:`;
+            ? `🥩 <b>Стейкинг GSTD</b>\n\n` +
+              `Заморозьте свои GSTD токены, чтобы получать пассивный доход из пула Golden Reserve — фонда, который собирает 50% комиссий от всех ИИ-запросов платформы.` +
+              stakingInfo +
+              `\n\n💡 <i>Чем больше стейк и длиннее период — тем выше APY.</i>`
+            : `🥩 <b>GSTD Staking</b>\n\n` +
+              `Lock up your GSTD tokens to earn passive income from the Golden Reserve pool — a fund that collects 50% of fees from all AI queries on the platform.` +
+              stakingInfo +
+              `\n\n💡 <i>Higher stake and longer lock period = higher APY.</i>`;
         
         await ctx.reply(msg, {
             parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: lang === 'ru' ? '🥩 Запустить Стейкинг' : '🥩 Launch Staking', web_app: { url: tmaUrl } }]
+                    [{ text: lang === 'ru' ? '🥩 Открыть Стейкинг' : '🥩 Open Staking', url: stakingUrl }],
+                    [{ text: lang === 'ru' ? '⭐ Купить GSTD' : '⭐ Buy GSTD', callback_data: 'buy_stars' }],
                 ]
             }
         });
@@ -1313,10 +1364,40 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
     }
 
     private async handleEarn(ctx: any, lang: string) {
+        const tmaUrl = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.com/tma';
+        const nodeOsUrl = 'https://gstdbot.gstdtoken.com';
+
         const msg = lang === 'ru'
-            ? `🧠 <b>Заработать GSTD</b>\n\nСтаньте частью роя:\n\n🌐 Откройте <a href="https://app.gstdtoken.com">приложение</a>\n⚡ Включите Нейро-Узел\n💰 Получайте GSTD за вычисления\n🎁 Забирайте награды кнопкой 💎 Баланс\n\n<i>Комиссия: 10% → Фонд развития, 5% → Sovereign AI Pool</i>`
-            : `🧠 <b>Earn GSTD</b>\n\nJoin the Swarm:\n\n🌐 Open the <a href="https://app.gstdtoken.com">app</a>\n⚡ Turn on Neural Node\n💰 Earn GSTD for computing\n🎁 Claim rewards via 💎 Balance\n\n<i>Commission: 10% → Development Fund, 5% → Sovereign AI Pool</i>`;
-        await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
+            ? `🧠 <b>Заработать GSTD</b>\n\nСтаньте частью роя и зарабатывайте GSTD пассивно:\n\n` +
+              `🖥 <b>Десктоп нода</b> — установите Node OS на компьютер (макс. доход)\n` +
+              `📱 <b>Мобильная нода</b> — запустите прямо в Telegram\n` +
+              `🥩 <b>Стейкинг</b> — заморозьте GSTD и получайте APY\n\n` +
+              `💰 <b>Награды:</b>\n` +
+              `• 0.10 GSTD/час за аптайм\n` +
+              `• 0.001 GSTD за каждый выполненный запрос\n` +
+              `• Бонус за серию дней (streak)\n\n` +
+              `<i>Комиссия: 10% → Фонд развития, 5% → Sovereign AI Pool</i>`
+            : `🧠 <b>Earn GSTD</b>\n\nJoin the Swarm and earn GSTD passively:\n\n` +
+              `🖥 <b>Desktop Node</b> — install Node OS on computer (max earnings)\n` +
+              `📱 <b>Mobile Node</b> — run directly in Telegram\n` +
+              `🥩 <b>Staking</b> — lock GSTD and earn APY\n\n` +
+              `💰 <b>Rewards:</b>\n` +
+              `• 0.10 GSTD/hour for uptime\n` +
+              `• 0.001 GSTD per completed query\n` +
+              `• Streak bonus for consecutive days\n\n` +
+              `<i>Commission: 10% → Development Fund, 5% → Sovereign AI Pool</i>`;
+
+        await ctx.reply(msg, {
+            parse_mode: 'HTML',
+            link_preview_options: { is_disabled: true },
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: lang === 'ru' ? '🖥 Установить Node OS' : '🖥 Install Node OS', url: nodeOsUrl }],
+                    [{ text: lang === 'ru' ? '📱 Мобильная нода' : '📱 Mobile Node', web_app: { url: tmaUrl } }],
+                    [{ text: lang === 'ru' ? '💎 Проверить баланс' : '💎 Check Balance', callback_data: 'check_balance' }],
+                ]
+            }
+        });
     }
 
     private async handleApiKeyIssue(ctx: any, lang: string) {

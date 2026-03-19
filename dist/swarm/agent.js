@@ -63,8 +63,10 @@ class SwarmAgent {
         await this.register();
         // Fetch initial rewards/tier info
         await this.fetchRewardsInfo();
-        // Start heartbeat (every 60 minutes — backend rate-limits at 54min)
-        this.heartbeatTimer = setInterval(() => this.heartbeat(), 60 * 60_000);
+        // Start heartbeat every 3 minutes for keepalive (backend marks offline after 5min).
+        // Rewards are rate-limited server-side to max once per 55 min, so frequent
+        // heartbeats are safe — they just keep the node visible as "online".
+        this.heartbeatTimer = setInterval(() => this.heartbeat(), 3 * 60_000);
         // Start task polling (every 30 seconds)
         this.taskPollTimer = setInterval(() => this.pollTasks(), 30_000);
         // Refresh tier info every 5 minutes
@@ -211,6 +213,14 @@ class SwarmAgent {
                     this.wallet.recordVerifiedEarning(rewardAmount, 'uptime', `Heartbeat reward (${result.reason || 'verified'})`);
                     (0, server_js_1.logActivity)(`Earned ${rewardAmount.toFixed(4)} GSTD (uptime)`, 'success');
                 }
+                // ─── OTA Update Check ────────────────────────────
+                if (result.update?.update_available) {
+                    (0, server_js_1.logActivity)(`⬆️ Update available: v${result.update.latest_version} (current: ${this.config.version})`, 'warn');
+                    console.log(`\n  🔄 Update available: v${result.update.latest_version}`);
+                    console.log(`     Run: curl -fsSL ${result.update.update_url} | bash`);
+                    // Auto-update if git is available (non-Docker installs)
+                    this.tryAutoUpdate().catch(() => { });
+                }
             }
         }
         catch (_e) {
@@ -219,6 +229,48 @@ class SwarmAgent {
                 this.stats.connected = false;
                 (0, server_js_1.logActivity)('Heartbeat failed — connection lost', 'error');
             }
+        }
+    }
+    // ─── OTA Auto-Update (for remote bare-metal nodes) ───────────
+    updateAttempted = false;
+    async tryAutoUpdate() {
+        if (this.updateAttempted)
+            return; // Only try once per session
+        this.updateAttempted = true;
+        try {
+            const { execSync } = require('child_process');
+            const installDir = this.config.installDir || require('os').homedir() + '/gstdbot';
+            const fs = require('fs');
+            // Skip in Docker (no git, managed externally)
+            if (fs.existsSync('/.dockerenv')) {
+                (0, server_js_1.logActivity)('Update available but running in Docker — skip auto-update', 'info');
+                return;
+            }
+            // Must have .git directory
+            if (!fs.existsSync(installDir + '/.git')) {
+                (0, server_js_1.logActivity)('Update available but no .git — run install.sh manually', 'warn');
+                return;
+            }
+            (0, server_js_1.logActivity)('⬆️ Starting auto-update...', 'info');
+            console.log('  🔄 Auto-updating from GitHub...');
+            // Pull latest code
+            execSync('git fetch origin main --quiet 2>/dev/null', { cwd: installDir, timeout: 30000 });
+            const local = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
+            const remote = execSync('git rev-parse origin/main', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
+            if (local === remote) {
+                (0, server_js_1.logActivity)('Already at latest commit — no update needed', 'info');
+                return;
+            }
+            execSync('git reset --hard origin/main', { cwd: installDir, timeout: 30000 });
+            execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 120000 });
+            execSync('npx tsc --skipLibCheck 2>/dev/null || npx tsc 2>/dev/null', { cwd: installDir, timeout: 60000 });
+            (0, server_js_1.logActivity)('✅ Update installed — restarting node...', 'success');
+            console.log('  ✅ Update installed. Restarting...');
+            // Systemd will restart us, or pm2, or the user manually
+            process.exit(0);
+        }
+        catch (e) {
+            (0, server_js_1.logActivity)(`Auto-update failed: ${e.message || 'unknown'} — run install.sh manually`, 'error');
         }
     }
     // ─── Task Processing ─────────────────────────────────────────

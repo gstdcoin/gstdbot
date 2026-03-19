@@ -33,6 +33,7 @@ export interface WalletBalance {
 const CONFIG_DIR = join(homedir(), '.config', 'gstdbot');
 const WALLET_FILE = join(CONFIG_DIR, 'wallet.json');
 const SEED_FILE = join(CONFIG_DIR, 'wallet_seed.enc');
+const API_BASE = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
 
 // ─── Encryption helpers ──────────────────────────────────────
 
@@ -224,7 +225,7 @@ export async function getBalance(): Promise<WalletBalance> {
 
     try {
         const resp = await fetch(
-            `https://app.gstdtoken.com/api/v1/wallet/${wallet.address}/balance`
+            `${API_BASE}/wallet/${wallet.address}/balance`
         ).catch(() => null);
         if (resp?.ok) {
             const data: any = await resp.json();
@@ -260,7 +261,7 @@ export async function linkTelegram(userId: string): Promise<boolean> {
 
     try {
         const resp = await fetch(
-            'https://app.gstdtoken.com/api/v1/wallet/link-telegram',
+            `${API_BASE}/wallet/link-telegram`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

@@ -25,6 +25,7 @@ const os_1 = require("os");
 const CONFIG_DIR = (0, path_1.join)((0, os_1.homedir)(), '.config', 'gstdbot');
 const WALLET_FILE = (0, path_1.join)(CONFIG_DIR, 'wallet.json');
 const SEED_FILE = (0, path_1.join)(CONFIG_DIR, 'wallet_seed.enc');
+const API_BASE = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
 // ─── Encryption helpers ──────────────────────────────────────
 function deriveKey() {
     // Derive encryption key from machine-specific data
@@ -206,7 +207,7 @@ async function getBalance() {
         return { gstd: 0, ton: 0, pending: 0, totalEarned: 0 };
     }
     try {
-        const resp = await fetch(`https://app.gstdtoken.com/api/v1/wallet/${wallet.address}/balance`).catch(() => null);
+        const resp = await fetch(`${API_BASE}/wallet/${wallet.address}/balance`).catch(() => null);
         if (resp?.ok) {
             const data = await resp.json();
             return {
@@ -238,7 +239,7 @@ async function linkTelegram(userId) {
     if (!wallet)
         return false;
     try {
-        const resp = await fetch('https://app.gstdtoken.com/api/v1/wallet/link-telegram', {
+        const resp = await fetch(`${API_BASE}/wallet/link-telegram`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

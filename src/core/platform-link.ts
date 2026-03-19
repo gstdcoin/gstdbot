@@ -79,17 +79,22 @@ export class PlatformLink extends EventEmitter {
 
     private async register() {
         try {
+            const caps = this.capabilitiesProvider?.() || {};
             const resp = await fetch(`${this.platformUrl}/api/v1/nodes/register`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Wallet-Address': this.walletAddress,
+                },
                 body: JSON.stringify({
-                    node_id: this.nodeId,
-                    version: this.version,
-                    wallet: this.walletAddress,
-                    capabilities: this.capabilitiesProvider?.() || {},
-                    platform: process.platform,
-                    arch: process.arch,
-                    node_version: process.version,
+                    name: `Node-${this.nodeId}`,
+                    specs: {
+                        node_id: this.nodeId,
+                        version: this.version,
+                        platform: process.platform,
+                        arch: process.arch,
+                        capabilities: caps,
+                    },
                 }),
                 signal: AbortSignal.timeout(10000),
             });
@@ -107,39 +112,23 @@ export class PlatformLink extends EventEmitter {
 
     private async sendHeartbeat() {
         const stats = this.statsCollector?.() || {};
-        const capabilities = this.capabilitiesProvider?.() || {} as NodeCapabilities;
-
-        // Get resource usage
-        const memUsage = process.memoryUsage();
-        const resources = {
-            cpuUsage: 0, // Would need os module for real CPU
-            memoryUsage: Math.round(memUsage.heapUsed / memUsage.heapTotal * 100),
-            diskFree: 0,
-        };
 
         try {
-            const heartbeat: HeartbeatData = {
-                node_id: this.nodeId,
-                version: this.version,
-                uptime: process.uptime(),
-                wallet: this.walletAddress,
-                status: 'online',
-                capabilities,
-                stats: {
-                    tasksCompleted: stats.tasksCompleted || 0,
-                    tasksActive: stats.tasksActive || 0,
-                    queryCount: stats.queryCount || 0,
-                    avgLatencyMs: stats.avgLatencyMs || 0,
-                    memoryEntries: stats.memoryEntries || 0,
-                    wsClients: stats.wsClients || 0,
-                },
-                resources,
-            };
-
+            // Send heartbeat with fields matching backend HandleHeartbeat:
+            // wallet_address, node_name, node_version, uptime_hours, queries_served
             const resp = await fetch(`${this.platformUrl}/api/v1/nodes/heartbeat`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(heartbeat),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Wallet-Address': this.walletAddress,
+                },
+                body: JSON.stringify({
+                    wallet_address: this.walletAddress,
+                    node_name: `Node-${this.nodeId}`,
+                    node_version: this.version,
+                    uptime_hours: Math.round(process.uptime() / 3600),
+                    queries_served: stats.queryCount || 0,
+                }),
                 signal: AbortSignal.timeout(10000),
             });
 

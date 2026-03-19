@@ -313,7 +313,8 @@ export function getBalance(): Promise<WalletBalance> {
     const wallet = getW();
     if (!wallet) return Promise.resolve({ gstd: 0, ton: 0, pending: 0, totalEarned: 0 });
 
-    return fetch(`https://app.gstdtoken.com/api/v1/wallet/${wallet.address}/balance`, { signal: AbortSignal.timeout(5000) })
+    const apiBase = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
+    return fetch(`${apiBase}/wallet/${wallet.address}/balance`, { signal: AbortSignal.timeout(5000) })
         .then(r => r.ok ? r.json() : { gstd: 0, ton: 0, pending: 0, totalEarned: 0 })
         .then((d: any) => ({ gstd: d.gstd || 0, ton: d.ton || 0, pending: d.pending || 0, totalEarned: d.total_earned || 0 }))
         .catch(() => ({ gstd: 0, ton: 0, pending: 0, totalEarned: 0 }));

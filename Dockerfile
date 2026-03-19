@@ -58,6 +58,8 @@ LABEL org.opencontainers.image.source="https://github.com/gstdcoin/gstdbot"
 LABEL org.opencontainers.image.version="3.4.0"
 LABEL org.opencontainers.image.vendor="GSTD"
 
+ENV NODE_OPTIONS="--no-deprecation"
+
 # Use tini for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "dist/index.js"]

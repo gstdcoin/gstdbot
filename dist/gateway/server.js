@@ -409,10 +409,25 @@ class OmegaGateway {
                     commits_behind: behind,
                     branch,
                     changelog,
+                    update_url: 'https://gstdbot.gstdtoken.com/install.sh',
                 });
             }
             catch (e) {
-                res.json({ update_available: false, error: e.message });
+                // Fallback: check via platform API when git is not available
+                try {
+                    const currentVersion = require('../../package.json').version || 'unknown';
+                    const apiUrl = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
+                    const resp = await fetch(`${apiUrl}/nodes/update/check?version=${currentVersion}`, {
+                        signal: AbortSignal.timeout(5000),
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        res.json(data);
+                        return;
+                    }
+                }
+                catch (_fallback) { }
+                res.json({ update_available: false, error: e.message, update_url: 'https://gstdbot.gstdtoken.com/install.sh' });
             }
         });
         this.app.post('/api/update', async (_req, res) => {
