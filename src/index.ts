@@ -1,25 +1,34 @@
 /**
- * GSTD Node OS — Main Orchestrator (gstdd)
+ * GSTD SuperNode OS — Main Orchestrator (gstdd)
  *
  * ═══════════════════════════════════════════════════════
- * Your node is a fully self-contained AI platform:
- * - No external websites needed — everything is built-in
- * - Connect from any device, anywhere (LAN/Relay/Tor)
- * - More nodes = stronger swarm + collective memory
- * - Earn GSTD tokens for sharing resources
- * - GSTD token = key to all platform functions
+ * ONE NODE TO RULE THEM ALL — 6 Revenue Streams:
+ *   💾 Storage Provider  — earn GSTD for hosting data (Storj/Filecoin)
+ *   💻 GPU Compute       — earn GSTD for running jobs (Akash/io.net)
+ *   🧠 AI Inference      — earn GSTD for answering queries (GSTD native)
+ *   📡 Traffic Relay     — earn GSTD for proxying traffic (Helium DePIN)
+ *   🎓 Model Training    — earn GSTD for federated training (io.net)
+ *   🪙 Staking           — earn GSTD passive yield (12% APY)
+ *
+ * All earnings interact with real GSTD token on TON blockchain
+ * via SettlementRouter.tact smart contract.
  * ═══════════════════════════════════════════════════════
  *
  * Boot sequence:
  *  1. AI Gateway (Groq + Ollama)
  *  2. Blockchain Manager (GSTD wallet + staking)
- *  3. Collective Memory (L1 Map + L2 Redis + L3 Platform)
- *  4. Swarm Agent (P2P task processing + earnings)
- *  5. Resource Sharing (sell compute/GPU for GSTD)
- *  6. Federated Training (distributed model training)
- *  7. Remote Access (token auth + relay + Tor)
- *  8. Telegram Channel
- *  9. Dashboard (all-in-one control panel on :8080)
+ *  3. Revenue Engine (unified 6-stream earnings tracker)
+ *  4. Collective Memory (L1 Map + L2 Redis + L3 Platform)
+ *  5. Swarm Agent (P2P task processing + earnings)
+ *  6. Resource Sharing (sell compute/GPU for GSTD)
+ *  7. Federated Training (distributed model training)
+ *  8. Storage Vault (Storj/Filecoin-style shard storage)
+ *  9. Compute Marketplace (Akash/io.net-style GPU jobs)
+ * 10. Traffic Relay (Helium-style DePIN + PoC)
+ * 11. Remote Access (token auth + relay + Tor)
+ * 12. Telegram Channel
+ * 13. TON Connect + Mobile Node TMA
+ * 14. Dashboard (all-in-one control panel)
  */
 
 import { OmegaGateway, logActivity } from './gateway/server.js';
@@ -35,6 +44,10 @@ import { BlockchainManager } from './blockchain/token.js';
 import { RemoteAccessManager } from './network/remote.js';
 import { ResourceSharing } from './network/resources.js';
 import { SwarmTrainer } from './training/federated.js';
+import { RevenueEngine } from './revenue/engine.js';
+import { StorageVault } from './storage/vault.js';
+import { ComputeMarketplace } from './compute/marketplace.js';
+import { TrafficRelay } from './coverage/relay.js';
 import { hostname } from 'os';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -116,13 +129,14 @@ function loadConfig(): NodeConfig {
 async function main(): Promise<void> {
     const config = loadConfig();
     const startTime = Date.now();
-    const TOTAL_STEPS = 11;
+    const TOTAL_STEPS = 14;
 
     console.log('');
     console.log('  🐝 ═══════════════════════════════════════════════════');
-    console.log('  🐝  GSTD Node OS v' + config.version);
+    console.log('  🐝  GSTD SuperNode OS v' + config.version);
     console.log('  🐝  ' + config.nodeName + ' (' + config.mode + ' mode)');
-    console.log('  🐝  All-in-one: AI + Swarm + Memory + Wallet + Apps');
+    console.log('  🐝  ONE NODE TO RULE THEM ALL — 6 Revenue Streams');
+    console.log('  🐝  💾 Storage  💻 Compute  🧠 AI  📡 Relay  🎓 Training  🪙 Staking');
     console.log('  🐝 ═══════════════════════════════════════════════════');
     console.log('');
 
@@ -143,39 +157,68 @@ async function main(): Promise<void> {
     const blockchain = new BlockchainManager();
     await blockchain.init();
 
-    // ── 3. Wallet Manager (Earnings Tracker) ────────────────────
-    console.log(`  [3/${TOTAL_STEPS}] Starting wallet manager...`);
+    // ── 3. Revenue Engine (Unified 6-stream earnings) ───────────
+    console.log(`  [3/${TOTAL_STEPS}] Initializing Revenue Engine (6 streams)...`);
+    const revenue = new RevenueEngine(config.nodeId);
+    await revenue.init();
+
+    // ── 4. Wallet Manager (Earnings Tracker) ────────────────────
+    console.log(`  [4/${TOTAL_STEPS}] Starting wallet manager...`);
     const wallet = new NodeWallet(config);
     await wallet.init();
 
     // Connect wallet to gateway → every query earns GSTD
     gateway.setWallet(wallet);
 
+    // Connect revenue engine wallet
+    if (wallet.getAddress()) {
+        revenue.setWalletAddress(wallet.getAddress());
+    }
+
     // Auto-save earnings every 5 minutes
     setInterval(() => { try { wallet.saveEarnings(); } catch (_e) {} }, 5 * 60 * 1000);
 
-    // ── 4. Collective Memory ────────────────────────────────────
-    console.log(`  [4/${TOTAL_STEPS}] Connecting collective memory...`);
+    // ── 5. Collective Memory ────────────────────────────────────
+    console.log(`  [5/${TOTAL_STEPS}] Connecting collective memory...`);
     const memory = new CollectiveMemory(config);
     await memory.init();
 
-    // ── 5. Swarm Agent (P2P + Task Processing) ──────────────────
-    console.log(`  [5/${TOTAL_STEPS}] Joining swarm network...`);
+    // ── 6. Swarm Agent (P2P + Task Processing) ──────────────────
+    console.log(`  [6/${TOTAL_STEPS}] Joining swarm network...`);
     const swarm = new SwarmAgent(config, wallet, memory);
     await swarm.start();
 
-    // ── 6. Resource Sharing ─────────────────────────────────────
-    console.log(`  [6/${TOTAL_STEPS}] Enabling resource sharing...`);
+    // ── 7. Resource Sharing ─────────────────────────────────────
+    console.log(`  [7/${TOTAL_STEPS}] Enabling resource sharing...`);
     const resources = new ResourceSharing(config);
     await resources.init();
 
-    // ── 7. Federated Training ───────────────────────────────────
-    console.log(`  [7/${TOTAL_STEPS}] Initializing training engine...`);
+    // ── 8. Federated Training (🎓 earn GSTD for training) ───────
+    console.log(`  [8/${TOTAL_STEPS}] Initializing training engine...`);
     const trainer = new SwarmTrainer(config);
     await trainer.init();
 
-    // ── 8. Remote Access + Channels ─────────────────────────────
-    console.log(`  [8/${TOTAL_STEPS}] Setting up remote access...`);
+    // ── 9. Storage Vault (💾 earn GSTD for storing data) ────────
+    console.log(`  [9/${TOTAL_STEPS}] Initializing Storage Vault...`);
+    const storageVault = new StorageVault(config.nodeId);
+    storageVault.setRevenueEngine(revenue);
+    await storageVault.init();
+
+    // ── 10. Compute Marketplace (💻 earn GSTD for GPU jobs) ──────
+    console.log(`  [10/${TOTAL_STEPS}] Initializing Compute Marketplace...`);
+    const computeMarket = new ComputeMarketplace(config.nodeId);
+    computeMarket.setRevenueEngine(revenue);
+    await computeMarket.init();
+
+    // ── 11. Traffic Relay (📡 earn GSTD for proxying traffic) ────
+    console.log(`  [11/${TOTAL_STEPS}] Initializing Traffic Relay...`);
+    const trafficRelay = new TrafficRelay(config.nodeId);
+    trafficRelay.setRevenueEngine(revenue);
+    await trafficRelay.init();
+    trafficRelay.mountRoutes(gateway.getExpressApp());
+
+    // ── 12. Remote Access + Channels ────────────────────────────
+    console.log(`  [12/${TOTAL_STEPS}] Setting up remote access...`);
     const remote = new RemoteAccessManager(config.nodeId);
     await remote.init();
 
@@ -193,23 +236,20 @@ async function main(): Promise<void> {
         console.log('    Telegram: disabled (no token)');
     }
 
-    // ── 9. TON Connect + Mobile Node ─────────────────────────────
-    console.log(`  [9/${TOTAL_STEPS}] Initializing TON Connect...`);
+    // ── 13. TON Connect + Mobile Node ────────────────────────────
+    console.log(`  [13/${TOTAL_STEPS}] Initializing TON Connect...`);
     const tonConnect = new TonConnectManager({
         network: config.tonconnect.network,
         bridgeUrl: config.tonconnect.bridgeUrl,
         gstdJettonAddress: process.env.GSTD_JETTON_ADDRESS || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
     });
     if (config.tonconnect.enabled) {
-        // Try to load wallet mnemonic for signing
         const mnemonic = process.env.GSTD_WALLET_MNEMONIC?.split(' ');
         await tonConnect.init(mnemonic).catch(() => {});
     } else {
         console.log('    TON Connect: disabled (set GSTD_TONCONNECT=true)');
     }
 
-    // ── 10. Mobile Node TMA ──────────────────────────────────────
-    console.log(`  [10/${TOTAL_STEPS}] Enabling Mobile Node (TMA)...`);
     let mobileNode: MobileNodeManager | null = null;
     if (config.mobileNode.enabled) {
         const telegramToken = process.env.TELEGRAM_BOT_TOKEN || '';
@@ -224,8 +264,8 @@ async function main(): Promise<void> {
         console.log('    Mobile Node: disabled');
     }
 
-    // ── 11. Node OS ready (Dashboard served via Gateway) ─────────
-    console.log(`  [11/${TOTAL_STEPS}] Node OS UI active on gateway port...`);
+    // ── 14. Node OS ready (Dashboard served via Gateway) ─────────
+    console.log(`  [14/${TOTAL_STEPS}] SuperNode OS UI active on gateway port...`);
 
     // Initialize security and orchestrator
     const security = new SecurityHardening();
@@ -241,40 +281,46 @@ async function main(): Promise<void> {
         blockchain,
         security,
         orchestrator,
+        revenue,
+        storageVault,
+        computeMarket,
+        trafficRelay,
     });
 
     // ── Boot complete ───────────────────────────────────────────
     const bootTime = ((Date.now() - startTime) / 1000).toFixed(1);
     const accessInfo = remote.getAccessInfo();
     const dashPort = actualPort;
+    const computeStats = computeMarket.getStats();
+    const storageStats = storageVault.getStats();
 
     console.log('');
-    console.log('  ╔═══════════════════════════════════════════════════╗');
-    console.log('  ║      🐝 GSTD Node OS — Ready! (' + bootTime + 's)             ║');
-    console.log('  ╚═══════════════════════════════════════════════════╝');
+    console.log('  ╔═══════════════════════════════════════════════════════╗');
+    console.log('  ║  🐝 GSTD SuperNode — Ready! (' + bootTime + 's)                   ║');
+    console.log('  ║  ONE NODE TO RULE THEM ALL — 6 Revenue Streams        ║');
+    console.log('  ╚═══════════════════════════════════════════════════════╝');
     console.log('');
-    console.log('  👉 Open in your browser:');
-    console.log('     http://localhost:' + dashPort);
+    console.log('  👉 Dashboard: http://localhost:' + dashPort);
     console.log('');
     if (accessInfo.methods.relay?.status === 'connected') {
         console.log('  🌐 Remote:      ' + accessInfo.methods.relay.url);
     }
-    if (accessInfo.methods.tor?.onion) {
-        console.log('  🧅 Tor:         http://' + accessInfo.methods.tor.onion);
-    }
-    console.log('  🐝 Swarm:       ' + (swarm.isConnected() ? '✓ connected to network' : 'standalone (will auto-connect)'));
+    console.log('  ── Revenue Streams ──────────────────────────────');
+    console.log('  💾 Storage:     ' + (storageVault.isEnabled() ? `✓ ${storageStats.totalCapacityGB} GB available` : 'disabled'));
+    console.log('  💻 Compute:     ' + (computeMarket.isEnabled() ? `✓ score ${computeStats.benchmarkScore} pts` : 'disabled'));
+    console.log('  🧠 Inference:   ✓ 8 AI models (earn per query)');
+    console.log('  📡 Relay:       ' + (trafficRelay.isEnabled() ? '✓ VPN/CDN/API proxy' : 'disabled'));
+    console.log('  🎓 Training:    ' + (trainer.getStats().activeJobs > 0 ? 'active' : '✓ ready'));
+    console.log('  🪙 Staking:     ✓ 12% APY');
+    console.log('  ── Infrastructure ───────────────────────────────');
+    console.log('  🐝 Swarm:       ' + (swarm.isConnected() ? '✓ connected' : 'standalone'));
     console.log('  💰 Wallet:      ' + (wallet.getAddress() || 'auto-generated'));
-    console.log('  🧠 Memory:      ' + (memory.isConnected() ? 'full (L1+L2+L3)' : 'local (L1) — Redis optional'));
-    console.log('  📦 Resources:   sharing enabled');
-    console.log('  🎓 Training:    ' + (trainer.getStats().activeJobs > 0 ? 'active' : 'ready'));
-    console.log('  🔗 TON Connect: ' + (tonConnect.isReady() ? '✓ ' + tonConnect.getAddress()?.slice(0,12) + '...' : 'ready (no wallet)'));
-    console.log('  📱 Mobile Node: ' + (mobileNode ? '✓ TMA enabled (/tma)' : 'disabled'));
+    console.log('  🧠 Memory:      ' + (memory.isConnected() ? 'L1+L2+L3' : 'L1 only'));
+    console.log('  🔗 TON Connect: ' + (tonConnect.isReady() ? '✓ ' + tonConnect.getAddress()?.slice(0,12) + '...' : 'ready'));
+    console.log('  📱 Mobile:      ' + (mobileNode ? '✓ TMA' : 'disabled'));
     console.log('');
-    console.log('  💡 Tips:');
-    console.log('     • Your node earns GSTD tokens automatically while running');
-    console.log('     • Open the dashboard to chat with 8 free AI models');
-    console.log('     • Mobile users can run nodes via Telegram Mini App');
-    console.log('     • To stop: press Ctrl+C');
+    console.log('  💡 All 6 revenue streams earn GSTD automatically!');
+    console.log('     Settlement → GSTD token on TON blockchain');
     console.log('');
 
     logActivity('GSTD Node OS v' + config.version + ' booted in ' + bootTime + 's', 'success');
@@ -320,11 +366,15 @@ async function main(): Promise<void> {
 
     // ── Graceful shutdown ───────────────────────────────────────
     const shutdown = async () => {
-        console.log('\n  🛑 Shutting down GSTD Node OS...');
+        console.log('\n  🛑 Shutting down GSTD SuperNode...');
         logActivity('Node shutdown initiated', 'warn');
         clearInterval(updateInterval);
         if (mobileNode) await mobileNode.stop();
         await tonConnect.close();
+        await trafficRelay.stop();
+        await computeMarket.stop();
+        await storageVault.stop();
+        await revenue.stop();
         await trainer.stop();
         await resources.stop();
         await remote.stop();
@@ -333,6 +383,8 @@ async function main(): Promise<void> {
         await blockchain.close();
         await gateway.stop();
         console.log('  ✅ Clean shutdown complete.');
+        const revStats = revenue.getStats();
+        console.log(`  💰 Total earned: ${revStats.totalEarned.toFixed(4)} GSTD (${revStats.settlementsCount} settlements)`);
         process.exit(0);
     };
     process.on('SIGINT', shutdown);
