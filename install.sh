@@ -219,7 +219,7 @@ fi
 if [ -d "$INSTALL_DIR/.git" ]; then
     info "Updating existing installation..."
     cd "$INSTALL_DIR"
-    git fetch --depth 1 origin main 2>>"$LOG_FILE" || true
+    git fetch --depth 10 origin main 2>>"$LOG_FILE" || true
     git reset --hard origin/main 2>>"$LOG_FILE" || git pull --ff-only 2>>"$LOG_FILE" || true
     cd - >/dev/null
     info "Updated to latest"
@@ -227,11 +227,11 @@ elif [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/package.json" ]; then
     # Directory exists but no .git — delete and re-clone
     warn "Corrupted install detected, re-cloning..."
     rm -rf "$INSTALL_DIR"
-    git clone --depth 1 "$REPO_URL" "$INSTALL_DIR" 2>>"$LOG_FILE"
+    git clone --depth 10 "$REPO_URL" "$INSTALL_DIR" 2>>"$LOG_FILE"
     info "Re-cloned fresh"
 else
     info "Cloning from GitHub..."
-    git clone --depth 1 "$REPO_URL" "$INSTALL_DIR" 2>>"$LOG_FILE"
+    git clone --depth 10 "$REPO_URL" "$INSTALL_DIR" 2>>"$LOG_FILE"
     info "Cloned to $INSTALL_DIR"
 fi
 
@@ -436,6 +436,46 @@ if [ "$USED_SYSTEMD" = false ]; then
     cd - >/dev/null
 fi
 
+# ─── Create gstd-node CLI tool ──────────────────────────────────
+CLI_PATH="/usr/local/bin/gstd-node"
+if ! touch "$CLI_PATH" 2>/dev/null; then
+    mkdir -p "$HOME/.local/bin"
+    CLI_PATH="$HOME/.local/bin/gstd-node"
+    export PATH="$HOME/.local/bin:$PATH"
+fi
+
+cat > "$CLI_PATH" << CLISCRIPT
+#!/usr/bin/env bash
+INSTALL_DIR="$INSTALL_DIR"
+SYS_CMD="sudo systemctl"
+[ "\$(id -u)" != "0" ] && ! sudo -n true 2>/dev/null && SYS_CMD="systemctl --user"
+
+case "\$1" in
+    update)
+        echo "Updating GSTD Node..."
+        curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
+        ;;
+    rollback)
+        echo "Rolling back to previous version..."
+        cd "\$INSTALL_DIR"
+        git checkout HEAD@{1} 2>/dev/null || git checkout HEAD^ 2>/dev/null || echo "Cannot rollback further."
+        npm run build
+        \$SYS_CMD restart gstd-node 2>/dev/null || node dist/index.js &
+        echo "Rollback complete. Service restarted!"
+        ;;
+    restart) \$SYS_CMD restart gstd-node 2>/dev/null || kill \$(cat \$HOME/.config/gstdbot/node.pid) && cd "\$INSTALL_DIR" && node dist/index.js & ;;
+    status)  \$SYS_CMD status gstd-node 2>/dev/null ;;
+    logs)    sudo journalctl -u gstd-node -f 2>/dev/null || tail -f \$HOME/.config/gstdbot/node.log ;;
+    *)
+        echo "GSTD Node CLI (v${VERSION})"
+        echo "Usage: gstd-node {update|rollback|restart|status|logs}"
+        ;;
+esac
+CLISCRIPT
+chmod +x "$CLI_PATH"
+info "CLI tool installed: type 'gstd-node' to manage your node"
+
+
 # ─── Wait for dashboard ─────────────────────────────────────────
 READY=false
 for i in $(seq 1 10); do
@@ -482,6 +522,13 @@ else
     echo -e "    ${GREEN}logs${NC}     tail -f $CONFIG_DIR/node.log"
     echo -e "    ${GREEN}stop${NC}     kill \$(cat $CONFIG_DIR/node.pid)"
 fi
+
+echo ""
+echo -e "  ${BOLD}💥 NEW! Simple CLI Tool (Type anywhere):${NC}"
+echo -e "    ${CYAN}gstd-node rollback${NC} — Instantly revert a broken update"
+echo -e "    ${CYAN}gstd-node update${NC}   — Update to the newest version"
+echo -e "    ${CYAN}gstd-node logs${NC}     — View live console output"
+echo -e "    ${CYAN}gstd-node status${NC}   — Check node health"
 
 echo ""
 echo -e "  ${BOLD}What your node does:${NC}"
