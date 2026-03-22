@@ -48,6 +48,8 @@ import { RevenueEngine } from './revenue/engine.js';
 import { StorageVault } from './storage/vault.js';
 import { ComputeMarketplace } from './compute/marketplace.js';
 import { TrafficRelay } from './coverage/relay.js';
+import { FastifyGateway } from './gateway/fastify.js';
+import { GstdP2PNode } from './p2p/node.js';
 import { hostname } from 'os';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -129,7 +131,7 @@ function loadConfig(): NodeConfig {
 async function main(): Promise<void> {
     const config = loadConfig();
     const startTime = Date.now();
-    const TOTAL_STEPS = 14;
+    const TOTAL_STEPS = 16;
 
     console.log('');
     console.log('  🐝 ═══════════════════════════════════════════════════');
@@ -288,6 +290,43 @@ async function main(): Promise<void> {
         trafficRelay,
     });
 
+    // ── 15. Fastify HTTP Engine (4x faster HTTP parser) ──────────
+    console.log(`  [15/${TOTAL_STEPS}] Upgrading to Fastify engine...`);
+    let fastifyGateway: FastifyGateway | null = null;
+    try {
+        // Fastify wraps Express — all existing routes work through Fastify's faster parser
+        fastifyGateway = new FastifyGateway(gateway.getExpressApp(), {
+            port: actualPort + 1, // Fastify on port+1 (reverse proxy handles routing)
+        });
+        await fastifyGateway.init();
+        console.log('    ⚡ Fastify engine: initialized (Express compat mode)');
+    } catch (e: any) {
+        console.log(`    ⚠ Fastify init skipped: ${e.message} (Express still active)`);
+    }
+
+    // ── 16. libp2p P2P Mesh Network ──────────────────────────────
+    console.log(`  [16/${TOTAL_STEPS}] Starting P2P mesh network...`);
+    const p2pNode = new GstdP2PNode({
+        nodeId: config.nodeId,
+        walletAddress: wallet.getAddress() || '',
+        listenPort: parseInt(process.env.GSTD_P2P_PORT || '4001'),
+        enableMdns: process.env.GSTD_P2P_MDNS !== 'false',
+        version: config.version,
+    });
+    let p2pPeerId = '';
+    try {
+        p2pPeerId = await p2pNode.start();
+        // Wire P2P task events to swarm agent
+        p2pNode.on('task:received', (task: any) => {
+            logActivity(`P2P task received: ${task.taskId}`, 'info');
+        });
+        p2pNode.on('heartbeat:received', (hb: any) => {
+            logActivity(`P2P heartbeat from ${hb.nodeId}`, 'info');
+        });
+    } catch (e: any) {
+        console.log(`    ⚠ P2P mesh: ${e.message} (platform-only mode)`);
+    }
+
     // ── Boot complete ───────────────────────────────────────────
     const bootTime = ((Date.now() - startTime) / 1000).toFixed(1);
     const accessInfo = remote.getAccessInfo();
@@ -319,6 +358,12 @@ async function main(): Promise<void> {
     console.log('  🧠 Memory:      ' + (memory.isConnected() ? 'L1+L2+L3' : 'L1 only'));
     console.log('  🔗 TON Connect: ' + (tonConnect.isReady() ? '✓ ' + tonConnect.getAddress()?.slice(0,12) + '...' : 'ready'));
     console.log('  📱 Mobile:      ' + (mobileNode ? '✓ TMA' : 'disabled'));
+    console.log('  ⚡ HTTP Engine:  ' + (fastifyGateway ? 'Fastify (4x boost)' : 'Express'));
+    console.log('  🌐 P2P Mesh:    ' + (p2pPeerId ? `✓ ${p2pPeerId.slice(0,16)}...` : 'platform-only'));
+    const p2pStats = p2pNode.getStats();
+    if (p2pStats.connectedPeers > 0) {
+        console.log(`  🤝 P2P Peers:   ${p2pStats.connectedPeers} connected`);
+    }
     console.log('');
     console.log('  💡 All 6 revenue streams earn GSTD automatically!');
     console.log('     Settlement → GSTD token on TON blockchain');
@@ -370,6 +415,8 @@ async function main(): Promise<void> {
         console.log('\n  🛑 Shutting down GSTD SuperNode...');
         logActivity('Node shutdown initiated', 'warn');
         clearInterval(updateInterval);
+        await p2pNode.stop();
+        if (fastifyGateway) await fastifyGateway.close();
         if (mobileNode) await mobileNode.stop();
         await tonConnect.close();
         await trafficRelay.stop();

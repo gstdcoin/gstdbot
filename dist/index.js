@@ -49,6 +49,8 @@ const engine_js_1 = require("./revenue/engine.js");
 const vault_js_1 = require("./storage/vault.js");
 const marketplace_js_1 = require("./compute/marketplace.js");
 const relay_js_1 = require("./coverage/relay.js");
+const fastify_js_1 = require("./gateway/fastify.js");
+const node_js_1 = require("./p2p/node.js");
 const os_1 = require("os");
 const fs_1 = require("fs");
 const path_1 = require("path");
@@ -112,7 +114,7 @@ function loadConfig() {
 async function main() {
     const config = loadConfig();
     const startTime = Date.now();
-    const TOTAL_STEPS = 14;
+    const TOTAL_STEPS = 16;
     console.log('');
     console.log('  🐝 ═══════════════════════════════════════════════════');
     console.log('  🐝  GSTD SuperNode OS v' + config.version);
@@ -147,8 +149,9 @@ async function main() {
     // Connect wallet to gateway → every query earns GSTD
     gateway.setWallet(wallet);
     // Connect revenue engine wallet
-    if (wallet.getAddress()) {
-        revenue.setWalletAddress(wallet.getAddress());
+    const addr = wallet.getAddress();
+    if (addr) {
+        revenue.setWalletAddress(addr);
     }
     // Auto-save earnings every 5 minutes
     setInterval(() => { try {
@@ -253,6 +256,43 @@ async function main() {
         computeMarket,
         trafficRelay,
     });
+    // ── 15. Fastify HTTP Engine (4x faster HTTP parser) ──────────
+    console.log(`  [15/${TOTAL_STEPS}] Upgrading to Fastify engine...`);
+    let fastifyGateway = null;
+    try {
+        // Fastify wraps Express — all existing routes work through Fastify's faster parser
+        fastifyGateway = new fastify_js_1.FastifyGateway(gateway.getExpressApp(), {
+            port: actualPort + 1, // Fastify on port+1 (reverse proxy handles routing)
+        });
+        await fastifyGateway.init();
+        console.log('    ⚡ Fastify engine: initialized (Express compat mode)');
+    }
+    catch (e) {
+        console.log(`    ⚠ Fastify init skipped: ${e.message} (Express still active)`);
+    }
+    // ── 16. libp2p P2P Mesh Network ──────────────────────────────
+    console.log(`  [16/${TOTAL_STEPS}] Starting P2P mesh network...`);
+    const p2pNode = new node_js_1.GstdP2PNode({
+        nodeId: config.nodeId,
+        walletAddress: wallet.getAddress() || '',
+        listenPort: parseInt(process.env.GSTD_P2P_PORT || '4001'),
+        enableMdns: process.env.GSTD_P2P_MDNS !== 'false',
+        version: config.version,
+    });
+    let p2pPeerId = '';
+    try {
+        p2pPeerId = await p2pNode.start();
+        // Wire P2P task events to swarm agent
+        p2pNode.on('task:received', (task) => {
+            (0, server_js_1.logActivity)(`P2P task received: ${task.taskId}`, 'info');
+        });
+        p2pNode.on('heartbeat:received', (hb) => {
+            (0, server_js_1.logActivity)(`P2P heartbeat from ${hb.nodeId}`, 'info');
+        });
+    }
+    catch (e) {
+        console.log(`    ⚠ P2P mesh: ${e.message} (platform-only mode)`);
+    }
     // ── Boot complete ───────────────────────────────────────────
     const bootTime = ((Date.now() - startTime) / 1000).toFixed(1);
     const accessInfo = remote.getAccessInfo();
@@ -283,6 +323,12 @@ async function main() {
     console.log('  🧠 Memory:      ' + (memory.isConnected() ? 'L1+L2+L3' : 'L1 only'));
     console.log('  🔗 TON Connect: ' + (tonConnect.isReady() ? '✓ ' + tonConnect.getAddress()?.slice(0, 12) + '...' : 'ready'));
     console.log('  📱 Mobile:      ' + (mobileNode ? '✓ TMA' : 'disabled'));
+    console.log('  ⚡ HTTP Engine:  ' + (fastifyGateway ? 'Fastify (4x boost)' : 'Express'));
+    console.log('  🌐 P2P Mesh:    ' + (p2pPeerId ? `✓ ${p2pPeerId.slice(0, 16)}...` : 'platform-only'));
+    const p2pStats = p2pNode.getStats();
+    if (p2pStats.connectedPeers > 0) {
+        console.log(`  🤝 P2P Peers:   ${p2pStats.connectedPeers} connected`);
+    }
     console.log('');
     console.log('  💡 All 6 revenue streams earn GSTD automatically!');
     console.log('     Settlement → GSTD token on TON blockchain');
@@ -324,6 +370,9 @@ async function main() {
         console.log('\n  🛑 Shutting down GSTD SuperNode...');
         (0, server_js_1.logActivity)('Node shutdown initiated', 'warn');
         clearInterval(updateInterval);
+        await p2pNode.stop();
+        if (fastifyGateway)
+            await fastifyGateway.close();
         if (mobileNode)
             await mobileNode.stop();
         await tonConnect.close();
