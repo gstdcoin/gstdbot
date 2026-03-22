@@ -274,6 +274,19 @@ bash reinstall.sh --reset
 
 ## 📋 Changelog
 
+### v3.4.0 (March 2026)
+
+- ✅ **Real Contract Addresses** — GSTD Token, StonFi DEX pool, staking contract on TON mainnet
+- ✅ **Zod Runtime Validation** — full P2P message schema validation
+- ✅ **libp2p P2P Mesh** — real TCP-based peer discovery + mDNS
+- ✅ **Fastify HTTP Engine** — high-performance gateway with typed routes
+- ✅ **PM2 Process Manager** — auto-restart, cluster mode, log rotation
+- ✅ **Official Wallet SDKs** — MetaMask SDK, Solana Adapter, Xaman (XRPL), TON Connect
+- ✅ **PAXG Bridge** — cross-chain PAXG (ERC-20) ↔ GSTD (TON) via 4-chain bridge
+- ✅ **Ethereum Chain** — ETH/PAXG support in bridge (StonFi-compatible)
+- ✅ **Platform API v2** — `/agents/earn/heartbeat`, `/agents/register`, collective memory
+- ✅ **Liveness Agent** — autonomous server-side agent earning GSTD 24/7
+
 ### v3.3.0 (March 2026)
 
 - ✅ **Wallet Binding** — bind external TON wallet, collect rewards from N nodes
