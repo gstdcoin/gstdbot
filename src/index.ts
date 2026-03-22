@@ -171,8 +171,9 @@ async function main(): Promise<void> {
     gateway.setWallet(wallet);
 
     // Connect revenue engine wallet
-    if (wallet.getAddress()) {
-        revenue.setWalletAddress(wallet.getAddress());
+    const addr = wallet.getAddress();
+    if (addr) {
+        revenue.setWalletAddress(addr);
     }
 
     // Auto-save earnings every 5 minutes

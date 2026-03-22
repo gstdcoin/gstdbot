@@ -279,7 +279,7 @@ export class OmegaGateway {
     }
 
     /** Inject subsystems for full status reporting */
-    setSubsystems(subs: { memory?: any; trainer?: any; resources?: any; swarm?: any; blockchain?: any; security?: any; orchestrator?: any }): void {
+    setSubsystems(subs: { memory?: any; trainer?: any; resources?: any; swarm?: any; blockchain?: any; security?: any; orchestrator?: any; revenue?: any; storageVault?: any; computeMarket?: any; trafficRelay?: any }): void {
         this.subsystems = subs;
         if (subs.security) this.security = subs.security;
         if (subs.orchestrator) this.orchestrator = subs.orchestrator;
