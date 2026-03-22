@@ -13,44 +13,55 @@
 
 // @ts-nocheck — libp2p is ESM-only, using dynamic imports
 import { EventEmitter } from 'events';
+import { z } from 'zod';
 
 // ─── Protocol IDs ─────────────────────────────────────────────
 const PROTOCOL_HEARTBEAT = '/gstd/heartbeat/1.0.0';
 const PROTOCOL_TASK      = '/gstd/task/1.0.0';
 const PROTOCOL_MESH_INFO = '/gstd/mesh/1.0.0';
 
-// ─── Message types ────────────────────────────────────────────
-export interface P2PHeartbeat {
-    type: 'heartbeat';
-    nodeId: string;
-    walletAddress: string;
-    timestamp: number;
-    version: string;
-    capabilities: string[];
-    uptime: number;
-    cpuCores: number;
-    ramGb: number;
-    gpuAvailable: boolean;
-}
+// ═══════════════════════════════════════════════════════════════
+// ZOD SCHEMAS — Runtime validation for all P2P messages
+// Every packet from the network is validated BEFORE processing.
+// Malformed/malicious payloads are silently dropped.
+// ═══════════════════════════════════════════════════════════════
 
-export interface P2PTaskRequest {
-    type: 'task_request';
-    taskId: string;
-    model: string;
-    prompt: string;
-    maxTokens: number;
-    senderNodeId: string;
-    rewardGstd: number;
-}
+const HeartbeatSchema = z.object({
+    type: z.literal('heartbeat'),
+    nodeId: z.string().min(1).max(128),
+    walletAddress: z.string().max(128),
+    timestamp: z.number().int().positive(),
+    version: z.string().max(32),
+    capabilities: z.array(z.string().max(32)).max(20),
+    uptime: z.number().nonnegative(),
+    cpuCores: z.number().int().min(1).max(1024),
+    ramGb: z.number().nonnegative().max(16384),
+    gpuAvailable: z.boolean(),
+});
 
-export interface P2PMeshInfo {
-    type: 'mesh_info';
-    nodeId: string;
-    connectedPeers: number;
-    knownPeers: string[];
-    totalTasksProcessed: number;
-    totalGstdEarned: number;
-}
+const TaskRequestSchema = z.object({
+    type: z.literal('task_request'),
+    taskId: z.string().uuid(),
+    model: z.string().min(1).max(128),
+    prompt: z.string().min(1).max(32768),  // 32KB max prompt
+    maxTokens: z.number().int().min(1).max(65536),
+    senderNodeId: z.string().min(1).max(128),
+    rewardGstd: z.number().nonnegative().max(1_000_000),
+});
+
+const MeshInfoSchema = z.object({
+    type: z.literal('mesh_info'),
+    nodeId: z.string().min(1).max(128),
+    connectedPeers: z.number().int().nonnegative(),
+    knownPeers: z.array(z.string().max(128)).max(200),
+    totalTasksProcessed: z.number().int().nonnegative(),
+    totalGstdEarned: z.number().nonnegative(),
+});
+
+// Inferred types from schemas (single source of truth)
+export type P2PHeartbeat = z.infer<typeof HeartbeatSchema>;
+export type P2PTaskRequest = z.infer<typeof TaskRequestSchema>;
+export type P2PMeshInfo = z.infer<typeof MeshInfoSchema>;
 
 export interface P2PNodeConfig {
     nodeId: string;
@@ -79,6 +90,7 @@ export class GstdP2PNode extends EventEmitter {
     private stats = {
         messagesReceived: 0,
         messagesSent: 0,
+        messagesRejected: 0,
         tasksRelayed: 0,
         heartbeatsExchanged: 0,
         peersDiscovered: 0,
@@ -172,7 +184,7 @@ export class GstdP2PNode extends EventEmitter {
     private async registerProtocols(): Promise<void> {
         if (!this.node) return;
 
-        // Heartbeat Protocol
+        // Heartbeat Protocol — validated with Zod
         await this.node.handle(PROTOCOL_HEARTBEAT, async ({ stream }: any) => {
             try {
                 const chunks: Uint8Array[] = [];
@@ -181,19 +193,23 @@ export class GstdP2PNode extends EventEmitter {
                 }
                 if (chunks.length > 0) {
                     const text = new TextDecoder().decode(chunks[0]);
-                    // Try to parse as JSON from length-prefixed data
-                    const jsonStr = text.replace(/^[\x00-\x1f]+/, ''); // Strip length prefix
+                    const jsonStr = text.replace(/^[\x00-\x1f]+/, '');
                     try {
-                        const data = JSON.parse(jsonStr) as P2PHeartbeat;
-                        this.handleHeartbeat(data);
-                    } catch { /* not valid JSON */ }
+                        const raw = JSON.parse(jsonStr);
+                        const result = HeartbeatSchema.safeParse(raw);
+                        if (result.success) {
+                            this.handleHeartbeat(result.data);
+                        } else {
+                            this.stats.messagesRejected++;
+                        }
+                    } catch { /* not valid JSON — silently drop */ }
                 }
             } catch {
                 // Peer may have disconnected
             }
         });
 
-        // Task Delegation Protocol
+        // Task Delegation Protocol — validated with Zod
         await this.node.handle(PROTOCOL_TASK, async ({ stream }: any) => {
             try {
                 const chunks: Uint8Array[] = [];
@@ -204,10 +220,15 @@ export class GstdP2PNode extends EventEmitter {
                     const text = new TextDecoder().decode(chunks[0]);
                     const jsonStr = text.replace(/^[\x00-\x1f]+/, '');
                     try {
-                        const data = JSON.parse(jsonStr) as P2PTaskRequest;
-                        this.stats.tasksRelayed++;
-                        this.emit('task:received', data);
-                    } catch { /* not valid JSON */ }
+                        const raw = JSON.parse(jsonStr);
+                        const result = TaskRequestSchema.safeParse(raw);
+                        if (result.success) {
+                            this.stats.tasksRelayed++;
+                            this.emit('task:received', result.data);
+                        } else {
+                            this.stats.messagesRejected++;
+                        }
+                    } catch { /* not valid JSON — silently drop */ }
                 }
             } catch {
                 // Silent

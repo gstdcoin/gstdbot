@@ -413,27 +413,76 @@ BRIDGESVCEOF
     fi
 fi
 
-# Fallback: run in background
+# Fallback: use PM2 for production process management (auto-restart, log rotation)
 if [ "$USED_SYSTEMD" = false ]; then
-    cd "$INSTALL_DIR"
-    NODE_NAME="${NODE_NAME}" GSTD_DASHBOARD_PORT="$DASH_PORT" GSTD_NODE_ID="$NODE_ID" \
-        nohup node dist/index.js >> "$CONFIG_DIR/node.log" 2>&1 &
-    NODE_PID=$!
-    echo "$NODE_PID" > "$CONFIG_DIR/node.pid"
-    
-    # Run Bridge in background
-    cd "$CONFIG_DIR/bridge"
-    nohup ./gstd-bridge >> bridge.log 2>&1 &
-    echo "$!" > bridge.pid
-    
-    sleep 3
-
-    if kill -0 "$NODE_PID" 2>/dev/null; then
-        info "Running in background (PID: $NODE_PID)"
-    else
-        warn "Process exited. Check: tail -f $CONFIG_DIR/node.log"
+    # Install PM2 if not present
+    if ! command -v pm2 &>/dev/null; then
+        info "Installing PM2 process manager..."
+        npm install -g pm2 2>/dev/null || sudo npm install -g pm2 2>/dev/null
     fi
-    cd - >/dev/null
+
+    if command -v pm2 &>/dev/null; then
+        cd "$INSTALL_DIR"
+        # Stop old instances if running
+        pm2 delete gstd-node 2>/dev/null
+        pm2 delete gstd-bridge 2>/dev/null
+
+        # Start node with PM2 (auto-restart on crash, memory limit 512MB)
+        NODE_NAME="${NODE_NAME}" GSTD_DASHBOARD_PORT="$DASH_PORT" GSTD_NODE_ID="$NODE_ID" \
+            pm2 start dist/index.js --name gstd-node \
+            --max-memory-restart 512M \
+            --log "$CONFIG_DIR/node.log" \
+            --time \
+            --merge-logs
+
+        # Start Bridge with PM2
+        if [ -f "$CONFIG_DIR/bridge/gstd-bridge" ]; then
+            pm2 start "$CONFIG_DIR/bridge/gstd-bridge" --name gstd-bridge \
+                --log "$CONFIG_DIR/bridge/bridge.log" \
+                --time --merge-logs
+        fi
+
+        # Save PM2 process list for auto-start on reboot
+        pm2 save 2>/dev/null
+
+        # Setup PM2 startup script (auto-start on system boot)
+        pm2 startup 2>/dev/null || true
+
+        # Enable log rotation (10MB max, keep 5 files)
+        pm2 install pm2-logrotate 2>/dev/null
+        pm2 set pm2-logrotate:max_size 10M 2>/dev/null
+        pm2 set pm2-logrotate:retain 5 2>/dev/null
+
+        sleep 3
+        if pm2 pid gstd-node >/dev/null 2>&1; then
+            info "Running via PM2 (auto-restart, log rotation, memory guard)"
+        else
+            warn "PM2 start failed. Check: pm2 logs gstd-node"
+        fi
+        cd - >/dev/null
+    else
+        # Ultimate fallback: nohup (no auto-restart)
+        cd "$INSTALL_DIR"
+        NODE_NAME="${NODE_NAME}" GSTD_DASHBOARD_PORT="$DASH_PORT" GSTD_NODE_ID="$NODE_ID" \
+            nohup node dist/index.js >> "$CONFIG_DIR/node.log" 2>&1 &
+        NODE_PID=$!
+        echo "$NODE_PID" > "$CONFIG_DIR/node.pid"
+
+        # Run Bridge in background
+        if [ -f "$CONFIG_DIR/bridge/gstd-bridge" ]; then
+            cd "$CONFIG_DIR/bridge"
+            nohup ./gstd-bridge >> bridge.log 2>&1 &
+            echo "$!" > bridge.pid
+        fi
+
+        sleep 3
+        if kill -0 "$NODE_PID" 2>/dev/null; then
+            info "Running in background (PID: $NODE_PID) — install PM2 for auto-restart"
+        else
+            warn "Process exited. Check: tail -f $CONFIG_DIR/node.log"
+        fi
+        cd - >/dev/null
+    fi
 fi
 
 # ─── Create gstd-node CLI tool ──────────────────────────────────
