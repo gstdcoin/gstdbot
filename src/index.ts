@@ -49,6 +49,7 @@ import { StorageVault } from './storage/vault.js';
 import { ComputeMarketplace } from './compute/marketplace.js';
 import { TrafficRelay } from './coverage/relay.js';
 import { FastifyGateway } from './gateway/fastify.js';
+import { NaaSManager } from './naas/orchestrator.js';
 import { GstdP2PNode } from './p2p/node.js';
 import { hostname } from 'os';
 import { readFileSync, existsSync } from 'fs';
@@ -131,7 +132,7 @@ function loadConfig(): NodeConfig {
 async function main(): Promise<void> {
     const config = loadConfig();
     const startTime = Date.now();
-    const TOTAL_STEPS = 16;
+    const TOTAL_STEPS = 17;
 
     console.log('');
     console.log('  🐝 ═══════════════════════════════════════════════════');
@@ -220,8 +221,18 @@ async function main(): Promise<void> {
     await trafficRelay.init();
     trafficRelay.mountRoutes(gateway.getExpressApp());
 
-    // ── 12. Remote Access + Channels ────────────────────────────
-    console.log(`  [12/${TOTAL_STEPS}] Setting up remote access...`);
+    // ── 12. NaaS (Node-as-a-Service: Multi-Chain RPC) ────────────
+    console.log(`  [12/${TOTAL_STEPS}] Initializing NaaS (Multi-Chain RPC)...`);
+    const naas = new NaaSManager();
+    const apiKey = process.env.GSTD_API_KEY || wallet.getAddress() || config.nodeId;
+    if (process.env.GSTD_NAAS_ENABLED !== 'false') {
+        await naas.start(apiKey);
+    } else {
+        console.log('    NaaS: disabled (set GSTD_NAAS_ENABLED=true)');
+    }
+
+    // ── 13. Remote Access + Channels ────────────────────────────
+    console.log(`  [13/${TOTAL_STEPS}] Setting up remote access...`);
     const remote = new RemoteAccessManager(config.nodeId);
     await remote.init();
 
@@ -239,8 +250,8 @@ async function main(): Promise<void> {
         console.log('    Telegram: disabled (no token)');
     }
 
-    // ── 13. TON Connect + Mobile Node ────────────────────────────
-    console.log(`  [13/${TOTAL_STEPS}] Initializing TON Connect...`);
+    // ── 14. TON Connect + Mobile Node ────────────────────────────
+    console.log(`  [14/${TOTAL_STEPS}] Initializing TON Connect...`);
     const tonConnect = new TonConnectManager({
         network: config.tonconnect.network,
         bridgeUrl: config.tonconnect.bridgeUrl,
@@ -267,8 +278,8 @@ async function main(): Promise<void> {
         console.log('    Mobile Node: disabled');
     }
 
-    // ── 14. Node OS ready (Dashboard served via Gateway) ─────────
-    console.log(`  [14/${TOTAL_STEPS}] SuperNode OS UI active on gateway port...`);
+    // ── 15. Node OS ready (Dashboard served via Gateway) ─────────
+    console.log(`  [15/${TOTAL_STEPS}] SuperNode OS UI active on gateway port...`);
 
     // Initialize security and orchestrator
     const security = new SecurityHardening();
@@ -290,8 +301,8 @@ async function main(): Promise<void> {
         trafficRelay,
     });
 
-    // ── 15. Fastify HTTP Engine (4x faster HTTP parser) ──────────
-    console.log(`  [15/${TOTAL_STEPS}] Upgrading to Fastify engine...`);
+    // ── 16. Fastify HTTP Engine (4x faster HTTP parser) ──────────
+    console.log(`  [16/${TOTAL_STEPS}] Upgrading to Fastify engine...`);
     let fastifyGateway: FastifyGateway | null = null;
     try {
         // Fastify wraps Express — all existing routes work through Fastify's faster parser
@@ -304,8 +315,8 @@ async function main(): Promise<void> {
         console.log(`    ⚠ Fastify init skipped: ${e.message} (Express still active)`);
     }
 
-    // ── 16. libp2p P2P Mesh Network ──────────────────────────────
-    console.log(`  [16/${TOTAL_STEPS}] Starting P2P mesh network...`);
+    // ── 17. libp2p P2P Mesh Network ──────────────────────────────
+    console.log(`  [17/${TOTAL_STEPS}] Starting P2P mesh network...`);
     const p2pNode = new GstdP2PNode({
         nodeId: config.nodeId,
         walletAddress: wallet.getAddress() || '',
@@ -350,6 +361,7 @@ async function main(): Promise<void> {
     console.log('  💻 Compute:     ' + (computeMarket.isEnabled() ? `✓ score ${computeStats.benchmarkScore} pts` : 'disabled'));
     console.log('  🧠 Inference:   ✓ 8 AI models (earn per query)');
     console.log('  📡 Relay:       ' + (trafficRelay.isEnabled() ? '✓ VPN/CDN/API proxy' : 'disabled'));
+    console.log('  🌐 NaaS RPC:    ' + (process.env.GSTD_NAAS_ENABLED !== 'false' ? `✓ ${naas.getStatus().active_chains.length} chains active` : 'disabled'));
     console.log('  🎓 Training:    ' + (trainer.getStats().activeJobs > 0 ? 'active' : '✓ ready'));
     console.log('  🪙 Staking:     ✓ 12% APY');
     console.log('  ── Infrastructure ───────────────────────────────');
@@ -419,6 +431,7 @@ async function main(): Promise<void> {
         if (fastifyGateway) await fastifyGateway.close();
         if (mobileNode) await mobileNode.stop();
         await tonConnect.close();
+        await naas.stop();
         await trafficRelay.stop();
         await computeMarket.stop();
         await storageVault.stop();
