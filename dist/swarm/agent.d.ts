@@ -15,7 +15,7 @@ import type { CollectiveMemory } from '../memory/collective.js';
 import { SovereignSuite } from './sovereign.js';
 export interface SwarmTask {
     id: string;
-    type: 'inference' | 'embedding' | 'verification' | 'storage' | 'bridge_verify';
+    type: string;
     model?: string;
     prompt?: string;
     payload?: any;
@@ -75,6 +75,7 @@ export declare class SwarmAgent {
     private processVerification;
     private processStorage;
     private processBridgeVerify;
+    private processRender;
     private getCapabilities;
     private apiCall;
 }

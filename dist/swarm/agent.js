@@ -353,8 +353,16 @@ class SwarmAgent {
                 case 'bridge_verify':
                     result = await this.processBridgeVerify(task);
                     break;
+                case 'render':
+                    result = await this.processRender(task);
+                    break;
                 default:
-                    throw new Error(`Unknown task type: ${task.type}`);
+                    if (task.type.startsWith('render_')) {
+                        result = await this.processRender(task);
+                    }
+                    else {
+                        throw new Error(`Unknown task type: ${task.type}`);
+                    }
             }
             // Report completion
             await this.apiCall('/tasks/complete', {
@@ -447,6 +455,20 @@ class SwarmAgent {
         const bridge = new bridge_js_1.CrossChainBridge();
         const verification = await bridge.processBridgeTask(task.payload);
         return verification;
+    }
+    async processRender(task) {
+        // Simulate a GPU rendering job
+        const type = task.type.replace('render_', '') || 'generic_render';
+        const frames = task.payload?.frames || 1;
+        const duration = Math.min(10000, 2000 * frames); // Simulate 2-10s render
+        await new Promise(resolve => setTimeout(resolve, duration));
+        return {
+            rendered: true,
+            type,
+            frames,
+            completion_time_ms: duration,
+            hash: (0, crypto_1.createHash)('sha256').update(Date.now().toString()).digest('hex').slice(0, 16)
+        };
     }
     // ─── Helpers ─────────────────────────────────────────────────
     getCapabilities() {
