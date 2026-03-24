@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
 # GSTD Node OS — One-Command Installer v3.3
-# curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
+# curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
 #
 # ✅ Fully automatic — no interactive prompts
 # ✅ Idempotent — safe to re-run anytime
@@ -54,7 +54,7 @@ for arg in "$@"; do
         --help|-h)
             echo "GSTD Node OS Installer v${VERSION}"
             echo ""
-            echo "Usage: curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash"
+            echo "Usage: curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash"
             echo "   or: bash install.sh [OPTIONS]"
             echo ""
             echo "Options:"
