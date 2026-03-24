@@ -50,6 +50,7 @@ import { ComputeMarketplace } from './compute/marketplace.js';
 import { TrafficRelay } from './coverage/relay.js';
 import { FastifyGateway } from './gateway/fastify.js';
 import { NaaSManager } from './naas/orchestrator.js';
+import { UptimeDaemon } from './naas/uptime_daemon.js';
 import { GstdP2PNode } from './p2p/node.js';
 import { hostname } from 'os';
 import { readFileSync, existsSync } from 'fs';
@@ -383,10 +384,10 @@ async function main(): Promise<void> {
 
     logActivity('GSTD Node OS v' + config.version + ' booted in ' + bootTime + 's', 'success');
 
-    // ── Heartbeat: centralized in SwarmAgent (swarm/agent.ts) ─────
-    // SwarmAgent already sends heartbeats every 60 min with full node info,
-    // so no duplicate heartbeat is needed here. SwarmAgent calls
-    // wallet.recordVerifiedEarning() when backend returns a reward.
+    // ── Uptime Daemon (Proof-of-Uptime + NaaS commands) ──────────
+    const uptimeDaemon = new UptimeDaemon(config.nodeId, wallet.getAddress() || '');
+    uptimeDaemon.start();
+    console.log(`  🔒 Uptime:      ✓ Proof-of-Uptime daemon (Age Multiplier: ${uptimeDaemon.getMultiplier()}x)`);
 
     // ── Safe Auto-update: check every hour ─────────────────────────
     // Safety guarantees:
@@ -479,6 +480,7 @@ async function main(): Promise<void> {
         console.log('\n  🛑 Shutting down GSTD SuperNode...');
         logActivity('Node shutdown initiated', 'warn');
         clearInterval(updateInterval);
+        uptimeDaemon.stop();
         await p2pNode.stop();
         if (fastifyGateway) await fastifyGateway.close();
         if (mobileNode) await mobileNode.stop();
