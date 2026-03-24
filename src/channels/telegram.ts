@@ -181,12 +181,16 @@ export class TelegramChannel {
         this.bot.api.setMyCommands([
             { command: 'start', description: 'Start the bot' },
             { command: 'new', description: 'New conversation' },
+            { command: 'balance', description: '💎 Check GSTD balance' },
+            { command: 'wallet', description: '🔗 Connect/view wallet' },
+            { command: 'staking', description: '🥩 Stake GSTD' },
+            { command: 'earn', description: '🧠 How to earn GSTD' },
             { command: 'model', description: 'Switch model' },
             { command: 'apikey', description: 'Get free API key' },
             { command: 'node', description: '📱 Run mobile node' },
             { command: 'status', description: 'Session status' },
             { command: 'help', description: 'Help & commands' },
-        ]);
+        ]).catch((e: any) => console.log('[Bot] setMyCommands (private) failed:', e.message));
 
         // Group commands
         this.bot.api.setMyCommands([
@@ -195,7 +199,7 @@ export class TelegramChannel {
             { command: 'buy', description: 'How to buy GSTD' },
             { command: 'stats', description: 'Network statistics' },
             { command: 'help', description: 'Help & commands' },
-        ], { scope: { type: 'all_group_chats' } });
+        ], { scope: { type: 'all_group_chats' } }).catch((e: any) => console.log('[Bot] setMyCommands (group) failed:', e.message));
     }
 
     private lang(ctx: any): string {
@@ -464,6 +468,30 @@ export class TelegramChannel {
                 parse_mode: 'HTML',
                 reply_markup: { inline_keyboard: buttons },
             });
+        });
+
+        // ── /balance — Quick balance check ──
+        this.bot.command('balance', async (ctx) => {
+            if (ctx.chat?.type !== 'private') return;
+            return this.handleBalance(ctx, this.lang(ctx));
+        });
+
+        // ── /wallet — Connect or view wallet ──
+        this.bot.command('wallet', async (ctx) => {
+            if (ctx.chat?.type !== 'private') return;
+            return this.handleWallet(ctx, this.lang(ctx));
+        });
+
+        // ── /staking — Staking info & action ──
+        this.bot.command('staking', async (ctx) => {
+            if (ctx.chat?.type !== 'private') return;
+            return this.handleStake(ctx, this.lang(ctx));
+        });
+
+        // ── /earn — How to earn GSTD ──
+        this.bot.command('earn', async (ctx) => {
+            if (ctx.chat?.type !== 'private') return;
+            return this.handleEarn(ctx, this.lang(ctx));
         });
 
         // ── /status — Session status ──

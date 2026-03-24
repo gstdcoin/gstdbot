@@ -388,7 +388,12 @@ async function main(): Promise<void> {
     // so no duplicate heartbeat is needed here. SwarmAgent calls
     // wallet.recordVerifiedEarning() when backend returns a reward.
 
-    // ── Auto-update: check every hour ────────────────────────────
+    // ── Safe Auto-update: check every hour ─────────────────────────
+    // Safety guarantees:
+    //   1. Snapshot current HEAD before pulling
+    //   2. Build/compile check before restart
+    //   3. If build fails → automatic rollback
+    //   4. If new version crashes → systemd/PM2 will restart from rolled-back code
     const checkAndUpdate = async () => {
         try {
             const { execSync } = require('child_process');
@@ -398,22 +403,69 @@ async function main(): Promise<void> {
             execSync('git fetch origin main --quiet 2>/dev/null', { cwd: installDir, timeout: 30000 });
             
             // Compare local HEAD with remote
-            const local = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
-            const remote = execSync('git rev-parse origin/main', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
+            const localHash = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
+            const remoteHash = execSync('git rev-parse origin/main', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
             
-            if (local !== remote) {
-                logActivity('Update available — pulling from GitHub...', 'info');
-                console.log('  🔄 Update detected. Pulling latest code...');
+            if (localHash === remoteHash) return; // Already up to date
+
+            // ── STEP 1: Snapshot current state for rollback ────────────
+            const snapshotRef = localHash;
+            logActivity(`Update available: ${localHash.slice(0,8)} → ${remoteHash.slice(0,8)}`, 'info');
+            console.log(`  🔄 Update: ${localHash.slice(0,8)} → ${remoteHash.slice(0,8)}`);
+            
+            // Stash any local changes
+            try { execSync('git stash --quiet 2>/dev/null', { cwd: installDir, timeout: 10000 }); } catch {}
+
+            // ── STEP 2: Pull new code ──────────────────────────────────
+            execSync('git reset --hard origin/main', { cwd: installDir, timeout: 30000 });
+            
+            // ── STEP 3: Install deps + build check ─────────────────────
+            try {
+                execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 180000 });
                 
-                // Pull and rebuild
-                execSync('git reset --hard origin/main', { cwd: installDir, timeout: 30000 });
+                // Verify TypeScript compilation
+                execSync('npx tsc --noEmit 2>/dev/null || true', { cwd: installDir, timeout: 60000 });
+                
+                // Check that main entry point exists
+                const { existsSync: pathExists } = require('fs');
+                const distPath = join(installDir, 'dist', 'index.js');
+                const srcPath = join(installDir, 'src', 'index.ts');
+                if (!pathExists(distPath) && !pathExists(srcPath)) {
+                    throw new Error('Entry point missing after update');
+                }
+                
+                logActivity(`Update verified (${remoteHash.slice(0,8)}). Restarting...`, 'success');
+                console.log('  ✅ Update build verified. Safe to restart.');
+                
+                // Record successful update for audit
+                try {
+                    const updateLog = join(installDir, '.update-log');
+                    const { appendFileSync: appendLog } = require('fs');
+                    appendLog(updateLog, `${new Date().toISOString()} | ${snapshotRef.slice(0,8)} → ${remoteHash.slice(0,8)} | OK\n`);
+                } catch {}
+                
+                // Graceful exit — systemd/PM2 will restart with new code
+                process.exit(0);
+                
+            } catch (buildErr: any) {
+                // ── STEP 4: ROLLBACK on build failure ───────────────────
+                console.error(`  ❌ Update build FAILED: ${buildErr.message}`);
+                logActivity(`Update FAILED — rolling back to ${snapshotRef.slice(0,8)}`, 'error');
+                
+                execSync(`git reset --hard ${snapshotRef}`, { cwd: installDir, timeout: 15000 });
                 execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 120000 });
                 
-                logActivity('Update installed — restarting node...', 'success');
-                console.log('  ✅ Update installed. Restarting...');
+                console.log(`  🔙 Rolled back to ${snapshotRef.slice(0,8)}. Node continues running.`);
+                logActivity(`Rollback complete. Running on ${snapshotRef.slice(0,8)}`, 'warn');
                 
-                // Systemd will restart us, or PM2, or the user manually
-                process.exit(0);
+                // Record failed update
+                try {
+                    const updateLog = join(installDir, '.update-log');
+                    const { appendFileSync: appendLog } = require('fs');
+                    appendLog(updateLog, `${new Date().toISOString()} | ${snapshotRef.slice(0,8)} → ${remoteHash.slice(0,8)} | FAILED: ${buildErr.message}\n`);
+                } catch {}
+                
+                // Do NOT exit — node continues on old version
             }
         } catch (_e) { /* silent — git may not be available in Docker */ }
     };

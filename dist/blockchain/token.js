@@ -18,14 +18,14 @@ const path_1 = require("path");
 const os_1 = require("os");
 const server_js_1 = require("../gateway/server.js");
 // ─── GSTD Smart Contract Addresses (TON Mainnet) ────────────────
-// These are testnet placeholders — real addresses set after mainnet deploy
-// Override via env vars: GSTD_CONTRACT_TOKEN, GSTD_CONTRACT_STAKING, etc.
+// GSTD Jetton Contract — deployed & verified on TON mainnet
+// https://tonviewer.com/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO
 const CONTRACTS = {
-    GSTD_TOKEN: process.env.GSTD_CONTRACT_TOKEN || 'EQ_GSTD_TOKEN_MAINNET_PENDING',
-    STAKING: process.env.GSTD_CONTRACT_STAKING || 'EQ_STAKING_CONTRACT_PENDING',
-    SWARM_REWARDS: process.env.GSTD_CONTRACT_REWARDS || 'EQ_SWARM_REWARDS_PENDING',
-    DEX_POOL: process.env.GSTD_CONTRACT_DEX || 'EQ_DEX_POOL_PENDING',
-    GOVERNANCE: process.env.GSTD_CONTRACT_GOV || 'EQ_GOVERNANCE_PENDING',
+    GSTD_TOKEN: process.env.GSTD_CONTRACT_TOKEN || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
+    STAKING: process.env.GSTD_CONTRACT_STAKING || 'EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi',
+    SWARM_REWARDS: process.env.GSTD_CONTRACT_REWARDS || 'EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi',
+    DEX_POOL: process.env.GSTD_CONTRACT_DEX || 'EQDMb3DFJ8mshc67BL8CtKJG3Mfz5kZxjGhVygR2dz3-sGMM', // StonFi GSTD/TON
+    GOVERNANCE: process.env.GSTD_CONTRACT_GOV || 'UQCkXFlNRsubUp7Uh7lg_ScUqLCiff1QCLsdQU0a7kphqQED', // Platform wallet
 };
 const PLATFORM_API = process.env.GSTD_API_URL || 'https://api.gstdtoken.com/api/v1';
 // ─── Blockchain Manager ─────────────────────────────────────────

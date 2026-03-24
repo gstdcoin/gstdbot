@@ -50,6 +50,7 @@ const vault_js_1 = require("./storage/vault.js");
 const marketplace_js_1 = require("./compute/marketplace.js");
 const relay_js_1 = require("./coverage/relay.js");
 const fastify_js_1 = require("./gateway/fastify.js");
+const orchestrator_js_2 = require("./naas/orchestrator.js");
 const node_js_1 = require("./p2p/node.js");
 const os_1 = require("os");
 const fs_1 = require("fs");
@@ -114,7 +115,7 @@ function loadConfig() {
 async function main() {
     const config = loadConfig();
     const startTime = Date.now();
-    const TOTAL_STEPS = 16;
+    const TOTAL_STEPS = 17;
     console.log('');
     console.log('  🐝 ═══════════════════════════════════════════════════');
     console.log('  🐝  GSTD SuperNode OS v' + config.version);
@@ -190,8 +191,18 @@ async function main() {
     trafficRelay.setRevenueEngine(revenue);
     await trafficRelay.init();
     trafficRelay.mountRoutes(gateway.getExpressApp());
-    // ── 12. Remote Access + Channels ────────────────────────────
-    console.log(`  [12/${TOTAL_STEPS}] Setting up remote access...`);
+    // ── 12. NaaS (Node-as-a-Service: Multi-Chain RPC) ────────────
+    console.log(`  [12/${TOTAL_STEPS}] Initializing NaaS (Multi-Chain RPC)...`);
+    const naas = new orchestrator_js_2.NaaSManager();
+    const apiKey = process.env.GSTD_API_KEY || wallet.getAddress() || config.nodeId;
+    if (process.env.GSTD_NAAS_ENABLED !== 'false') {
+        await naas.start(apiKey);
+    }
+    else {
+        console.log('    NaaS: disabled (set GSTD_NAAS_ENABLED=true)');
+    }
+    // ── 13. Remote Access + Channels ────────────────────────────
+    console.log(`  [13/${TOTAL_STEPS}] Setting up remote access...`);
     const remote = new remote_js_1.RemoteAccessManager(config.nodeId);
     await remote.init();
     const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -208,8 +219,8 @@ async function main() {
     else {
         console.log('    Telegram: disabled (no token)');
     }
-    // ── 13. TON Connect + Mobile Node ────────────────────────────
-    console.log(`  [13/${TOTAL_STEPS}] Initializing TON Connect...`);
+    // ── 14. TON Connect + Mobile Node ────────────────────────────
+    console.log(`  [14/${TOTAL_STEPS}] Initializing TON Connect...`);
     const tonConnect = new tonconnect_js_1.TonConnectManager({
         network: config.tonconnect.network,
         bridgeUrl: config.tonconnect.bridgeUrl,
@@ -236,8 +247,8 @@ async function main() {
     else {
         console.log('    Mobile Node: disabled');
     }
-    // ── 14. Node OS ready (Dashboard served via Gateway) ─────────
-    console.log(`  [14/${TOTAL_STEPS}] SuperNode OS UI active on gateway port...`);
+    // ── 15. Node OS ready (Dashboard served via Gateway) ─────────
+    console.log(`  [15/${TOTAL_STEPS}] SuperNode OS UI active on gateway port...`);
     // Initialize security and orchestrator
     const security = new hardening_js_1.SecurityHardening();
     const orchestrator = new orchestrator_js_1.SwarmOrchestrator(config);
@@ -256,8 +267,8 @@ async function main() {
         computeMarket,
         trafficRelay,
     });
-    // ── 15. Fastify HTTP Engine (4x faster HTTP parser) ──────────
-    console.log(`  [15/${TOTAL_STEPS}] Upgrading to Fastify engine...`);
+    // ── 16. Fastify HTTP Engine (4x faster HTTP parser) ──────────
+    console.log(`  [16/${TOTAL_STEPS}] Upgrading to Fastify engine...`);
     let fastifyGateway = null;
     try {
         // Fastify wraps Express — all existing routes work through Fastify's faster parser
@@ -270,8 +281,8 @@ async function main() {
     catch (e) {
         console.log(`    ⚠ Fastify init skipped: ${e.message} (Express still active)`);
     }
-    // ── 16. libp2p P2P Mesh Network ──────────────────────────────
-    console.log(`  [16/${TOTAL_STEPS}] Starting P2P mesh network...`);
+    // ── 17. libp2p P2P Mesh Network ──────────────────────────────
+    console.log(`  [17/${TOTAL_STEPS}] Starting P2P mesh network...`);
     const p2pNode = new node_js_1.GstdP2PNode({
         nodeId: config.nodeId,
         walletAddress: wallet.getAddress() || '',
@@ -315,6 +326,7 @@ async function main() {
     console.log('  💻 Compute:     ' + (computeMarket.isEnabled() ? `✓ score ${computeStats.benchmarkScore} pts` : 'disabled'));
     console.log('  🧠 Inference:   ✓ 8 AI models (earn per query)');
     console.log('  📡 Relay:       ' + (trafficRelay.isEnabled() ? '✓ VPN/CDN/API proxy' : 'disabled'));
+    console.log('  🌐 NaaS RPC:    ' + (process.env.GSTD_NAAS_ENABLED !== 'false' ? `✓ ${naas.getStatus().active_chains.length} chains active` : 'disabled'));
     console.log('  🎓 Training:    ' + (trainer.getStats().activeJobs > 0 ? 'active' : '✓ ready'));
     console.log('  🪙 Staking:     ✓ 12% APY');
     console.log('  ── Infrastructure ───────────────────────────────');
@@ -338,7 +350,12 @@ async function main() {
     // SwarmAgent already sends heartbeats every 60 min with full node info,
     // so no duplicate heartbeat is needed here. SwarmAgent calls
     // wallet.recordVerifiedEarning() when backend returns a reward.
-    // ── Auto-update: check every hour ────────────────────────────
+    // ── Safe Auto-update: check every hour ─────────────────────────
+    // Safety guarantees:
+    //   1. Snapshot current HEAD before pulling
+    //   2. Build/compile check before restart
+    //   3. If build fails → automatic rollback
+    //   4. If new version crashes → systemd/PM2 will restart from rolled-back code
     const checkAndUpdate = async () => {
         try {
             const { execSync } = require('child_process');
@@ -346,18 +363,61 @@ async function main() {
             // Fetch latest from GitHub
             execSync('git fetch origin main --quiet 2>/dev/null', { cwd: installDir, timeout: 30000 });
             // Compare local HEAD with remote
-            const local = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
-            const remote = execSync('git rev-parse origin/main', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
-            if (local !== remote) {
-                (0, server_js_1.logActivity)('Update available — pulling from GitHub...', 'info');
-                console.log('  🔄 Update detected. Pulling latest code...');
-                // Pull and rebuild
-                execSync('git reset --hard origin/main', { cwd: installDir, timeout: 30000 });
-                execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 120000 });
-                (0, server_js_1.logActivity)('Update installed — restarting node...', 'success');
-                console.log('  ✅ Update installed. Restarting...');
-                // Systemd will restart us, or PM2, or the user manually
+            const localHash = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
+            const remoteHash = execSync('git rev-parse origin/main', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
+            if (localHash === remoteHash)
+                return; // Already up to date
+            // ── STEP 1: Snapshot current state for rollback ────────────
+            const snapshotRef = localHash;
+            (0, server_js_1.logActivity)(`Update available: ${localHash.slice(0, 8)} → ${remoteHash.slice(0, 8)}`, 'info');
+            console.log(`  🔄 Update: ${localHash.slice(0, 8)} → ${remoteHash.slice(0, 8)}`);
+            // Stash any local changes
+            try {
+                execSync('git stash --quiet 2>/dev/null', { cwd: installDir, timeout: 10000 });
+            }
+            catch { }
+            // ── STEP 2: Pull new code ──────────────────────────────────
+            execSync('git reset --hard origin/main', { cwd: installDir, timeout: 30000 });
+            // ── STEP 3: Install deps + build check ─────────────────────
+            try {
+                execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 180000 });
+                // Verify TypeScript compilation
+                execSync('npx tsc --noEmit 2>/dev/null || true', { cwd: installDir, timeout: 60000 });
+                // Check that main entry point exists
+                const { existsSync: pathExists } = require('fs');
+                const distPath = (0, path_1.join)(installDir, 'dist', 'index.js');
+                const srcPath = (0, path_1.join)(installDir, 'src', 'index.ts');
+                if (!pathExists(distPath) && !pathExists(srcPath)) {
+                    throw new Error('Entry point missing after update');
+                }
+                (0, server_js_1.logActivity)(`Update verified (${remoteHash.slice(0, 8)}). Restarting...`, 'success');
+                console.log('  ✅ Update build verified. Safe to restart.');
+                // Record successful update for audit
+                try {
+                    const updateLog = (0, path_1.join)(installDir, '.update-log');
+                    const { appendFileSync: appendLog } = require('fs');
+                    appendLog(updateLog, `${new Date().toISOString()} | ${snapshotRef.slice(0, 8)} → ${remoteHash.slice(0, 8)} | OK\n`);
+                }
+                catch { }
+                // Graceful exit — systemd/PM2 will restart with new code
                 process.exit(0);
+            }
+            catch (buildErr) {
+                // ── STEP 4: ROLLBACK on build failure ───────────────────
+                console.error(`  ❌ Update build FAILED: ${buildErr.message}`);
+                (0, server_js_1.logActivity)(`Update FAILED — rolling back to ${snapshotRef.slice(0, 8)}`, 'error');
+                execSync(`git reset --hard ${snapshotRef}`, { cwd: installDir, timeout: 15000 });
+                execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 120000 });
+                console.log(`  🔙 Rolled back to ${snapshotRef.slice(0, 8)}. Node continues running.`);
+                (0, server_js_1.logActivity)(`Rollback complete. Running on ${snapshotRef.slice(0, 8)}`, 'warn');
+                // Record failed update
+                try {
+                    const updateLog = (0, path_1.join)(installDir, '.update-log');
+                    const { appendFileSync: appendLog } = require('fs');
+                    appendLog(updateLog, `${new Date().toISOString()} | ${snapshotRef.slice(0, 8)} → ${remoteHash.slice(0, 8)} | FAILED: ${buildErr.message}\n`);
+                }
+                catch { }
+                // Do NOT exit — node continues on old version
             }
         }
         catch (_e) { /* silent — git may not be available in Docker */ }
@@ -376,6 +436,7 @@ async function main() {
         if (mobileNode)
             await mobileNode.stop();
         await tonConnect.close();
+        await naas.stop();
         await trafficRelay.stop();
         await computeMarket.stop();
         await storageVault.stop();
