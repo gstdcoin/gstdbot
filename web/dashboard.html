@@ -918,7 +918,7 @@
               margin-right: 6px;
             "
           />
-          <span>GSTD Node OS</span> <span class="ver">v3.3</span>
+          <span>GSTD Node OS</span> <span class="ver">v3.4</span>
         </h1>
         <div class="status-line" id="sb-status">Connecting...</div>
       </div>
@@ -955,9 +955,13 @@
         <div class="nav-item" onclick="showPage('resources')" id="nav-resources">
           <span class="ic">📡</span><span>Resources</span>
         </div>
+        <div class="nav-item" onclick="showPage('naas')" id="nav-naas">
+          <span class="ic">🌐</span><span>NaaS RPC</span>
+          <span class="badge badge-green">B2B</span>
+        </div>
         <div class="nav-item" onclick="showPage('sovereign')" id="nav-sovereign">
-          <span class="ic">🏛️</span><span>Sovereign</span>
-          <span class="badge badge-green">NEW</span>
+          <span class="ic">🏛️</span><span>Sovereign Fund</span>
+          <span class="badge badge-green">LIVE</span>
         </div>
         <div class="nav-item" onclick="showPage('vaults')" id="nav-vaults">
           <span class="ic">💧</span><span>Liquidity Vaults</span>
@@ -1357,6 +1361,25 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- NaaS + Age Multiplier Row -->
+        <div class="grid-3" id="naas-overview-row">
+          <div class="card" style="border:1px solid rgba(212,175,55,0.2);background:linear-gradient(135deg,rgba(212,175,55,0.06),rgba(0,0,0,0.1))">
+            <div class="card-label"><span class="cic" style="background:rgba(212,175,55,0.12)">🏆</span> Age Multiplier</div>
+            <div class="card-value" id="d-multiplier" style="color:#d4af37">1.0x</div>
+            <div class="card-sub" id="d-mult-sub">Uptime streak: 0h</div>
+          </div>
+          <div class="card">
+            <div class="card-label"><span class="cic" style="background:rgba(6,182,212,0.12)">🌐</span> NaaS Tier</div>
+            <div class="card-value sm" id="d-naas-tier" style="text-transform:uppercase;letter-spacing:1px">—</div>
+            <div class="card-sub" id="d-naas-chains">0 chains active</div>
+          </div>
+          <div class="card">
+            <div class="card-label"><span class="cic" style="background:rgba(34,197,94,0.12)">🏛️</span> Floor Price</div>
+            <div class="card-value sm" id="d-floor-price" style="color:var(--emerald)">$0.0000</div>
+            <div class="card-sub" id="d-epoch-info">Epoch 1</div>
           </div>
         </div>
 
@@ -2283,98 +2306,167 @@
           ></div>
         </div>
       </div>
-      <!-- ═══ PAGE: Sovereign Protocol ═══ -->
-      <div class="page" id="page-sovereign">
+
+      <!-- ═══ PAGE: NaaS Infrastructure ═══ -->
+      <div class="page" id="page-naas">
         <div style="margin-bottom:16px;font-size:13px;color:var(--muted);line-height:1.5">
-          🏛️ <strong style="color:var(--text)">Sovereign Protocol</strong> — Your node is a self-contained financial platform.
-          All instruments work autonomously, even offline.
+          🌐 <strong style="color:var(--text)">Node-as-a-Service Infrastructure</strong> — Your node serves RPC requests for dApps worldwide.
+          Every request earns GSTD and funds the Sovereign Fund.
         </div>
 
-        <!-- Sovereign Summary Cards -->
-        <div class="grid-4" id="sov-cards">
-          <div class="card">
-            <div class="card-label"><span class="cic" style="background:rgba(139,92,246,0.12)">💎</span> STAKING</div>
-            <div class="card-value sm" id="sov-staked">0 GSTD</div>
-            <div class="card-sub" id="sov-apy">APY: loading...</div>
+        <!-- Tier + Multiplier + Earnings -->
+        <div class="grid-3">
+          <div class="card" style="border:1px solid rgba(6,182,212,0.25);background:linear-gradient(135deg,rgba(6,182,212,0.08),transparent)">
+            <div class="card-label"><span class="cic" style="background:rgba(6,182,212,0.12)">🖥</span> HARDWARE TIER</div>
+            <div class="card-value" id="naas-tier" style="text-transform:uppercase;letter-spacing:2px;color:var(--cyan)">—</div>
+            <div class="card-sub" id="naas-hw-details">Scanning hardware...</div>
           </div>
-          <div class="card">
-            <div class="card-label"><span class="cic" style="background:rgba(34,197,94,0.12)">💸</span> P2P PAYMENTS</div>
-            <div class="card-value sm" id="sov-payments">0</div>
-            <div class="card-sub">Zero-fee transfers</div>
-          </div>
-          <div class="card">
-            <div class="card-label"><span class="cic" style="background:rgba(6,182,212,0.12)">🗳️</span> GOVERNANCE</div>
-            <div class="card-value sm" id="sov-proposals">0</div>
-            <div class="card-sub" id="sov-votes">Votes: 0</div>
-            <!-- Active Proposals List -->
-            <div id="sov-prop-list" style="margin-top:10px;font-size:11px;color:var(--muted)"></div>
-            <!-- Create Proposal -->
-            <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
-              <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Create Proposal</div>
-              <input id="gov-title" placeholder="Proposal title..." style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;margin-bottom:6px;outline:none;font-family:Inter,sans-serif" />
-              <input id="gov-desc" placeholder="Description..." style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;margin-bottom:6px;outline:none;font-family:Inter,sans-serif" />
-              <button onclick="createProposal()" style="width:100%;padding:8px;border-radius:8px;border:none;background:linear-gradient(135deg,rgba(6,182,212,0.15),rgba(6,182,212,0.05));border:1px solid rgba(6,182,212,0.3);color:var(--cyan);font-weight:700;font-size:11px;cursor:pointer;transition:all 0.2s">🗳️ Submit Proposal</button>
-              <div id="gov-msg" style="margin-top:6px;font-size:11px;display:none;padding:6px 10px;border-radius:6px"></div>
+          <div class="card" style="border:1px solid rgba(212,175,55,0.25);background:linear-gradient(135deg,rgba(212,175,55,0.08),transparent)">
+            <div class="card-label"><span class="cic" style="background:rgba(212,175,55,0.12)">🏆</span> AGE MULTIPLIER</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+              <div style="position:relative;width:64px;height:64px">
+                <svg viewBox="0 0 36 36" style="width:64px;height:64px;transform:rotate(-90deg)">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="3"/>
+                  <circle id="naas-mult-ring" cx="18" cy="18" r="15.9" fill="none" stroke="#d4af37" stroke-width="3"
+                    stroke-dasharray="0 100" stroke-linecap="round" style="transition:stroke-dasharray 1s ease"/>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:#d4af37" id="naas-mult-value">1.0x</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--muted)">Uptime Streak</div>
+                <div style="font-size:16px;font-weight:700" id="naas-uptime-streak">0h</div>
+                <div style="font-size:10px;color:var(--muted)" id="naas-mult-next">+0.2x at 99.5% weekly</div>
+              </div>
             </div>
           </div>
           <div class="card">
-            <div class="card-label"><span class="cic" style="background:rgba(245,158,11,0.12)">🔗</span> MESH NETWORK</div>
-            <div class="card-value sm" id="sov-mesh">0 peers</div>
-            <div class="card-sub">P2P autonomous</div>
+            <div class="card-label"><span class="cic" style="background:rgba(34,197,94,0.12)">💰</span> EPOCH EARNINGS</div>
+            <div class="card-value sm" id="naas-epoch-earn" style="color:var(--emerald)">$0.0000</div>
+            <div class="card-sub" id="naas-est-monthly">Est. ~0 GSTD/month</div>
           </div>
         </div>
 
-        <!-- Economics -->
+        <!-- Active Chains Grid -->
+        <div class="card" style="margin-top:14px">
+          <div class="card-label" style="margin-bottom:12px"><span class="cic" style="background:rgba(139,92,246,0.12)">⛓</span> ACTIVE BLOCKCHAIN ROLES</div>
+          <div id="naas-chains-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
+            <div style="text-align:center;padding:20px;color:var(--muted);grid-column:1/-1">Loading chains...</div>
+          </div>
+        </div>
+
+        <!-- Containers -->
+        <div class="card" style="margin-top:14px">
+          <div class="card-label" style="margin-bottom:12px"><span class="cic" style="background:rgba(245,158,11,0.12)">🐳</span> DOCKER CONTAINERS</div>
+          <div id="naas-containers" style="font-size:12px;color:var(--muted)">Scanning containers...</div>
+        </div>
+
+        <!-- Revenue Flow -->
+        <div class="card" style="margin-top:14px;border:1px solid rgba(212,175,55,0.15)">
+          <div class="card-label"><span class="cic" style="background:rgba(212,175,55,0.12)">💎</span> REVENUE FLOW</div>
+          <div style="display:flex;justify-content:center;gap:0;align-items:center;margin:16px 0;flex-wrap:wrap">
+            <div style="text-align:center;padding:8px 16px"><div style="font-size:20px">📡</div><div style="font-size:10px;color:var(--muted)">RPC Request</div></div>
+            <div style="color:var(--muted)">→</div>
+            <div style="text-align:center;padding:8px 16px"><div style="font-size:20px">💳</div><div style="font-size:10px;color:var(--muted)">Bill Client</div></div>
+            <div style="color:var(--muted)">→</div>
+            <div style="text-align:center;padding:8px 16px"><div style="font-size:20px">🏛️</div><div style="font-size:10px;color:var(--muted)">Sovereign Fund</div></div>
+            <div style="color:var(--muted)">→</div>
+            <div style="display:flex;gap:12px">
+              <div style="text-align:center;padding:6px 10px;background:rgba(34,197,94,0.08);border-radius:8px;border:1px solid rgba(34,197,94,0.2)">
+                <div style="font-size:18px;font-weight:900;color:var(--emerald)">50%</div><div style="font-size:9px;color:var(--emerald)">Backing</div>
+              </div>
+              <div style="text-align:center;padding:6px 10px;background:rgba(41,121,255,0.08);border-radius:8px;border:1px solid rgba(41,121,255,0.2)">
+                <div style="font-size:18px;font-weight:900;color:#2979ff">20%</div><div style="font-size:9px;color:#2979ff">Treasury</div>
+              </div>
+              <div style="text-align:center;padding:6px 10px;background:rgba(255,109,0,0.08);border-radius:8px;border:1px solid rgba(255,109,0,0.2)">
+                <div style="font-size:18px;font-weight:900;color:#ff6d00">30%</div><div style="font-size:9px;color:#ff6d00">Yield → You</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ PAGE: Sovereign Fund ═══ -->
+      <div class="page" id="page-sovereign">
+        <div style="margin-bottom:16px;font-size:13px;color:var(--muted);line-height:1.5">
+          🏛️ <strong style="color:#d4af37">Sovereign Fund</strong> — Asset-Backed Economy. Every transaction funds the Fund.
+          GSTD value = Total Backing / Circulating Supply. <em>No burns. Real value.</em>
+        </div>
+
+        <!-- Fund Totals -->
+        <div class="grid-4" id="fund-cards">
+          <div class="card" style="border:1px solid rgba(34,197,94,0.2);background:linear-gradient(135deg,rgba(34,197,94,0.06),transparent)">
+            <div class="card-label"><span class="cic" style="background:rgba(34,197,94,0.12)">🔒</span> BACKING</div>
+            <div class="card-value sm" id="fund-backing" style="color:var(--emerald)">$0.00</div>
+            <div class="card-sub">50% of revenue — locked forever</div>
+          </div>
+          <div class="card" style="border:1px solid rgba(41,121,255,0.2)">
+            <div class="card-label"><span class="cic" style="background:rgba(41,121,255,0.12)">🏗️</span> TREASURY</div>
+            <div class="card-value sm" id="fund-treasury" style="color:#2979ff">$0.00</div>
+            <div class="card-sub">20% — development & listings</div>
+          </div>
+          <div class="card" style="border:1px solid rgba(255,109,0,0.2)">
+            <div class="card-label"><span class="cic" style="background:rgba(255,109,0,0.12)">💰</span> YIELD DISTRIBUTED</div>
+            <div class="card-value sm" id="fund-yield" style="color:#ff6d00">$0.00</div>
+            <div class="card-sub">30% — to top node operators</div>
+          </div>
+          <div class="card" style="border:1px solid rgba(212,175,55,0.3);background:linear-gradient(135deg,rgba(212,175,55,0.1),transparent)">
+            <div class="card-label"><span class="cic" style="background:rgba(212,175,55,0.12)">⚡</span> FLOOR PRICE</div>
+            <div class="card-value" id="fund-floor" style="color:#d4af37;font-size:28px">$0.0000</div>
+            <div class="card-sub" id="fund-floor-formula">backing / supply</div>
+          </div>
+        </div>
+
+        <!-- Epoch + Network -->
         <div class="grid-2">
           <div class="card">
-            <div class="card-label"><span class="cic" style="background:rgba(34,197,94,0.12)">📊</span> NODE ECONOMICS</div>
-            <div id="sov-economics" style="font-size:12px;color:var(--muted)">Loading...</div>
+            <div class="card-label"><span class="cic" style="background:rgba(139,92,246,0.12)">📅</span> CURRENT EPOCH</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px" id="fund-epoch-details">
+              <div class="info-row"><span class="k">Epoch</span><span class="v" id="fund-epoch-num">1</span></div>
+              <div class="info-row"><span class="k">Revenue</span><span class="v" id="fund-epoch-rev" style="color:var(--emerald)">$0.00</span></div>
+              <div class="info-row"><span class="k">Yield Pool</span><span class="v" id="fund-epoch-yield" style="color:#ff6d00">$0.00</span></div>
+              <div class="info-row"><span class="k">Remaining</span><span class="v" id="fund-epoch-remaining">— days</span></div>
+              <div class="info-row"><span class="k">Eligible Nodes</span><span class="v" id="fund-epoch-eligible">0</span></div>
+            </div>
           </div>
           <div class="card">
-            <div class="card-label"><span class="cic" style="background:rgba(245,158,11,0.12)">🔥</span> GSTD TOKENOMICS</div>
-            <div id="sov-tokenomics" style="font-size:12px;color:var(--muted)">Loading...</div>
+            <div class="card-label"><span class="cic" style="background:rgba(6,182,212,0.12)">🌐</span> NETWORK</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+              <div class="info-row"><span class="k">Active Nodes</span><span class="v" id="fund-active-nodes">0</span></div>
+              <div class="info-row"><span class="k">Verified Providers</span><span class="v" id="fund-verified">0</span></div>
+              <div class="info-row"><span class="k">Circulating Supply</span><span class="v" id="fund-circ-supply">0 GSTD</span></div>
+              <div class="info-row"><span class="k">Total Revenue (All Time)</span><span class="v" id="fund-total-rev" style="color:var(--emerald)">$0.00</span></div>
+            </div>
           </div>
         </div>
 
-        <!-- Revenue + Staking Tiers -->
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-label"><span class="cic" style="background:rgba(251,191,36,0.12)">💰</span> REVENUE SHARING</div>
-            <div id="sov-revenue" style="font-size:12px;color:var(--muted)">Loading...</div>
-          </div>
-          <div class="card">
-            <div class="card-label"><span class="cic" style="background:rgba(139,92,246,0.12)">🏦</span> STAKING TIERS</div>
-            <div id="sov-tiers" style="font-size:12px;color:var(--muted)">Loading...</div>
-          </div>
-        </div>
-
-        <!-- GSTD Superiority over Bitcoin -->
+        <!-- Leaderboard -->
         <div class="card" style="margin-top:14px">
-          <div class="card-label"><span class="cic" style="background:rgba(255,215,0,0.12)">👑</span> GSTD vs BITCOIN — WHY GSTD IS SUPERIOR</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:8px">
-            <table style="width:100%;border-collapse:collapse;font-size:11px">
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.06)">
-                <th style="text-align:left;padding:6px 8px;color:var(--muted);font-weight:600">Feature</th>
-                <th style="text-align:center;padding:6px 8px;color:#FFD700;font-weight:700">GSTD</th>
-                <th style="text-align:center;padding:6px 8px;color:var(--muted);font-weight:600">Bitcoin</th>
-              </tr>
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Backing</td><td style="text-align:center;color:var(--emerald)">Compute + Gold</td><td style="text-align:center;color:var(--rose)">Nothing</td></tr>
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Utility</td><td style="text-align:center;color:var(--emerald)">AI, Storage, Bridge</td><td style="text-align:center;color:var(--rose)">None</td></tr>
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Speed</td><td style="text-align:center;color:var(--emerald)">Instant</td><td style="text-align:center;color:var(--rose)">10 minutes</td></tr>
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Fees</td><td style="text-align:center;color:var(--emerald)">0% P2P</td><td style="text-align:center;color:var(--rose)">$5+</td></tr>
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Staking APY</td><td style="text-align:center;color:var(--emerald)">72%</td><td style="text-align:center;color:var(--rose)">0%</td></tr>
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Node Cost</td><td style="text-align:center;color:var(--emerald)">$0.72/mo</td><td style="text-align:center;color:var(--rose)">$100+/mo</td></tr>
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Energy</td><td style="text-align:center;color:var(--emerald)">Minimal</td><td style="text-align:center;color:var(--rose)">Enormous</td></tr>
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:5px 8px;color:var(--text)">Governance</td><td style="text-align:center;color:var(--emerald)">Democratic</td><td style="text-align:center;color:var(--rose)">Mining Pools</td></tr>
-              <tr><td style="padding:5px 8px;color:var(--text)">Revenue Streams</td><td style="text-align:center;color:var(--emerald);font-weight:800">6</td><td style="text-align:center;color:var(--rose)">1</td></tr>
-            </table>
-          </div>
+          <div class="card-label"><span class="cic" style="background:rgba(212,175,55,0.12)">🏆</span> NODE LEADERBOARD (Age Multiplier)</div>
+          <div id="fund-leaderboard" style="margin-top:10px;font-size:12px;color:var(--muted)">Loading leaderboard...</div>
         </div>
 
-        <!-- Node Advantages -->
-        <div class="card" style="margin-top:14px">
-          <div class="card-label"><span class="cic" style="background:rgba(34,197,94,0.12)">⚡</span> WHY YOUR NODE IS PROFITABLE</div>
-          <div id="sov-advantages" style="font-size:12px;color:var(--muted);line-height:1.8">Loading...</div>
+        <!-- Protocol Axiom -->
+        <div class="card" style="margin-top:14px;border:1px solid rgba(212,175,55,0.15);background:linear-gradient(135deg,rgba(212,175,55,0.05),transparent)">
+          <div class="card-label"><span class="cic" style="background:rgba(212,175,55,0.12)">📜</span> PROTOCOL AXIOM</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-top:8px">
+            We <strong style="color:var(--rose)">do not burn</strong> value. Every RPC request, every AI inference pours into the Sovereign Fund.
+            The Floor Price grows mathematically with each transaction.<br><br>
+            <strong style="color:#d4af37">GSTD is not a meme</strong> — it is an index of global decentralized infrastructure, backed by real capital in on-chain vaults.
+            <div style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap">
+              <div style="padding:8px 14px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;text-align:center">
+                <div style="font-weight:900;font-size:16px;color:var(--emerald)">50%</div>
+                <div style="font-size:10px;color:var(--emerald)">Backing (locked)</div>
+              </div>
+              <div style="padding:8px 14px;background:rgba(41,121,255,0.08);border:1px solid rgba(41,121,255,0.2);border-radius:8px;text-align:center">
+                <div style="font-weight:900;font-size:16px;color:#2979ff">20%</div>
+                <div style="font-size:10px;color:#2979ff">Treasury (R&D)</div>
+              </div>
+              <div style="padding:8px 14px;background:rgba(255,109,0,0.08);border:1px solid rgba(255,109,0,0.2);border-radius:8px;text-align:center">
+                <div style="font-weight:900;font-size:16px;color:#ff6d00">30%</div>
+                <div style="font-size:10px;color:#ff6d00">Real Yield (nodes)</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2918,7 +3010,8 @@
           training: "Federated Training",
           settings: "Settings",
           appstore: "App Store",
-          sovereign: "Sovereign Protocol",
+          naas: "NaaS Infrastructure",
+          sovereign: "Sovereign Fund",
         };
         document.getElementById("page-title").textContent =
           titles[name] || name;
@@ -3828,143 +3921,190 @@
         } catch { log('Vote failed: network error', 'error'); }
       }
 
-      // ─── Sovereign Protocol Data ─────────────────────────
-      async function loadSovereign() {
+      // ─── NaaS Infrastructure Data ─────────────────────────
+      async function loadNaaS() {
         try {
-          // Load all sovereign data in parallel
-          const [stateRes, econRes, tokenRes, revRes, stakingRes, protoRes] = await Promise.allSettled([
-            fetch(API + '/api/sovereign/state').then(r => r.ok ? r.json() : null),
-            fetch(API + '/api/sovereign/economics').then(r => r.ok ? r.json() : null),
-            fetch(API + '/api/sovereign/tokenomics').then(r => r.ok ? r.json() : null),
-            fetch(API + '/api/sovereign/revenue').then(r => r.ok ? r.json() : null),
-            fetch(API + '/api/sovereign/staking').then(r => r.ok ? r.json() : null),
-            fetch(API + '/api/sovereign/protocol').then(r => r.ok ? r.json() : null),
-          ]);
+          const r = await fetch(API + '/api/node/naas');
+          if (!r.ok) return;
+          const d = await r.json();
 
-          const state = stateRes.status === 'fulfilled' ? stateRes.value : null;
-          const econ = econRes.status === 'fulfilled' ? econRes.value : null;
-          const token = tokenRes.status === 'fulfilled' ? tokenRes.value : null;
-          const rev = revRes.status === 'fulfilled' ? revRes.value : null;
-          const staking = stakingRes.status === 'fulfilled' ? stakingRes.value : null;
-          const proto = protoRes.status === 'fulfilled' ? protoRes.value : null;
-
-          // Staking card
-          if (state) {
-            const el = document.getElementById('sov-staked');
-            if (el) el.textContent = (state.stakedAmount || 0).toFixed(2) + ' GSTD';
-            const apy = document.getElementById('sov-apy');
-            if (apy) apy.textContent = 'APY: ' + (state.stakingAPY || 72) + '% | Auto-compound: ' + (state.autoCompound ? 'ON' : 'OFF');
-            // Mesh
-            const mesh = document.getElementById('sov-mesh');
-            if (mesh) mesh.textContent = (state.meshPeers?.length || 0) + ' peers';
-            // Governance
-            const props = document.getElementById('sov-proposals');
-            if (props) props.textContent = state.activeProposals || 0;
-            const votes = document.getElementById('sov-votes');
-            if (votes) votes.textContent = 'Votes: ' + (state.votesSubmitted || 0) + ' | Power: ' + (state.governancePower || 0).toFixed(1);
-            // Payments
-            const pay = document.getElementById('sov-payments');
-            if (pay) pay.textContent = (state.paymentsSent || 0) + '/' + (state.paymentsReceived || 0);
+          // NaaS page: Tier
+          const tierEl = document.getElementById('naas-tier');
+          if (tierEl) tierEl.textContent = d.tier || '—';
+          const hwEl = document.getElementById('naas-hw-details');
+          if (hwEl && d.hardware) {
+            hwEl.textContent = d.hardware.cpu_cores + ' cores · ' + d.hardware.ram_gb + ' GB RAM · ' + d.hardware.disk_gb + ' GB disk' + (d.hardware.has_gpu ? ' · GPU' : '');
           }
 
-          // Render active proposals with vote buttons
-          if (proto?.governance?.proposals || state?.activeProposals) {
-            const propList = document.getElementById('sov-prop-list');
-            if (propList) {
-              try {
-                const govResp = await fetch(API + '/api/sovereign/governance').then(r => r.ok ? r.json() : null);
-                if (govResp?.proposals?.length) {
-                  propList.innerHTML = govResp.proposals.slice(0, 5).map(p => `
-                    <div style="padding:8px;margin-bottom:6px;background:rgba(255,255,255,0.02);border-radius:8px;border:1px solid var(--border)">
-                      <div style="font-weight:700;color:var(--text);font-size:12px">${p.title || 'Proposal'}</div>
-                      <div style="font-size:10px;margin:4px 0">${p.description?.slice(0,80) || ''}</div>
-                      <div style="display:flex;gap:4px;margin-top:6px">
-                        <button onclick="voteOnProposal('${p.id || p.proposal_id}','for')" style="flex:1;padding:4px 8px;border-radius:6px;border:1px solid rgba(34,197,94,0.3);background:rgba(34,197,94,0.05);color:var(--emerald);font-size:10px;font-weight:700;cursor:pointer">👍 For</button>
-                        <button onclick="voteOnProposal('${p.id || p.proposal_id}','against')" style="flex:1;padding:4px 8px;border-radius:6px;border:1px solid rgba(244,63,94,0.3);background:rgba(244,63,94,0.05);color:var(--rose);font-size:10px;font-weight:700;cursor:pointer">👎 Against</button>
-                        <button onclick="voteOnProposal('${p.id || p.proposal_id}','abstain')" style="flex:1;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer">⏸ Abstain</button>
-                      </div>
-                    </div>
-                  `).join('');
-                } else {
-                  propList.innerHTML = '<div style="font-size:10px;color:var(--muted);text-align:center;padding:8px">No active proposals — create one below!</div>';
-                }
-              } catch { propList.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px">Governance data loading...</div>'; }
-            }
+          // Age Multiplier ring
+          const mult = d.age_multiplier || 1.0;
+          const multPct = ((mult - 1.0) / 2.0) * 100; // 1.0=0%, 3.0=100%
+          const ring = document.getElementById('naas-mult-ring');
+          if (ring) ring.setAttribute('stroke-dasharray', Math.min(100, multPct) + ' 100');
+          const multVal = document.getElementById('naas-mult-value');
+          if (multVal) multVal.textContent = mult.toFixed(1) + 'x';
+          const streakEl = document.getElementById('naas-uptime-streak');
+          if (streakEl) streakEl.textContent = (d.uptime_streak_hours || 0) + 'h';
+
+          // Epoch earnings
+          const earnEl = document.getElementById('naas-epoch-earn');
+          if (earnEl) earnEl.textContent = '$' + (d.epoch_earnings_usd || 0).toFixed(4);
+          const estEl = document.getElementById('naas-est-monthly');
+          if (estEl) estEl.textContent = 'Est. ~' + (d.estimated_monthly_gstd || 0).toFixed(0) + ' GSTD/month';
+
+          // Chain emojis
+          const chainIcon = { BTC: '₿', ETH: '⟠', TON: '💎', SOL: '☀️', MATIC: '🟣', AVAX: '🔺', ATOM: '⚛', ARB: '🔵', OP: '🔴', BNB: '🟡', DOT: '🟢', NEAR: '🌐', ADA: '💙', XLM: '⭐' };
+          // Chains grid
+          const chainsGrid = document.getElementById('naas-chains-grid');
+          if (chainsGrid && d.assigned_roles?.length) {
+            chainsGrid.innerHTML = d.assigned_roles.map(r => 
+              '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;text-align:center">' +
+              '<div style="font-size:24px;margin-bottom:4px">' + (chainIcon[r.chain] || '🔗') + '</div>' +
+              '<div style="font-weight:700;font-size:13px">' + r.chain + '</div>' +
+              '<div style="font-size:10px;color:var(--muted)">' + r.mode + ' · :' + r.rpcPort + '</div>' +
+              '<div style="font-size:10px;color:var(--emerald);margin-top:4px">+' + r.estimatedReward.toFixed(0) + ' GSTD/mo</div>' +
+              '</div>'
+            ).join('');
+          } else if (chainsGrid) {
+            chainsGrid.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);grid-column:1/-1">No chains assigned yet. Hardware profiler ran.</div>';
           }
 
-          // Economics card
-          if (econ) {
-            const el = document.getElementById('sov-economics');
-            if (el) {
-              const s = econ.summary || {};
-              const streams = econ.revenue_streams || {};
-              el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px">' +
-                '<div class="info-row"><span class="k">Daily</span><span class="v" style="color:var(--emerald)">' + (s.daily_gstd || 0).toFixed(4) + ' GSTD</span></div>' +
-                '<div class="info-row"><span class="k">Monthly</span><span class="v" style="color:var(--emerald)">' + (s.monthly_gstd || 0).toFixed(2) + ' GSTD</span></div>' +
-                '<div class="info-row"><span class="k">Yearly</span><span class="v" style="color:var(--emerald)">' + (s.yearly_gstd || 0).toFixed(2) + ' GSTD</span></div>' +
-                '<div style="margin-top:8px;font-size:10px;color:var(--muted)">Revenue Streams:</div>' +
-                Object.entries(streams).map(([k,v]) => '<div class="info-row"><span class="k">' + k + '</span><span class="v">' + (v?.daily || 0).toFixed(4) + '/day</span></div>').join('') +
-                '</div>';
-            }
+          // Containers list
+          const contEl = document.getElementById('naas-containers');
+          if (contEl && d.containers?.length) {
+            contEl.innerHTML = d.containers.map(c => 
+              '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
+              '<div><span style="color:' + (c.status === 'running' ? 'var(--emerald)' : 'var(--rose)') + ';font-size:8px">●</span> ' +
+              '<span style="font-weight:600">' + c.name + '</span></div>' +
+              '<div style="font-size:11px;color:var(--muted)">' + c.image + '</div>' +
+              '<div style="font-size:10px;color:' + (c.status === 'running' ? 'var(--emerald)' : 'var(--rose)') + '">' + c.status + '</div>' +
+              '</div>'
+            ).join('');
+          } else if (contEl) {
+            contEl.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted)">No NaaS containers running. Deploy chains from the Hardware Profiler.</div>';
           }
 
-          // Tokenomics card
-          if (token) {
-            const el = document.getElementById('sov-tokenomics');
-            if (el) {
-              el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px">' +
-                '<div class="info-row"><span class="k">Max Supply</span><span class="v">' + (token.max_supply || 1000000000).toLocaleString() + '</span></div>' +
-                '<div class="info-row"><span class="k">Circulating</span><span class="v">' + (token.circulating_supply || 0).toFixed(2) + '</span></div>' +
-                '<div class="info-row"><span class="k">Burned</span><span class="v" style="color:var(--rose)">' + (token.total_burned || 0).toFixed(4) + '</span></div>' +
-                '<div class="info-row"><span class="k">Staked</span><span class="v" style="color:var(--accent)">' + (token.total_staked || 0).toFixed(2) + '</span></div>' +
-                '<div class="info-row"><span class="k">Epoch</span><span class="v">' + (token.epoch || 1) + '</span></div>' +
-                '<div class="info-row"><span class="k">Burn Rate</span><span class="v">' + (token.burn_rate_pct || 2) + '%</span></div>' +
-                '<div class="info-row"><span class="k">Next Halving</span><span class="v">' + (token.next_halving_in_days || '?') + ' days</span></div>' +
-                '</div>';
-            }
+          // Dashboard overview cards
+          const dTier = document.getElementById('d-naas-tier');
+          if (dTier) dTier.textContent = d.tier || '—';
+          const dChains = document.getElementById('d-naas-chains');
+          if (dChains) dChains.textContent = (d.active_chains?.length || 0) + ' chains active';
+          const dMult = document.getElementById('d-multiplier');
+          if (dMult) dMult.textContent = mult.toFixed(1) + 'x';
+          const dMultSub = document.getElementById('d-mult-sub');
+          if (dMultSub) dMultSub.textContent = 'Uptime streak: ' + (d.uptime_streak_hours || 0) + 'h';
+          const dFloor = document.getElementById('d-floor-price');
+          if (dFloor) dFloor.textContent = '$' + (d.sovereign_fund?.floor_price_usd || 0).toFixed(4);
+          const dEpoch = document.getElementById('d-epoch-info');
+          if (dEpoch) dEpoch.textContent = 'Epoch ' + (d.sovereign_fund?.current_epoch || 1);
+        } catch (e) {
+          console.warn('NaaS load error:', e);
+        }
+      }
+
+      // ─── Sovereign Fund Data ───────────────────────────────
+      async function loadFundData() {
+        try {
+          const r = await fetch(API + '/api/node/fund');
+          if (!r.ok) return;
+          const d = await r.json();
+
+          const sf = d.fund?.sovereign_fund;
+          const net = d.fund?.network;
+          const ep = d.epoch;
+          const lb = d.leaderboard?.leaderboard || [];
+
+          // Fund cards
+          if (sf) {
+            const backing = document.getElementById('fund-backing');
+            if (backing) backing.textContent = '$' + (sf.total_backing_usd || 0).toFixed(2);
+            const treasury = document.getElementById('fund-treasury');
+            if (treasury) treasury.textContent = '$' + (sf.total_treasury_usd || 0).toFixed(2);
+            const yieldEl = document.getElementById('fund-yield');
+            if (yieldEl) yieldEl.textContent = '$' + (sf.total_yield_distributed || 0).toFixed(2);
+            const floor = document.getElementById('fund-floor');
+            if (floor) floor.textContent = '$' + (sf.floor_price_usd || 0).toFixed(4);
+            const formula = document.getElementById('fund-floor-formula');
+            if (formula) formula.textContent = '$' + (sf.total_backing_usd || 0).toFixed(2) + ' / ' + (sf.circulating_supply || 0).toFixed(1) + ' GSTD';
+            const circ = document.getElementById('fund-circ-supply');
+            if (circ) circ.textContent = (sf.circulating_supply || 0).toFixed(1) + ' GSTD';
+            const totalRev = document.getElementById('fund-total-rev');
+            if (totalRev) totalRev.textContent = '$' + (sf.total_revenue_all_time || 0).toFixed(2);
           }
 
-          // Revenue card
-          if (rev) {
-            const el = document.getElementById('sov-revenue');
-            if (el) {
-              const d = rev.distribution || {};
-              el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px">' +
-                Object.entries(d).map(([k,v]) => {
-                  if (typeof v === 'object') return '<div class="info-row"><span class="k">' + k + '</span><span class="v">' + (v.share_pct || 0) + '%</span></div>';
-                  return '<div class="info-row"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
+          // Network
+          if (net) {
+            const activeEl = document.getElementById('fund-active-nodes');
+            if (activeEl) activeEl.textContent = net.active_nodes || 0;
+            const verEl = document.getElementById('fund-verified');
+            if (verEl) verEl.textContent = net.verified_providers || 0;
+          }
+
+          // Epoch
+          if (ep) {
+            const epNum = document.getElementById('fund-epoch-num');
+            if (epNum) epNum.textContent = '#' + (ep.epoch || 1);
+            const epRev = document.getElementById('fund-epoch-rev');
+            if (epRev) epRev.textContent = '$' + (ep.revenue_usd || 0).toFixed(4);
+            const epYield = document.getElementById('fund-epoch-yield');
+            if (epYield) epYield.textContent = '$' + (ep.yield_pool_usd || 0).toFixed(4);
+            const epRemain = document.getElementById('fund-epoch-remaining');
+            if (epRemain) epRemain.textContent = (ep.remaining_days || 0) + ' days';
+            const epElig = document.getElementById('fund-epoch-eligible');
+            if (epElig) epElig.textContent = ep.eligible_nodes || 0;
+          }
+
+          // Leaderboard
+          const lbEl = document.getElementById('fund-leaderboard');
+          if (lbEl) {
+            if (lb.length === 0) {
+              lbEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted)"><div style="font-size:32px;margin-bottom:8px">🐝</div>No nodes in leaderboard yet. Keep your node online to climb!</div>';
+            } else {
+              lbEl.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
+                '<tr style="border-bottom:1px solid rgba(255,255,255,0.1)">' +
+                '<th style="padding:6px 8px;text-align:left;color:var(--muted)">#</th>' +
+                '<th style="padding:6px 8px;text-align:left;color:var(--muted)">Node</th>' +
+                '<th style="padding:6px 8px;text-align:center;color:var(--muted)">Tier</th>' +
+                '<th style="padding:6px 8px;text-align:center;color:var(--muted)">Mult</th>' +
+                '<th style="padding:6px 8px;text-align:center;color:var(--muted)">Uptime</th>' +
+                '<th style="padding:6px 8px;text-align:right;color:var(--muted)">Earnings</th></tr>' +
+                lb.slice(0, 20).map(n => {
+                  const multColor = n.multiplier >= 3 ? '#d4af37' : n.multiplier >= 2 ? 'var(--emerald)' : 'var(--muted)';
+                  const tierColor = {light: 'var(--cyan)', standard: 'var(--emerald)', archive: '#d4af37'}[n.tier] || 'var(--muted)';
+                  return '<tr style="border-bottom:1px solid rgba(255,255,255,0.03)">' +
+                    '<td style="padding:5px 8px;font-weight:700;color:' + (n.rank <= 3 ? '#d4af37' : 'var(--text)') + '">' + n.rank + '</td>' +
+                    '<td style="padding:5px 8px;font-family:JetBrains Mono,monospace;font-size:10px">' + n.node_id + '</td>' +
+                    '<td style="padding:5px 8px;text-align:center"><span style="background:' + tierColor + '20;color:' + tierColor + ';padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase">' + n.tier + '</span></td>' +
+                    '<td style="padding:5px 8px;text-align:center;font-weight:900;color:' + multColor + '">' + n.multiplier + 'x</td>' +
+                    '<td style="padding:5px 8px;text-align:center">' + (n.uptime_pct || 0).toFixed(1) + '%</td>' +
+                    '<td style="padding:5px 8px;text-align:right;color:var(--emerald)">$' + (n.epoch_earnings_usd || 0).toFixed(4) + '</td></tr>';
                 }).join('') +
-                '<div style="margin-top:6px;font-size:10px;color:var(--emerald)">85% of all revenue goes to node operators</div>' +
-                '</div>';
-            }
-          }
-
-          // Staking tiers card
-          if (staking) {
-            const el = document.getElementById('sov-tiers');
-            if (el) {
-              const tiers = staking.apy_tiers || {};
-              el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px">' +
-                Object.entries(tiers).map(([k,v]) => '<div class="info-row"><span class="k">' + k.replace(/_/g,' ') + '</span><span class="v">' + v + '</span></div>').join('') +
-                '</div>';
-            }
-          }
-
-          // Advantages
-          if (econ?.advantages) {
-            const el = document.getElementById('sov-advantages');
-            if (el) {
-              el.innerHTML = econ.advantages.map(a => '<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03)">✅ ' + a + '</div>').join('');
-            }
-          } else if (proto) {
-            const el = document.getElementById('sov-advantages');
-            if (el) {
-              const adv = proto.advantages_over_bitcoin || {};
-              el.innerHTML = Object.entries(adv).map(([k,v]) => '<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03)">⚡ <strong>' + k.replace(/_/g,' ') + '</strong>: ' + v + '</div>').join('');
+                '</table>';
             }
           }
         } catch (e) {
-          console.warn('Sovereign load error:', e);
+          console.warn('Fund load error:', e);
+        }
+      }
+
+      // ─── Sovereign Protocol Data (legacy) ──────────────────
+      async function loadSovereign() {
+        try {
+          const [econRes, protoRes] = await Promise.allSettled([
+            fetch(API + '/api/sovereign/economics').then(r => r.ok ? r.json() : null),
+            fetch(API + '/api/sovereign/protocol').then(r => r.ok ? r.json() : null),
+          ]);
+          const econ = econRes.status === 'fulfilled' ? econRes.value : null;
+          const proto = protoRes.status === 'fulfilled' ? protoRes.value : null;
+          if (econ?.advantages) {
+            const el = document.getElementById('sov-advantages');
+            if (el) el.innerHTML = econ.advantages.map(a => '<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03)">✅ ' + a + '</div>').join('');
+          } else if (proto?.advantages_over_bitcoin) {
+            const el = document.getElementById('sov-advantages');
+            if (el) el.innerHTML = Object.entries(proto.advantages_over_bitcoin).map(([k,v]) => '<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03)">⚡ <strong>' + k.replace(/_/g,' ') + '</strong>: ' + v + '</div>').join('');
+          }
+        } catch (e) {
+          console.warn('Sovereign legacy load error:', e);
         }
       }
 
@@ -3973,12 +4113,16 @@
       refreshEarnings();
       loadApps();
       loadTelegramStatus();
+      loadNaaS();
+      loadFundData();
       loadSovereign();
       setInterval(refresh, 2000);
       setInterval(refreshTasks, 10000);
       setInterval(refreshEarnings, 30000);
       setInterval(loadApps, 60000);
-      setInterval(loadSovereign, 30000);
+      setInterval(loadNaaS, 15000);
+      setInterval(loadFundData, 30000);
+      setInterval(loadSovereign, 60000);
     </script>
   </body>
 </html>

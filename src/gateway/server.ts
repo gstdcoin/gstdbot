@@ -3705,6 +3705,90 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             });
         });
 
+        // GET /api/node/naas — NaaS Infrastructure status for dashboard
+        this.app.get('/api/node/naas', async (_req, res) => {
+            try {
+                const { HardwareDetector, RoleAssigner } = await import('../naas/hardware_profiler.js');
+                const detector = new HardwareDetector();
+                const profile = detector.detect();
+                const assigner = new RoleAssigner();
+                const roles = assigner.assign(profile);
+
+                // Get containers
+                let containers: any[] = [];
+                try {
+                    const { execSync } = await import('child_process');
+                    const output = execSync('docker ps -a --filter "name=gstd" --format "{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}"', { encoding: 'utf-8', timeout: 5000 }).trim();
+                    if (output) {
+                        containers = output.split('\n').map(l => {
+                            const [name, image, status, ports] = l.split('|');
+                            return { name, image, status: status?.startsWith('Up') ? 'running' : 'stopped', ports };
+                        });
+                    }
+                } catch {}
+
+                // Try to get multiplier from platform
+                let ageMultiplier = 1.0;
+                let uptimeStreak = 0;
+                let epochEarnings = 0;
+                let floorPrice = 0;
+                let fundBacking = 0;
+                let currentEpoch = 1;
+                try {
+                    const platformUrl = process.env.GSTD_SWARM_URL || 'https://api.gstdtoken.com';
+                    const [fundRes] = await Promise.allSettled([
+                        fetch(`${platformUrl}/api/v1/fund/status`, { signal: AbortSignal.timeout(3000) }).then(r => r.ok ? r.json() : null),
+                    ]);
+                    const fund: any = fundRes.status === 'fulfilled' ? fundRes.value : null;
+                    if (fund?.sovereign_fund) {
+                        floorPrice = fund.sovereign_fund.floor_price_usd || 0;
+                        fundBacking = fund.sovereign_fund.total_backing_usd || 0;
+                        currentEpoch = fund.sovereign_fund.current_epoch || 1;
+                    }
+                } catch {}
+
+                res.json({
+                    hardware: profile,
+                    tier: profile.tier,
+                    assigned_roles: roles,
+                    active_chains: roles.map(r => r.chain),
+                    containers,
+                    containers_running: containers.filter(c => c.status === 'running').length,
+                    age_multiplier: ageMultiplier,
+                    uptime_streak_hours: uptimeStreak,
+                    epoch_earnings_usd: epochEarnings,
+                    sovereign_fund: {
+                        floor_price_usd: floorPrice,
+                        total_backing_usd: fundBacking,
+                        current_epoch: currentEpoch,
+                    },
+                    revenue_split: { backing: 50, treasury: 20, yield: 30 },
+                    estimated_monthly_gstd: roles.reduce((s, r) => s + r.estimatedReward, 0),
+                });
+            } catch (err: any) {
+                res.json({ error: err.message, tier: 'unknown', active_chains: [], containers: [] });
+            }
+        });
+
+        // GET /api/node/fund — Sovereign Fund live data
+        this.app.get('/api/node/fund', async (_req, res) => {
+            try {
+                const platformUrl = process.env.GSTD_SWARM_URL || 'https://api.gstdtoken.com';
+                const [statusRes, epochRes, leaderboardRes] = await Promise.allSettled([
+                    fetch(`${platformUrl}/api/v1/fund/status`, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null),
+                    fetch(`${platformUrl}/api/v1/fund/epoch`, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null),
+                    fetch(`${platformUrl}/api/v1/fund/leaderboard`, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null),
+                ]);
+                res.json({
+                    fund: statusRes.status === 'fulfilled' ? statusRes.value : null,
+                    epoch: epochRes.status === 'fulfilled' ? epochRes.value : null,
+                    leaderboard: leaderboardRes.status === 'fulfilled' ? leaderboardRes.value : null,
+                });
+            } catch (err: any) {
+                res.json({ error: err.message });
+            }
+        });
+
         logActivity('Core modules v4.0 initialized: EventBus, PlatformLink, ModelFailover, Diagnostics, UsageTracker, Scheduler', 'info');
     }
 
