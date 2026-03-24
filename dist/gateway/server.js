@@ -473,14 +473,27 @@ class OmegaGateway {
                         cwd: installDir, encoding: 'utf-8', timeout: 10000,
                     });
                 }
-                // Step 3: Install deps
-                (0, child_process_1.execSync)('npm install --legacy-peer-deps 2>&1 | tail -5 || true', {
-                    cwd: installDir, encoding: 'utf-8', timeout: 120000,
-                });
-                // Step 4: Build
-                (0, child_process_1.execSync)('npx tsc 2>&1 | tail -5 || true', {
-                    cwd: installDir, encoding: 'utf-8', timeout: 60000,
-                });
+                // Keep track of the original hash so we can rollback
+                const originalHash = (0, child_process_1.execSync)('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8' }).trim();
+                // Step 3: Install deps & Build (strict check)
+                try {
+                    (0, child_process_1.execSync)('npm install --legacy-peer-deps', {
+                        cwd: installDir, encoding: 'utf-8', timeout: 120000,
+                    });
+                    (0, child_process_1.execSync)('npx tsc', {
+                        cwd: installDir, encoding: 'utf-8', timeout: 60000,
+                    });
+                }
+                catch (buildError) {
+                    // Update failed! Rollback to prevent node crash/fail
+                    (0, child_process_1.execSync)(`git reset --hard ${originalHash}`, {
+                        cwd: installDir, encoding: 'utf-8', timeout: 10000,
+                    });
+                    (0, child_process_1.execSync)('npm install --legacy-peer-deps', {
+                        cwd: installDir, encoding: 'utf-8', timeout: 120000,
+                    });
+                    throw new Error('Update validation (build) failed. Rollback applied. ' + buildError.message);
+                }
                 // Step 5: Copy dashboard if target exists
                 try {
                     (0, child_process_1.execSync)(`test -d /var/www/gstdbot && cp ${installDir}/web/dashboard.html /var/www/gstdbot/ 2>/dev/null || true`, {
@@ -1597,7 +1610,9 @@ class OmegaGateway {
                 const localWallet = getWallet();
                 const linked = localWallet?.linkedExternalWallet || addr;
                 if (linked) {
-                    const resp = await fetch(`${this.config.swarmUrl}/api/v1/users/balance?wallet=${linked}`, { signal: AbortSignal.timeout(3000) });
+                    const apiKey = process.env.API_KEY || process.env.INTERNAL_API_KEY;
+                    const headers = apiKey ? { 'X-API-Key': apiKey } : {};
+                    const resp = await fetch(`${this.config.swarmUrl}/api/v1/network/wallet/${linked}`, { headers, signal: AbortSignal.timeout(3000) });
                     if (resp.ok)
                         liveBalance = await resp.json();
                 }

@@ -1645,9 +1645,11 @@ export class OmegaGateway {
                 const localWallet = getWallet();
                 const linked = localWallet?.linkedExternalWallet || addr;
                 if (linked) {
+                    const apiKey = process.env.API_KEY || process.env.INTERNAL_API_KEY;
+                    const headers = apiKey ? { 'X-API-Key': apiKey } : {};
                     const resp = await fetch(
-                        `${this.config.swarmUrl}/api/v1/users/balance?wallet=${linked}`,
-                        { signal: AbortSignal.timeout(3000) }
+                        `${this.config.swarmUrl}/api/v1/network/wallet/${linked}`,
+                        { headers, signal: AbortSignal.timeout(3000) }
                     );
                     if (resp.ok) liveBalance = await resp.json();
                 }
