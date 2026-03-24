@@ -484,15 +484,28 @@ export class OmegaGateway {
                     });
                 }
 
-                // Step 3: Install deps
-                execSync('npm install --legacy-peer-deps 2>&1 | tail -5 || true', {
-                    cwd: installDir, encoding: 'utf-8', timeout: 120000,
-                });
+                // Keep track of the original hash so we can rollback
+                const originalHash = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8' }).trim();
 
-                // Step 4: Build
-                execSync('npx tsc 2>&1 | tail -5 || true', {
-                    cwd: installDir, encoding: 'utf-8', timeout: 60000,
-                });
+                // Step 3: Install deps & Build (strict check)
+                try {
+                    execSync('npm install --legacy-peer-deps', {
+                        cwd: installDir, encoding: 'utf-8', timeout: 120000,
+                    });
+                    
+                    execSync('npx tsc', {
+                        cwd: installDir, encoding: 'utf-8', timeout: 60000,
+                    });
+                } catch (buildError: any) {
+                    // Update failed! Rollback to prevent node crash/fail
+                    execSync(`git reset --hard ${originalHash}`, {
+                        cwd: installDir, encoding: 'utf-8', timeout: 10000,
+                    });
+                    execSync('npm install --legacy-peer-deps', {
+                        cwd: installDir, encoding: 'utf-8', timeout: 120000,
+                    });
+                    throw new Error('Update validation (build) failed. Rollback applied. ' + buildError.message);
+                }
 
                 // Step 5: Copy dashboard if target exists
                 try {

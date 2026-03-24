@@ -185,6 +185,8 @@ export class TelegramChannel {
             { command: 'wallet', description: '🔗 Connect/view wallet' },
             { command: 'staking', description: '🥩 Stake GSTD' },
             { command: 'earn', description: '🧠 How to earn GSTD' },
+            { command: 'bridge', description: '🌉 Cross-chain bridge' },
+            { command: 'referral', description: '👥 Invite & earn' },
             { command: 'model', description: 'Switch model' },
             { command: 'apikey', description: 'Get free API key' },
             { command: 'node', description: '📱 Run mobile node' },
@@ -212,7 +214,8 @@ export class TelegramChannel {
                 keyboard: [
                     [{ text: '💎 Баланс' }, { text: '⭐️ Пополнить' }, { text: '💸 Обмен' }],
                     [{ text: '🔗 Кошелек' }, { text: '🥩 Стейкинг' }, { text: '🧠 Заработать' }],
-                    [{ text: '📱 Нода' }, { text: '🧠 Интеллект' }, { text: '🔑 API' }, { text: '📖 Помощь' }],
+                    [{ text: '🌉 Мост' }, { text: '👥 Рефералы' }, { text: '📱 Нода' }],
+                    [{ text: '🧠 Интеллект' }, { text: '🔑 API' }, { text: '📖 Помощь' }],
                 ],
                 resize_keyboard: true,
                 is_persistent: true,
@@ -222,7 +225,8 @@ export class TelegramChannel {
             keyboard: [
                 [{ text: '💎 Balance' }, { text: '⭐️ Top Up' }, { text: '💸 Swap/Trade' }],
                 [{ text: '🔗 Wallet' }, { text: '🥩 Stake GSTD' }, { text: '🧠 Earn' }],
-                [{ text: '📱 Node' }, { text: '🧠 Intelligence' }, { text: '🔑 API' }, { text: '📖 Help' }],
+                [{ text: '🌉 Bridge' }, { text: '👥 Referrals' }, { text: '📱 Node' }],
+                [{ text: '🧠 Intelligence' }, { text: '🔑 API' }, { text: '📖 Help' }],
             ],
             resize_keyboard: true,
             is_persistent: true,
@@ -494,6 +498,18 @@ export class TelegramChannel {
             return this.handleEarn(ctx, this.lang(ctx));
         });
 
+        // ── /bridge — Cross-chain bridge ──
+        this.bot.command('bridge', async (ctx) => {
+            if (ctx.chat?.type !== 'private') return;
+            return this.handleBridge(ctx, this.lang(ctx));
+        });
+
+        // ── /referral — Invite & earn ──
+        this.bot.command('referral', async (ctx) => {
+            if (ctx.chat?.type !== 'private') return;
+            return this.handleReferral(ctx, this.lang(ctx));
+        });
+
         // ── /status — Session status ──
         this.bot.command('status', async (ctx) => {
             if (ctx.chat?.type !== 'private') return;
@@ -596,6 +612,14 @@ export class TelegramChannel {
                             ],
                         },
                     });
+                }
+                // 🌉 Bridge
+                if (text === '🌉 Bridge' || text === '🌉 Мост') {
+                    return this.handleBridge(ctx, lang);
+                }
+                // 👥 Referrals
+                if (text === '👥 Referrals' || text === '👥 Рефералы') {
+                    return this.handleReferral(ctx, lang);
                 }
                 // 🔗 TON Wallet Address Detection (EQ... or UQ... or 0:...)
                 const tonAddressRegex = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
@@ -1294,6 +1318,96 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                     [{ text: lang === 'ru' ? '🔄 STON.fi DEX (TON → GSTD)' : '🔄 STON.fi DEX (TON → GSTD)', url: stonfiUrl }],
                     [{ text: lang === 'ru' ? '🌉 P2P Мост (SOL / XRP)' : '🌉 P2P Bridge (SOL / XRP)', url: bridgeUrl }],
                     [{ text: lang === 'ru' ? '⭐ Купить за Stars' : '⭐ Buy with Stars', callback_data: 'buy_stars' }],
+                ]
+            }
+        });
+    }
+
+    private async handleBridge(ctx: any, lang: string) {
+        const bridgeUrl = 'https://app.gstdtoken.com/bridge';
+
+        let feeInfo = '';
+        try {
+            const data = await this.apiCall('/api/v1/bridge/config');
+            if (data.fee_percent) {
+                feeInfo = lang === 'ru'
+                    ? `\n\n📊 Комиссия: <b>${data.fee_percent}%</b> | Мин: ${data.min_amount || 10} GSTD`
+                    : `\n\n📊 Bridge fee: <b>${data.fee_percent}%</b> | Min: ${data.min_amount || 10} GSTD`;
+            }
+        } catch (_e) {}
+
+        const msg = lang === 'ru'
+            ? `🌉 <b>P2P Мост — Кроссчейн Переводы</b>${feeInfo}\n\n` +
+              `Переводите GSTD между блокчейнами:\n\n` +
+              `🔹 <b>TON → Solana</b> — через сеть нод-валидаторов\n` +
+              `🔹 <b>TON → XRPL</b> — мгновенный мост в XRP Ledger\n` +
+              `🔹 <b>PAXG ↔ GSTD</b> — обмен на токенизированное золото\n\n` +
+              `🛡️ Все переводы верифицируются нодами экосистемы.\n\n` +
+              `👇 Откройте мост:`
+            : `🌉 <b>P2P Bridge — Cross-Chain Transfers</b>${feeInfo}\n\n` +
+              `Transfer GSTD between blockchains:\n\n` +
+              `🔹 <b>TON → Solana</b> — verified by node network\n` +
+              `🔹 <b>TON → XRPL</b> — instant bridge to XRP Ledger\n` +
+              `🔹 <b>PAXG ↔ GSTD</b> — swap for tokenized gold\n\n` +
+              `🛡️ All transfers verified by ecosystem nodes.\n\n` +
+              `👇 Open the bridge:`;
+
+        await ctx.reply(msg, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: lang === 'ru' ? '🌉 Открыть Мост' : '🌉 Open Bridge', url: bridgeUrl }],
+                    [
+                        { text: 'TON ↔ SOL', url: `${bridgeUrl}?from=ton&to=solana` },
+                        { text: 'TON ↔ XRP', url: `${bridgeUrl}?from=ton&to=xrpl` },
+                    ],
+                    [{ text: lang === 'ru' ? '💰 PAXG ↔ GSTD' : '💰 PAXG ↔ GSTD', url: `${bridgeUrl}?from=ton&to=paxg` }],
+                ]
+            }
+        });
+    }
+
+    private async handleReferral(ctx: any, lang: string) {
+        const botUsername = this.bot.botInfo?.username || 'gstdtoken_bot';
+        const userId = ctx.from?.id;
+        const inviteLink = `https://t.me/${botUsername}?start=ref_${userId}`;
+
+        let refStats = '';
+        try {
+            const data = await this.apiCall(`/api/v1/referrals/stats?telegram_id=${userId}`);
+            if (data) {
+                refStats = lang === 'ru'
+                    ? `\n\n📊 <b>Ваша статистика:</b>\n` +
+                      `👥 Приглашано: <b>${data.total_referrals || 0}</b>\n` +
+                      `💰 Заработано: <b>${(data.total_earned || 0).toFixed(4)} GSTD</b>\n` +
+                      `🔥 Активных: <b>${data.active_referrals || 0}</b>`
+                    : `\n\n📊 <b>Your Stats:</b>\n` +
+                      `👥 Invited: <b>${data.total_referrals || 0}</b>\n` +
+                      `💰 Earned: <b>${(data.total_earned || 0).toFixed(4)} GSTD</b>\n` +
+                      `🔥 Active: <b>${data.active_referrals || 0}</b>`;
+            }
+        } catch (_e) {}
+
+        const msg = lang === 'ru'
+            ? `👥 <b>Реферальная Программа</b>${refStats}\n\n` +
+              `Приглашайте друзей и зарабатывайте GSTD:\n\n` +
+              `🎁 <b>5%</b> от всех покупок приглашённых\n` +
+              `🎁 <b>2%</b> бонус приглашённому\n` +
+              `🎁 <b>+1 GSTD</b> за первую привязку кошелька\n\n` +
+              `📋 <b>Ваша ссылка:</b>\n<code>${inviteLink}</code>`
+            : `👥 <b>Referral Program</b>${refStats}\n\n` +
+              `Invite friends and earn GSTD:\n\n` +
+              `🎁 <b>5%</b> of all referral purchases\n` +
+              `🎁 <b>2%</b> bonus for invitee\n` +
+              `🎁 <b>+1 GSTD</b> for first wallet link\n\n` +
+              `📋 <b>Your Link:</b>\n<code>${inviteLink}</code>`;
+
+        await ctx.reply(msg, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: lang === 'ru' ? '📤 Поделиться ссылкой' : '📤 Share Link', url: `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(lang === 'ru' ? 'Присоединяйся к GSTD — коллективный ИИ и заработок!' : 'Join GSTD — collective AI & earn!')}` }],
+                    [{ text: lang === 'ru' ? '📱 Открыть приложение' : '📱 Open App', url: 'https://app.gstdtoken.com' }],
                 ]
             }
         });

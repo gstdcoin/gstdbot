@@ -31,6 +31,8 @@ export declare class TelegramChannel {
     private handleBalance;
     private handleTopUp;
     private handleSwap;
+    private handleBridge;
+    private handleReferral;
     private handleStake;
     private handleWallet;
     private handleLinkWallet;

@@ -55,6 +55,9 @@ export declare class NodeWallet {
     getAddress(): string | null;
     getBalance(): WalletBalance;
     getStats(): WalletStats;
+    private stakingCache;
+    private stakingSyncTimer;
+    private syncStakingData;
     recordVerifiedEarning(amount: number, type: EarningEntry['type'], description: string, taskId?: string): void;
     /**
      * Send heartbeat to backend — backend decides reward based on

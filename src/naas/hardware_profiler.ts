@@ -35,18 +35,13 @@ export const CHAIN_CATALOG: ChainRequirements[] = [
     // Light nodes (minimal resources)
     {
         chain: 'BTC', mode: 'light', ram_gb: 0.5, cpu_cores: 1, disk_gb: 15,
-        dockerImage: 'btcpayserver/bitcoin:latest', rpcPort: 8332, priority: 1,
+        dockerImage: 'ruimarinho/bitcoin-core:latest', rpcPort: 8332, priority: 1,
         nativeToken: 'BTC', rewardPerQuery: 0.005,
         envVars: { BITCOIN_NETWORK: 'mainnet', BITCOIN_DBCACHE: '200' },
     },
     {
-        chain: 'LTC', mode: 'light', ram_gb: 0.5, cpu_cores: 1, disk_gb: 10,
-        dockerImage: 'uphold/litecoin:latest', rpcPort: 9332, priority: 2,
-        nativeToken: 'LTC', rewardPerQuery: 0.001,
-    },
-    {
         chain: 'TON', mode: 'full', ram_gb: 4, cpu_cores: 2, disk_gb: 100,
-        dockerImage: 'ton-org/ton:latest', rpcPort: 8080, priority: 3,
+        dockerImage: 'tonstakers/ton-node:latest', rpcPort: 8080, priority: 3,
         nativeToken: 'TON', rewardPerQuery: 0.002,
         envVars: { TON_GLOBAL_CONFIG: 'mainnet' },
     },
@@ -54,11 +49,6 @@ export const CHAIN_CATALOG: ChainRequirements[] = [
         chain: 'XLM', mode: 'full', ram_gb: 1, cpu_cores: 1, disk_gb: 30,
         dockerImage: 'stellar/stellar-core:latest', rpcPort: 11626, priority: 4,
         nativeToken: 'XLM', rewardPerQuery: 0.001,
-    },
-    {
-        chain: 'DOGE', mode: 'light', ram_gb: 1, cpu_cores: 1, disk_gb: 50,
-        dockerImage: 'coinmetrics/dogecoin:latest', rpcPort: 22555, priority: 5,
-        nativeToken: 'DOGE', rewardPerQuery: 0.001,
     },
     // Mid-tier (8GB+)
     {
@@ -69,7 +59,7 @@ export const CHAIN_CATALOG: ChainRequirements[] = [
     },
     {
         chain: 'MATIC', mode: 'full', ram_gb: 4, cpu_cores: 2, disk_gb: 80,
-        dockerImage: 'maticnetwork/bor:latest', rpcPort: 8545, priority: 7,
+        dockerImage: '0xpolygon/bor:latest', rpcPort: 8545, priority: 7,
         nativeToken: 'MATIC', rewardPerQuery: 0.003,
     },
     {
@@ -79,7 +69,7 @@ export const CHAIN_CATALOG: ChainRequirements[] = [
     },
     {
         chain: 'ATOM', mode: 'full', ram_gb: 4, cpu_cores: 2, disk_gb: 50,
-        dockerImage: 'informalsystems/gaia:latest', rpcPort: 1317, priority: 9,
+        dockerImage: 'tendermint/gaia:latest', rpcPort: 1317, priority: 9,
         nativeToken: 'ATOM', rewardPerQuery: 0.003,
     },
     {

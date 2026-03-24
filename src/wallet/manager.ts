@@ -101,11 +101,15 @@ export class NodeWallet {
         // Fetch real balance from platform
         await this.refreshBalance();
 
+        // Fetch staking data from platform
+        await this.syncStakingData();
+
         // NOTE: Heartbeat is handled by SwarmAgent (swarm/agent.ts) — no duplicate here.
         // Only wallet-level balance refresh and earnings persistence below.
 
-        // Refresh balance from platform every 5 minutes
+        // Refresh balance + staking from platform every 5 minutes
         setInterval(() => this.refreshBalance(), 5 * 60 * 1000);
+        setInterval(() => this.syncStakingData(), 5 * 60 * 1000);
 
         // Save earnings log periodically
         setInterval(() => this.saveEarnings(), 5 * 60 * 1000);
@@ -143,12 +147,30 @@ export class NodeWallet {
             earningsMonth: Math.round(earningsMonth * 10000) / 10000,
             earningsTotal: this.localBalance.totalEarned,
             earningsHistory: this.earnings.slice(0, 50), // Last 50
-            staking: {
-                staked: 0,
-                apy: 0,
-                rewardsPending: 0,
-            },
+            staking: { ...this.stakingCache },
         };
+    }
+
+    // ─── Staking data (synced from backend) ──────────────────────
+    private stakingCache = { staked: 0, apy: 0, rewardsPending: 0 };
+    private stakingSyncTimer: NodeJS.Timeout | null = null;
+
+    private async syncStakingData(): Promise<void> {
+        if (!this.wallet) return;
+        try {
+            const resp = await fetch(
+                `${this.config.swarm.apiUrl}/api/v1/staking/info?wallet=${encodeURIComponent(this.wallet.address)}`,
+                { signal: AbortSignal.timeout(5000) }
+            ).catch(() => null);
+            if (resp?.ok) {
+                const data: any = await resp.json();
+                this.stakingCache = {
+                    staked: data.wallet?.staked || 0,
+                    apy: data.wallet?.apy || 0,
+                    rewardsPending: data.wallet?.daily_reward || 0,
+                };
+            }
+        } catch (_e) {}
     }
 
     // ─── Record verified earning (only called after backend confirms) ──

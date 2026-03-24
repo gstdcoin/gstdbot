@@ -306,7 +306,7 @@ export class SwarmAgent {
         }
     }
 
-    // ─── OTA Auto-Update (for remote bare-metal nodes) ───────────
+    // ─── OTA Auto-Update (SAFE — snapshot + verify + rollback) ────
     private updateAttempted = false;
     private async tryAutoUpdate(): Promise<void> {
         if (this.updateAttempted) return; // Only try once per session
@@ -314,10 +314,10 @@ export class SwarmAgent {
 
         try {
             const { execSync } = require('child_process');
-            const installDir = this.config.installDir || require('os').homedir() + '/gstdbot';
             const fs = require('fs');
+            const installDir = this.config.installDir || require('os').homedir() + '/gstdbot';
 
-            // Skip in Docker (no git, managed externally)
+            // Skip in Docker (managed externally)
             if (fs.existsSync('/.dockerenv')) {
                 logActivity('Update available but running in Docker — skip auto-update', 'info');
                 return;
@@ -329,27 +329,63 @@ export class SwarmAgent {
                 return;
             }
 
-            logActivity('⬆️ Starting auto-update...', 'info');
-            console.log('  🔄 Auto-updating from GitHub...');
+            logActivity('⬆️ Starting safe auto-update...', 'info');
 
-            // Pull latest code
+            // 1. SNAPSHOT — record current state for rollback
+            const snapshot = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
+            logActivity(`📸 Snapshot: ${snapshot.slice(0, 12)}`, 'info');
+
+            // Stash any local changes
+            try { execSync('git stash --quiet 2>/dev/null', { cwd: installDir, timeout: 10000 }); } catch (_e) {}
+
+            // 2. PULL — fetch latest code
             execSync('git fetch origin main --quiet 2>/dev/null', { cwd: installDir, timeout: 30000 });
-            const local = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
             const remote = execSync('git rev-parse origin/main', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
 
-            if (local === remote) {
+            if (snapshot === remote) {
                 logActivity('Already at latest commit — no update needed', 'info');
                 return;
             }
 
             execSync('git reset --hard origin/main', { cwd: installDir, timeout: 30000 });
-            execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 120000 });
-            execSync('npx tsc --skipLibCheck 2>/dev/null || npx tsc 2>/dev/null', { cwd: installDir, timeout: 60000 });
 
-            logActivity('✅ Update installed — restarting node...', 'success');
-            console.log('  ✅ Update installed. Restarting...');
+            // 3. VERIFY — build check before restart
+            let buildOk = true;
+            try {
+                execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 120000 });
+                execSync('npx tsc --noEmit --skipLibCheck 2>/dev/null', { cwd: installDir, timeout: 60000 });
+                
+                // Verify entry point exists
+                const entryPoint = installDir + '/dist/index.js';
+                if (!fs.existsSync(entryPoint)) {
+                    // Try building
+                    execSync('npx tsc --skipLibCheck 2>/dev/null', { cwd: installDir, timeout: 60000 });
+                    if (!fs.existsSync(entryPoint)) {
+                        buildOk = false;
+                    }
+                }
+            } catch (_e) {
+                buildOk = false;
+            }
 
-            // Systemd will restart us, or pm2, or the user manually
+            if (!buildOk) {
+                // 4a. ROLLBACK — revert to snapshot
+                logActivity('❌ Update build failed — rolling back to ' + snapshot.slice(0, 12), 'error');
+                execSync(`git reset --hard ${snapshot}`, { cwd: installDir, timeout: 15000 });
+                try { execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 120000 }); } catch (_e) {}
+                logActivity('✅ Rollback complete — node continues on previous version', 'success');
+                return;
+            }
+
+            // 4b. SUCCESS — log and restart
+            const newHead = execSync('git rev-parse --short HEAD', { cwd: installDir, encoding: 'utf-8', timeout: 5000 }).trim();
+            fs.appendFileSync(installDir + '/.update-log',
+                `${new Date().toISOString()} | ${snapshot.slice(0,8)} → ${newHead} | build verified | restarting\n`);
+
+            logActivity(`✅ Update verified: ${snapshot.slice(0,8)} → ${newHead} — restarting node...`, 'success');
+            console.log(`  ✅ Update installed (${snapshot.slice(0,8)} → ${newHead}). Restarting...`);
+
+            // systemd/pm2 will restart us
             process.exit(0);
         } catch (e: any) {
             logActivity(`Auto-update failed: ${e.message || 'unknown'} — run install.sh manually`, 'error');
