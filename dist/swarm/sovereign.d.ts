@@ -74,6 +74,7 @@ export declare class SovereignSuite {
     stop(): Promise<void>;
     getState(): SovereignState;
     getProfitReport(): ProfitReport;
+    updateMeshPeers(peerIds: string[]): void;
     private meshAnnounce;
     private registerCapabilities;
     private syncStakingState;

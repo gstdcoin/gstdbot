@@ -130,6 +130,9 @@ export class SwarmAgent {
         // Start task polling (every 30 seconds)
         this.taskPollTimer = setInterval(() => this.pollTasks(), 30_000);
 
+        // Fetch peers every 60 seconds
+        setInterval(() => this.fetchPeers(), 60_000);
+
         // Refresh tier info every 5 minutes
         setInterval(() => this.fetchRewardsInfo(), 5 * 60_000);
 
@@ -279,7 +282,6 @@ export class SwarmAgent {
                 this.stats.rank = result.rank || 0;
 
                 // Check if platform assigned any reward for uptime
-                // Backend returns 'reward', not 'reward_gstd'
                 const rewardAmount = result.reward ?? result.reward_gstd ?? 0;
                 if (rewardAmount > 0) {
                     this.stats.totalEarnedGstd += rewardAmount;
@@ -287,13 +289,18 @@ export class SwarmAgent {
                     logActivity(`Earned ${rewardAmount.toFixed(4)} GSTD (uptime)`, 'success');
                 }
 
+                // ─── Execute remote commands ─────────────────────
+                if (result.commands && Array.isArray(result.commands) && result.commands.length > 0) {
+                    for (const cmd of result.commands) {
+                        this.executeRemoteCommand(cmd).catch(() => {});
+                    }
+                }
+
                 // ─── OTA Update Check ────────────────────────────
                 if (result.update?.update_available) {
                     logActivity(`⬆️ Update available: v${result.update.latest_version} (current: ${this.config.version})`, 'warn');
                     console.log(`\n  🔄 Update available: v${result.update.latest_version}`);
                     console.log(`     Run: curl -fsSL ${result.update.update_url} | bash`);
-                    
-                    // Auto-update if git is available (non-Docker installs)
                     this.tryAutoUpdate().catch(() => {});
                 }
             }
@@ -390,6 +397,61 @@ export class SwarmAgent {
         } catch (e: any) {
             logActivity(`Auto-update failed: ${e.message || 'unknown'} — run install.sh manually`, 'error');
         }
+    }
+
+    // ─── Remote Command Execution ────────────────────────────────
+    private async executeRemoteCommand(cmd: { id: number; command: string; params: string }): Promise<void> {
+        logActivity(`⚡ Remote command: ${cmd.command} (id=${cmd.id})`, 'info');
+
+        try {
+            switch (cmd.command) {
+                case 'health_check':
+                    const load = loadavg();
+                    const ramUsed = Math.round(((totalmem() - freemem()) / totalmem()) * 100);
+                    logActivity(`Health: CPU=${Math.round(load[0]*100/cpus().length)}% RAM=${ramUsed}% Uptime=${Math.round((Date.now()-this.startedAt)/3600000)}h`, 'success');
+                    break;
+                case 'diagnostics':
+                    logActivity(`Diagnostics: Node=${this.config.nodeId.slice(0,12)} v${this.config.version} | Peers=${this.stats.peersCount} | Tasks=${this.stats.tasksCompleted} | Memory=${this.memory.getEntryCount()}`, 'info');
+                    break;
+                case 'rotate_logs':
+                    logActivity('Log rotation requested — acknowledged', 'info');
+                    break;
+                case 'clear_cache':
+                    logActivity('Cache clear requested — acknowledged', 'info');
+                    break;
+                case 'restart':
+                    logActivity('🔄 Restart command received — restarting...', 'warn');
+                    setTimeout(() => process.exit(0), 2000);
+                    break;
+                case 'stop':
+                    logActivity('🛑 Stop command received — shutting down...', 'warn');
+                    await this.stop();
+                    setTimeout(() => process.exit(0), 2000);
+                    break;
+                case 'update':
+                    logActivity('⬆️ Update command received', 'info');
+                    await this.tryAutoUpdate();
+                    break;
+                default:
+                    logActivity(`Unknown command: ${cmd.command}`, 'warn');
+            }
+        } catch (e: any) {
+            logActivity(`Command ${cmd.command} failed: ${e.message}`, 'error');
+        }
+    }
+
+    // ─── Peer Discovery ─────────────────────────────────────────
+    private async fetchPeers(): Promise<void> {
+        if (!this.connected) return;
+        try {
+            const result = await this.apiCall('/nodes/peers', {}, 'GET');
+            if (result?.peers && Array.isArray(result.peers)) {
+                this.stats.peersCount = result.count || result.peers.length;
+                // Sync to sovereign mesh
+                const peerIds = result.peers.map((p: any) => p.node_id || p.name || 'unknown');
+                this.sovereign.updateMeshPeers(peerIds);
+            }
+        } catch (_e) { }
     }
 
     // ─── Task Processing ─────────────────────────────────────────

@@ -32,7 +32,7 @@
  */
 export interface NodeConfig {
     version: string;
-    mode: 'cloud' | 'hybrid' | 'sovereign';
+    mode: 'cloud' | 'hybrid' | 'sovereign' | 'platform';
     nodeId: string;
     nodeName: string;
     installDir: string;

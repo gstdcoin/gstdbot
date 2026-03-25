@@ -68,6 +68,8 @@ export declare class SwarmAgent {
     private heartbeat;
     private updateAttempted;
     private tryAutoUpdate;
+    private executeRemoteCommand;
+    private fetchPeers;
     private pollTasks;
     private processTask;
     private processInference;

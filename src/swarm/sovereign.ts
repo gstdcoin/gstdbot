@@ -166,6 +166,18 @@ export class SovereignSuite {
     getState(): SovereignState { return { ...this.state }; }
     getProfitReport(): ProfitReport { return { ...this.profitTracker }; }
 
+    // Called by SwarmAgent when peers are discovered from platform API
+    updateMeshPeers(peerIds: string[]): void {
+        this.state.meshPeers = peerIds.map(id => ({
+            nodeId: id,
+            endpoint: '',
+            latencyMs: 0,
+            trust: 1.0,
+            lastSeen: new Date().toISOString(),
+        }));
+        this.state.meshScore = peerIds.length;
+    }
+
     // ─── 1. MESH NETWORK (P2P Discovery) ─────────────────────────
     private async meshAnnounce(): Promise<void> {
         try {

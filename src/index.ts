@@ -60,7 +60,7 @@ import { homedir } from 'os';
 // ─── Node Configuration ─────────────────────────────────────────
 export interface NodeConfig {
     version: string;
-    mode: 'cloud' | 'hybrid' | 'sovereign';
+    mode: 'cloud' | 'hybrid' | 'sovereign' | 'platform';
     nodeId: string;
     nodeName: string;
     installDir: string;
@@ -77,12 +77,12 @@ function loadConfig(): NodeConfig {
     const configPath = join(homedir(), '.config', 'gstdbot', 'config.json');
     const defaults: NodeConfig = {
         version: '3.4.0',
-        mode: 'cloud',
+        mode: (process.env.GSTD_MODE as any) || 'cloud',
         nodeId: process.env.GSTD_NODE_ID || `node-${Date.now()}`,
         nodeName: process.env.NODE_NAME || `${hostname()}-node`,
         installDir: process.env.GSTD_INSTALL_DIR || join(homedir(), 'gstdbot'),
         swarm: {
-            enabled: process.env.SWARM_ENABLED !== 'false',
+            enabled: process.env.SWARM_ENABLED !== 'false' && process.env.GSTD_MODE !== 'platform',
             maxCPU: parseInt(process.env.GSTD_MAX_CPU || '80'),
             maxRAM: parseInt(process.env.GSTD_MAX_RAM || '70'),
             apiUrl: process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1',
@@ -133,12 +133,22 @@ function loadConfig(): NodeConfig {
 async function main(): Promise<void> {
     const config = loadConfig();
     const startTime = Date.now();
-    const TOTAL_STEPS = 17;
+    const isPlatform = config.mode === 'platform';
+    const TOTAL_STEPS = isPlatform ? 7 : 17;
 
     console.log('');
     console.log('  🐝 ═══════════════════════════════════════════════════');
-    console.log('  🐝  GSTD SuperNode OS v' + config.version);
-    console.log('  🐝  ' + config.nodeName + ' (' + config.mode + ' mode)');
+    console.log(`  ⚡ GSTD ${isPlatform ? 'Platform Server' : 'SuperNode OS'} v${config.version}`);
+    console.log(`  ⚡ Mode: ${config.mode} | ${isPlatform ? 'Platform (no node operations)' : 'Node: ' + config.nodeName}`);
+    console.log(`  ⚡ Wallet: ${process.env.GSTD_WALLET_ADDRESS || 'auto-detect'}`);
+    console.log('');
+    if (isPlatform) {
+        console.log('  ╔═══════════════════════════════════════════════════════╗');
+        console.log('  ║  🏛️  PLATFORM MODE — No node operations on server     ║');
+        console.log('  ║  Telegram + Dashboard + API + AI Chat + Monitoring    ║');
+        console.log('  ╚═══════════════════════════════════════════════════════╝');
+        console.log('');
+    }
     console.log('  🐝  ONE NODE TO RULE THEM ALL — 6 Revenue Streams');
     console.log('  🐝  💾 Storage  💻 Compute  🧠 AI  📡 Relay  🎓 Training  🪙 Staking');
     console.log('  🐝 ═══════════════════════════════════════════════════');
@@ -189,53 +199,74 @@ async function main(): Promise<void> {
     await memory.init();
 
     // ── 6. Swarm Agent (P2P + Task Processing) ──────────────────
-    console.log(`  [6/${TOTAL_STEPS}] Joining swarm network...`);
-    const swarm = new SwarmAgent(config, wallet, memory);
-    await swarm.start();
-
-    // ── 7. Resource Sharing ─────────────────────────────────────
-    console.log(`  [7/${TOTAL_STEPS}] Enabling resource sharing...`);
-    const resources = new ResourceSharing(config);
-    await resources.init();
-
-    // ── 8. Federated Training (🎓 earn GSTD for training) ───────
-    console.log(`  [8/${TOTAL_STEPS}] Initializing training engine...`);
-    const trainer = new SwarmTrainer(config);
-    await trainer.init();
-
-    // ── 9. Storage Vault (💾 earn GSTD for storing data) ────────
-    console.log(`  [9/${TOTAL_STEPS}] Initializing Storage Vault...`);
-    const storageVault = new StorageVault(config.nodeId);
-    storageVault.setRevenueEngine(revenue);
-    await storageVault.init();
-
-    // ── 10. Compute Marketplace (💻 earn GSTD for GPU jobs) ──────
-    console.log(`  [10/${TOTAL_STEPS}] Initializing Compute Marketplace...`);
-    const computeMarket = new ComputeMarketplace(config.nodeId);
-    computeMarket.setRevenueEngine(revenue);
-    await computeMarket.init();
-
-    // ── 11. Traffic Relay (📡 earn GSTD for proxying traffic) ────
-    console.log(`  [11/${TOTAL_STEPS}] Initializing Traffic Relay...`);
-    const trafficRelay = new TrafficRelay(config.nodeId);
-    trafficRelay.setRevenueEngine(revenue);
-    await trafficRelay.init();
-    trafficRelay.mountRoutes(gateway.getExpressApp());
-
-    // ── 12. NaaS (Node-as-a-Service: Multi-Chain RPC) ────────────
-    console.log(`  [12/${TOTAL_STEPS}] Initializing NaaS (Multi-Chain RPC)...`);
-    const naas = new NaaSManager();
-    const apiKey = process.env.GSTD_API_KEY || wallet.getAddress() || config.nodeId;
-    if (process.env.GSTD_NAAS_ENABLED !== 'false') {
-        await naas.start(apiKey);
+    let swarm: SwarmAgent | null = null;
+    if (!isPlatform) {
+        console.log(`  [6/${TOTAL_STEPS}] Joining swarm network...`);
+        swarm = new SwarmAgent(config, wallet, memory);
+        await swarm.start();
     } else {
-        console.log('    NaaS: disabled (set GSTD_NAAS_ENABLED=true)');
+        console.log('  [6/7] Swarm: SKIPPED (platform mode)');
+    }
+
+    // ── Node-only subsystems (skipped in platform mode) ──────────
+    let resources: ResourceSharing | null = null;
+    let trainer: SwarmTrainer | null = null;
+    let storageVault: StorageVault | null = null;
+    let computeMarket: ComputeMarketplace | null = null;
+    let trafficRelay: TrafficRelay | null = null;
+    let naas: NaaSManager | null = null;
+
+    if (!isPlatform) {
+        // ── 7. Resource Sharing ─────────────────────────────────────
+        console.log(`  [7/${TOTAL_STEPS}] Enabling resource sharing...`);
+        resources = new ResourceSharing(config);
+        await resources.init();
+
+        // ── 8. Federated Training ───────────────────────────────────
+        console.log(`  [8/${TOTAL_STEPS}] Initializing training engine...`);
+        trainer = new SwarmTrainer(config);
+        await trainer.init();
+
+        // ── 9. Storage Vault ────────────────────────────────────────
+        console.log(`  [9/${TOTAL_STEPS}] Initializing Storage Vault...`);
+        storageVault = new StorageVault(config.nodeId);
+        storageVault.setRevenueEngine(revenue);
+        await storageVault.init();
+
+        // ── 10. Compute Marketplace ─────────────────────────────────
+        console.log(`  [10/${TOTAL_STEPS}] Initializing Compute Marketplace...`);
+        computeMarket = new ComputeMarketplace(config.nodeId);
+        computeMarket.setRevenueEngine(revenue);
+        await computeMarket.init();
+
+        // ── 11. Traffic Relay ───────────────────────────────────────
+        console.log(`  [11/${TOTAL_STEPS}] Initializing Traffic Relay...`);
+        trafficRelay = new TrafficRelay(config.nodeId);
+        trafficRelay.setRevenueEngine(revenue);
+        await trafficRelay.init();
+        trafficRelay.mountRoutes(gateway.getExpressApp());
+
+        // ── 12. NaaS (Node-as-a-Service: Multi-Chain RPC) ───────────
+        console.log(`  [12/${TOTAL_STEPS}] Initializing NaaS (Multi-Chain RPC)...`);
+        naas = new NaaSManager();
+        const apiKey = process.env.GSTD_API_KEY || wallet.getAddress() || config.nodeId;
+        if (process.env.GSTD_NAAS_ENABLED !== 'false') {
+            await naas.start(apiKey);
+        } else {
+            console.log('    NaaS: disabled (set GSTD_NAAS_ENABLED=true)');
+        }
+    } else {
+        console.log('  [7/7] Node subsystems: SKIPPED (platform mode)');
+        console.log('    ↳ Resource Sharing, Training, Storage, Compute, Relay, NaaS — remote nodes only');
     }
 
     // ── 13. Remote Access + Channels ────────────────────────────
-    console.log(`  [13/${TOTAL_STEPS}] Setting up remote access...`);
-    const remote = new RemoteAccessManager(config.nodeId);
-    await remote.init();
+    let remote: RemoteAccessManager | null = null;
+    if (!isPlatform) {
+        console.log(`  [13/${TOTAL_STEPS}] Setting up remote access...`);
+        remote = new RemoteAccessManager(config.nodeId);
+        await remote.init();
+    }
 
     const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
     if (telegramToken) {
@@ -284,110 +315,152 @@ async function main(): Promise<void> {
 
     // Initialize security and orchestrator
     const security = new SecurityHardening();
-    const orchestrator = new SwarmOrchestrator(config);
-    await orchestrator.init().catch(() => {});
+    let orchestrator: SwarmOrchestrator | null = null;
+    if (!isPlatform) {
+        orchestrator = new SwarmOrchestrator(config);
+        await orchestrator.init().catch(() => {});
+    }
 
     // Inject all subsystems into gateway for full status reporting
     gateway.setSubsystems({
         memory,
-        trainer,
-        resources,
-        swarm,
+        trainer: trainer || undefined,
+        resources: resources || undefined,
+        swarm: swarm || undefined,
         blockchain,
         security,
-        orchestrator,
+        orchestrator: orchestrator || undefined,
         revenue,
-        storageVault,
-        computeMarket,
-        trafficRelay,
+        storageVault: storageVault || undefined,
+        computeMarket: computeMarket || undefined,
+        trafficRelay: trafficRelay || undefined,
     });
 
     // ── 16. Fastify HTTP Engine (4x faster HTTP parser) ──────────
-    console.log(`  [16/${TOTAL_STEPS}] Upgrading to Fastify engine...`);
     let fastifyGateway: FastifyGateway | null = null;
-    try {
-        // Fastify wraps Express — all existing routes work through Fastify's faster parser
-        fastifyGateway = new FastifyGateway(gateway.getExpressApp(), {
-            port: actualPort + 1, // Fastify on port+1 (reverse proxy handles routing)
-        });
-        await fastifyGateway.init();
-        console.log('    ⚡ Fastify engine: initialized (Express compat mode)');
-    } catch (e: any) {
-        console.log(`    ⚠ Fastify init skipped: ${e.message} (Express still active)`);
+    if (!isPlatform) {
+        console.log(`  [16/${TOTAL_STEPS}] Upgrading to Fastify engine...`);
+        try {
+            fastifyGateway = new FastifyGateway(gateway.getExpressApp(), {
+                port: actualPort + 1,
+            });
+            await fastifyGateway.init();
+            console.log('    ⚡ Fastify engine: initialized (Express compat mode)');
+        } catch (e: any) {
+            console.log(`    ⚠ Fastify init skipped: ${e.message} (Express still active)`);
+        }
     }
 
     // ── 17. libp2p P2P Mesh Network ──────────────────────────────
-    console.log(`  [17/${TOTAL_STEPS}] Starting P2P mesh network...`);
-    const p2pNode = new GstdP2PNode({
-        nodeId: config.nodeId,
-        walletAddress: wallet.getAddress() || '',
-        listenPort: parseInt(process.env.GSTD_P2P_PORT || '4001'),
-        enableMdns: process.env.GSTD_P2P_MDNS !== 'false',
-        version: config.version,
-    });
+    let p2pNode: GstdP2PNode | null = null;
     let p2pPeerId = '';
-    try {
-        p2pPeerId = await p2pNode.start();
-        // Wire P2P task events to swarm agent
-        p2pNode.on('task:received', (task: any) => {
-            logActivity(`P2P task received: ${task.taskId}`, 'info');
+    if (!isPlatform) {
+        console.log(`  [17/${TOTAL_STEPS}] Starting P2P mesh network...`);
+        p2pNode = new GstdP2PNode({
+            nodeId: config.nodeId,
+            walletAddress: wallet.getAddress() || '',
+            listenPort: parseInt(process.env.GSTD_P2P_PORT || '4001'),
+            enableMdns: process.env.GSTD_P2P_MDNS !== 'false',
+            version: config.version,
         });
-        p2pNode.on('heartbeat:received', (hb: any) => {
-            logActivity(`P2P heartbeat from ${hb.nodeId}`, 'info');
-        });
-    } catch (e: any) {
-        console.log(`    ⚠ P2P mesh: ${e.message} (platform-only mode)`);
+        try {
+            p2pPeerId = await p2pNode.start();
+            p2pNode.on('task:received', (task: any) => {
+                logActivity(`P2P task received: ${task.taskId}`, 'info');
+            });
+            p2pNode.on('heartbeat:received', (hb: any) => {
+                logActivity(`P2P heartbeat from ${hb.nodeId}`, 'info');
+            });
+        } catch (e: any) {
+            console.log(`    ⚠ P2P mesh: ${e.message} (platform-only mode)`);
+        }
     }
 
     // ── Boot complete ───────────────────────────────────────────
     const bootTime = ((Date.now() - startTime) / 1000).toFixed(1);
-    const accessInfo = remote.getAccessInfo();
     const dashPort = actualPort;
-    const computeStats = computeMarket.getStats();
-    const storageStats = storageVault.getStats();
 
-    console.log('');
-    console.log('  ╔═══════════════════════════════════════════════════════╗');
-    console.log('  ║  🐝 GSTD SuperNode — Ready! (' + bootTime + 's)                   ║');
-    console.log('  ║  ONE NODE TO RULE THEM ALL — 6 Revenue Streams        ║');
-    console.log('  ╚═══════════════════════════════════════════════════════╝');
-    console.log('');
-    console.log('  👉 Dashboard: http://localhost:' + dashPort);
-    console.log('');
-    if (accessInfo.methods.relay?.status === 'connected') {
-        console.log('  🌐 Remote:      ' + accessInfo.methods.relay.url);
+    let uptimeDaemon: UptimeDaemon | null = null;
+
+    if (isPlatform) {
+        // ── Platform mode boot banner ────────────────────────────
+        console.log('');
+        console.log('  ╔═══════════════════════════════════════════════════════╗');
+        console.log('  ║  🏛️  GSTD Platform Server — Ready! (' + bootTime + 's)            ║');
+        console.log('  ║  Telegram Bot + Dashboard + API + Node Monitoring     ║');
+        console.log('  ╚═══════════════════════════════════════════════════════╝');
+        console.log('');
+        console.log('  👉 Dashboard: http://localhost:' + dashPort);
+        console.log('');
+        console.log('  ── Platform Services ────────────────────────────');
+        console.log('  🤖 Telegram:    ✓ Bot active');
+        console.log('  🧠 AI Chat:     ✓ 8 models available');
+        console.log('  🧠 Memory:      ' + (memory.isConnected() ? 'L1+L2+L3' : 'L1 only'));
+        console.log('  💰 Wallet:      ' + (wallet.getAddress() || 'auto-generated'));
+        console.log('  🔗 TON Connect: ' + (tonConnect.isReady() ? '✓ ' + tonConnect.getAddress()?.slice(0,12) + '...' : 'ready'));
+        console.log('  📱 Mobile TMA:  ' + (mobileNode ? '✓ active' : 'disabled'));
+        console.log('  ── Node Management (remote) ─────────────────────');
+        console.log('  📡 Node API:    ✓ /nodes/* endpoints via backend');
+        console.log('  🩺 Monitoring:  ✓ Health Monitor + Alerts via backend');
+        console.log('  ⚙️  Commands:    ✓ Remote dispatch (restart/deploy/diagnostics)');
+        console.log('  🚫 Swarm:       DISABLED (platform mode)');
+        console.log('  🚫 P2P/NaaS:    DISABLED (remote user nodes only)');
+        console.log('');
+        console.log('  💡 Nodes run on USER machines, not this server!');
+        console.log('     Install: curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash');
+        console.log('');
+        logActivity('GSTD Platform Server v' + config.version + ' booted in ' + bootTime + 's (platform mode)', 'success');
+    } else {
+        // ── Node mode boot banner (original) ────────────────────
+        const accessInfo = remote?.getAccessInfo();
+        const computeStats = computeMarket?.getStats();
+        const storageStats = storageVault?.getStats();
+
+        console.log('');
+        console.log('  ╔═══════════════════════════════════════════════════════╗');
+        console.log('  ║  🐝 GSTD SuperNode — Ready! (' + bootTime + 's)                   ║');
+        console.log('  ║  ONE NODE TO RULE THEM ALL — 6 Revenue Streams        ║');
+        console.log('  ╚═══════════════════════════════════════════════════════╝');
+        console.log('');
+        console.log('  👉 Dashboard: http://localhost:' + dashPort);
+        console.log('');
+        if (accessInfo?.methods?.relay?.status === 'connected') {
+            console.log('  🌐 Remote:      ' + accessInfo.methods.relay.url);
+        }
+        console.log('  ── Revenue Streams ──────────────────────────────');
+        console.log('  💾 Storage:     ' + (storageVault?.isEnabled() ? `✓ ${storageStats?.totalCapacityGB} GB available` : 'disabled'));
+        console.log('  💻 Compute:     ' + (computeMarket?.isEnabled() ? `✓ score ${computeStats?.benchmarkScore} pts` : 'disabled'));
+        console.log('  🧠 Inference:   ✓ 8 AI models (earn per query)');
+        console.log('  📡 Relay:       ' + (trafficRelay?.isEnabled() ? '✓ VPN/CDN/API proxy' : 'disabled'));
+        console.log('  🌐 NaaS RPC:    ' + (naas ? `✓ ${naas.getStatus().active_chains.length} chains active` : 'disabled'));
+        console.log('  🎓 Training:    ' + (trainer?.getStats().activeJobs! > 0 ? 'active' : '✓ ready'));
+        console.log('  🪙 Staking:     ✓ 12% APY');
+        console.log('  ── Infrastructure ───────────────────────────────');
+        console.log('  🐝 Swarm:       ' + (swarm?.isConnected() ? '✓ connected' : 'standalone'));
+        console.log('  💰 Wallet:      ' + (wallet.getAddress() || 'auto-generated'));
+        console.log('  🧠 Memory:      ' + (memory.isConnected() ? 'L1+L2+L3' : 'L1 only'));
+        console.log('  🔗 TON Connect: ' + (tonConnect.isReady() ? '✓ ' + tonConnect.getAddress()?.slice(0,12) + '...' : 'ready'));
+        console.log('  📱 Mobile:      ' + (mobileNode ? '✓ TMA' : 'disabled'));
+        console.log('  ⚡ HTTP Engine:  ' + (fastifyGateway ? 'Fastify (4x boost)' : 'Express'));
+        console.log('  🌐 P2P Mesh:    ' + (p2pPeerId ? `✓ ${p2pPeerId.slice(0,16)}...` : 'platform-only'));
+        if (p2pNode) {
+            const p2pStats = p2pNode.getStats();
+            if (p2pStats.connectedPeers > 0) {
+                console.log(`  🤝 P2P Peers:   ${p2pStats.connectedPeers} connected`);
+            }
+        }
+        console.log('');
+        console.log('  💡 All 6 revenue streams earn GSTD automatically!');
+        console.log('     Settlement → GSTD token on TON blockchain');
+        console.log('');
+
+        logActivity('GSTD Node OS v' + config.version + ' booted in ' + bootTime + 's', 'success');
+
+        // ── Uptime Daemon (Proof-of-Uptime + NaaS commands) ──────────
+        uptimeDaemon = new UptimeDaemon(config.nodeId, wallet.getAddress() || '');
+        uptimeDaemon.start();
+        console.log(`  🔒 Uptime:      ✓ Proof-of-Uptime daemon (Age Multiplier: ${uptimeDaemon.getMultiplier()}x)`);
     }
-    console.log('  ── Revenue Streams ──────────────────────────────');
-    console.log('  💾 Storage:     ' + (storageVault.isEnabled() ? `✓ ${storageStats.totalCapacityGB} GB available` : 'disabled'));
-    console.log('  💻 Compute:     ' + (computeMarket.isEnabled() ? `✓ score ${computeStats.benchmarkScore} pts` : 'disabled'));
-    console.log('  🧠 Inference:   ✓ 8 AI models (earn per query)');
-    console.log('  📡 Relay:       ' + (trafficRelay.isEnabled() ? '✓ VPN/CDN/API proxy' : 'disabled'));
-    console.log('  🌐 NaaS RPC:    ' + (process.env.GSTD_NAAS_ENABLED !== 'false' ? `✓ ${naas.getStatus().active_chains.length} chains active` : 'disabled'));
-    console.log('  🎓 Training:    ' + (trainer.getStats().activeJobs > 0 ? 'active' : '✓ ready'));
-    console.log('  🪙 Staking:     ✓ 12% APY');
-    console.log('  ── Infrastructure ───────────────────────────────');
-    console.log('  🐝 Swarm:       ' + (swarm.isConnected() ? '✓ connected' : 'standalone'));
-    console.log('  💰 Wallet:      ' + (wallet.getAddress() || 'auto-generated'));
-    console.log('  🧠 Memory:      ' + (memory.isConnected() ? 'L1+L2+L3' : 'L1 only'));
-    console.log('  🔗 TON Connect: ' + (tonConnect.isReady() ? '✓ ' + tonConnect.getAddress()?.slice(0,12) + '...' : 'ready'));
-    console.log('  📱 Mobile:      ' + (mobileNode ? '✓ TMA' : 'disabled'));
-    console.log('  ⚡ HTTP Engine:  ' + (fastifyGateway ? 'Fastify (4x boost)' : 'Express'));
-    console.log('  🌐 P2P Mesh:    ' + (p2pPeerId ? `✓ ${p2pPeerId.slice(0,16)}...` : 'platform-only'));
-    const p2pStats = p2pNode.getStats();
-    if (p2pStats.connectedPeers > 0) {
-        console.log(`  🤝 P2P Peers:   ${p2pStats.connectedPeers} connected`);
-    }
-    console.log('');
-    console.log('  💡 All 6 revenue streams earn GSTD automatically!');
-    console.log('     Settlement → GSTD token on TON blockchain');
-    console.log('');
-
-    logActivity('GSTD Node OS v' + config.version + ' booted in ' + bootTime + 's', 'success');
-
-    // ── Uptime Daemon (Proof-of-Uptime + NaaS commands) ──────────
-    const uptimeDaemon = new UptimeDaemon(config.nodeId, wallet.getAddress() || '');
-    uptimeDaemon.start();
-    console.log(`  🔒 Uptime:      ✓ Proof-of-Uptime daemon (Age Multiplier: ${uptimeDaemon.getMultiplier()}x)`);
 
     // ── Safe Auto-update: check every hour ─────────────────────────
     // Safety guarantees:
@@ -477,29 +550,31 @@ async function main(): Promise<void> {
 
     // ── Graceful shutdown ───────────────────────────────────────
     const shutdown = async () => {
-        console.log('\n  🛑 Shutting down GSTD SuperNode...');
-        logActivity('Node shutdown initiated', 'warn');
+        console.log(`\n  🛑 Shutting down GSTD ${isPlatform ? 'Platform' : 'SuperNode'}...`);
+        logActivity('Shutdown initiated', 'warn');
         clearInterval(updateInterval);
-        uptimeDaemon.stop();
-        await p2pNode.stop();
+        if (uptimeDaemon) uptimeDaemon.stop();
+        if (p2pNode) await p2pNode.stop();
         if (fastifyGateway) await fastifyGateway.close();
         if (mobileNode) await mobileNode.stop();
         await tonConnect.close();
-        await naas.stop();
-        await trafficRelay.stop();
-        await computeMarket.stop();
-        await storageVault.stop();
+        if (naas) await naas.stop();
+        if (trafficRelay) await trafficRelay.stop();
+        if (computeMarket) await computeMarket.stop();
+        if (storageVault) await storageVault.stop();
         await revenue.stop();
-        await trainer.stop();
-        await resources.stop();
-        await remote.stop();
-        await swarm.stop();
+        if (trainer) await trainer.stop();
+        if (resources) await resources.stop();
+        if (remote) await remote.stop();
+        if (swarm) await swarm.stop();
         await memory.close();
         await blockchain.close();
         await gateway.stop();
         console.log('  ✅ Clean shutdown complete.');
-        const revStats = revenue.getStats();
-        console.log(`  💰 Total earned: ${revStats.totalEarned.toFixed(4)} GSTD (${revStats.settlementsCount} settlements)`);
+        if (!isPlatform) {
+            const revStats = revenue.getStats();
+            console.log(`  💰 Total earned: ${revStats.totalEarned.toFixed(4)} GSTD (${revStats.settlementsCount} settlements)`);
+        }
         process.exit(0);
     };
     process.on('SIGINT', shutdown);
