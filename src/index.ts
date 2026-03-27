@@ -433,7 +433,7 @@ async function main(): Promise<void> {
         console.log('  🧠 Inference:   ✓ 8 AI models (earn per query)');
         console.log('  📡 Relay:       ' + (trafficRelay?.isEnabled() ? '✓ VPN/CDN/API proxy' : 'disabled'));
         console.log('  🌐 NaaS RPC:    ' + (naas ? `✓ ${naas.getStatus().active_chains.length} chains active` : 'disabled'));
-        console.log('  🎓 Training:    ' + (trainer?.getStats().activeJobs! > 0 ? 'active' : '✓ ready'));
+        console.log('  🎓 Training:    ' + ((trainer?.getStats()?.activeJobs || 0) > 0 ? 'active' : '✓ ready'));
         console.log('  🪙 Staking:     ✓ 12% APY');
         console.log('  ── Infrastructure ───────────────────────────────');
         console.log('  🐝 Swarm:       ' + (swarm?.isConnected() ? '✓ connected' : 'standalone'));

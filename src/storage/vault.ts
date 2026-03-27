@@ -13,7 +13,7 @@
  */
 
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from 'crypto';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, statSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { logActivity } from '../gateway/server.js';

@@ -13,8 +13,7 @@
  */
 
 import { execSync } from 'child_process';
-import { statSync, readdirSync } from 'fs';
-import { cpus, totalmem, freemem } from 'os';
+import { cpus, totalmem } from 'os';
 
 // ─── Chain Definitions ──────────────────────────────────────────
 export interface ChainRequirements {

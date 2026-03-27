@@ -425,10 +425,7 @@ export class MobileNodeManager {
 
         // ── Serve Mini App HTML ──
         app.get('/tma', (req: Request, res: Response) => {
-            const langParam = (req.query.lang as string) || '';
-            const acceptLang = req.headers['accept-language'] || '';
-            const lang = langParam === 'ru' || (!langParam && acceptLang.startsWith('ru')) ? 'ru' : 'en';
-            res.send(this.getMiniAppHTML(lang));
+            res.send(this.getMiniAppHTML());
         });
 
         console.log('    Mobile Node: TMA routes registered (/tma/*)');
@@ -728,8 +725,7 @@ export class MobileNodeManager {
      *  - NetworkInformation API → connection type + speed
      *  - performance.memory → JS heap usage
      */
-    private getMiniAppHTML(lang: string = 'en'): string {
-        const isRu = lang === 'ru';
+    private getMiniAppHTML(): string {
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -899,61 +895,8 @@ export class MobileNodeManager {
                 battery: 'Battery',
                 cpu: 'CPU',
                 min: 'min',
-            },
-            ru: {
-                scanning: 'Сканирование ресурсов устройства...',
-                title: 'GSTD Мобильная Нода',
-                subtitle: 'Ваш телефон становится узлом ИИ-сети',
-                gstd_per_hour: 'GSTD в час (Бронзовый тир)',
-                hi: 'Привет',
-                contribute_msg: 'CPU, RAM и сеть вашего телефона<br>будут работать в децентрализованном ИИ рое.',
-                wallet_label: 'Кошелёк',
-                link_wallet_hint: 'Привяжите кошелёк через @GSTDCoinBot для получения наград',
-                start_node: '🚀 Запустить ноду',
-                device_resources: '📱 Ресурсы устройства',
-                ai_models: 'ИИ Модели',
-                earning: 'Заработок',
-                node_running: 'Нода работает',
-                earned_session: 'GSTD заработано за сессию',
-                uptime: 'Аптайм',
-                tasks_label: 'Задачи',
-                rate: 'Ставка',
-                peers: 'Пиры',
-                online: 'онлайн',
-                not_linked: '⚠️ Не привязан',
-                next_reward: 'Следующая награда',
-                phone_resources: '📱 Ресурсы телефона (Live)',
-                cores_shared: 'ядер расшарено',
-                gb_shared: 'ГБ расшарено',
-                charging: 'заряжается',
-                network: 'Сеть',
-                quality: 'Качество',
-                low_battery: '🔋 Низкий заряд',
-                connect_charger: 'Подключите зарядку, чтобы продолжить заработок.',
-                claim_rewards: '💎 Получить награды',
-                stop_node: '⏹ Остановить ноду',
-                activated: 'Нода активирована!',
-                cores_contributing: 'ядер CPU вносят вклад.',
-                activation_failed: '❌ Ошибка активации',
-                node_stopped: 'Нода остановлена',
-                claimed: 'GSTD получено!',
-                wallet_required: '⚠️ Сначала привяжите TON-кошелёк',
-                nothing_to_claim: 'Пока нечего забирать',
-                claim_failed: '❌ Ошибка получения',
-                scanning_resources: 'Сканирование ресурсов...',
-                platform: 'Платформа',
-                screen: 'Экран',
-                cpu_cores: 'Ядра CPU',
-                ram: 'RAM',
-                battery: 'Батарея',
-                cpu: 'CPU',
-                min: 'мин',
-            }
-        };
-        // Detect language: from URL param, then from TG user, fallback to server-set
-        const urlLang = new URLSearchParams(location.search).get('lang');
-        const serverLang = '${isRu ? 'ru' : 'en'}';
-        const L = I18N[urlLang === 'ru' ? 'ru' : urlLang === 'en' ? 'en' : serverLang] || I18N.en;
+        // Default to English entirely
+        const L = I18N.en;
 
         // Set loading text
         document.addEventListener('DOMContentLoaded', () => {

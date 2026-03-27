@@ -89,6 +89,7 @@
         "@typescript-eslint/eslint-plugin": "^8.0.0",
         "@typescript-eslint/parser": "^8.0.0",
         "eslint": "^9.5.0",
+        "jscodeshift": "^17.3.0",
         "tsx": "^4.15.0",
         "typescript": "^5.9.3",
         "vitest": "^3.0.0"

@@ -2,31 +2,31 @@
  * GSTD Node License System
  * ════════════════════════════════════════════════════════
  * 
- * Вместо отдельных "приложений" (Docker containers для каждого блокчейна),
- * сама GSTD-нода является продуктом. Все возможности — это модули,
- * активируемые за GSTD пропорционально мощности сервера.
+ * Instead of separate Docker containers for each blockchain,
+ * the GSTD node itself is the product. All capabilities are modules
+ * activated with GSTD proportional to the server performance.
  *
- * Формула стоимости:
+ * Cost Formula:
  *   moduleCost = basePrice × hardwareMultiplier × durationDays
  *
- * Чем мощнее сервер — тем больше модулей доступно,
- * тем выше стоимость лицензии, но и тем выше доход.
+ * Higher performance server = more modules available,
+ * higher license cost, but also higher potential income.
  *
- * Модули:
- *   🧠 AI Inference    — отвечает на запросы AI (Groq/Ollama)
- *   📡 Traffic Relay   — проксирует трафик (VPN/CDN)
- *   💾 Storage Vault   — хранит данные сети
- *   💻 Compute Pool    — выполняет вычислительные задачи
- *   🌐 RPC Gateway     — обслуживает RPC-запросы блокчейнов
- *   🎓 Model Training  — участвует в обучении моделей
- *   🔗 Bridge Relay    — валидирует кросс-чейн транзакции
+ * Modules:
+ *   🧠 AI Inference    — Handles AI queries (Groq/Ollama)
+ *   📡 Traffic Relay   — Proxies traffic (VPN/CDN)
+ *   💾 Storage Vault   — Stores network data
+ *   💻 Compute Pool    — Performs computing tasks
+ *   🌐 RPC Gateway     — Serves RCP requests for blockchains
+ *   🎓 Model Training  — Participates in model training
+ *   🔗 Bridge Relay    — Validates cross-chain transactions
  *
- * Тиры рассчитываются автоматически по железу.
- * Пользователь стейкает GSTD → модули активируются → нода зарабатывает.
+ * Tiers are automatically calculated by hardware.
+ * User stakes GSTD → modules activate → node earns.
  */
 
 import { HardwareDetector, HardwareProfile } from './hardware_profiler.js';
-import { logActivity } from '../gateway/server.js';
+
 
 // ─── Module Definitions ─────────────────────────────────────────
 export interface NodeModule {
@@ -131,10 +131,10 @@ export const NODE_MODULES: NodeModule[] = [
 
 // ─── Hardware Multiplier ────────────────────────────────────────
 //
-// Чем мощнее сервер — тем выше множитель стоимости лицензии,
-// НО и тем выше потенциальный доход.
+// Higher performance server = higher license cost multiplier,
+// BUT also higher potential income.
 //
-// Формула: hardwareMultiplier = (cpu_score + ram_score + disk_score + gpu_score) / 4
+// Formula: hardwareMultiplier = (cpu_score + ram_score + disk_score + gpu_score) / 4
 //
 function calculateHardwareMultiplier(profile: HardwareProfile): number {
     const cpuScore  = Math.min(profile.cpu_cores / 4, 4.0);   // 4 cores = 1.0x, 16 = 4.0x cap

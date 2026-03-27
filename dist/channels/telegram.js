@@ -188,18 +188,6 @@ class TelegramChannel {
         return ctx.from?.language_code?.startsWith('ru') ? 'ru' : 'en';
     }
     mainKeyboard(lang) {
-        if (lang === 'ru') {
-            return {
-                keyboard: [
-                    [{ text: '💎 Баланс' }, { text: '⭐️ Пополнить' }, { text: '💸 Обмен' }],
-                    [{ text: '🔗 Кошелек' }, { text: '🥩 Стейкинг' }, { text: '🧠 Заработать' }],
-                    [{ text: '🌉 Мост' }, { text: '👥 Рефералы' }, { text: '📱 Нода' }],
-                    [{ text: '🧠 Интеллект' }, { text: '🔑 API' }, { text: '📖 Помощь' }],
-                ],
-                resize_keyboard: true,
-                is_persistent: true,
-            };
-        }
         return {
             keyboard: [
                 [{ text: '💎 Balance' }, { text: '⭐️ Top Up' }, { text: '💸 Swap/Trade' }],
@@ -238,23 +226,14 @@ class TelegramChannel {
                 return this.handleTopUp(ctx, lang);
             }
             const s = router_js_1.SMARTMIX_TIERS;
-            const msg = lang === 'ru'
-                ? `🐝 <b>GSTD — Коллективный Интеллект</b>\n\n` +
-                    `🆓 <b>Бесплатно:</b> усиленный режим — быстрые ответы с качеством выше типичных коммерческих ассистентов.\n\n` +
-                    `🧠 <b>Платные уровни:</b>\n` +
-                    `🔬 Совет из 3 (${s.standard.cost.toFixed(1)} GSTD ≈ $${s.standard.costUsd}) — сильный консенсус\n` +
-                    `🔥 Панель из 5 (${s.pro.cost.toFixed(1)} GSTD ≈ $${s.pro.costUsd}) — в разы глубже и точнее\n` +
-                    `🧠 Рой из 7 (${s.ultra.cost.toFixed(1)} GSTD ≈ $${s.ultra.costUsd}) — максимум мощности и верификации\n\n` +
-                    `🔑 API ключ к Free Ultra-Speed модели: команда /apikey (нужно 10000 GSTD на привязанном кошельке)\n\n` +
-                    `💡 <i>Нажми 🧠 Интеллект чтобы выбрать уровень.</i>`
-                : `🐝 <b>GSTD — Collective Intelligence</b>\n\n` +
-                    `🆓 <b>Free:</b> boosted mode — fast responses with quality above typical commercial assistants.\n\n` +
-                    `🧠 <b>Paid tiers:</b>\n` +
-                    `🔬 Council of 3 (${s.standard.cost.toFixed(1)} GSTD ≈ $${s.standard.costUsd}) — strong consensus\n` +
-                    `🔥 Panel of 5 (${s.pro.cost.toFixed(1)} GSTD ≈ $${s.pro.costUsd}) — much deeper and stronger\n` +
-                    `🧠 Swarm of 7 (${s.ultra.cost.toFixed(1)} GSTD ≈ $${s.ultra.costUsd}) — maximum verification power\n\n` +
-                    `🔑 Free Ultra-Speed API key: /apikey (requires 10000 GSTD on linked wallet)\n\n` +
-                    `💡 <i>Tap 🧠 Intelligence to choose your level.</i>`;
+            const msg = `🐝 <b>GSTD — Collective Intelligence</b>\n\n` +
+                `🆓 <b>Free:</b> boosted mode — fast responses with quality above typical commercial assistants.\n\n` +
+                `🧠 <b>Paid tiers:</b>\n` +
+                `🔬 Council of 3 (${s.standard.cost.toFixed(1)} GSTD ≈ $${s.standard.costUsd}) — strong consensus\n` +
+                `🔥 Panel of 5 (${s.pro.cost.toFixed(1)} GSTD ≈ $${s.pro.costUsd}) — much deeper and stronger\n` +
+                `🧠 Swarm of 7 (${s.ultra.cost.toFixed(1)} GSTD ≈ $${s.ultra.costUsd}) — maximum verification power\n\n` +
+                `🔑 Free Ultra-Speed API key: /apikey (requires 10000 GSTD on linked wallet)\n\n` +
+                `💡 <i>Tap 🧠 Intelligence to choose your level.</i>`;
             await ctx.reply(msg, {
                 parse_mode: 'HTML',
                 reply_markup: this.mainKeyboard(lang),
@@ -266,27 +245,19 @@ class TelegramChannel {
                 return;
             const lang = this.lang(ctx);
             const tmaUrl = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.com/tma';
-            const msg = lang === 'ru'
-                ? `📱 <b>GSTD Mobile Node</b>\n\n` +
-                    `Запусти ноду прямо в смартфоне!\n\n` +
-                    `🐝 Зарабатывай GSTD автоматически\n` +
-                    `⚡ Нулевая настройка — один клик\n` +
-                    `🔗 Кошелёк через TON Connect\n` +
-                    `💎 Тиры: Bronze → Silver → Gold → Platinum\n\n` +
-                    `<i>Нажми кнопку ниже чтобы запустить ноду:</i>`
-                : `📱 <b>GSTD Mobile Node</b>\n\n` +
-                    `Run a node right from your phone!\n\n` +
-                    `🐝 Earn GSTD automatically\n` +
-                    `⚡ Zero setup — one tap\n` +
-                    `🔗 Wallet via TON Connect\n` +
-                    `💎 Tiers: Bronze → Silver → Gold → Platinum\n\n` +
-                    `<i>Tap the button below to start your node:</i>`;
+            const msg = `📱 <b>GSTD Mobile Node</b>\n\n` +
+                `Run a node right from your phone!\n\n` +
+                `🐝 Earn GSTD automatically\n` +
+                `⚡ Zero setup — one tap\n` +
+                `🔗 Wallet via TON Connect\n` +
+                `💎 Tiers: Bronze → Silver → Gold → Platinum\n\n` +
+                `<i>Tap the button below to start your node:</i>`;
             await ctx.reply(msg, {
                 parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [
                         [{ text: '🚀 Launch Node', web_app: { url: tmaUrl } }],
-                        [{ text: lang === 'ru' ? '📊 Статистика сети' : '📊 Network Stats', callback_data: 'node_stats' }],
+                        [{ text: '📊 Network Stats', callback_data: 'node_stats' }],
                     ],
                 },
             });
@@ -297,7 +268,7 @@ class TelegramChannel {
                 return;
             ctx.session.history = [];
             const lang = this.lang(ctx);
-            await ctx.reply(lang === 'ru' ? '🔄 Диалог сброшен.' : '🔄 Conversation reset.');
+            await ctx.reply('🔄 Conversation reset.');
         });
         // ── /help ──
         this.bot.command('help', async (ctx) => {
@@ -312,43 +283,28 @@ class TelegramChannel {
                 const tonPrice = data.gstd_price_ton || 0;
                 const change24h = data.change_24h_pct || 0;
                 const changeIcon = change24h >= 0 ? '📈' : '📉';
-                const msg = lang === 'ru'
-                    ? `💰 <b>GSTD Цена</b>\n\n` +
-                        `💵 $${price > 0 ? price.toFixed(6) : 'N/A'}\n` +
-                        `💎 ${tonPrice > 0 ? tonPrice.toFixed(6) : 'N/A'} TON\n` +
-                        `${changeIcon} 24ч: ${change24h >= 0 ? '+' : ''}${change24h.toFixed(2)}%\n\n` +
-                        `<a href="https://app.ston.fi/swap?from=TON&to=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO">🔄 Купить на STON.fi</a>`
-                    : `💰 <b>GSTD Price</b>\n\n` +
-                        `💵 $${price > 0 ? price.toFixed(6) : 'N/A'}\n` +
-                        `💎 ${tonPrice > 0 ? tonPrice.toFixed(6) : 'N/A'} TON\n` +
-                        `${changeIcon} 24h: ${change24h >= 0 ? '+' : ''}${change24h.toFixed(2)}%\n\n` +
-                        `<a href="https://app.ston.fi/swap?from=TON&to=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO">🔄 Buy on STON.fi</a>`;
+                const msg = `💰 <b>GSTD Price</b>\n\n` +
+                    `💵 $${price > 0 ? price.toFixed(6) : 'N/A'}\n` +
+                    `💎 ${tonPrice > 0 ? tonPrice.toFixed(6) : 'N/A'} TON\n` +
+                    `${changeIcon} 24h: ${change24h >= 0 ? '+' : ''}${change24h.toFixed(2)}%\n\n` +
+                    `<a href="https://app.ston.fi/swap?from=TON&to=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO">🔄 Buy on STON.fi</a>`;
                 await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
             }
             catch (_e) {
-                await ctx.reply(lang === 'ru' ? '❌ Ошибка загрузки цены' : '❌ Error loading price');
+                await ctx.reply('❌ Error loading price');
             }
         });
         // ── /gstd — About the platform ──
         this.bot.command('gstd', async (ctx) => {
             const lang = this.lang(ctx);
-            const msg = lang === 'ru'
-                ? `🐝 <b>GSTD — Суверенная ИИ-Сеть</b>\n\n` +
-                    `🧠 8 бесплатных ИИ-моделей\n` +
-                    `⛏ Заработок через ноды (Desktop + Mobile)\n` +
-                    `🔗 P2P мост между TON · Solana · XRPL\n` +
-                    `🥩 Стейкинг до 36% APY\n` +
-                    `🏛 Суверенное управление (DAO)\n` +
-                    `🔐 163 навыка для ИИ-агентов\n\n` +
-                    `🌐 <a href="https://app.gstdtoken.com">Приложение</a> · <a href="https://gstdbot.gstdtoken.com">Node OS</a>`
-                : `🐝 <b>GSTD — Sovereign AI Network</b>\n\n` +
-                    `🧠 8 free AI models\n` +
-                    `⛏ Earn via nodes (Desktop + Mobile)\n` +
-                    `🔗 P2P bridge: TON · Solana · XRPL\n` +
-                    `🥩 Staking up to 36% APY\n` +
-                    `🏛 Sovereign governance (DAO)\n` +
-                    `🔐 163 AI agent skills\n\n` +
-                    `🌐 <a href="https://app.gstdtoken.com">App</a> · <a href="https://gstdbot.gstdtoken.com">Node OS</a>`;
+            const msg = `🐝 <b>GSTD — Sovereign AI Network</b>\n\n` +
+                `🧠 8 free AI models\n` +
+                `⛏ Earn via nodes (Desktop + Mobile)\n` +
+                `🔗 P2P bridge: TON · Solana · XRPL\n` +
+                `🥩 Staking up to 36% APY\n` +
+                `🏛 Sovereign governance (DAO)\n` +
+                `🔐 163 AI agent skills\n\n` +
+                `🌐 <a href="https://app.gstdtoken.com">App</a> · <a href="https://gstdbot.gstdtoken.com">Node OS</a>`;
             await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
         });
         // ── /buy — How to buy GSTD ──
@@ -357,17 +313,11 @@ class TelegramChannel {
             if (ctx.chat?.type === 'private') {
                 return this.handleTopUp(ctx, lang);
             }
-            const msg = lang === 'ru'
-                ? `💰 <b>Как купить GSTD</b>\n\n` +
-                    `1️⃣ <b>Telegram Stars</b> — прямо в боте, кнопка ⭐️ Пополнить\n` +
-                    `2️⃣ <b>STON.fi DEX</b> — обмен TON → GSTD\n` +
-                    `3️⃣ <b>P2P мост</b> — из Solana или XRPL\n\n` +
-                    `👉 <a href="https://t.me/GstdAppBot?start=buy">Купить в боте</a>`
-                : `💰 <b>How to Buy GSTD</b>\n\n` +
-                    `1️⃣ <b>Telegram Stars</b> — directly in bot, ⭐️ Top Up button\n` +
-                    `2️⃣ <b>STON.fi DEX</b> — swap TON → GSTD\n` +
-                    `3️⃣ <b>P2P Bridge</b> — from Solana or XRPL\n\n` +
-                    `👉 <a href="https://t.me/GstdAppBot?start=buy">Buy in bot</a>`;
+            const msg = `💰 <b>How to Buy GSTD</b>\n\n` +
+                `1️⃣ <b>Telegram Stars</b> — directly in bot, ⭐️ Top Up button\n` +
+                `2️⃣ <b>STON.fi DEX</b> — swap TON → GSTD\n` +
+                `3️⃣ <b>P2P Bridge</b> — from Solana or XRPL\n\n` +
+                `👉 <a href="https://t.me/GstdAppBot?start=buy">Buy in bot</a>`;
             await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
         });
         // ── /stats — Network statistics ──
@@ -380,23 +330,16 @@ class TelegramChannel {
                 ]);
                 const contract = health.contract || {};
                 const platform = staking.platform || {};
-                const msg = lang === 'ru'
-                    ? `📊 <b>Статистика GSTD</b>\n\n` +
-                        `🏥 Статус: <b>${health.status === 'healthy' ? '✅ Онлайн' : '⚠️ Проблемы'}</b>\n` +
-                        `💎 TON баланс контракта: <b>${(contract.balance_ton || 0).toFixed(2)} TON</b>\n` +
-                        `🧠 ИИ: <b>${health.sovereign_ai?.inference || 'Groq Cloud'}</b>\n` +
-                        `🥩 APY стейкинга: <b>${platform.apy || 12}%</b>\n` +
-                        `🔒 Мин. стейк: <b>${platform.min_stake || 1} GSTD</b>`
-                    : `📊 <b>GSTD Statistics</b>\n\n` +
-                        `🏥 Status: <b>${health.status === 'healthy' ? '✅ Online' : '⚠️ Issues'}</b>\n` +
-                        `💎 Contract TON: <b>${(contract.balance_ton || 0).toFixed(2)} TON</b>\n` +
-                        `🧠 AI: <b>${health.sovereign_ai?.inference || 'Groq Cloud'}</b>\n` +
-                        `🥩 Staking APY: <b>${platform.apy || 12}%</b>\n` +
-                        `🔒 Min. stake: <b>${platform.min_stake || 1} GSTD</b>`;
+                const msg = `📊 <b>GSTD Statistics</b>\n\n` +
+                    `🏥 Status: <b>${health.status === 'healthy' ? '✅ Online' : '⚠️ Issues'}</b>\n` +
+                    `💎 Contract TON: <b>${(contract.balance_ton || 0).toFixed(2)} TON</b>\n` +
+                    `🧠 AI: <b>${health.sovereign_ai?.inference || 'Groq Cloud'}</b>\n` +
+                    `🥩 Staking APY: <b>${platform.apy || 12}%</b>\n` +
+                    `🔒 Min. stake: <b>${platform.min_stake || 1} GSTD</b>`;
                 await ctx.reply(msg, { parse_mode: 'HTML' });
             }
             catch (_e) {
-                await ctx.reply(lang === 'ru' ? '❌ Ошибка загрузки статистики' : '❌ Error loading stats');
+                await ctx.reply('❌ Error loading stats');
             }
         });
         // ── /apikey ──
@@ -412,24 +355,22 @@ class TelegramChannel {
                 return;
             const lang = this.lang(ctx);
             const models = [
-                { id: 'groq/compound', label: '🌐 GSTD Compound AI', labelRU: '🌐 GSTD Compound AI' },
-                { id: 'auto', label: '🤖 Auto (best available)', labelRU: '🤖 Авто (лучшая доступная)' },
-                { id: 'llama-3.3-70b-versatile', label: '🦙 Llama 3.3 70B', labelRU: '🦙 Llama 3.3 70B' },
-                { id: 'llama-3.1-8b-instant', label: '⚡ Llama 3.1 8B (fast)', labelRU: '⚡ Llama 3.1 8B (быстрая)' },
-                { id: 'meta-llama/llama-4-scout-17b-16e-instruct', label: '🔭 Llama 4 Scout', labelRU: '🔭 Llama 4 Scout' },
-                { id: 'qwen/qwen3-32b', label: '🐉 Qwen3 32B', labelRU: '🐉 Qwen3 32B' },
-                { id: 'openai/gpt-oss-120b', label: '🧠 GPT-OSS 120B', labelRU: '🧠 GPT-OSS 120B' },
-                { id: 'openai/gpt-oss-20b', label: '💡 GPT-OSS 20B', labelRU: '💡 GPT-OSS 20B' },
-                { id: 'moonshotai/kimi-k2-instruct-0905', label: '🌙 Kimi K2', labelRU: '🌙 Kimi K2' },
+                { id: 'groq/compound', label: '🌐 GSTD Compound AI' },
+                { id: 'auto', label: '🤖 Auto (best available)' },
+                { id: 'llama-3.3-70b-versatile', label: '🦙 Llama 3.3 70B' },
+                { id: 'llama-3.1-8b-instant', label: '⚡ Llama 3.1 8B (fast)' },
+                { id: 'meta-llama/llama-4-scout-17b-16e-instruct', label: '🔭 Llama 4 Scout' },
+                { id: 'qwen/qwen3-32b', label: '🐉 Qwen3 32B' },
+                { id: 'openai/gpt-oss-120b', label: '🧠 GPT-OSS 120B' },
+                { id: 'openai/gpt-oss-20b', label: '💡 GPT-OSS 20B' },
+                { id: 'moonshotai/kimi-k2-instruct-0905', label: '🌙 Kimi K2' },
             ];
             const current = ctx.session.model || 'auto';
-            const currentLabel = models.find(m => m.id === current)?.[lang === 'ru' ? 'labelRU' : 'label'] || current;
-            const msg = lang === 'ru'
-                ? `🤖 <b>Выберите ИИ модель</b>\n\nТекущая: <b>${currentLabel}</b>\n\n<i>Все модели бесплатны • Sovereign AI</i>`
-                : `🤖 <b>Choose AI Model</b>\n\nCurrent: <b>${currentLabel}</b>\n\n<i>All models are free • Sovereign AI</i>`;
+            const currentLabel = models.find(m => m.id === current)?.['label'] || current;
+            const msg = `🤖 <b>Choose AI Model</b>\n\nCurrent: <b>${currentLabel}</b>\n\n<i>All models are free • Sovereign AI</i>`;
             const buttons = models.map(m => {
                 const isActive = m.id === current;
-                const label = lang === 'ru' ? m.labelRU : m.label;
+                const label = m.label;
                 return [{ text: `${isActive ? '✅ ' : ''}${label}`, callback_data: `model_${m.id}` }];
             });
             await ctx.reply(msg, {
@@ -482,17 +423,11 @@ class TelegramChannel {
             const histLen = ctx.session.history?.length || 0;
             const mixTier = ctx.session.mixTier || 'free';
             const tierInfo = router_js_1.SMARTMIX_TIERS[mixTier];
-            const msg = lang === 'ru'
-                ? `📊 <b>Статус сессии</b>\n\n` +
-                    `🤖 Модель: <b>${model}</b>\n` +
-                    `💬 Сообщений: <b>${histLen}</b>\n` +
-                    `🧠 Интеллект: <b>${tierInfo.emoji} ${tierInfo.nameRU}</b>\n` +
-                    `\n<i>Команды: /new — сбросить, /model — сменить модель</i>`
-                : `📊 <b>Session Status</b>\n\n` +
-                    `🤖 Model: <b>${model}</b>\n` +
-                    `💬 Messages: <b>${histLen}</b>\n` +
-                    `🧠 Intelligence: <b>${tierInfo.emoji} ${tierInfo.name}</b>\n` +
-                    `\n<i>Commands: /new — reset, /model — switch model</i>`;
+            const msg = `📊 <b>Session Status</b>\n\n` +
+                `🤖 Model: <b>${model}</b>\n` +
+                `💬 Messages: <b>${histLen}</b>\n` +
+                `🧠 Intelligence: <b>${tierInfo.emoji} ${tierInfo.name}</b>\n` +
+                `\n<i>Commands: /new — reset, /model — switch model</i>`;
             await ctx.reply(msg, { parse_mode: 'HTML' });
         });
         // ── Main message handler ──
@@ -510,39 +445,39 @@ class TelegramChannel {
             // ── Button handlers (private only) ──
             if (isPrivate) {
                 // 💎 Balance
-                if (text === '💎 Balance' || text === '💎 Баланс') {
+                if (text === '💎 Balance') {
                     return this.handleBalance(ctx, lang);
                 }
                 // ⭐️ Top Up
-                if (text === '⭐️ Top Up' || text === '⭐️ Пополнить' || text === '💰 Buy GSTD' || text === '💰 Купить GSTD') {
+                if (text === '⭐️ Top Up' || text === '💰 Buy GSTD') {
                     return this.handleTopUp(ctx, lang);
                 }
                 // 📖 Help
-                if (text === '📖 Help' || text === '📖 Помощь' || text === 'ℹ️ About') {
+                if (text === '📖 Help' || text === 'ℹ️ About') {
                     return this.sendHelp(ctx);
                 }
                 // 📊 Stats
-                if (text === '📊 Stats' || text === '📊 Статистика') {
+                if (text === '📊 Stats') {
                     return this.handleBalance(ctx, lang);
                 }
                 // 🔗 Wallet
-                if (text === '🔗 Wallet' || text === '🔗 Кошелек') {
+                if (text === '🔗 Wallet') {
                     return this.handleWallet(ctx, lang);
                 }
                 // 🧠 Earn
-                if (text === '🧠 Earn' || text === '🧠 Заработать') {
+                if (text === '🧠 Earn') {
                     return this.handleEarn(ctx, lang);
                 }
                 // 🧠 Collective Intelligence
-                if (text === '🧠 Интеллект' || text === '🧠 Intelligence' || text === '🔬 SmartMix') {
+                if (text === '🧠 Intelligence' || text === '🔬 SmartMix') {
                     return this.handleSmartMixMenu(ctx, lang);
                 }
                 // 💸 Swap/Trade
-                if (text === '💸 Swap/Trade' || text === '💸 Обмен' || text.toLowerCase().includes('swap')) {
+                if (text === '💸 Swap/Trade' || text.toLowerCase().includes('swap')) {
                     return this.handleSwap(ctx, lang);
                 }
                 // 🥩 Stake
-                if (text === '🥩 Stake GSTD' || text === '🥩 Стейкинг' || text.toLowerCase().includes('stake')) {
+                if (text === '🥩 Stake GSTD' || text.toLowerCase().includes('stake')) {
                     return this.handleStake(ctx, lang);
                 }
                 // 🔑 API key
@@ -550,19 +485,15 @@ class TelegramChannel {
                     return this.handleApiKeyIssue(ctx, lang);
                 }
                 // 📱 App
-                if (text === '📱 App' || text === '📱 Приложение') {
-                    const msg = lang === 'ru'
-                        ? '📱 <b>Откройте приложение:</b>\n\nhttps://app.gstdtoken.com'
-                        : '📱 <b>Open the app:</b>\n\nhttps://app.gstdtoken.com';
+                if (text === '📱 App') {
+                    const msg = '📱 <b>Open the app:</b>\n\nhttps://app.gstdtoken.com';
                     return ctx.reply(msg, { parse_mode: 'HTML' });
                 }
                 // 📱 Node
-                if (text === '📱 Node' || text === '📱 Нода') {
+                if (text === '📱 Node') {
                     // Trigger /node command
                     const tmaUrl = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.com/tma';
-                    const msg = lang === 'ru'
-                        ? `📱 <b>Запусти ноду в смартфоне!</b>\n\n🐝 Нажми кнопку ниже:`
-                        : `📱 <b>Run a node on your phone!</b>\n\n🐝 Tap the button below:`;
+                    const msg = `📱 <b>Run a node on your phone!</b>\n\n🐝 Tap the button below:`;
                     return ctx.reply(msg, {
                         parse_mode: 'HTML',
                         reply_markup: {
@@ -573,11 +504,11 @@ class TelegramChannel {
                     });
                 }
                 // 🌉 Bridge
-                if (text === '🌉 Bridge' || text === '🌉 Мост') {
+                if (text === '🌉 Bridge') {
                     return this.handleBridge(ctx, lang);
                 }
                 // 👥 Referrals
-                if (text === '👥 Referrals' || text === '👥 Рефералы') {
+                if (text === '👥 Referrals') {
                     return this.handleReferral(ctx, lang);
                 }
                 // 🔗 TON Wallet Address Detection (EQ... or UQ... or 0:...)
@@ -587,8 +518,7 @@ class TelegramChannel {
                     return this.handleLinkWallet(ctx, lang, trimmedText);
                 }
                 // 🔗 Connect Wallet button (from inline keyboard or text)
-                if (text === '🔗 Connect Wallet' || text === '🔗 Подключить кошелёк' ||
-                    text === '🔗 Кошелёк' || text.toLowerCase().includes('connect wallet')) {
+                if (text === '🔗 Connect Wallet' || text.toLowerCase().includes('connect wallet')) {
                     return this.handleWallet(ctx, lang);
                 }
             }
@@ -679,9 +609,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                         catch (err) {
                             const errStr = String(err);
                             if (errStr.includes('insufficient_funds') || errStr.includes('402')) {
-                                const msg = lang === 'ru'
-                                    ? `⚠️ Недостаточно средств для уровня "${tierInfo.nameRU}" (${tierInfo.cost} GSTD).\nИспользуйте команду /buy чтобы пополнить баланс, или переключите уровень в меню 'Коллективный Интеллект'.`
-                                    : `⚠️ Insufficient funds for "${tierInfo.name}" tier (${tierInfo.cost} GSTD).\nUse /buy to top up, or switch tiers in the 'Collective Intelligence' menu.`;
+                                const msg = `⚠️ Insufficient funds for "${tierInfo.name}" tier (${tierInfo.cost} GSTD).\nUse /buy to top up, or switch tiers in the 'Collective Intelligence' menu.`;
                                 await ctx.reply(msg);
                             }
                             else {
@@ -761,9 +689,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             }
             catch (err) {
                 console.error('[Telegram] AI Error:', err.message);
-                const errMsg = lang === 'ru'
-                    ? '❌ Ошибка. Попробуйте через минуту.'
-                    : '❌ Something went wrong. Try again in a moment.';
+                const errMsg = '❌ Something went wrong. Try again in a moment.';
                 await ctx.reply(errMsg, { reply_to_message_id: ctx.message?.message_id });
             }
         });
@@ -797,17 +723,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                 const walletAddress = result.wallet_address || '';
                 const shortWallet = walletAddress ? walletAddress.slice(0, 6) + '...' + walletAddress.slice(-4) : '';
                 let msg;
-                if (lang === 'ru') {
-                    msg = `✅ <b>Оплата получена!</b>\n\n⭐ ${starsAmount} Stars → <b>${gstdAmount.toFixed(2)} GSTD</b> зачислено\n`;
-                    if (shortWallet) {
-                        msg += `💼 На кошелёк: <code>${shortWallet}</code>\n`;
-                    }
-                    else {
-                        msg += `💼 На внутренний баланс\n⚠️ <i>Привяжите TON-кошелёк кнопкой 🔗 Кошелек для вывода</i>\n`;
-                    }
-                    msg += `\n💡 Используй GSTD для Pro-запросов к Kimi K2 · LLaMA4 · GPT-OSS-120B!`;
-                }
-                else {
+                {
                     msg = `✅ <b>Payment received!</b>\n\n⭐ ${starsAmount} Stars → <b>${gstdAmount.toFixed(2)} GSTD</b> credited\n`;
                     if (shortWallet) {
                         msg += `💼 To wallet: <code>${shortWallet}</code>\n`;
@@ -823,11 +739,8 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             catch (err) {
                 console.error('[Stars] ❌ Topup API failed:', err.message);
                 // Payment was received — notify user so they can contact support
-                const errMsg = lang === 'ru'
-                    ? `✅ Оплата получена (${starsAmount}⭐). Зачисляем GSTD...\n` +
-                        `Если GSTD не появятся в течение 5 минут, напишите в поддержку.`
-                    : `✅ Payment received (${starsAmount}⭐). Crediting GSTD...\n` +
-                        `If GSTD doesn't appear within 5 minutes, contact support.`;
+                const errMsg = `✅ Payment received (${starsAmount}⭐). Crediting GSTD...\n` +
+                    `If GSTD doesn't appear within 5 minutes, contact support.`;
                 await ctx.reply(errMsg);
             }
         });
@@ -840,13 +753,11 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                 try {
                     const networkData = await this.apiCall('/api/v1/nodes/rewards/network');
                     const n = networkData || {};
-                    const msg = lang === 'ru'
-                        ? `📊 <b>Статистика сети</b>\n\n🖥 Нод: <b>${n.total_nodes || 0}</b> (онлайн: ${n.online_nodes || 0})\n💰 Всего наград: <b>${(n.total_rewards_gstd || 0).toFixed(2)} GSTD</b>\n🏆 Топ тир: ${n.tier_distribution?.[0]?.tier || 'bronze'}`
-                        : `📊 <b>Network Stats</b>\n\n🖥 Nodes: <b>${n.total_nodes || 0}</b> (online: ${n.online_nodes || 0})\n💰 Total rewards: <b>${(n.total_rewards_gstd || 0).toFixed(2)} GSTD</b>\n🏆 Top tier: ${n.tier_distribution?.[0]?.tier || 'bronze'}`;
+                    const msg = `📊 <b>Network Stats</b>\n\n🖥 Nodes: <b>${n.total_nodes || 0}</b> (online: ${n.online_nodes || 0})\n💰 Total rewards: <b>${(n.total_rewards_gstd || 0).toFixed(2)} GSTD</b>\n🏆 Top tier: ${n.tier_distribution?.[0]?.tier || 'bronze'}`;
                     return ctx.reply(msg, { parse_mode: 'HTML' });
                 }
                 catch (_e) {
-                    return ctx.reply(lang === 'ru' ? '❌ Ошибка загрузки статистики' : '❌ Error loading stats');
+                    return ctx.reply('❌ Error loading stats');
                 }
             }
             if (data === 'claim_reward') {
@@ -857,14 +768,10 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                         body: { telegram_id: ctx.from.id },
                     });
                     if (!result.success) {
-                        const msg = lang === 'ru'
-                            ? 'ℹ️ Нет наград. Включи 🧠 Заработать!'
-                            : 'ℹ️ No rewards to claim. Tap 🧠 Earn!';
+                        const msg = 'ℹ️ No rewards to claim. Tap 🧠 Earn!';
                         return ctx.reply(msg);
                     }
-                    const msg = lang === 'ru'
-                        ? `✅ <b>Награда получена!</b>\n\n💰 Зачислено: <b>${result.claimed_net.toFixed(4)} GSTD</b>\n🏗 Фонд развития: <b>${result.gold_reserve.toFixed(4)} GSTD</b> (10%)\n⚡ Фонд Sovereign AI: <b>${result.burned.toFixed(4)} GSTD</b> (5%)`
-                        : `✅ <b>Reward Claimed!</b>\n\n💰 Received: <b>${result.claimed_net.toFixed(4)} GSTD</b>\n🏗 Development Fund: <b>${result.gold_reserve.toFixed(4)} GSTD</b> (10%)\n⚡ Sovereign AI Pool: <b>${result.burned.toFixed(4)} GSTD</b> (5%)`;
+                    const msg = `✅ <b>Reward Claimed!</b>\n\n💰 Received: <b>${result.claimed_net.toFixed(4)} GSTD</b>\n🏗 Development Fund: <b>${result.gold_reserve.toFixed(4)} GSTD</b> (10%)\n⚡ Sovereign AI Pool: <b>${result.burned.toFixed(4)} GSTD</b> (5%)`;
                     return ctx.reply(msg, { parse_mode: 'HTML' });
                 }
                 catch (_e) {
@@ -898,18 +805,14 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                 const costPerReq = router_js_1.SMARTMIX_TIERS.standard.cost || 3.4;
                 const proReqs = Math.floor(gstdAmount / costPerReq);
                 const usd = (starsAmount * STAR_USD).toFixed(2);
-                const title = lang === 'ru'
-                    ? `${gstdAmount} GSTD (${proReqs} Pro запросов)`
-                    : `${gstdAmount} GSTD (${proReqs} Pro requests)`;
-                const desc = lang === 'ru'
-                    ? `${starsAmount}⭐ = $${usd} = ${gstdAmount} GSTD. Курс: 1⭐ = ${gstdPerStar.toFixed(0)} GSTD`
-                    : `${starsAmount}⭐ = $${usd} = ${gstdAmount} GSTD. Rate: 1⭐ = ${gstdPerStar.toFixed(0)} GSTD`;
+                const title = `${gstdAmount} GSTD (${proReqs} Pro requests)`;
+                const desc = `${starsAmount}⭐ = $${usd} = ${gstdAmount} GSTD. Rate: 1⭐ = ${gstdPerStar.toFixed(0)} GSTD`;
                 try {
                     await ctx.api.sendInvoice(ctx.chat.id, title, desc, `gstd_purchase_${ctx.from.id}_${Date.now()}`, 'XTR', [{ label: title, amount: starsAmount }]);
                 }
                 catch (err) {
                     console.error('[TopUp] Invoice error:', err.message);
-                    await ctx.reply(lang === 'ru' ? '❌ Ошибка создания счёта' : '❌ Error creating invoice');
+                    await ctx.reply('❌ Error creating invoice');
                 }
                 return;
             }
@@ -919,13 +822,9 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                 const selectedTier = data.replace('smartmix_', '');
                 ctx.session.mixTier = selectedTier;
                 const tierInfo = router_js_1.SMARTMIX_TIERS[selectedTier] || router_js_1.SMARTMIX_TIERS.free;
-                const msg = lang === 'ru'
-                    ? `${tierInfo.emoji} <b>${tierInfo.nameRU}</b> активирован!\n\n` +
-                        `${tierInfo.cost > 0 ? `💰 Стоимость: ${tierInfo.cost} GSTD/запрос` : '🆓 Бесплатно'}\n\n` +
-                        `<i>Пишите любой вопрос — ${tierInfo.expertCount} ${tierInfo.expertCount === 1 ? 'эксперт' : 'экспертов'} ответят${tierInfo.expertCount > 1 ? ' и синтезируют консенсус' : ''}.</i>`
-                    : `${tierInfo.emoji} <b>${tierInfo.name}</b> activated!\n\n` +
-                        `${tierInfo.cost > 0 ? `💰 Cost: ${tierInfo.cost} GSTD/request` : '🆓 Free'}\n\n` +
-                        `<i>Type any question — ${tierInfo.expertCount} expert${tierInfo.expertCount > 1 ? 's' : ''} will respond${tierInfo.expertCount > 1 ? ' and synthesize consensus' : ''}.</i>`;
+                const msg = `${tierInfo.emoji} <b>${tierInfo.name}</b> activated!\n\n` +
+                    `${tierInfo.cost > 0 ? `💰 Cost: ${tierInfo.cost} GSTD/request` : '🆓 Free'}\n\n` +
+                    `<i>Type any question — ${tierInfo.expertCount} expert${tierInfo.expertCount > 1 ? 's' : ''} will respond${tierInfo.expertCount > 1 ? ' and synthesize consensus' : ''}.</i>`;
                 return ctx.reply(msg, { parse_mode: 'HTML' });
             }
             // Model selection callbacks (from /model command)
@@ -934,20 +833,18 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                 const selectedModel = data.replace('model_', '');
                 ctx.session.model = selectedModel;
                 const modelNames = {
-                    'groq/compound': { en: '🌐 GSTD Compound AI', ru: '🌐 GSTD Compound AI' },
-                    'auto': { en: '🤖 Auto (best available)', ru: '🤖 Авто (лучшая доступная)' },
-                    'llama-3.3-70b-versatile': { en: '🦙 Llama 3.3 70B', ru: '🦙 Llama 3.3 70B' },
-                    'llama-3.1-8b-instant': { en: '⚡ Llama 3.1 8B', ru: '⚡ Llama 3.1 8B' },
-                    'meta-llama/llama-4-scout-17b-16e-instruct': { en: '🔭 Llama 4 Scout', ru: '🔭 Llama 4 Scout' },
-                    'qwen/qwen3-32b': { en: '🐉 Qwen3 32B', ru: '🐉 Qwen3 32B' },
-                    'openai/gpt-oss-120b': { en: '🧠 GPT-OSS 120B', ru: '🧠 GPT-OSS 120B' },
-                    'openai/gpt-oss-20b': { en: '💡 GPT-OSS 20B', ru: '💡 GPT-OSS 20B' },
-                    'moonshotai/kimi-k2-instruct-0905': { en: '🌙 Kimi K2', ru: '🌙 Kimi K2' },
+                    'groq/compound': '🌐 GSTD Compound AI',
+                    'auto': '🤖 Auto (best available)',
+                    'llama-3.3-70b-versatile': '🦙 Llama 3.3 70B',
+                    'llama-3.1-8b-instant': '⚡ Llama 3.1 8B',
+                    'meta-llama/llama-4-scout-17b-16e-instruct': '🔭 Llama 4 Scout',
+                    'qwen/qwen3-32b': '🐉 Qwen3 32B',
+                    'openai/gpt-oss-120b': '🧠 GPT-OSS 120B',
+                    'openai/gpt-oss-20b': '💡 GPT-OSS 20B',
+                    'moonshotai/kimi-k2-instruct-0905': '🌙 Kimi K2',
                 };
-                const name = modelNames[selectedModel]?.[lang === 'ru' ? 'ru' : 'en'] || selectedModel;
-                const msg = lang === 'ru'
-                    ? `✅ Модель переключена на <b>${name}</b>\n\n<i>Просто напишите любой вопрос!</i>`
-                    : `✅ Switched to <b>${name}</b>\n\n<i>Just type any question!</i>`;
+                const name = modelNames[selectedModel] || selectedModel;
+                const msg = `✅ Switched to <b>${name}</b>\n\n<i>Just type any question!</i>`;
                 return ctx.reply(msg, { parse_mode: 'HTML' });
             }
             // Handle check_balance callback (from Earn section)
@@ -963,30 +860,22 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
         const currentTier = ctx.session.mixTier || 'free';
         const currentInfo = router_js_1.SMARTMIX_TIERS[currentTier];
         const sm = router_js_1.SMARTMIX_TIERS;
-        const msg = lang === 'ru'
-            ? `🧠 <b>Коллективный Интеллект</b>\n\n` +
-                `Выберите уровень:\n\n` +
-                `🆓 <b>Один эксперт</b> — 1 модель, бесплатно\n` +
-                `🔬 <b>Совет из 3</b> — ${sm.standard.cost.toFixed(1)} GSTD ($${sm.standard.costUsd}) — 3 эксперта + консенсус\n` +
-                `🔥 <b>Панель из 5</b> — ${sm.pro.cost.toFixed(1)} GSTD ($${sm.pro.costUsd}) — 5 экспертов + синтез\n` +
-                `🧠 <b>Рой из 7</b> — ${sm.ultra.cost.toFixed(1)} GSTD ($${sm.ultra.costUsd}) — 7 экспертов + полная верификация\n\n` +
-                `Текущий: ${currentInfo.emoji} <b>${currentInfo.nameRU}</b>`
-            : `🧠 <b>Collective Intelligence</b>\n\n` +
-                `Choose your level:\n\n` +
-                `🆓 <b>Single Expert</b> — 1 model, free\n` +
-                `🔬 <b>Council of 3</b> — ${sm.standard.cost.toFixed(1)} GSTD ($${sm.standard.costUsd}) — 3 experts + consensus\n` +
-                `🔥 <b>Panel of 5</b> — ${sm.pro.cost.toFixed(1)} GSTD ($${sm.pro.costUsd}) — 5 experts + synthesis\n` +
-                `🧠 <b>Swarm of 7</b> — ${sm.ultra.cost.toFixed(1)} GSTD ($${sm.ultra.costUsd}) — 7 experts + full verification\n\n` +
-                `Current: ${currentInfo.emoji} <b>${currentInfo.name}</b>`;
+        const msg = `🧠 <b>Collective Intelligence</b>\n\n` +
+            `Choose your level:\n\n` +
+            `🆓 <b>Single Expert</b> — 1 model, free\n` +
+            `🔬 <b>Council of 3</b> — ${sm.standard.cost.toFixed(1)} GSTD ($${sm.standard.costUsd}) — 3 experts + consensus\n` +
+            `🔥 <b>Panel of 5</b> — ${sm.pro.cost.toFixed(1)} GSTD ($${sm.pro.costUsd}) — 5 experts + synthesis\n` +
+            `🧠 <b>Swarm of 7</b> — ${sm.ultra.cost.toFixed(1)} GSTD ($${sm.ultra.costUsd}) — 7 experts + full verification\n\n` +
+            `Current: ${currentInfo.emoji} <b>${currentInfo.name}</b>`;
         const keyboard = {
             inline_keyboard: [
                 [
-                    { text: `🆓 ${lang === 'ru' ? 'Один' : 'Free'}${currentTier === 'free' ? ' ✓' : ''}`, callback_data: 'smartmix_free' },
-                    { text: `🔬 ${lang === 'ru' ? 'Совет' : 'Council'} (${sm.standard.cost} G)${currentTier === 'standard' ? ' ✓' : ''}`, callback_data: 'smartmix_standard' },
+                    { text: `🆓 ${'Free'}${currentTier === 'free' ? ' ✓' : ''}`, callback_data: 'smartmix_free' },
+                    { text: `🔬 ${'Council'} (${sm.standard.cost} G)${currentTier === 'standard' ? ' ✓' : ''}`, callback_data: 'smartmix_standard' },
                 ],
                 [
-                    { text: `🔥 ${lang === 'ru' ? 'Панель' : 'Panel'} (${sm.pro.cost} G)${currentTier === 'pro' ? ' ✓' : ''}`, callback_data: 'smartmix_pro' },
-                    { text: `🧠 ${lang === 'ru' ? 'Рой' : 'Swarm'} (${sm.ultra.cost} G)${currentTier === 'ultra' ? ' ✓' : ''}`, callback_data: 'smartmix_ultra' },
+                    { text: `🔥 ${'Panel'} (${sm.pro.cost} G)${currentTier === 'pro' ? ' ✓' : ''}`, callback_data: 'smartmix_pro' },
+                    { text: `🧠 ${'Swarm'} (${sm.ultra.cost} G)${currentTier === 'ultra' ? ' ✓' : ''}`, callback_data: 'smartmix_ultra' },
                 ],
             ],
         };
@@ -1009,26 +898,15 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
         const usd = (starsCost * STAR_USD).toFixed(2);
         // Format signal ID for display
         const signalName = signalId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        const title = lang === 'ru'
-            ? `🌍 Сигнал: ${signalName}`
-            : `🌍 Signal: ${signalName}`;
-        const desc = lang === 'ru'
-            ? `${starsCost}⭐ ($${usd}) → ${gstdReward} GSTD рабочим роя + ${platformFee} GSTD фонд. Результаты → Коллективная Память.`
-            : `${starsCost}⭐ ($${usd}) → ${gstdReward} GSTD to Swarm workers + ${platformFee} GSTD fund. Results → Collective Memory.`;
+        const title = `🌍 Signal: ${signalName}`;
+        const desc = `${starsCost}⭐ ($${usd}) → ${gstdReward} GSTD to Swarm workers + ${platformFee} GSTD fund. Results → Collective Memory.`;
         // Show info message first
-        const infoMsg = lang === 'ru'
-            ? `🌍 <b>Спонсирование сигнала</b>\n\n` +
-                `📡 <b>${signalName}</b>\n` +
-                `⭐ Стоимость: <b>${starsCost} Stars</b> ($${usd})\n` +
-                `💰 Награда Рою: <b>${gstdReward} GSTD</b>\n` +
-                `🏗 Фонд развития: <b>${platformFee} GSTD</b>\n\n` +
-                `<i>Оплатите инвойс ниже для запуска анализа 👇</i>`
-            : `🌍 <b>Signal Sponsorship</b>\n\n` +
-                `📡 <b>${signalName}</b>\n` +
-                `⭐ Cost: <b>${starsCost} Stars</b> ($${usd})\n` +
-                `💰 Swarm Reward: <b>${gstdReward} GSTD</b>\n` +
-                `🏗 Development Fund: <b>${platformFee} GSTD</b>\n\n` +
-                `<i>Pay the invoice below to launch analysis 👇</i>`;
+        const infoMsg = `🌍 <b>Signal Sponsorship</b>\n\n` +
+            `📡 <b>${signalName}</b>\n` +
+            `⭐ Cost: <b>${starsCost} Stars</b> ($${usd})\n` +
+            `💰 Swarm Reward: <b>${gstdReward} GSTD</b>\n` +
+            `🏗 Development Fund: <b>${platformFee} GSTD</b>\n\n` +
+            `<i>Pay the invoice below to launch analysis 👇</i>`;
         await ctx.reply(infoMsg, { parse_mode: 'HTML' });
         // Record sponsorship intent in backend
         try {
@@ -1053,9 +931,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
         }
         catch (err) {
             console.error('[Sponsor] ❌ Invoice error:', err.message);
-            const errMsg = lang === 'ru'
-                ? '❌ Ошибка создания счёта. Попробуйте через ⭐️ Пополнить.'
-                : '❌ Error creating invoice. Try via ⭐️ Top Up.';
+            const errMsg = '❌ Error creating invoice. Try via ⭐️ Top Up.';
             await ctx.reply(errMsg);
         }
     }
@@ -1066,14 +942,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             const proReqs = costPerPro > 0 ? Math.floor((data.balance_gstd || 0) / costPerPro) : 999;
             const pending = data.pending_gstd || 0;
             let msg;
-            if (lang === 'ru') {
-                msg = `💎 <b>Мой Баланс</b>\n\n💰 <b>${(data.balance_gstd || 0).toFixed(4)} GSTD</b> (L1 TON)\n🐝 <b>${(data.swarm_balance || 0).toFixed(4)} GSTD</b> (L1 Swarm / Zero Gas)\n\n⚡ Pro запросов: <b>${proReqs}</b>`;
-                if (pending > 0) {
-                    msg += `\n\n⏳ <b>Награда: ${pending.toFixed(4)} GSTD</b>\n   └ После комиссии: <b>${(pending * 0.85).toFixed(4)} GSTD</b>\n   └ 10% → Фонд развития, 5% → Sovereign AI Pool`;
-                }
-                msg += `\n\n<i>🆓 Бесплатная модель всегда доступна\n⚡ Pro = ${costPerPro.toFixed(1)} GSTD/запрос ($${router_js_1.SMARTMIX_TIERS.standard.costUsd})</i>`;
-            }
-            else {
+            {
                 msg = `💎 <b>My Balance</b>\n\n💰 <b>${(data.balance_gstd || 0).toFixed(4)} GSTD</b> (L1 TON)\n🐝 <b>${(data.swarm_balance || 0).toFixed(4)} GSTD</b> (L1 Swarm / Zero Gas)\n\n⚡ Pro requests: <b>${proReqs}</b>`;
                 if (pending > 0) {
                     msg += `\n\n⏳ <b>Mining reward: ${pending.toFixed(4)} GSTD</b>\n   └ After commission: <b>${(pending * 0.85).toFixed(4)} GSTD</b>\n   └ 10% → Development Fund, 5% → Sovereign AI Pool`;
@@ -1082,7 +951,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             }
             const inlineKeyboard = [];
             if (pending >= 0.01) {
-                inlineKeyboard.push([{ text: lang === 'ru' ? '🎁 Забрать награду' : '🎁 Claim Reward', callback_data: 'claim_reward' }]);
+                inlineKeyboard.push([{ text: '🎁 Claim Reward', callback_data: 'claim_reward' }]);
             }
             await ctx.reply(msg, {
                 parse_mode: 'HTML',
@@ -1090,7 +959,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             });
         }
         catch (_e) {
-            await ctx.reply(lang === 'ru' ? '❌ Ошибка загрузки баланса' : '❌ Error loading balance');
+            await ctx.reply('❌ Error loading balance');
         }
     }
     async handleTopUp(ctx, lang) {
@@ -1111,20 +980,14 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             if (walletData.linked && walletData.wallet) {
                 hasWallet = true;
                 const shortWallet = walletData.wallet.slice(0, 6) + '...' + walletData.wallet.slice(-4);
-                walletStatus = lang === 'ru'
-                    ? `💼 <b>Кошелёк:</b> ${shortWallet} ✅`
-                    : `💼 <b>Wallet:</b> ${shortWallet} ✅`;
+                walletStatus = `💼 <b>Wallet:</b> ${shortWallet} ✅`;
             }
             else {
-                walletStatus = lang === 'ru'
-                    ? `💼 <b>Кошелёк:</b> не привязан (будет внутренний баланс)\n⚠️ <i>Привяжите кошелёк кнопкой 🔗 Кошелек, чтобы получать GSTD на свой адрес</i>`
-                    : `💼 <b>Wallet:</b> not linked (will use internal balance)\n⚠️ <i>Link wallet via 🔗 Wallet button to receive GSTD to your address</i>`;
+                walletStatus = `💼 <b>Wallet:</b> not linked (will use internal balance)\n⚠️ <i>Link wallet via 🔗 Wallet button to receive GSTD to your address</i>`;
             }
         }
         catch (_e) {
-            walletStatus = lang === 'ru'
-                ? `💼 <b>Кошелёк:</b> не определён`
-                : `💼 <b>Wallet:</b> unknown`;
+            walletStatus = `💼 <b>Wallet:</b> unknown`;
         }
         // Tiers
         const tiers = [
@@ -1136,29 +999,17 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             const gstd = Math.floor(t.stars * gstdPerStar);
             const proReqs = Math.floor(gstd / (router_js_1.SMARTMIX_TIERS.standard.cost || 3.4));
             const usd = (t.stars * STAR_USD).toFixed(2);
-            return lang === 'ru'
-                ? `${t.stars}⭐ = <b>${gstd} GSTD</b> = ${proReqs} Pro ($${usd})`
-                : `${t.stars}⭐ = <b>${gstd} GSTD</b> = ${proReqs} Pro ($${usd})`;
+            return `${t.stars}⭐ = <b>${gstd} GSTD</b> = ${proReqs} Pro ($${usd})`;
         });
         // Commission/TON info
-        const commissionNote = lang === 'ru'
-            ? `\n\n📌 <b>Важно:</b>\n• GSTD зачисляются мгновенно на привязанный кошелёк\n• Для вывода GSTD на TON-кошелёк требуется ~0.05 TON на комиссию сети\n• Без привязки кошелька — GSTD хранятся на внутреннем балансе`
-            : `\n\n📌 <b>Important:</b>\n• GSTD is credited instantly to your linked wallet\n• Withdrawing GSTD to TON wallet requires ~0.05 TON for network fees\n• Without linked wallet — GSTD is stored on internal balance`;
-        const msg = lang === 'ru'
-            ? `⭐️ <b>Пополнить GSTD через Stars</b>\n\n` +
-                `${walletStatus}\n\n` +
-                `📊 <b>Курс:</b> 1⭐ = ${gstdPerStar.toFixed(0)} GSTD ($${STAR_USD})\n` +
-                `📊 GSTD = $${gstdPrice > 0 ? gstdPrice.toFixed(6) : '~0.0002'}\n\n` +
-                tierLines.join('\n') + '\n\n' +
-                `💡 <i>GSTD Pro: $0.005/запрос — от $0.50 за 100 запросов!</i>` +
-                commissionNote
-            : `⭐️ <b>Top Up GSTD via Stars</b>\n\n` +
-                `${walletStatus}\n\n` +
-                `📊 <b>Rate:</b> 1⭐ = ${gstdPerStar.toFixed(0)} GSTD ($${STAR_USD})\n` +
-                `📊 GSTD = $${gstdPrice > 0 ? gstdPrice.toFixed(6) : '~0.0002'}\n\n` +
-                tierLines.join('\n') + '\n\n' +
-                `💡 <i>GSTD Pro: $0.005/request — from $0.50 per 100 requests!</i>` +
-                commissionNote;
+        const commissionNote = `\n\n📌 <b>Important:</b>\n• GSTD is credited instantly to your linked wallet\n• Withdrawing GSTD to TON wallet requires ~0.05 TON for network fees\n• Without linked wallet — GSTD is stored on internal balance`;
+        const msg = `⭐️ <b>Top Up GSTD via Stars</b>\n\n` +
+            `${walletStatus}\n\n` +
+            `📊 <b>Rate:</b> 1⭐ = ${gstdPerStar.toFixed(0)} GSTD ($${STAR_USD})\n` +
+            `📊 GSTD = $${gstdPrice > 0 ? gstdPrice.toFixed(6) : '~0.0002'}\n\n` +
+            tierLines.join('\n') + '\n\n' +
+            `💡 <i>GSTD Pro: $0.005/request — from $0.50 per 100 requests!</i>` +
+            commissionNote;
         const buttons = tiers.map(t => {
             const gstd = Math.floor(t.stars * gstdPerStar);
             return { text: `${t.stars}⭐ → ${gstd} GSTD`, callback_data: `buy_${t.stars}` };
@@ -1167,7 +1018,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
         const inlineRows = [buttons];
         if (!hasWallet) {
             inlineRows.push([{
-                    text: lang === 'ru' ? '🔗 Привязать кошелёк' : '🔗 Link Wallet',
+                    text: '🔗 Link Wallet',
                     callback_data: 'link_wallet_prompt',
                 }]);
         }
@@ -1183,30 +1034,22 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
         try {
             const data = await this.apiCall('/api/v1/market/price');
             if (data.gstd_price_usd > 0) {
-                priceInfo = lang === 'ru'
-                    ? `\n📊 Текущая цена: <b>$${data.gstd_price_usd.toFixed(6)}</b> (${(data.gstd_price_ton || 0).toFixed(6)} TON)`
-                    : `\n📊 Current price: <b>$${data.gstd_price_usd.toFixed(6)}</b> (${(data.gstd_price_ton || 0).toFixed(6)} TON)`;
+                priceInfo = `\n📊 Current price: <b>$${data.gstd_price_usd.toFixed(6)}</b> (${(data.gstd_price_ton || 0).toFixed(6)} TON)`;
             }
         }
         catch (_e) { }
-        const msg = lang === 'ru'
-            ? `💸 <b>Обмен Токенов (Swap)</b>${priceInfo}\n\n` +
-                `🔄 <b>STON.fi DEX</b> — мгновенный обмен TON ↔ GSTD\n` +
-                `🌉 <b>P2P Мост</b> — перевод из Solana / XRPL\n` +
-                `⭐ <b>Telegram Stars</b> — покупка прямо в боте\n\n` +
-                `👇 Выберите способ:`
-            : `💸 <b>Token Swap</b>${priceInfo}\n\n` +
-                `🔄 <b>STON.fi DEX</b> — instant TON ↔ GSTD swap\n` +
-                `🌉 <b>P2P Bridge</b> — transfer from Solana / XRPL\n` +
-                `⭐ <b>Telegram Stars</b> — buy directly in bot\n\n` +
-                `👇 Choose your method:`;
+        const msg = `💸 <b>Token Swap</b>${priceInfo}\n\n` +
+            `🔄 <b>STON.fi DEX</b> — instant TON ↔ GSTD swap\n` +
+            `🌉 <b>P2P Bridge</b> — transfer from Solana / XRPL\n` +
+            `⭐ <b>Telegram Stars</b> — buy directly in bot\n\n` +
+            `👇 Choose your method:`;
         await ctx.reply(msg, {
             parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: lang === 'ru' ? '🔄 STON.fi DEX (TON → GSTD)' : '🔄 STON.fi DEX (TON → GSTD)', url: stonfiUrl }],
-                    [{ text: lang === 'ru' ? '🌉 P2P Мост (SOL / XRP)' : '🌉 P2P Bridge (SOL / XRP)', url: bridgeUrl }],
-                    [{ text: lang === 'ru' ? '⭐ Купить за Stars' : '⭐ Buy with Stars', callback_data: 'buy_stars' }],
+                    [{ text: '🔄 STON.fi DEX (TON → GSTD)', url: stonfiUrl }],
+                    [{ text: '🌉 P2P Bridge (SOL / XRP)', url: bridgeUrl }],
+                    [{ text: '⭐ Buy with Stars', callback_data: 'buy_stars' }],
                 ]
             }
         });
@@ -1217,37 +1060,27 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
         try {
             const data = await this.apiCall('/api/v1/bridge/config');
             if (data.fee_percent) {
-                feeInfo = lang === 'ru'
-                    ? `\n\n📊 Комиссия: <b>${data.fee_percent}%</b> | Мин: ${data.min_amount || 10} GSTD`
-                    : `\n\n📊 Bridge fee: <b>${data.fee_percent}%</b> | Min: ${data.min_amount || 10} GSTD`;
+                feeInfo = `\n\n📊 Bridge fee: <b>${data.fee_percent}%</b> | Min: ${data.min_amount || 10} GSTD`;
             }
         }
         catch (_e) { }
-        const msg = lang === 'ru'
-            ? `🌉 <b>P2P Мост — Кроссчейн Переводы</b>${feeInfo}\n\n` +
-                `Переводите GSTD между блокчейнами:\n\n` +
-                `🔹 <b>TON → Solana</b> — через сеть нод-валидаторов\n` +
-                `🔹 <b>TON → XRPL</b> — мгновенный мост в XRP Ledger\n` +
-                `🔹 <b>PAXG ↔ GSTD</b> — обмен на токенизированное золото\n\n` +
-                `🛡️ Все переводы верифицируются нодами экосистемы.\n\n` +
-                `👇 Откройте мост:`
-            : `🌉 <b>P2P Bridge — Cross-Chain Transfers</b>${feeInfo}\n\n` +
-                `Transfer GSTD between blockchains:\n\n` +
-                `🔹 <b>TON → Solana</b> — verified by node network\n` +
-                `🔹 <b>TON → XRPL</b> — instant bridge to XRP Ledger\n` +
-                `🔹 <b>PAXG ↔ GSTD</b> — swap for tokenized gold\n\n` +
-                `🛡️ All transfers verified by ecosystem nodes.\n\n` +
-                `👇 Open the bridge:`;
+        const msg = `🌉 <b>P2P Bridge — Cross-Chain Transfers</b>${feeInfo}\n\n` +
+            `Transfer GSTD between blockchains:\n\n` +
+            `🔹 <b>TON → Solana</b> — verified by node network\n` +
+            `🔹 <b>TON → XRPL</b> — instant bridge to XRP Ledger\n` +
+            `🔹 <b>PAXG ↔ GSTD</b> — swap for tokenized gold\n\n` +
+            `🛡️ All transfers verified by ecosystem nodes.\n\n` +
+            `👇 Open the bridge:`;
         await ctx.reply(msg, {
             parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: lang === 'ru' ? '🌉 Открыть Мост' : '🌉 Open Bridge', url: bridgeUrl }],
+                    [{ text: '🌉 Open Bridge', url: bridgeUrl }],
                     [
                         { text: 'TON ↔ SOL', url: `${bridgeUrl}?from=ton&to=solana` },
                         { text: 'TON ↔ XRP', url: `${bridgeUrl}?from=ton&to=xrpl` },
                     ],
-                    [{ text: lang === 'ru' ? '💰 PAXG ↔ GSTD' : '💰 PAXG ↔ GSTD', url: `${bridgeUrl}?from=ton&to=paxg` }],
+                    [{ text: '💰 PAXG ↔ GSTD', url: `${bridgeUrl}?from=ton&to=paxg` }],
                 ]
             }
         });
@@ -1260,37 +1093,25 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
         try {
             const data = await this.apiCall(`/api/v1/referrals/stats?telegram_id=${userId}`);
             if (data) {
-                refStats = lang === 'ru'
-                    ? `\n\n📊 <b>Ваша статистика:</b>\n` +
-                        `👥 Приглашано: <b>${data.total_referrals || 0}</b>\n` +
-                        `💰 Заработано: <b>${(data.total_earned || 0).toFixed(4)} GSTD</b>\n` +
-                        `🔥 Активных: <b>${data.active_referrals || 0}</b>`
-                    : `\n\n📊 <b>Your Stats:</b>\n` +
-                        `👥 Invited: <b>${data.total_referrals || 0}</b>\n` +
-                        `💰 Earned: <b>${(data.total_earned || 0).toFixed(4)} GSTD</b>\n` +
-                        `🔥 Active: <b>${data.active_referrals || 0}</b>`;
+                refStats = `\n\n📊 <b>Your Stats:</b>\n` +
+                    `👥 Invited: <b>${data.total_referrals || 0}</b>\n` +
+                    `💰 Earned: <b>${(data.total_earned || 0).toFixed(4)} GSTD</b>\n` +
+                    `🔥 Active: <b>${data.active_referrals || 0}</b>`;
             }
         }
         catch (_e) { }
-        const msg = lang === 'ru'
-            ? `👥 <b>Реферальная Программа</b>${refStats}\n\n` +
-                `Приглашайте друзей и зарабатывайте GSTD:\n\n` +
-                `🎁 <b>5%</b> от всех покупок приглашённых\n` +
-                `🎁 <b>2%</b> бонус приглашённому\n` +
-                `🎁 <b>+1 GSTD</b> за первую привязку кошелька\n\n` +
-                `📋 <b>Ваша ссылка:</b>\n<code>${inviteLink}</code>`
-            : `👥 <b>Referral Program</b>${refStats}\n\n` +
-                `Invite friends and earn GSTD:\n\n` +
-                `🎁 <b>5%</b> of all referral purchases\n` +
-                `🎁 <b>2%</b> bonus for invitee\n` +
-                `🎁 <b>+1 GSTD</b> for first wallet link\n\n` +
-                `📋 <b>Your Link:</b>\n<code>${inviteLink}</code>`;
+        const msg = `👥 <b>Referral Program</b>${refStats}\n\n` +
+            `Invite friends and earn GSTD:\n\n` +
+            `🎁 <b>5%</b> of all referral purchases\n` +
+            `🎁 <b>2%</b> bonus for invitee\n` +
+            `🎁 <b>+1 GSTD</b> for first wallet link\n\n` +
+            `📋 <b>Your Link:</b>\n<code>${inviteLink}</code>`;
         await ctx.reply(msg, {
             parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: lang === 'ru' ? '📤 Поделиться ссылкой' : '📤 Share Link', url: `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(lang === 'ru' ? 'Присоединяйся к GSTD — коллективный ИИ и заработок!' : 'Join GSTD — collective AI & earn!')}` }],
-                    [{ text: lang === 'ru' ? '📱 Открыть приложение' : '📱 Open App', url: 'https://app.gstdtoken.com' }],
+                    [{ text: '📤 Share Link', url: `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join GSTD — collective AI & earn!')}` }],
+                    [{ text: '📱 Open App', url: 'https://app.gstdtoken.com' }],
                 ]
             }
         });
@@ -1301,32 +1122,22 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
         try {
             const data = await this.apiCall('/api/v1/staking/info');
             const p = data.platform || {};
-            stakingInfo = lang === 'ru'
-                ? `\n\n📊 <b>Текущие условия:</b>\n` +
-                    `• APY: <b>${p.apy || 12}%</b>\n` +
-                    `• Мин. стейк: <b>${p.min_stake || 1} GSTD</b>\n` +
-                    `• Период: <b>${p.lock_period_days || 30} дней</b>`
-                : `\n\n📊 <b>Current terms:</b>\n` +
-                    `• APY: <b>${p.apy || 12}%</b>\n` +
-                    `• Min. stake: <b>${p.min_stake || 1} GSTD</b>\n` +
-                    `• Period: <b>${p.lock_period_days || 30} days</b>`;
+            stakingInfo = `\n\n📊 <b>Current terms:</b>\n` +
+                `• APY: <b>${p.apy || 12}%</b>\n` +
+                `• Min. stake: <b>${p.min_stake || 1} GSTD</b>\n` +
+                `• Period: <b>${p.lock_period_days || 30} days</b>`;
         }
         catch (_e) { }
-        const msg = lang === 'ru'
-            ? `🥩 <b>Стейкинг GSTD</b>\n\n` +
-                `Заморозьте свои GSTD токены, чтобы получать пассивный доход из пула Golden Reserve — фонда, который собирает 50% комиссий от всех ИИ-запросов платформы.` +
-                stakingInfo +
-                `\n\n💡 <i>Чем больше стейк и длиннее период — тем выше APY.</i>`
-            : `🥩 <b>GSTD Staking</b>\n\n` +
-                `Lock up your GSTD tokens to earn passive income from the Golden Reserve pool — a fund that collects 50% of fees from all AI queries on the platform.` +
-                stakingInfo +
-                `\n\n💡 <i>Higher stake and longer lock period = higher APY.</i>`;
+        const msg = `🥩 <b>GSTD Staking</b>\n\n` +
+            `Lock up your GSTD tokens to earn passive income from the Golden Reserve pool — a fund that collects 50% of fees from all AI queries on the platform.` +
+            stakingInfo +
+            `\n\n💡 <i>Higher stake and longer lock period = higher APY.</i>`;
         await ctx.reply(msg, {
             parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: lang === 'ru' ? '🥩 Открыть Стейкинг' : '🥩 Open Staking', url: stakingUrl }],
-                    [{ text: lang === 'ru' ? '⭐ Купить GSTD' : '⭐ Buy GSTD', callback_data: 'buy_stars' }],
+                    [{ text: '🥩 Open Staking', url: stakingUrl }],
+                    [{ text: '⭐ Buy GSTD', callback_data: 'buy_stars' }],
                 ]
             }
         });
@@ -1337,16 +1148,12 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             const walletData = await this.apiCall(`/api/v1/telegram/bot/wallet?telegram_id=${ctx.from.id}`);
             if (walletData.linked && walletData.wallet) {
                 const shortWallet = walletData.wallet.slice(0, 6) + '...' + walletData.wallet.slice(-4);
-                const msg = lang === 'ru'
-                    ? `🔗 <b>Ваш кошелёк</b>\n\n✅ Привязан: <code>${walletData.wallet}</code>\n📋 ${shortWallet}\n\n💡 Чтобы сменить кошелёк, отправьте новый адрес TON-кошелька в чат.\n\nНапример: <code>EQDv...</code>`
-                    : `🔗 <b>Your Wallet</b>\n\n✅ Linked: <code>${walletData.wallet}</code>\n📋 ${shortWallet}\n\n💡 To change wallet, send a new TON wallet address in the chat.\n\nExample: <code>EQDv...</code>`;
+                const msg = `🔗 <b>Your Wallet</b>\n\n✅ Linked: <code>${walletData.wallet}</code>\n📋 ${shortWallet}\n\n💡 To change wallet, send a new TON wallet address in the chat.\n\nExample: <code>EQDv...</code>`;
                 return ctx.reply(msg, { parse_mode: 'HTML' });
             }
         }
         catch (_e) { }
-        const msg = lang === 'ru'
-            ? `🔗 <b>Привязка кошелька</b>\n\n⚠️ Кошелёк не привязан.\n\nОтправьте адрес вашего TON-кошелька прямо в чат.\n\nНапример: <code>EQDv...</code>\n\n❓ Нет кошелька?\n• <a href="https://tonkeeper.com">Tonkeeper</a>\n• <a href="https://mytonwallet.io">MyTonWallet</a>\n\n💡 <i>После привязки кошелька все купленные GSTD будут зачисляться на него.</i>`
-            : `🔗 <b>Connect Wallet</b>\n\n⚠️ No wallet linked.\n\nSend your TON wallet address in the chat.\n\nExample: <code>EQDv...</code>\n\n❓ No wallet?\n• <a href="https://tonkeeper.com">Tonkeeper</a>\n• <a href="https://mytonwallet.io">MyTonWallet</a>\n\n💡 <i>After linking, all purchased GSTD will be credited to your wallet.</i>`;
+        const msg = `🔗 <b>Connect Wallet</b>\n\n⚠️ No wallet linked.\n\nSend your TON wallet address in the chat.\n\nExample: <code>EQDv...</code>\n\n❓ No wallet?\n• <a href="https://tonkeeper.com">Tonkeeper</a>\n• <a href="https://mytonwallet.io">MyTonWallet</a>\n\n💡 <i>After linking, all purchased GSTD will be credited to your wallet.</i>`;
         await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
     }
     async handleLinkWallet(ctx, lang, walletAddress) {
@@ -1362,13 +1169,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             });
             const shortWallet = walletAddress.slice(0, 6) + '...' + walletAddress.slice(-4);
             let msg;
-            if (lang === 'ru') {
-                msg = `✅ <b>Кошелёк привязан!</b>\n\n📋 ${shortWallet}\n<code>${walletAddress}</code>\n\n💰 Все купленные GSTD будут зачисляться на этот кошелёк.`;
-                if (result.subsidized) {
-                    msg += '\n\n🎁 <b>Бонус:</b> Немного TON отправлено на ваш кошелёк для первых транзакций!';
-                }
-            }
-            else {
+            {
                 msg = `✅ <b>Wallet Linked!</b>\n\n📋 ${shortWallet}\n<code>${walletAddress}</code>\n\n💰 All purchased GSTD will be credited to this wallet.`;
                 if (result.subsidized) {
                     msg += '\n\n🎁 <b>Bonus:</b> Some TON sent to your wallet for first transactions!';
@@ -1378,42 +1179,30 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
         }
         catch (err) {
             console.error('[Bot] Link wallet error:', err.message);
-            const errMsg = lang === 'ru'
-                ? '❌ Ошибка привязки кошелька. Проверьте адрес и попробуйте снова.'
-                : '❌ Failed to link wallet. Check the address and try again.';
+            const errMsg = '❌ Failed to link wallet. Check the address and try again.';
             await ctx.reply(errMsg);
         }
     }
     async handleEarn(ctx, lang) {
         const tmaUrl = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.com/tma';
         const nodeOsUrl = 'https://gstdbot.gstdtoken.com';
-        const msg = lang === 'ru'
-            ? `🧠 <b>Заработать GSTD</b>\n\nСтаньте частью роя и зарабатывайте GSTD пассивно:\n\n` +
-                `🖥 <b>Десктоп нода</b> — установите Node OS на компьютер (макс. доход)\n` +
-                `📱 <b>Мобильная нода</b> — запустите прямо в Telegram\n` +
-                `🥩 <b>Стейкинг</b> — заморозьте GSTD и получайте APY\n\n` +
-                `💰 <b>Награды:</b>\n` +
-                `• 0.10 GSTD/час за аптайм\n` +
-                `• 0.001 GSTD за каждый выполненный запрос\n` +
-                `• Бонус за серию дней (streak)\n\n` +
-                `<i>Комиссия: 10% → Фонд развития, 5% → Sovereign AI Pool</i>`
-            : `🧠 <b>Earn GSTD</b>\n\nJoin the Swarm and earn GSTD passively:\n\n` +
-                `🖥 <b>Desktop Node</b> — install Node OS on computer (max earnings)\n` +
-                `📱 <b>Mobile Node</b> — run directly in Telegram\n` +
-                `🥩 <b>Staking</b> — lock GSTD and earn APY\n\n` +
-                `💰 <b>Rewards:</b>\n` +
-                `• 0.10 GSTD/hour for uptime\n` +
-                `• 0.001 GSTD per completed query\n` +
-                `• Streak bonus for consecutive days\n\n` +
-                `<i>Commission: 10% → Development Fund, 5% → Sovereign AI Pool</i>`;
+        const msg = `🧠 <b>Earn GSTD</b>\n\nJoin the Swarm and earn GSTD passively:\n\n` +
+            `🖥 <b>Desktop Node</b> — install Node OS on computer (max earnings)\n` +
+            `📱 <b>Mobile Node</b> — run directly in Telegram\n` +
+            `🥩 <b>Staking</b> — lock GSTD and earn APY\n\n` +
+            `💰 <b>Rewards:</b>\n` +
+            `• 0.10 GSTD/hour for uptime\n` +
+            `• 0.001 GSTD per completed query\n` +
+            `• Streak bonus for consecutive days\n\n` +
+            `<i>Commission: 10% → Development Fund, 5% → Sovereign AI Pool</i>`;
         await ctx.reply(msg, {
             parse_mode: 'HTML',
             link_preview_options: { is_disabled: true },
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: lang === 'ru' ? '🖥 Установить Node OS' : '🖥 Install Node OS', url: nodeOsUrl }],
-                    [{ text: lang === 'ru' ? '📱 Мобильная нода' : '📱 Mobile Node', web_app: { url: tmaUrl } }],
-                    [{ text: lang === 'ru' ? '💎 Проверить баланс' : '💎 Check Balance', callback_data: 'check_balance' }],
+                    [{ text: '🖥 Install Node OS', url: nodeOsUrl }],
+                    [{ text: '📱 Mobile Node', web_app: { url: tmaUrl } }],
+                    [{ text: '💎 Check Balance', callback_data: 'check_balance' }],
                 ]
             }
         });
@@ -1423,13 +1212,9 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             const walletData = await this.apiCall(`/api/v1/telegram/bot/wallet?telegram_id=${ctx.from.id}`);
             const walletAddress = walletData?.wallet || '';
             if (!walletData?.linked || !walletAddress) {
-                const msg = lang === 'ru'
-                    ? `🔑 <b>API ключ для Free Ultra Speed модели</b>\n\n` +
-                        `Сначала привяжите TON-кошелёк через кнопку <b>🔗 Кошелек</b>.\n` +
-                        `Требование: <b>минимум 10000 GSTD</b> на привязанном кошельке.`
-                    : `🔑 <b>API key for Free Ultra-Speed model</b>\n\n` +
-                        `First, link your TON wallet via the <b>🔗 Wallet</b> button.\n` +
-                        `Requirement: <b>at least 10000 GSTD</b> on the linked wallet.`;
+                const msg = `🔑 <b>API key for Free Ultra-Speed model</b>\n\n` +
+                    `First, link your TON wallet via the <b>🔗 Wallet</b> button.\n` +
+                    `Requirement: <b>at least 10000 GSTD</b> on the linked wallet.`;
                 await ctx.reply(msg, { parse_mode: 'HTML' });
                 return;
             }
@@ -1441,9 +1226,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                 },
             });
             if (!issued?.api_key) {
-                const fallbackMsg = lang === 'ru'
-                    ? '❌ Не удалось создать API ключ. Попробуйте позже.'
-                    : '❌ Failed to issue API key. Please try again later.';
+                const fallbackMsg = '❌ Failed to issue API key. Please try again later.';
                 await ctx.reply(fallbackMsg);
                 return;
             }
@@ -1451,25 +1234,15 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             const modelName = issued.model || 'gstd-free-ultra-speed';
             const balance = Number(issued.balance || 0);
             const required = Number(issued.required_balance || 10000);
-            const msg = lang === 'ru'
-                ? `✅ <b>Ваш API ключ готов</b>\n\n` +
-                    `🔐 Ключ: <code>${issued.api_key}</code>\n` +
-                    `💼 Кошелёк: <code>${walletAddress}</code>\n` +
-                    `💰 Баланс: <b>${balance.toFixed(2)} GSTD</b> (минимум ${required} GSTD)\n` +
-                    `⚡ Модель: <b>${modelName}</b>\n` +
-                    `🌐 Endpoint: <code>${endpoint}</code>\n\n` +
-                    `<b>Пример запроса (cURL):</b>\n` +
-                    `<code>curl -X POST "${endpoint}" -H "Content-Type: application/json" -H "X-GSTD-API-Key: ${issued.api_key}" -d '{"messages":[{"role":"user","content":"Привет! Дай план запуска ноды"}]}'</code>\n\n` +
-                    `<i>Важно: для использования ключа удерживайте минимум ${required} GSTD на привязанном кошельке.</i>`
-                : `✅ <b>Your API key is ready</b>\n\n` +
-                    `🔐 Key: <code>${issued.api_key}</code>\n` +
-                    `💼 Wallet: <code>${walletAddress}</code>\n` +
-                    `💰 Balance: <b>${balance.toFixed(2)} GSTD</b> (minimum ${required} GSTD)\n` +
-                    `⚡ Model: <b>${modelName}</b>\n` +
-                    `🌐 Endpoint: <code>${endpoint}</code>\n\n` +
-                    `<b>Request example (cURL):</b>\n` +
-                    `<code>curl -X POST "${endpoint}" -H "Content-Type: application/json" -H "X-GSTD-API-Key: ${issued.api_key}" -d '{"messages":[{"role":"user","content":"Hi! Give me a node launch checklist"}]}'</code>\n\n` +
-                    `<i>Important: keep at least ${required} GSTD on the linked wallet to use this key.</i>`;
+            const msg = `✅ <b>Your API key is ready</b>\n\n` +
+                `🔐 Key: <code>${issued.api_key}</code>\n` +
+                `💼 Wallet: <code>${walletAddress}</code>\n` +
+                `💰 Balance: <b>${balance.toFixed(2)} GSTD</b> (minimum ${required} GSTD)\n` +
+                `⚡ Model: <b>${modelName}</b>\n` +
+                `🌐 Endpoint: <code>${endpoint}</code>\n\n` +
+                `<b>Request example (cURL):</b>\n` +
+                `<code>curl -X POST "${endpoint}" -H "Content-Type: application/json" -H "X-GSTD-API-Key: ${issued.api_key}" -d '{"messages":[{"role":"user","content":"Hi! Give me a node launch checklist"}]}'</code>\n\n` +
+                `<i>Important: keep at least ${required} GSTD on the linked wallet to use this key.</i>`;
             await ctx.reply(msg, { parse_mode: 'HTML' });
         }
         catch (err) {
@@ -1478,15 +1251,11 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             if (thresholdMatch) {
                 const required = Number(thresholdMatch[1] || 10000);
                 const current = Number(thresholdMatch[2] || 0);
-                const msg = lang === 'ru'
-                    ? `⚠️ Для API ключа нужно минимум <b>${required.toFixed(0)} GSTD</b> на привязанном кошельке.\nСейчас: <b>${current.toFixed(2)} GSTD</b>.`
-                    : `⚠️ API key requires at least <b>${required.toFixed(0)} GSTD</b> on linked wallet.\nCurrent: <b>${current.toFixed(2)} GSTD</b>.`;
+                const msg = `⚠️ API key requires at least <b>${required.toFixed(0)} GSTD</b> on linked wallet.\nCurrent: <b>${current.toFixed(2)} GSTD</b>.`;
                 await ctx.reply(msg, { parse_mode: 'HTML' });
                 return;
             }
-            const msg = lang === 'ru'
-                ? '❌ Ошибка выдачи API ключа. Попробуйте позже.'
-                : '❌ API key issuance failed. Please try again later.';
+            const msg = '❌ API key issuance failed. Please try again later.';
             await ctx.reply(msg);
         }
     }
@@ -1494,43 +1263,24 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
         const lang = this.lang(ctx);
         const isPrivate = ctx.chat?.type === 'private';
         if (isPrivate) {
-            const msg = lang === 'ru'
-                ? `📖 <b>Помощь</b>\n\n` +
-                    `🆓 <b>Бесплатный ИИ</b> — усиленный режим, всегда доступен\n` +
-                    `🧠 <b>Collective Intelligence</b> — мульти-модельный консенсус\n\n` +
-                    `<b>Кнопки:</b>\n` +
-                    `💎 Баланс — проверить GSTD + забрать награды\n` +
-                    `⭐️ Пополнить — купить GSTD за Telegram Stars\n` +
-                    `🔗 Кошелек — привязать TON кошелек\n` +
-                    `🔑 API — получить API ключ (>=10000 GSTD)\n` +
-                    `🧠 Заработать — включить майнинг нодой\n` +
-                    `📱 Нода — запустить ноду в смартфоне\n` +
-                    `🧠 Интеллект — выбрать уровень ИИ\n\n` +
-                    `<b>Команды:</b>\n` +
-                    `/new — новый диалог\n` +
-                    `/model — сменить модель\n` +
-                    `/apikey — получить API ключ\n` +
-                    `/node — мобильная нода\n` +
-                    `/status — статус сеанса\n\n` +
-                    `🌐 <a href="https://app.gstdtoken.com">Дашборд</a> · <a href="https://gstdbot.gstdtoken.com">Node OS</a>`
-                : `📖 <b>Help</b>\n\n` +
-                    `🆓 <b>Free AI</b> — boosted mode, always available\n` +
-                    `🧠 <b>Collective Intelligence</b> — multi-model consensus\n\n` +
-                    `<b>Buttons:</b>\n` +
-                    `💎 Balance — check GSTD + claim rewards\n` +
-                    `⭐️ Top Up — buy GSTD via Telegram Stars\n` +
-                    `🔗 Wallet — connect TON wallet\n` +
-                    `🔑 API — get API key (>=10000 GSTD)\n` +
-                    `🧠 Earn — start earning with node\n` +
-                    `📱 Node — run a node on your phone\n` +
-                    `🧠 Intelligence — choose AI tier\n\n` +
-                    `<b>Commands:</b>\n` +
-                    `/new — new conversation\n` +
-                    `/model — switch model\n` +
-                    `/apikey — get API key\n` +
-                    `/node — mobile node\n` +
-                    `/status — session status\n\n` +
-                    `🌐 <a href="https://app.gstdtoken.com">Dashboard</a> · <a href="https://gstdbot.gstdtoken.com">Node OS</a>`;
+            const msg = `📖 <b>Help</b>\n\n` +
+                `🆓 <b>Free AI</b> — boosted mode, always available\n` +
+                `🧠 <b>Collective Intelligence</b> — multi-model consensus\n\n` +
+                `<b>Buttons:</b>\n` +
+                `💎 Balance — check GSTD + claim rewards\n` +
+                `⭐️ Top Up — buy GSTD via Telegram Stars\n` +
+                `🔗 Wallet — connect TON wallet\n` +
+                `🔑 API — get API key (>=10000 GSTD)\n` +
+                `🧠 Earn — start earning with node\n` +
+                `📱 Node — run a node on your phone\n` +
+                `🧠 Intelligence — choose AI tier\n\n` +
+                `<b>Commands:</b>\n` +
+                `/new — new conversation\n` +
+                `/model — switch model\n` +
+                `/apikey — get API key\n` +
+                `/node — mobile node\n` +
+                `/status — session status\n\n` +
+                `🌐 <a href="https://app.gstdtoken.com">Dashboard</a> · <a href="https://gstdbot.gstdtoken.com">Node OS</a>`;
             await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
         }
         else {

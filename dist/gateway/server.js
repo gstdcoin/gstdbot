@@ -3758,9 +3758,9 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                 }
                 catch { }
                 // Try to get multiplier from platform
-                let ageMultiplier = 1.0;
-                let uptimeStreak = 0;
-                let epochEarnings = 0;
+                const ageMultiplier = 1.0;
+                const uptimeStreak = 0;
+                const epochEarnings = 0;
                 let floorPrice = 0;
                 let fundBacking = 0;
                 let currentEpoch = 1;

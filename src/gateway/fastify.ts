@@ -6,6 +6,7 @@
  * through Fastify's 4x faster HTTP parser.
  */
 
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck — Fastify ESM modules don't ship .d.ts for CJS
 import http from 'http';
 import express from 'express';

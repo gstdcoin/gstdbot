@@ -24,32 +24,24 @@ const SPAM_PATTERNS = [
     /bit\.ly|tinyurl|short\.link|tiny\.cc/i,
     /(?:send\s*\d+\s*(?:ton|eth|btc|usdt))/i,
     /(?:dm|pm)\s*(?:me|for|to)\s*(?:invest|earn|profit)/i,
-    /(?:восхитительн|потряса)\w*\s*(?:заработ|доход)/i, // RU spam
 ];
 // ─── Profanity filter (RU + EN) ───
 const PROFANITY_PATTERNS = [
     // English
     /\b(?:fuck|shit|bitch|ass(?:hole)?|cunt|dick|pussy|nigger|faggot|retard)\b/i,
     /\b(?:stfu|gtfo|wtf|lmao)\b/i,
-    // Russian mat
-    /(?:бля[дть]|ху[йёея]|пизд|ебат|ёб|еб[аиу]|сук[аи]|мудак|пидор|дерьм|гандон|хер\b|нах[уе][йи])/iu,
-    /(?:долбо[её]б|заеб|отъеб|выеб)/iu,
 ];
 // ─── Admin impersonation detection ───
 const ADMIN_IMPERSONATION_PATTERNS = [
-    /(?:я\s*(?:админ|администратор|модератор|основатель|создатель|owner))/iu,
     /(?:i\s*am\s*(?:admin|moderator|owner|founder|developer|support))/i,
     /(?:official\s*(?:admin|support|team))/i,
-    /(?:напишите\s*мне\s*в\s*(?:лс|личку|pm|dm))/iu,
     /(?:write\s*(?:me|to\s*me)\s*(?:in\s*)?(?:dm|pm|private))/i,
-    /(?:обратитесь\s*ко\s*мне)/iu,
 ];
 // ─── Forbidden knowledge ───
 const FORBIDDEN_TOPICS = [
     'api key', 'api_key', 'secret', 'password', 'private key', 'seed phrase',
     'mnemonic', 'database', 'server ip', 'ssh', '.env', 'groq', 'huggingface',
     'hf_token', 'internal architecture', 'admin panel', 'server config',
-    'серверн', 'пароль', 'приватн.*ключ', 'сид.*фраз', 'база данн',
 ];
 // ─── Platform knowledge base ───
 const PLATFORM_KB = {
@@ -97,14 +89,10 @@ class CommunityGuardian {
                     const lang = this.detectLang(text);
                     if (w >= 2) {
                         await this.muteUser(ctx, userId, 7200);
-                        await ctx.reply(lang === 'ru'
-                            ? '🚫 Пользователь заблокирован за попытку выдать себя за администратора.'
-                            : '🚫 User blocked for impersonating an admin.');
+                        await ctx.reply('🚫 User blocked for impersonating an admin.');
                     }
                     else {
-                        await ctx.reply(lang === 'ru'
-                            ? '⚠️ Вы не являетесь администратором. Только официальные админы могут управлять чатом.'
-                            : '⚠️ You are not an admin. Only official admins can manage the chat.', { reply_to_message_id: ctx.message?.message_id });
+                        await ctx.reply('⚠️ You are not an admin. Only official admins can manage the chat.', { reply_to_message_id: ctx.message?.message_id });
                     }
                 }
                 catch (_e) { }
@@ -118,14 +106,10 @@ class CommunityGuardian {
                     const lang = this.detectLang(text);
                     if (w >= 3) {
                         await this.muteUser(ctx, userId, 3600);
-                        await ctx.reply(lang === 'ru'
-                            ? '🔇 Пользователь заглушен на 1 час за нарушение правил.'
-                            : '🔇 User muted for 1 hour for rule violations.');
+                        await ctx.reply('🔇 User muted for 1 hour for rule violations.');
                     }
                     else {
-                        await ctx.reply(lang === 'ru'
-                            ? `⚠️ Мат и грубость запрещены. Предупреждение ${w}/3.`
-                            : `⚠️ Profanity is not allowed. Warning ${w}/3.`, { reply_to_message_id: undefined });
+                        await ctx.reply(`⚠️ Profanity is not allowed. Warning ${w}/3.`, { reply_to_message_id: undefined });
                     }
                 }
                 catch (_e) { }
@@ -168,14 +152,12 @@ class CommunityGuardian {
                     continue;
                 }
                 this.users.set(member.id, { messageCount: 0, lastMessage: Date.now(), warnings: 0, joinTime: Date.now(), lang: 'en' });
-                const name = member.first_name || 'друг';
-                await ctx.reply(`👋 Добро пожаловать, *${name}*! Welcome!\n\n` +
-                    `Это чат сообщества GSTD — децентрализованного AI.\n` +
+                const name = member.first_name || 'friend';
+                await ctx.reply(`👋 Welcome, *${name}*!\n\n` +
                     `This is the GSTD community — decentralized AI platform.\n\n` +
-                    `🤖 /gstd — О платформе / About\n` +
-                    `💰 /price — Цена токена / Token price\n` +
-                    `🛒 /buy — Как купить / How to buy\n\n` +
-                    `_Правила: без спама, мата и рекламы._\n` +
+                    `🤖 /gstd — About\n` +
+                    `💰 /price — Token price\n` +
+                    `🛒 /buy — How to buy\n\n` +
                     `_Rules: no spam, profanity, or ads._`, { parse_mode: 'Markdown' });
             }
         });
@@ -184,21 +166,7 @@ class CommunityGuardian {
             if (!this.isGroup(ctx))
                 return;
             const lang = this.detectLang(ctx.message?.text || '');
-            if (lang === 'ru') {
-                await ctx.reply(`🐝 *GSTD — Децентрализованная AI Платформа*\n\n` +
-                    `GSTD — это суверенная вычислительная сеть. Запускайте AI модели, зарабатывайте токены, владейте своими данными.\n\n` +
-                    `🌐 *Дашборд:* [app.gstdtoken.com](${PLATFORM_KB.website})\n` +
-                    `💬 *AI Чат:* [Бесплатный AI](${PLATFORM_KB.chat}) — без регистрации\n` +
-                    `📊 *Монитор:* [Статистика сети](${PLATFORM_KB.monitor})\n` +
-                    `🤖 *Бот:* @${this.config.botUsername}\n\n` +
-                    `*Преимущества:*\n` +
-                    `• 🛡 Ваши данные не покидают сеть\n` +
-                    `• 💰 Зарабатывайте GSTD, подключив устройство\n` +
-                    `• 🆓 AI чат бесплатный\n` +
-                    `• 🏦 Золотой резерв обеспечивает стоимость\n\n` +
-                    `Контракт: \`${PLATFORM_KB.contract}\``, { parse_mode: 'Markdown', link_preview_options: { is_disabled: true } });
-            }
-            else {
+            {
                 await ctx.reply(`🐝 *GSTD — Decentralized AI Platform*\n\n` +
                     `GSTD is a sovereign compute network. Run AI models, earn tokens, own your data.\n\n` +
                     `🌐 *Dashboard:* [app.gstdtoken.com](${PLATFORM_KB.website})\n` +
@@ -218,36 +186,23 @@ class CommunityGuardian {
                 return;
             const price = await this.fetchPrice();
             const lang = this.detectLang(ctx.message?.text || '');
-            await ctx.reply(lang === 'ru'
-                ? `📈 *Цена GSTD*\n\n💰 $${price.toFixed(8)}\n🔗 Сеть: TON\n📊 [График](${PLATFORM_KB.buyLinks.stonfi})\n\n_Обновлено только что_`
-                : `📈 *GSTD Price*\n\n💰 $${price.toFixed(8)}\n🔗 Chain: TON\n📊 [Chart](${PLATFORM_KB.buyLinks.stonfi})\n\n_Updated just now_`, { parse_mode: 'Markdown', link_preview_options: { is_disabled: true } });
+            await ctx.reply(`📈 *GSTD Price*\n\n💰 $${price.toFixed(8)}\n🔗 Chain: TON\n📊 [Chart](${PLATFORM_KB.buyLinks.stonfi})\n\n_Updated just now_`, { parse_mode: 'Markdown', link_preview_options: { is_disabled: true } });
         });
         bot.command('buy', async (ctx) => {
             if (!this.isGroup(ctx))
                 return;
             const lang = this.detectLang(ctx.message?.text || '');
             const price = await this.fetchPrice();
-            await ctx.reply(lang === 'ru'
-                ? `🛒 *Как купить GSTD*\n\n` +
-                    `1️⃣ Установите TON кошелёк (Tonkeeper или MyTonWallet)\n` +
-                    `2️⃣ Купите TON на бирже или P2P\n` +
-                    `3️⃣ Обменяйте TON → GSTD:\n\n` +
-                    `• [STON.fi](${PLATFORM_KB.buyLinks.stonfi}) — основная DEX\n` +
-                    `• [DeDust](${PLATFORM_KB.buyLinks.dedust}) — альтернатива\n\n` +
-                    `💰 Текущая цена: $${price.toFixed(8)}\n` +
-                    `📋 Контракт: \`${PLATFORM_KB.contract}\`\n\n` +
-                    `_⚠️ Всегда проверяйте адрес контракта перед покупкой!_\n\n` +
-                    `⭐ Или купите через Telegram Stars: /buy\\_stars`
-                : `🛒 *How to Buy GSTD*\n\n` +
-                    `1️⃣ Install a TON wallet (Tonkeeper or MyTonWallet)\n` +
-                    `2️⃣ Buy TON on an exchange or P2P\n` +
-                    `3️⃣ Swap TON → GSTD:\n\n` +
-                    `• [STON.fi](${PLATFORM_KB.buyLinks.stonfi}) — main DEX\n` +
-                    `• [DeDust](${PLATFORM_KB.buyLinks.dedust}) — alternative\n\n` +
-                    `💰 Current price: $${price.toFixed(8)}\n` +
-                    `📋 Contract: \`${PLATFORM_KB.contract}\`\n\n` +
-                    `_⚠️ Always verify the contract address before buying!_\n\n` +
-                    `⭐ Or buy with Telegram Stars: /buy\\_stars`, { parse_mode: 'Markdown', link_preview_options: { is_disabled: true } });
+            await ctx.reply(`🛒 *How to Buy GSTD*\n\n` +
+                `1️⃣ Install a TON wallet (Tonkeeper or MyTonWallet)\n` +
+                `2️⃣ Buy TON on an exchange or P2P\n` +
+                `3️⃣ Swap TON → GSTD:\n\n` +
+                `• [STON.fi](${PLATFORM_KB.buyLinks.stonfi}) — main DEX\n` +
+                `• [DeDust](${PLATFORM_KB.buyLinks.dedust}) — alternative\n\n` +
+                `💰 Current price: $${price.toFixed(8)}\n` +
+                `📋 Contract: \`${PLATFORM_KB.contract}\`\n\n` +
+                `_⚠️ Always verify the contract address before buying!_\n\n` +
+                `⭐ Or buy with Telegram Stars: /buy\\_stars`, { parse_mode: 'Markdown', link_preview_options: { is_disabled: true } });
         });
         // ─── Buy with Telegram Stars ───
         bot.command('buy_stars', async (ctx) => {
@@ -268,19 +223,13 @@ class CommunityGuardian {
             const usdTotal = (starsAmount * STAR_USD).toFixed(2);
             const proRequests = Math.floor(gstdAmount / 0.1);
             try {
-                const title = lang === 'ru'
-                    ? `${gstdAmount} GSTD (${proRequests} Pro запросов)`
-                    : `${gstdAmount} GSTD (${proRequests} Pro requests)`;
-                const desc = lang === 'ru'
-                    ? `${starsAmount}⭐ = $${usdTotal} = ${gstdAmount} GSTD = ${proRequests} Pro запросов.`
-                    : `${starsAmount}⭐ = $${usdTotal} = ${gstdAmount} GSTD = ${proRequests} Pro requests.`;
+                const title = `${gstdAmount} GSTD (${proRequests} Pro requests)`;
+                const desc = `${starsAmount}⭐ = $${usdTotal} = ${gstdAmount} GSTD = ${proRequests} Pro requests.`;
                 await ctx.api.sendInvoice(ctx.chat.id, title, desc, `gstd_purchase_${userId}_${Date.now()}`, 'XTR', [{ label: title, amount: starsAmount }]);
             }
             catch (err) {
                 console.error('[Guardian] Invoice error:', err.message);
-                await ctx.reply(lang === 'ru'
-                    ? '❌ Не удалось создать счёт. Попробуйте через DEX:\n' + PLATFORM_KB.buyLinks.stonfi
-                    : '❌ Failed to create invoice. Try via DEX:\n' + PLATFORM_KB.buyLinks.stonfi);
+                await ctx.reply('❌ Failed to create invoice. Try via DEX:\n' + PLATFORM_KB.buyLinks.stonfi);
             }
         });
         // Handle pre-checkout query (must answer in 10 seconds)
@@ -364,31 +313,19 @@ class CommunityGuardian {
                     const confirmedUSD = data.usd_paid || parseFloat(usdPaid);
                     const walletInfo = data.wallet
                         ? data.wallet.slice(0, 6) + '...' + data.wallet.slice(-4)
-                        : (lang === 'ru' ? 'внутренний баланс' : 'internal balance');
-                    const msg = lang === 'ru'
-                        ? `✅ <b>Покупка успешна!</b>\n\n` +
-                            `💰 <b>${confirmedGSTD} GSTD</b> → ${walletInfo}\n` +
-                            `⭐ Оплачено: ${totalStars} Stars ($${confirmedUSD.toFixed(2)})\n` +
-                            `⚡ Pro запросов: <b>${confirmedProReqs}</b>\n` +
-                            `💵 Стоимость запроса: <b>$${(confirmedUSD / confirmedProReqs).toFixed(5)}</b>\n\n` +
-                            `📊 Курс: 1⭐ = ${confirmedRate.toFixed(0)} GSTD\n` +
-                            `📊 GSTD = $${confirmedPrice.toFixed(6)}\n\n` +
-                            `💡 <i>GSTD Pro: $${confirmedUSD.toFixed(2)} = ${confirmedProReqs} запросов ($0.005/запр)</i>\n` +
-                            `📋 ID: <code>${payment.telegram_payment_charge_id}</code>`
-                        : `✅ <b>Purchase Successful!</b>\n\n` +
-                            `💰 <b>${confirmedGSTD} GSTD</b> → ${walletInfo}\n` +
-                            `⭐ Paid: ${totalStars} Stars ($${confirmedUSD.toFixed(2)})\n` +
-                            `⚡ Pro requests: <b>${confirmedProReqs}</b>\n` +
-                            `💵 Cost per request: <b>$${(confirmedUSD / confirmedProReqs).toFixed(5)}</b>\n\n` +
-                            `📊 Rate: 1⭐ = ${confirmedRate.toFixed(0)} GSTD\n` +
-                            `📊 GSTD = $${confirmedPrice.toFixed(6)}\n\n` +
-                            `💡 <i>GSTD Pro: $${confirmedUSD.toFixed(2)} = ${confirmedProReqs} requests ($0.005/req)</i>\n` +
-                            `📋 ID: <code>${payment.telegram_payment_charge_id}</code>`;
+                        : ('internal balance');
+                    const msg = `✅ <b>Purchase Successful!</b>\n\n` +
+                        `💰 <b>${confirmedGSTD} GSTD</b> → ${walletInfo}\n` +
+                        `⭐ Paid: ${totalStars} Stars ($${confirmedUSD.toFixed(2)})\n` +
+                        `⚡ Pro requests: <b>${confirmedProReqs}</b>\n` +
+                        `💵 Cost per request: <b>$${(confirmedUSD / confirmedProReqs).toFixed(5)}</b>\n\n` +
+                        `📊 Rate: 1⭐ = ${confirmedRate.toFixed(0)} GSTD\n` +
+                        `📊 GSTD = $${confirmedPrice.toFixed(6)}\n\n` +
+                        `💡 <i>GSTD Pro: $${confirmedUSD.toFixed(2)} = ${confirmedProReqs} requests ($0.005/req)</i>\n` +
+                        `📋 ID: <code>${payment.telegram_payment_charge_id}</code>`;
                     // Add signal task info if applicable
                     if (isMonitorLaunch && taskId) {
-                        const signalNote = lang === 'ru'
-                            ? `\n\n🌍 <b>Задача анализа сигнала ${taskId} запущена!</b>\n🐝 Swarm обрабатывает аномалию.`
-                            : `\n\n🌍 <b>Signal analysis task ${taskId} launched!</b>\n🐝 Swarm is processing this anomaly.`;
+                        const signalNote = `\n\n🌍 <b>Signal analysis task ${taskId} launched!</b>\n🐝 Swarm is processing this anomaly.`;
                         await ctx.reply(msg + signalNote, { parse_mode: 'HTML' });
                     }
                     else {
@@ -401,22 +338,16 @@ class CommunityGuardian {
                     console.error('[Guardian] Token delivery failed:', res.status, errBody);
                     try {
                         await ctx.api.refundStarPayment(userId, payment.telegram_payment_charge_id);
-                        await ctx.reply(lang === 'ru'
-                            ? '⚠️ Произошла ошибка. Stars возвращены на ваш счёт.'
-                            : '⚠️ An error occurred. Stars have been refunded.');
+                        await ctx.reply('⚠️ An error occurred. Stars have been refunded.');
                     }
                     catch (_e) {
-                        await ctx.reply(lang === 'ru'
-                            ? '⚠️ Ошибка при доставке токенов. Обратитесь к @администратору.'
-                            : '⚠️ Error delivering tokens. Contact an admin.');
+                        await ctx.reply('⚠️ Error delivering tokens. Contact an admin.');
                     }
                 }
             }
             catch (err) {
                 console.error('[Guardian] Payment processing error:', err.message);
-                await ctx.reply(lang === 'ru'
-                    ? '⚠️ Ошибка обработки платежа. Обратитесь к администратору.'
-                    : '⚠️ Payment processing error. Contact an admin.');
+                await ctx.reply('⚠️ Payment processing error. Contact an admin.');
             }
         });
         bot.command('stats', async (ctx) => {
@@ -424,17 +355,13 @@ class CommunityGuardian {
                 return;
             const stats = await this.fetchStats();
             const lang = this.detectLang(ctx.message?.text || '');
-            await ctx.reply(lang === 'ru'
-                ? `📊 *Статистика сети GSTD*\n\n🖥 Узлы: ${stats.active_workers}\n📝 Задач (24ч): ${stats.tasks_24h}\n💰 Выплачено: ${stats.total_gstd_paid} GSTD\n📈 Цена: $${stats.gstd_price_usd?.toFixed(8) || '0'}\n\n_[monitor.gstdtoken.com](${PLATFORM_KB.monitor})_`
-                : `📊 *GSTD Network Stats*\n\n🖥 Workers: ${stats.active_workers}\n📝 Tasks (24h): ${stats.tasks_24h}\n💰 Paid: ${stats.total_gstd_paid} GSTD\n📈 Price: $${stats.gstd_price_usd?.toFixed(8) || '0'}\n\n_[monitor.gstdtoken.com](${PLATFORM_KB.monitor})_`, { parse_mode: 'Markdown', link_preview_options: { is_disabled: true } });
+            await ctx.reply(`📊 *GSTD Network Stats*\n\n🖥 Workers: ${stats.active_workers}\n📝 Tasks (24h): ${stats.tasks_24h}\n💰 Paid: ${stats.total_gstd_paid} GSTD\n📈 Price: $${stats.gstd_price_usd?.toFixed(8) || '0'}\n\n_[monitor.gstdtoken.com](${PLATFORM_KB.monitor})_`, { parse_mode: 'Markdown', link_preview_options: { is_disabled: true } });
         });
         bot.command('help', async (ctx) => {
             if (!this.isGroup(ctx))
                 return;
             const lang = this.detectLang(ctx.message?.text || '');
-            await ctx.reply(lang === 'ru'
-                ? `🐝 *GSTD Бот — Команды*\n\n/gstd — О платформе\n/price — Цена токена\n/buy — Как купить\n/stats — Статистика\n/help — Помощь\n\nТакже вы можете @упомянуть меня и задать вопрос!`
-                : `🐝 *GSTD Bot — Commands*\n\n/gstd — About the platform\n/price — Token price\n/buy — How to buy\n/stats — Statistics\n/help — Help\n\nYou can also @mention me and ask any question!`, { parse_mode: 'Markdown' });
+            await ctx.reply(`🐝 *GSTD Bot — Commands*\n\n/gstd — About the platform\n/price — Token price\n/buy — How to buy\n/stats — Statistics\n/help — Help\n\nYou can also @mention me and ask any question!`, { parse_mode: 'Markdown' });
         });
         // ─── Intelligent AI responses (@ mentions and replies) ───
         bot.on('message:text', async (ctx, next) => {
@@ -449,9 +376,7 @@ class CommunityGuardian {
             const lang = this.detectLang(text);
             // Check forbidden topics
             if (FORBIDDEN_TOPICS.some(t => text.toLowerCase().includes(t))) {
-                await ctx.reply(lang === 'ru'
-                    ? '🔒 Я не могу делиться внутренними техническими деталями. Спросите о функциях, ценах или как начать!'
-                    : '🔒 I can\'t share internal technical details. Ask about features, prices, or how to get started!', { reply_to_message_id: ctx.message?.message_id });
+                await ctx.reply('🔒 I can\'t share internal technical details. Ask about features, prices, or how to get started!', { reply_to_message_id: ctx.message?.message_id });
                 return;
             }
             // Clean mention from text
@@ -461,25 +386,7 @@ class CommunityGuardian {
             // Show typing
             await ctx.api.sendChatAction(ctx.chat.id, 'typing');
             // Build smart system prompt
-            const systemPrompt = lang === 'ru'
-                ? `Ты — GSTD Bot, интеллектуальный AI-ассистент платформы GSTD в групповом чате Telegram.
-
-ПРАВИЛА:
-- Отвечай на русском языке
-- Будь дружелюбным, полезным и конкретным
-- Максимум 200 слов в ответе
-- Знай всё о платформе GSTD:
-  • GSTD — децентрализованная AI платформа на блокчейне TON
-  • Пользователи могут бесплатно общаться с AI: ${PLATFORM_KB.chat}
-  • Зарабатывать GSTD подключив устройства как узлы
-  • Токен GSTD обеспечен золотым резервом (XAUt)
-  • Контракт: ${PLATFORM_KB.contract}
-  • Купить на STON.fi или DeDust
-  • Дашборд: ${PLATFORM_KB.website}
-- НИКОГДА не раскрывай API ключи, пароли, серверные данные
-- При вопросах о покупке — давай ссылки на DEX
-- Демонстрируй экспертизу и интеллект`
-                : `You are GSTD Bot, an intelligent AI assistant for the GSTD platform in a Telegram group chat.
+            const systemPrompt = `You are GSTD Bot, an intelligent AI assistant for the GSTD platform in a Telegram group chat.
 
 RULES:
 - Respond in English
@@ -521,16 +428,14 @@ RULES:
             }
             catch (err) {
                 console.error('[Guardian] AI error:', err.message);
-                await ctx.reply(lang === 'ru' ? 'Произошла ошибка. Попробуйте ещё раз.' : 'Something went wrong. Try again.', { reply_to_message_id: ctx.message?.message_id });
+                await ctx.reply('Something went wrong. Try again.', { reply_to_message_id: ctx.message?.message_id });
             }
         });
         console.log('[Guardian] Intelligent community moderation active');
     }
     // ─── Detection methods ───
     detectLang(text) {
-        const cyrillic = (text.match(/[а-яёА-ЯЁ]/g) || []).length;
-        const latin = (text.match(/[a-zA-Z]/g) || []).length;
-        return cyrillic > latin * 0.3 ? 'ru' : 'en';
+        return 'en';
     }
     isGroup(ctx) {
         return ctx.chat?.type === 'group' || ctx.chat?.type === 'supergroup';
@@ -619,9 +524,9 @@ RULES:
                 const price = await this.fetchPrice();
                 if (lastPrice > 0 && price > lastPrice * 1.02) {
                     const pct = ((price - lastPrice) / lastPrice * 100).toFixed(1);
-                    await bot.api.sendMessage(chatId, `🟢 *Покупка GSTD! / GSTD Buy Alert!*\n\n` +
-                        `💰 Цена / Price: $${price.toFixed(8)} (+${pct}%)\n` +
-                        `📈 [Купить / Buy](${PLATFORM_KB.buyLinks.stonfi})`, { parse_mode: 'Markdown', link_preview_options: { is_disabled: true } });
+                    await bot.api.sendMessage(chatId, `🟢 *GSTD Buy Alert!*\n\n` +
+                        `💰 Price: $${price.toFixed(8)} (+${pct}%)\n` +
+                        `📈 [Buy](${PLATFORM_KB.buyLinks.stonfi})`, { parse_mode: 'Markdown', link_preview_options: { is_disabled: true } });
                 }
                 lastPrice = price;
             }

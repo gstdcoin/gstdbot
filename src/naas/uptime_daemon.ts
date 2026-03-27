@@ -10,7 +10,7 @@
  */
 
 import { execSync } from 'child_process';
-import { hostname, cpus, totalmem, freemem, loadavg } from 'os';
+import { cpus, totalmem, freemem, loadavg } from 'os';
 import { logActivity } from '../gateway/server.js';
 
 const HEARTBEAT_INTERVAL_MS = 30_000; // Every 30 seconds
@@ -294,7 +294,6 @@ export class UptimeDaemon {
 
     private measurePlatformPing(): number {
         try {
-            const start = Date.now();
             const resp = execSync(
                 `curl -s -o /dev/null -w '%{time_total}' --max-time 5 ${PLATFORM_URL}/api/v1/health`,
                 { encoding: 'utf-8', timeout: 6000 }

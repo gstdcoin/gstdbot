@@ -11,7 +11,7 @@
  *   - Custom GSTD protocols for heartbeat, task delegation, mesh info
  */
 
-// @ts-nocheck — libp2p is ESM-only, using dynamic imports
+// libp2p is ESM-only, using dynamic imports
 import { EventEmitter } from 'events';
 import { z } from 'zod';
 
@@ -49,7 +49,7 @@ const TaskRequestSchema = z.object({
     rewardGstd: z.number().nonnegative().max(1_000_000),
 });
 
-const MeshInfoSchema = z.object({
+export const MeshInfoSchema = z.object({
     type: z.literal('mesh_info'),
     nodeId: z.string().min(1).max(128),
     connectedPeers: z.number().int().nonnegative(),
@@ -193,7 +193,8 @@ export class GstdP2PNode extends EventEmitter {
                 }
                 if (chunks.length > 0) {
                     const text = new TextDecoder().decode(chunks[0]);
-                    const jsonStr = text.replace(/^[\x00-\x1f]+/, '');
+                    // eslint-disable-next-line no-control-regex
+                    const jsonStr = text.replace(/^[\u0000-\u001F]+/, '');
                     try {
                         const raw = JSON.parse(jsonStr);
                         const result = HeartbeatSchema.safeParse(raw);
@@ -218,7 +219,8 @@ export class GstdP2PNode extends EventEmitter {
                 }
                 if (chunks.length > 0) {
                     const text = new TextDecoder().decode(chunks[0]);
-                    const jsonStr = text.replace(/^[\x00-\x1f]+/, '');
+                    // eslint-disable-next-line no-control-regex
+                    const jsonStr = text.replace(/^[\u0000-\u001F]+/, '');
                     try {
                         const raw = JSON.parse(jsonStr);
                         const result = TaskRequestSchema.safeParse(raw);

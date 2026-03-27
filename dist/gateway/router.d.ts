@@ -46,7 +46,6 @@ export interface SmartMixResult {
 }
 export declare const SMARTMIX_TIERS: Record<string, {
     name: string;
-    nameRU: string;
     cost: number;
     costUsd: number;
     emoji: string;

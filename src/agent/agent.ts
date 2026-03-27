@@ -175,7 +175,7 @@ When a user's request matches a skill, activate it automatically.`;
             'planetary-signals': /\b(signal|threat|earthquake|weather|climate|disaster|global|planetary|warning|monitor)\b/,
             'image-gen': /\b(image|picture|illustration|drawing|generate.*image|create.*img|visual|logo|design)\b/,
             'math-solver': /\b(calculate|solve|equation|integral|derivative|matrix|statistics|probability|percent|convert.*unit|formula)\b/,
-            'translator': /\b(translate|перевод|traduire|übersetzen|traducir|翻译|перевести)\b/,
+            'translator': /\b(translate)\b/,
             'crypto-analyst': /\b(bitcoin|ethereum|solana|ton|blockchain|crypto|mining|staking|bridge|wallet|nft|dao|governance)\b/,
             'devops': /\b(deploy|docker|kubernetes|nginx|ssl|server|ci.?cd|linux|ubuntu|systemd|pm2|logs)\b/,
             'data-analyst': /\b(data|csv|json|excel|chart|graph|visualization|analytics|dashboard|pandas|sql|database)\b/,

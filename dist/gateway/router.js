@@ -451,9 +451,9 @@ class NeuralRouter {
 exports.NeuralRouter = NeuralRouter;
 // ─── Fixed GSTD Pricing ─────────────────────────────────────────────
 exports.SMARTMIX_TIERS = {
-    free: { name: 'Single Expert', nameRU: 'Один эксперт', cost: 0, costUsd: 0, emoji: '🆓', expertCount: 1, synthesisPrompt: '' },
+    free: { name: 'Single Expert', cost: 0, costUsd: 0, emoji: '🆓', expertCount: 1, synthesisPrompt: '' },
     standard: {
-        name: 'Council of 3', nameRU: 'Совет из 3', cost: 0.05, costUsd: 0.005, emoji: '🔬', expertCount: 3,
+        name: 'Council of 3', cost: 0.05, costUsd: 0.005, emoji: '🔬', expertCount: 3,
         synthesisPrompt: `You are the Synthesis Engine of a council of 3 expert AI models. You received independent responses from 3 different AI architectures to the same question.
 PAID MODE MANDATE: produce an answer at least 10x stronger than a normal free answer in depth, precision, and practical usefulness.
 
@@ -480,7 +480,7 @@ CRITICAL RULES:
 - Use rich markdown`
     },
     pro: {
-        name: 'Panel of 5', nameRU: 'Панель из 5', cost: 0.15, costUsd: 0.015, emoji: '🔥', expertCount: 5,
+        name: 'Panel of 5', cost: 0.15, costUsd: 0.015, emoji: '🔥', expertCount: 5,
         synthesisPrompt: `You are the Supreme Synthesis Engine of a cross-verification panel. 5 independent AI models with different architectures have analyzed the same question. Your job is to produce an answer that NO SINGLE AI MODEL could produce alone.
 PAID MODE MANDATE: deliver at least 10x more depth, rigor, and practical value than a standard free response.
 
@@ -506,7 +506,7 @@ CRITICAL RULES:
 - Every claim must be backed by reasoning.`
     },
     ultra: {
-        name: 'Swarm of 7', nameRU: 'Рой из 7', cost: 0.50, costUsd: 0.05, emoji: '🧠', expertCount: 7,
+        name: 'Swarm of 7', cost: 0.50, costUsd: 0.05, emoji: '🧠', expertCount: 7,
         synthesisPrompt: `You are the Omega Synthesis Engine — the most powerful intelligence fusion system ever built. 7 different AI architectures have independently analyzed the same question.
 PAID MODE MANDATE: deliver at least 10x more analytical power and implementation quality than any strong free response.
 
