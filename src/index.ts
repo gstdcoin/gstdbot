@@ -345,6 +345,9 @@ async function main(): Promise<void> {
                 port: actualPort + 1,
             });
             await fastifyGateway.init();
+            if (typeof (fastifyGateway as any).listen === 'function') {
+                await (fastifyGateway as any).listen();
+            }
             console.log('    ⚡ Fastify engine: initialized (Express compat mode)');
         } catch (e: any) {
             console.log(`    ⚠ Fastify init skipped: ${e.message} (Express still active)`);

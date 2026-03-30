@@ -157,8 +157,10 @@ export class UptimeDaemon {
                     }
                 }
             }
-        } catch {
-            // Silent fail except every 10th attempt
+        } catch (err) {
+            if (this.heartbeatCount % 10 === 0) {
+                console.warn(`[NaaS] Heartbeat error (attempt ${this.heartbeatCount}):`, err instanceof Error ? err.message : err);
+            }
         }
 
         // Re-measure ping every 5 minutes
@@ -186,12 +188,17 @@ export class UptimeDaemon {
             for (const line of output.split('\n')) {
                 const [name, image, status, ports] = line.split('|');
                 const isRunning = status?.toLowerCase().startsWith('up');
-                const uptimeMatch = status?.match(/Up\s+(\d+)\s*(second|minute|hour|day)/i);
                 let uptimeSeconds = 0;
-                if (uptimeMatch) {
-                    const val = parseInt(uptimeMatch[1]);
-                    const unit = uptimeMatch[2].toLowerCase();
-                    uptimeSeconds = val * ({ second: 1, minute: 60, hour: 3600, day: 86400 }[unit] || 1);
+                if (isRunning && status) {
+                    const uptimeMatch = status.match(/Up\s+(?:About\s+)?(\d+)\s*(second|minute|hour|day|week|month)s?/i);
+                    if (uptimeMatch) {
+                        const val = parseInt(uptimeMatch[1]);
+                        const unit = uptimeMatch[2].toLowerCase();
+                        const multipliers: Record<string, number> = { second: 1, minute: 60, hour: 3600, day: 86400, week: 604800, month: 2592000 };
+                        uptimeSeconds = val * (multipliers[unit] || 1);
+                    } else if (status.match(/Up\s+About\s+an?\s+hour/i)) {
+                        uptimeSeconds = 3600;
+                    }
                 }
 
                 // Detect chain from container name: gstd-naas-eth-rpc → eth
