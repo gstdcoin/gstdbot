@@ -14,6 +14,7 @@ import { homedir } from 'os';
 import { logActivity } from '../gateway/server.js';
 import type { NodeConfig } from '../index.js';
 import { initWallet, type WalletConfig } from './wallet.js';
+import { walletLinkHeaders } from '../lib/wallet-link-headers.js';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface WalletData {
@@ -290,7 +291,7 @@ export class NodeWallet {
                 `${this.config.swarm.apiUrl}/api/v1/wallet/link-external`,
                 {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: walletLinkHeaders(),
                     body: JSON.stringify({
                         node_address: this.wallet.address,
                         external_address: externalAddress,

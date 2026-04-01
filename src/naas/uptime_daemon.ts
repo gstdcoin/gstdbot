@@ -117,9 +117,10 @@ export class UptimeDaemon {
         const freeRam = freemem();
         const disk = this.getDiskUsage();
 
-        const heartbeat: UptimeHeartbeat = {
+        const heartbeat: UptimeHeartbeat & { wallet_address?: string } = {
             node_id: this.nodeId,
             wallet: this.walletAddress,
+            wallet_address: this.walletAddress,
             timestamp: Date.now(),
             tier: this.classifyTier(cpuInfo.length, totalRam / (1024 ** 3), this.cachedIOPS),
             version: '3.4.0',

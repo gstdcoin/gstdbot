@@ -15,6 +15,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from 'f
 import { join } from 'path';
 import { homedir } from 'os';
 
+import { walletLinkHeaders } from '../lib/wallet-link-headers.js';
+
 export interface WalletConfig {
     address: string;
     publicKey: string;
@@ -264,7 +266,7 @@ export async function linkTelegram(userId: string): Promise<boolean> {
             `${API_BASE}/wallet/link-telegram`,
             {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: walletLinkHeaders(),
                 body: JSON.stringify({
                     address: wallet.address,
                     telegram_user_id: userId,

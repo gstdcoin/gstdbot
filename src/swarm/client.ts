@@ -44,6 +44,8 @@ export class SwarmClient {
     private gstdEarned = 0;
     private heartbeatInterval: NodeJS.Timeout | null = null;
     private connected = false;
+    /** Set by register(); required for /nodes/heartbeat (wallet_address) */
+    private registeredWallet?: string;
 
     constructor(controlPlaneUrl = process.env.GSTD_API_URL?.replace(/\/api\/v1$/, '') || 'https://app.gstdtoken.com', ollamaUrl = 'http://localhost:11434') {
         this.nodeId = uuid();
@@ -116,17 +118,30 @@ export class SwarmClient {
      */
     async register(walletAddress?: string): Promise<boolean> {
         const capabilities = await this.detectCapabilities();
+        this.registeredWallet = walletAddress;
+
+        // Public API: POST /api/v1/nodes/register (registry/join requires session/API key)
+        if (!walletAddress) {
+            console.warn('[Swarm] Pass wallet address to register() — control plane registration skipped');
+            this.connected = false;
+            return false;
+        }
 
         try {
-            const response = await fetch(`${this.controlPlaneUrl}/api/v1/registry/join`, {
+            const response = await fetch(`${this.controlPlaneUrl}/api/v1/nodes/register`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Wallet-Address': walletAddress,
+                },
                 body: JSON.stringify({
-                    node_id: this.nodeId,
-                    capabilities,
-                    wallet_address: walletAddress,
-                    version: '1.0.0',
-                    type: 'gstdbot-node',
+                    name: `Swarm-${this.nodeId.slice(0, 8)}`,
+                    specs: {
+                        node_id: this.nodeId,
+                        capabilities,
+                        version: '1.0.0',
+                        type: 'gstdbot-swarm-client',
+                    },
                 }),
             });
 
@@ -134,10 +149,9 @@ export class SwarmClient {
                 this.connected = true;
                 console.log(`[Swarm] ✅ Registered as node: ${this.nodeId}`);
                 return true;
-            } else {
-                console.warn(`[Swarm] Registration failed: ${response.status}`);
-                return false;
             }
+            console.warn(`[Swarm] Registration failed: ${response.status}`);
+            return false;
         } catch (_err) {
             console.warn('[Swarm] Cannot reach control plane — running in standalone mode');
             this.connected = false;
@@ -158,6 +172,11 @@ export class SwarmClient {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        wallet_address: this.registeredWallet || this.nodeId,
+                        node_name: `Swarm ${this.nodeId.slice(0, 8)}`,
+                        node_version: '1.0.0',
+                        uptime_hours: Math.floor((Date.now() - this.startTime) / 3600000),
+                        queries_served: this.tasksProcessed,
                         node_id: this.nodeId,
                         status: 'active',
                         load: loadavg,

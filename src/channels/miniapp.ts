@@ -246,12 +246,11 @@ export class MobileNodeManager {
                 session.walletAddress = wallet_address;
             }
 
-            // Notify backend about wallet link
+            // Backend expects: address, telegram_user_id (see /api/v1/wallet/link-telegram)
             try {
                 await this.notifyBackend('/wallet/link-telegram', {
-                    telegram_id: user.id,
-                    wallet_address,
-                    proof: ton_connect_proof,
+                    address: wallet_address,
+                    telegram_user_id: String(user.id),
                 });
             } catch (_e) { /* non-fatal */ }
 
@@ -623,12 +622,17 @@ export class MobileNodeManager {
     // ─── Backend Communication ───────────────────────────────────
 
     private async notifyBackend(path: string, body: any): Promise<any> {
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'X-Bot-Token': this.config.botToken,
+        };
+        const wl = process.env.WALLET_LINK_SECRET || process.env.GSTD_WALLET_LINK_SECRET;
+        if (wl && path.includes('/wallet/link-')) {
+            headers['X-Wallet-Link-Secret'] = wl;
+        }
         const resp = await fetch(`${this.config.apiUrl}${path}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Bot-Token': this.config.botToken,
-            },
+            headers,
             body: JSON.stringify(body),
             signal: AbortSignal.timeout(10000),
         });
