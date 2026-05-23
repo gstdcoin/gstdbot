@@ -122,10 +122,10 @@ export class SwarmAgent {
         // Fetch initial rewards/tier info
         await this.fetchRewardsInfo();
 
-        // Start heartbeat every 3 minutes for keepalive (backend marks offline after 5min).
-        // Rewards are rate-limited server-side to max once per 55 min, so frequent
-        // heartbeats are safe — they just keep the node visible as "online".
-        this.heartbeatTimer = setInterval(() => this.heartbeat(), 3 * 60_000);
+        // Heartbeat every 8 minutes. Node TTL on the platform is 10 min,
+        // so this keeps the node alive with comfortable margin while staying
+        // well within the Vercel KV free tier (3K req/day).
+        this.heartbeatTimer = setInterval(() => this.heartbeat(), 8 * 60_000);
 
         // Start task polling (every 30 seconds)
         this.taskPollTimer = setInterval(() => this.pollTasks(), 30_000);
