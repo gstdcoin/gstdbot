@@ -85,7 +85,7 @@ function loadConfig(): NodeConfig {
             enabled: process.env.SWARM_ENABLED !== 'false' && process.env.GSTD_MODE !== 'platform',
             maxCPU: parseInt(process.env.GSTD_MAX_CPU || '80'),
             maxRAM: parseInt(process.env.GSTD_MAX_RAM || '70'),
-            apiUrl: process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1',
+            apiUrl: process.env.GSTD_API_URL || 'https://api.gstdtoken.com/api/v1',
         },
         dashboard: {
             host: '0.0.0.0',
@@ -410,7 +410,7 @@ async function main(): Promise<void> {
         console.log('  🚫 P2P/NaaS:    DISABLED (remote user nodes only)');
         console.log('');
         console.log('  💡 Nodes run on USER machines, not this server!');
-        console.log('     Install: curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash');
+        console.log('     Install: curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash');
         console.log('');
         logActivity('GSTD Platform Server v' + config.version + ' booted in ' + bootTime + 's (platform mode)', 'success');
     } else {

@@ -193,7 +193,7 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
         if (!wallet) { res.json({ earnings: [], total: 0 }); return; }
         try {
             const resp = await fetch(
-                `https://app.gstdtoken.com/api/v1/wallet/${wallet.address}/earnings`
+                `https://api.gstdtoken.com/api/v1/wallet/${wallet.address}/earnings`
             ).catch(() => null);
             if (resp?.ok) { res.json(await resp.json()); return; }
         } catch (_e) { }
@@ -203,7 +203,7 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
     // ─── API: Tasks ─────────────────────────────────────────────
     app.get('/api/node/tasks', async (_req, res) => {
         try {
-            const resp = await fetch('https://app.gstdtoken.com/api/v1/monitor/unified').catch(() => null);
+            const resp = await fetch('https://api.gstdtoken.com/api/v1/monitor/unified').catch(() => null);
             if (resp?.ok) {
                 const data: any = await resp.json();
                 res.json({

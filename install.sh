@@ -17,7 +17,7 @@ INSTALL_DIR="${GSTD_INSTALL_DIR:-$HOME/gstdbot}"
 CONFIG_DIR="$HOME/.config/gstdbot"
 STATE_FILE="$CONFIG_DIR/.install_state"
 LOG_FILE="$CONFIG_DIR/install.log"
-API_URL="https://app.gstdtoken.com/api/v1"
+API_URL="https://api.gstdtoken.com/api/v1"
 REPO_URL="https://github.com/gstdcoin/gstdbot.git"
 DASH_PORT="${GSTD_PORT:-8080}"
 MODE="${GSTD_MODE:-cloud}"
@@ -350,7 +350,7 @@ sleep 1
 # Download Bridge Node
 mkdir -p "$CONFIG_DIR/bridge"
 info "Downloading Bridge Validator..."
-(curl -fsSL https://app.gstdtoken.com/downloads/gstd-bridge.gz | gzip -d > "$CONFIG_DIR/bridge/gstd-bridge" && chmod +x "$CONFIG_DIR/bridge/gstd-bridge") || true
+(curl -fsSL https://gstdtoken.com/downloads/gstd-bridge.gz | gzip -d > "$CONFIG_DIR/bridge/gstd-bridge" && chmod +x "$CONFIG_DIR/bridge/gstd-bridge") || true
 if [ ! -f "$CONFIG_DIR/bridge/bridge.toml" ]; then
     "$CONFIG_DIR/bridge/gstd-bridge" --init --config "$CONFIG_DIR/bridge/bridge.toml" 2>/dev/null || true
 fi
@@ -502,7 +502,7 @@ SYS_CMD="sudo systemctl"
 case "\$1" in
     update)
         echo "Updating GSTD Node..."
-        curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
+        curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
         ;;
     rollback)
         echo "Rolling back to previous version..."
@@ -589,7 +589,7 @@ echo -e "    📦 ${GREEN}52 Apps${NC}     — Full autonomous PC in your node"
 echo -e "    🛡️ ${GREEN}Security${NC}    — Rate limiting, hardened defaults"
 echo ""
 echo -e "  ${BOLD}Re-run anytime to update:${NC}"
-echo -e "    ${CYAN}curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash${NC}"
+echo -e "    ${CYAN}curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash${NC}"
 echo -e "    ${DIM}Safe to re-run — updates and restarts automatically${NC}"
 echo ""
 

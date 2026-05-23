@@ -161,7 +161,7 @@ export class GSTDRPCProxy {
 
         if (!apiKey) {
             res.writeHead(401);
-            res.end(JSON.stringify({ error: 'Missing X-GSTD-Key header. Get one at app.gstdtoken.com' }));
+            res.end(JSON.stringify({ error: 'Missing X-GSTD-Key header. Get one at gstdtoken.com' }));
             return;
         }
 
@@ -182,7 +182,7 @@ export class GSTDRPCProxy {
         const paid = await checkAndDeductBalance(apiKey, price);
         if (!paid) {
             res.writeHead(402);
-            res.end(JSON.stringify({ error: 'Insufficient GSTD balance. Top up at app.gstdtoken.com' }));
+            res.end(JSON.stringify({ error: 'Insufficient GSTD balance. Top up at gstdtoken.com' }));
             return;
         }
 

@@ -427,13 +427,13 @@ export class OmegaGateway {
                     commits_behind: behind,
                     branch,
                     changelog,
-                    update_url: 'https://gstdbot.gstdtoken.com/install.sh',
+                    update_url: 'https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh',
                 });
             } catch (e: any) {
                 // Fallback: check via platform API when git is not available
                 try {
                     const currentVersion = require('../../package.json').version || 'unknown';
-                    const apiUrl = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
+                    const apiUrl = process.env.GSTD_API_URL || 'https://api.gstdtoken.com/api/v1';
                     const resp = await fetch(`${apiUrl}/nodes/update/check?version=${currentVersion}`, {
                         signal: AbortSignal.timeout(5000),
                     });
@@ -443,7 +443,7 @@ export class OmegaGateway {
                         return;
                     }
                 } catch (_fallback) { }
-                res.json({ update_available: false, error: e.message, update_url: 'https://gstdbot.gstdtoken.com/install.sh' });
+                res.json({ update_available: false, error: e.message, update_url: 'https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh' });
             }
         });
 
@@ -1281,7 +1281,7 @@ export class OmegaGateway {
         // ─── Tasks ───────────────────────────────────────────────
         this.app.get('/api/node/tasks', async (_req, res) => {
             try {
-                const resp = await fetch('https://app.gstdtoken.com/api/v1/monitor/unified').catch(() => null);
+                const resp = await fetch('https://api.gstdtoken.com/api/v1/monitor/unified').catch(() => null);
                 if (resp?.ok) { const data: any = await resp.json(); res.json({ pending: data.ecosystem?.tasks_pending || 0, completed: data.ecosystem?.tasks_completed || 0, processing: data.ecosystem?.tasks_processing || 0 }); return; }
             } catch (_e) { }
             res.json({ pending: 0, completed: 0, processing: 0 });
@@ -2211,7 +2211,7 @@ export class OmegaGateway {
         // ═══════════════════════════════════════════════════════════
         this.app.get('/api/swarm/network', async (_req, res) => {
             try {
-                const resp = await fetch('https://app.gstdtoken.com/api/v1/monitor/unified', {
+                const resp = await fetch('https://api.gstdtoken.com/api/v1/monitor/unified', {
                     signal: AbortSignal.timeout(5000)
                 }).catch(() => null);
                 if (resp?.ok) {
@@ -2881,14 +2881,14 @@ export class OmegaGateway {
         this.app.get('/api/links', (_req, res) => {
             res.json({
                 links: [
-                    { name: 'Dashboard', url: 'https://app.gstdtoken.com', icon: '📊', description: 'GSTD Platform Dashboard' },
-                    { name: 'Web Chat', url: 'https://app.gstdtoken.com/chat', icon: '💬', description: 'AI Chat Interface' },
-                    { name: 'Monitor', url: 'https://app.gstdtoken.com/monitor', icon: '📡', description: 'Network Monitor' },
-                    { name: 'Node OS', url: 'https://gstdbot.gstdtoken.com', icon: '🐝', description: 'Node OS Landing Page' },
+                    { name: 'Dashboard', url: 'https://gstdtoken.com', icon: '📊', description: 'GSTD Platform Dashboard' },
+                    { name: 'Web Chat', url: 'https://gstdtoken.com/chat', icon: '💬', description: 'AI Chat Interface' },
+                    { name: 'Monitor', url: 'https://gstdtoken.com/monitor', icon: '📡', description: 'Network Monitor' },
+                    { name: 'Node OS', url: 'https://github.com/gstdcoin/gstdbot', icon: '🐝', description: 'Node OS Landing Page' },
                     { name: 'Telegram Bot', url: 'https://t.me/GstdAppBot', icon: '🤖', description: 'AI Telegram Bot' },
                     { name: 'GitHub', url: 'https://github.com/gstdcoin/gstdbot', icon: '⭐', description: 'Source Code' },
                     { name: 'GitHub Org', url: 'https://github.com/gstdcoin', icon: '🏢', description: 'GSTD Organization' },
-                    { name: 'Documentation', url: 'https://gstdbot.gstdtoken.com/#install', icon: '📖', description: 'Installation Guide' },
+                    { name: 'Documentation', url: 'https://github.com/gstdcoin/gstdbot/#install', icon: '📖', description: 'Installation Guide' },
                     { name: 'Tonkeeper', url: 'https://tonkeeper.com', icon: '💎', description: 'TON Wallet' },
                     { name: 'Ston.fi', url: 'https://ston.fi', icon: '🔄', description: 'DEX for GSTD/TON' },
                 ],
@@ -3276,7 +3276,7 @@ if(window.speechSynthesis){const u=new SpeechSynthesisUtterance(reply);u.rate=1;
 </div>
 <div id="oc-content"></div>
 <script>
-const OC_API=window.GSTD_API||'https://app.gstdtoken.com';
+const OC_API=window.GSTD_API||'https://gstdtoken.com';
 let ocData={};
 function ocTab(tab) {
   document.querySelectorAll('.oc-tab').forEach(t=>t.classList.remove('active'));

@@ -46,7 +46,7 @@
         "type": "git",
         "url": "https://github.com/gstdcoin/gstdbot.git"
     },
-    "homepage": "https://gstdbot.gstdtoken.com",
+    "homepage": "https://github.com/gstdcoin/gstdbot",
     "engines": {
         "node": ">=20"
     },

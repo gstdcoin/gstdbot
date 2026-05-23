@@ -415,7 +415,7 @@ program
             },
             {
                 name: 'GSTD network accessible',
-                check: async () => { const r = await fetch('https://app.gstdtoken.com/api/v1/health'); return r.ok; },
+                check: async () => { const r = await fetch('https://api.gstdtoken.com/api/v1/health'); return r.ok; },
                 fix: 'Check internet connection',
             },
         ];
@@ -778,7 +778,7 @@ swarmCmd.command('status').description('Show swarm network status').action(async
     console.log(chalk.bold('\n  🐝 Swarm Network\n'));
 
     try {
-        const resp = await fetch('https://app.gstdtoken.com/api/v1/network/stats');
+        const resp = await fetch('https://api.gstdtoken.com/api/v1/network/stats');
         const data: any = await resp.json();
         console.log(`  Active workers: ${chalk.green(data.active_workers || 0)}`);
         console.log(`  Total GSTD paid: ${chalk.yellow(data.total_gstd_paid || 0)}`);

@@ -65,9 +65,9 @@ const FORBIDDEN_TOPICS = [
 
 // ─── Platform knowledge base ───
 const PLATFORM_KB = {
-    website: 'https://app.gstdtoken.com',
-    chat: 'https://app.gstdtoken.com/chat',
-    monitor: 'https://monitor.gstdtoken.com',
+    website: 'https://gstdtoken.com',
+    chat: 'https://gstdtoken.com/chat',
+    monitor: 'https://gstdtoken.com',
     bot: 'https://t.me/GstdAppBot',
     contract: 'EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi',
     chain: 'TON',
@@ -191,7 +191,7 @@ export class CommunityGuardian {
                 await ctx.reply(
                     `🐝 *GSTD — Decentralized AI Platform*\n\n` +
                     `GSTD is a sovereign compute network. Run AI models, earn tokens, own your data.\n\n` +
-                    `🌐 *Dashboard:* [app.gstdtoken.com](${PLATFORM_KB.website})\n` +
+                    `🌐 *Dashboard:* [gstdtoken.com](${PLATFORM_KB.website})\n` +
                     `💬 *AI Chat:* [Free AI Chat](${PLATFORM_KB.chat}) — no signup\n` +
                     `📊 *Monitor:* [Network Stats](${PLATFORM_KB.monitor})\n` +
                     `🤖 *Bot:* @${this.config.botUsername}\n\n` +
@@ -408,7 +408,7 @@ export class CommunityGuardian {
             const stats = await this.fetchStats();
             const lang = this.detectLang(ctx.message?.text || '');
             await ctx.reply(
-                `📊 *GSTD Network Stats*\n\n🖥 Workers: ${stats.active_workers}\n📝 Tasks (24h): ${stats.tasks_24h}\n💰 Paid: ${stats.total_gstd_paid} GSTD\n📈 Price: $${stats.gstd_price_usd?.toFixed(8) || '0'}\n\n_[monitor.gstdtoken.com](${PLATFORM_KB.monitor})_`,
+                `📊 *GSTD Network Stats*\n\n🖥 Workers: ${stats.active_workers}\n📝 Tasks (24h): ${stats.tasks_24h}\n💰 Paid: ${stats.total_gstd_paid} GSTD\n📈 Price: $${stats.gstd_price_usd?.toFixed(8) || '0'}\n\n_[gstdtoken.com](${PLATFORM_KB.monitor})_`,
                 { parse_mode: 'Markdown', link_preview_options: { is_disabled: true } }
             );
         });

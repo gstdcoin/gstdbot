@@ -47,7 +47,7 @@ export class SwarmClient {
     /** Set by register(); required for /nodes/heartbeat (wallet_address) */
     private registeredWallet?: string;
 
-    constructor(controlPlaneUrl = process.env.GSTD_API_URL?.replace(/\/api\/v1$/, '') || 'https://app.gstdtoken.com', ollamaUrl = 'http://localhost:11434') {
+    constructor(controlPlaneUrl = process.env.GSTD_API_URL?.replace(/\/api\/v1$/, '') || 'https://gstdtoken.com', ollamaUrl = 'http://localhost:11434') {
         this.nodeId = uuid();
         this.startTime = Date.now();
         this.controlPlaneUrl = controlPlaneUrl;
