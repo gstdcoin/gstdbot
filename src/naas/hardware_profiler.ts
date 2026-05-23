@@ -38,16 +38,34 @@ export const CHAIN_CATALOG: ChainRequirements[] = [
         nativeToken: 'BTC', rewardPerQuery: 0.005,
         envVars: { BITCOIN_NETWORK: 'mainnet', BITCOIN_DBCACHE: '200' },
     },
+    // TON liteserver — provides RPC to the TON network, ~4GB RAM
+    // toncenter/ton-node is the official Docker image from TON Foundation
     {
         chain: 'TON', mode: 'full', ram_gb: 4, cpu_cores: 2, disk_gb: 100,
-        dockerImage: 'tonstakers/ton-node:latest', rpcPort: 8080, priority: 3,
+        dockerImage: 'toncenter/ton-node:latest', rpcPort: 43677, priority: 3,
         nativeToken: 'TON', rewardPerQuery: 0.002,
-        envVars: { TON_GLOBAL_CONFIG: 'mainnet' },
+        envVars: {
+            GLOBAL_CONFIG_URL: 'https://ton.org/global-config.json',
+            LITESERVER: '1',
+        },
     },
     {
         chain: 'XLM', mode: 'full', ram_gb: 1, cpu_cores: 1, disk_gb: 30,
         dockerImage: 'stellar/stellar-core:latest', rpcPort: 11626, priority: 4,
         nativeToken: 'XLM', rewardPerQuery: 0.001,
+    },
+    // XRPL (rippled) — lightweight, participates in consensus automatically
+    // No staking required; just run with UNL and you're a validator candidate
+    {
+        chain: 'XRPL', mode: 'full', ram_gb: 2, cpu_cores: 2, disk_gb: 50,
+        dockerImage: 'xrpllabsofficial/xrpld:latest', rpcPort: 5005, priority: 2,
+        nativeToken: 'XRP', rewardPerQuery: 0.003,
+        envVars: {
+            RIPPLED_NETWORK: 'mainnet',
+            // Public UNL from XRPL Foundation — enables validator mode
+            RIPPLED_VALIDATOR_LIST_SITES: 'https://vl.ripple.com',
+            RIPPLED_VALIDATOR_LIST_KEYS: 'ED2677ABFFD1B33AC6FBC3062B71F1E8397C1505E1C42C64D11AD1B28FF73F4600',
+        },
     },
     // Mid-tier (8GB+)
     {
@@ -87,10 +105,17 @@ export const CHAIN_CATALOG: ChainRequirements[] = [
         dockerImage: 'bnbchain/bsc:latest', rpcPort: 8545, priority: 12,
         nativeToken: 'BNB', rewardPerQuery: 0.008,
     },
+    // Solana RPC node — non-voting, provides endpoints to network
+    // Reduced requirements with --limit-ledger-size and --no-voting flags
     {
-        chain: 'SOL', mode: 'rpc', ram_gb: 32, cpu_cores: 16, disk_gb: 500,
-        dockerImage: 'solanalabs/solana:latest', rpcPort: 8899, priority: 13,
+        chain: 'SOL', mode: 'rpc', ram_gb: 16, cpu_cores: 8, disk_gb: 300,
+        dockerImage: 'solanalabs/solana:v1.18.26', rpcPort: 8899, priority: 13,
         nativeToken: 'SOL', rewardPerQuery: 0.02,
+        envVars: {
+            SOLANA_CLUSTER: 'mainnet-beta',
+            SOLANA_LIMIT_LEDGER_SIZE: '50000000',
+            SOLANA_NO_VOTING: '1',
+        },
     },
     {
         chain: 'DOT', mode: 'full', ram_gb: 8, cpu_cores: 4, disk_gb: 100,
