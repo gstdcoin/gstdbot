@@ -192,8 +192,9 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
         const wallet = getWallet();
         if (!wallet) { res.json({ earnings: [], total: 0 }); return; }
         try {
+            const apiBase = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
             const resp = await fetch(
-                `https://api.gstdtoken.com/api/v1/wallet/${wallet.address}/earnings`
+                `${apiBase}/wallet/${wallet.address}/earnings`
             ).catch(() => null);
             if (resp?.ok) { res.json(await resp.json()); return; }
         } catch (_e) { }
@@ -203,7 +204,8 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
     // ─── API: Tasks ─────────────────────────────────────────────
     app.get('/api/node/tasks', async (_req, res) => {
         try {
-            const resp = await fetch('https://api.gstdtoken.com/api/v1/monitor/unified').catch(() => null);
+            const apiBase = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
+            const resp = await fetch(`${apiBase}/monitor/unified`).catch(() => null);
             if (resp?.ok) {
                 const data: any = await resp.json();
                 res.json({
@@ -233,7 +235,7 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
         try {
             // Get personal rewards info
             const rewardsResp = await fetch(
-                `https://api.gstdtoken.com/api/v1/nodes/rewards/my?wallet=${wallet.address}`,
+                `https://app.gstdtoken.com/api/v1/nodes/rewards/my?wallet=${wallet.address}`,
                 { signal: AbortSignal.timeout(5000) }
             ).catch(() => null);
 
@@ -244,7 +246,7 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
 
             // Get network stats
             const networkResp = await fetch(
-                'https://api.gstdtoken.com/api/v1/nodes/rewards/network',
+                'https://app.gstdtoken.com/api/v1/nodes/rewards/network',
                 { signal: AbortSignal.timeout(5000) }
             ).catch(() => null);
 
@@ -255,7 +257,7 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
 
             // Get leaderboard position
             const leaderResp = await fetch(
-                'https://api.gstdtoken.com/api/v1/nodes/rewards/leaderboard',
+                'https://app.gstdtoken.com/api/v1/nodes/rewards/leaderboard',
                 { signal: AbortSignal.timeout(5000) }
             ).catch(() => null);
 
@@ -288,7 +290,7 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
     app.get('/api/node/program', async (_req, res) => {
         try {
             const resp = await fetch(
-                'https://api.gstdtoken.com/api/v1/nodes/rewards/program',
+                'https://app.gstdtoken.com/api/v1/nodes/rewards/program',
                 { signal: AbortSignal.timeout(5000) }
             ).catch(() => null);
             if (resp?.ok) {

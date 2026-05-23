@@ -1,0 +1,28 @@
+[Unit]
+Description=GSTD Node OS
+Documentation=https://github.com/gstdcoin/gstdbot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bot
+WorkingDirectory=/home/bot/gstdbot
+EnvironmentFile=/home/bot/gstdbot/.env
+Environment=NODE_ENV=production
+Environment=PATH=/home/bot/.nvm/versions/node/v20.20.2/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+ExecStart=/home/bot/.nvm/versions/node/v20.20.2/bin/node dist/index.js
+
+Restart=on-failure
+RestartSec=15
+StandardOutput=append:/home/bot/gstdbot/logs/node.log
+StandardError=append:/home/bot/gstdbot/logs/node.log
+
+# Resource limits — don't compete with trading bot
+CPUQuota=60%
+MemoryMax=1G
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

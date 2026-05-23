@@ -300,10 +300,16 @@ export class CollectiveMemory {
                 return;
             }
 
-            this.redisClient = redis.createClient({ url: this.config.memory.redisUrl });
+            this.redisClient = redis.createClient({
+                url: this.config.memory.redisUrl,
+                socket: { connectTimeout: 3000, reconnectStrategy: false },
+            });
             this.redisClient.on('error', () => { this.l2Connected = false; });
 
-            await this.redisClient.connect();
+            await Promise.race([
+                this.redisClient.connect(),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000)),
+            ]);
             await this.redisClient.ping();
             this.l2Connected = true;
             logActivity('Redis connected (L2 memory)', 'success');
