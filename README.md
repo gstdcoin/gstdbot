@@ -8,7 +8,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-06b6d4)](https://nodejs.org)
 
 ```
-curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
 ```
 
 ---
@@ -77,7 +77,7 @@ Your Hardware
 ### One-line install
 
 ```bash
-curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
 ```
 
 ### Docker Compose
@@ -306,10 +306,9 @@ bash reinstall.sh --reset
 
 ## 📡 Links
 
-- 🌐 **Landing**: [gstdbot.gstdtoken.com](https://gstdbot.gstdtoken.com)
+- 🌐 **Website**: [gstdtoken.com](https://gstdtoken.com)
 - 🤖 **Telegram**: [@GstdAppBot](https://t.me/GstdAppBot)
-- 💬 **Web Chat**: [chat.gstdtoken.com](https://chat.gstdtoken.com)
-- 📊 **Dashboard**: [app.gstdtoken.com](https://app.gstdtoken.com)
+- 💬 **Community**: [t.me/goldstandardcoin](https://t.me/goldstandardcoin)
 - ⭐ **GitHub**: [github.com/gstdcoin](https://github.com/gstdcoin)
 - 💎 **Tonkeeper**: [tonkeeper.com](https://tonkeeper.com)
 - 🔄 **Ston.fi**: [ston.fi](https://ston.fi)

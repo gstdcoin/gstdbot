@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
 # GSTD Node OS — Idempotent Installer v3.2
-# curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
+# curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
 #
 # Features:
 #  • Safe to re-run — picks up where it left off
@@ -17,7 +17,7 @@ INSTALL_DIR="${GSTD_INSTALL_DIR:-$HOME/gstdbot}"
 CONFIG_DIR="$HOME/.config/gstdbot"
 STATE_FILE="$CONFIG_DIR/.install_state"
 LOG_FILE="$CONFIG_DIR/install.log"
-API_URL="https://app.gstdtoken.com/api/v1"
+API_URL="https://api.gstdtoken.com/v1"
 REPO_URL="https://github.com/gstdcoin/gstdbot.git"
 
 # ─── Colors ──────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ for arg in "$@"; do
         --help|-h)
             echo "GSTD Node Installer v${VERSION}"
             echo ""
-            echo "Usage: curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash"
+            echo "Usage: curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash"
             echo "   or: bash install.sh [OPTIONS]"
             echo ""
             echo "Options:"
@@ -606,15 +606,15 @@ echo -e "  🔥 Panel   — 5 experts cross-verified"
 echo -e "  🧠 Swarm   — 7 experts full synthesis"
 echo ""
 echo -e "  ${BOLD}Manage:${NC}"
-echo -e "  Re-run installer:  ${CYAN}curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash${NC}"
-echo -e "  Start fresh:       ${CYAN}curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash -s -- --fresh${NC}"
+echo -e "  Re-run installer:  ${CYAN}curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash${NC}"
+echo -e "  Start fresh:       ${CYAN}curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash -s -- --fresh${NC}"
 echo -e "  Update:            ${CYAN}cd $INSTALL_DIR && git pull && npx tsc${NC}"
 echo ""
 echo -e "  ${BOLD}Links:${NC}"
-echo -e "  🌐 ${DIM}https://gstdbot.gstdtoken.com${NC}"
+echo -e "  🌐 ${DIM}https://gstdtoken.com${NC}"
 echo -e "  🤖 ${DIM}https://t.me/GstdAppBot${NC}"
-echo -e "  📡 ${DIM}https://monitor.gstdtoken.com${NC}"
-echo -e "  💬 ${DIM}https://chat.gstdtoken.com${NC}"
+echo -e "  📡 ${DIM}https://github.com/gstdcoin${NC}"
+echo -e "  💬 ${DIM}https://t.me/goldstandardcoin${NC}"
 echo ""
 echo -e "  ${DIM}Install log:   $LOG_FILE${NC}"
 echo -e "  ${DIM}State file:    $STATE_FILE${NC}"
