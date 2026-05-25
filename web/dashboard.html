@@ -956,7 +956,7 @@
           <span class="ic">📡</span><span>Resources</span>
         </div>
         <div class="nav-item" onclick="showPage('naas')" id="nav-naas">
-          <span class="ic">🌐</span><span>NaaS RPC</span>
+          <span class="ic">⛓</span><span>Validators</span>
           <span class="badge badge-green">B2B</span>
         </div>
         <div class="nav-item" onclick="showPage('sovereign')" id="nav-sovereign">
@@ -1364,22 +1364,22 @@
           </div>
         </div>
 
-        <!-- NaaS + Age Multiplier Row -->
+        <!-- P2P + IPFS + Gold Reserve Row -->
         <div class="grid-3" id="naas-overview-row">
+          <div class="card">
+            <div class="card-label"><span class="cic" style="background:rgba(99,102,241,0.12)">🔗</span> P2P Network</div>
+            <div class="card-value" id="d-p2p-peers">0</div>
+            <div class="card-sub" id="d-p2p-url">standalone</div>
+          </div>
+          <div class="card">
+            <div class="card-label"><span class="cic" style="background:rgba(6,182,212,0.12)">📦</span> IPFS Storage</div>
+            <div class="card-value sm" id="d-ipfs-status">offline</div>
+            <div class="card-sub" id="d-ipfs-sub">IPFS daemon not running</div>
+          </div>
           <div class="card" style="border:1px solid rgba(212,175,55,0.2);background:linear-gradient(135deg,rgba(212,175,55,0.06),rgba(0,0,0,0.1))">
-            <div class="card-label"><span class="cic" style="background:rgba(212,175,55,0.12)">🏆</span> Age Multiplier</div>
-            <div class="card-value" id="d-multiplier" style="color:#d4af37">1.0x</div>
-            <div class="card-sub" id="d-mult-sub">Uptime streak: 0h</div>
-          </div>
-          <div class="card">
-            <div class="card-label"><span class="cic" style="background:rgba(6,182,212,0.12)">🌐</span> NaaS Tier</div>
-            <div class="card-value sm" id="d-naas-tier" style="text-transform:uppercase;letter-spacing:1px">—</div>
-            <div class="card-sub" id="d-naas-chains">0 chains active</div>
-          </div>
-          <div class="card">
-            <div class="card-label"><span class="cic" style="background:rgba(34,197,94,0.12)">🏛️</span> Floor Price</div>
-            <div class="card-value sm" id="d-floor-price" style="color:var(--emerald)">$0.0000</div>
-            <div class="card-sub" id="d-epoch-info">Epoch 1</div>
+            <div class="card-label"><span class="cic" style="background:rgba(212,175,55,0.12)">💎</span> Gold Reserve</div>
+            <div class="card-value" id="d-gold-reserve" style="color:#d4af37">0 GSTD</div>
+            <div class="card-sub" id="d-gold-sub">50% of all fees</div>
           </div>
         </div>
 
@@ -2307,81 +2307,38 @@
         </div>
       </div>
 
-      <!-- ═══ PAGE: NaaS Infrastructure ═══ -->
+      <!-- ═══ PAGE: Validators ═══ -->
       <div class="page" id="page-naas">
         <div style="margin-bottom:16px;font-size:13px;color:var(--muted);line-height:1.5">
-          🌐 <strong style="color:var(--text)">Node-as-a-Service Infrastructure</strong> — Your node serves RPC requests for dApps worldwide.
-          Every request earns GSTD and funds the Sovereign Fund.
+          ⛓ <strong style="color:var(--text)">Blockchain Validators</strong> — Run native blockchain nodes directly on your hardware.
+          No Docker. One click to enable. Earn GSTD from RPC fees.
         </div>
 
-        <!-- Tier + Multiplier + Earnings -->
-        <div class="grid-3">
-          <div class="card" style="border:1px solid rgba(6,182,212,0.25);background:linear-gradient(135deg,rgba(6,182,212,0.08),transparent)">
-            <div class="card-label"><span class="cic" style="background:rgba(6,182,212,0.12)">🖥</span> HARDWARE TIER</div>
-            <div class="card-value" id="naas-tier" style="text-transform:uppercase;letter-spacing:2px;color:var(--cyan)">—</div>
-            <div class="card-sub" id="naas-hw-details">Scanning hardware...</div>
-          </div>
-          <div class="card" style="border:1px solid rgba(212,175,55,0.25);background:linear-gradient(135deg,rgba(212,175,55,0.08),transparent)">
-            <div class="card-label"><span class="cic" style="background:rgba(212,175,55,0.12)">🏆</span> AGE MULTIPLIER</div>
-            <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
-              <div style="position:relative;width:64px;height:64px">
-                <svg viewBox="0 0 36 36" style="width:64px;height:64px;transform:rotate(-90deg)">
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="3"/>
-                  <circle id="naas-mult-ring" cx="18" cy="18" r="15.9" fill="none" stroke="#d4af37" stroke-width="3"
-                    stroke-dasharray="0 100" stroke-linecap="round" style="transition:stroke-dasharray 1s ease"/>
-                </svg>
-                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:#d4af37" id="naas-mult-value">1.0x</div>
-              </div>
-              <div>
-                <div style="font-size:11px;color:var(--muted)">Uptime Streak</div>
-                <div style="font-size:16px;font-weight:700" id="naas-uptime-streak">0h</div>
-                <div style="font-size:10px;color:var(--muted)" id="naas-mult-next">+0.2x at 99.5% weekly</div>
-              </div>
+        <!-- Fee Split reminder -->
+        <div class="card" style="margin-bottom:14px;border:1px solid rgba(212,175,55,0.15)">
+          <div style="display:flex;justify-content:space-around;align-items:center;flex-wrap:wrap;gap:8px;padding:4px 0">
+            <div style="text-align:center">
+              <div style="font-size:18px;font-weight:900;color:#d4af37" id="val-gold-reserve">0</div>
+              <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Gold Reserve (50%)</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:18px;font-weight:900;color:var(--emerald)" id="val-node-earn">0</div>
+              <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Node Operator (30%)</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:18px;font-weight:900;color:#2979ff" id="val-dev-fund">0</div>
+              <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Dev Fund (20%)</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:18px;font-weight:900;color:var(--text)" id="val-total-fees">0</div>
+              <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Total Fees</div>
             </div>
           </div>
-          <div class="card">
-            <div class="card-label"><span class="cic" style="background:rgba(34,197,94,0.12)">💰</span> EPOCH EARNINGS</div>
-            <div class="card-value sm" id="naas-epoch-earn" style="color:var(--emerald)">$0.0000</div>
-            <div class="card-sub" id="naas-est-monthly">Est. ~0 GSTD/month</div>
-          </div>
         </div>
 
-        <!-- Active Chains Grid -->
-        <div class="card" style="margin-top:14px">
-          <div class="card-label" style="margin-bottom:12px"><span class="cic" style="background:rgba(139,92,246,0.12)">⛓</span> ACTIVE BLOCKCHAIN ROLES</div>
-          <div id="naas-chains-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
-            <div style="text-align:center;padding:20px;color:var(--muted);grid-column:1/-1">Loading chains...</div>
-          </div>
-        </div>
-
-        <!-- Containers -->
-        <div class="card" style="margin-top:14px">
-          <div class="card-label" style="margin-bottom:12px"><span class="cic" style="background:rgba(245,158,11,0.12)">🐳</span> DOCKER CONTAINERS</div>
-          <div id="naas-containers" style="font-size:12px;color:var(--muted)">Scanning containers...</div>
-        </div>
-
-        <!-- Revenue Flow -->
-        <div class="card" style="margin-top:14px;border:1px solid rgba(212,175,55,0.15)">
-          <div class="card-label"><span class="cic" style="background:rgba(212,175,55,0.12)">💎</span> REVENUE FLOW</div>
-          <div style="display:flex;justify-content:center;gap:0;align-items:center;margin:16px 0;flex-wrap:wrap">
-            <div style="text-align:center;padding:8px 16px"><div style="font-size:20px">📡</div><div style="font-size:10px;color:var(--muted)">RPC Request</div></div>
-            <div style="color:var(--muted)">→</div>
-            <div style="text-align:center;padding:8px 16px"><div style="font-size:20px">💳</div><div style="font-size:10px;color:var(--muted)">Bill Client</div></div>
-            <div style="color:var(--muted)">→</div>
-            <div style="text-align:center;padding:8px 16px"><div style="font-size:20px">🏛️</div><div style="font-size:10px;color:var(--muted)">Sovereign Fund</div></div>
-            <div style="color:var(--muted)">→</div>
-            <div style="display:flex;gap:12px">
-              <div style="text-align:center;padding:6px 10px;background:rgba(34,197,94,0.08);border-radius:8px;border:1px solid rgba(34,197,94,0.2)">
-                <div style="font-size:18px;font-weight:900;color:var(--emerald)">50%</div><div style="font-size:9px;color:var(--emerald)">Backing</div>
-              </div>
-              <div style="text-align:center;padding:6px 10px;background:rgba(41,121,255,0.08);border-radius:8px;border:1px solid rgba(41,121,255,0.2)">
-                <div style="font-size:18px;font-weight:900;color:#2979ff">20%</div><div style="font-size:9px;color:#2979ff">Treasury</div>
-              </div>
-              <div style="text-align:center;padding:6px 10px;background:rgba(255,109,0,0.08);border-radius:8px;border:1px solid rgba(255,109,0,0.2)">
-                <div style="font-size:18px;font-weight:900;color:#ff6d00">30%</div><div style="font-size:9px;color:#ff6d00">Yield → You</div>
-              </div>
-            </div>
-          </div>
+        <!-- Validators Grid -->
+        <div id="validators-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
+          <div style="text-align:center;padding:40px;color:var(--muted);grid-column:1/-1">Loading validators...</div>
         </div>
       </div>
 
@@ -3010,7 +2967,7 @@
           training: "Federated Training",
           settings: "Settings",
           appstore: "App Store",
-          naas: "NaaS Infrastructure",
+          naas: "Validators",
           sovereign: "Sovereign Fund",
         };
         document.getElementById("page-title").textContent =
@@ -3090,6 +3047,22 @@
                 : "Disabled";
           document.getElementById("swarm-sub").textContent =
             "Mode: " + (d.swarm.mode || "full");
+          // P2P overview card
+          if (d.p2p !== undefined) {
+            const p2pPeers = document.getElementById('d-p2p-peers');
+            if (p2pPeers) p2pPeers.textContent = d.p2p.peers || 0;
+            const p2pUrl = document.getElementById('d-p2p-url');
+            if (p2pUrl) p2pUrl.textContent = d.p2p.peers > 0 ? d.p2p.peers + ' peer(s) connected' : (d.p2p.url ? 'URL: ' + d.p2p.url.replace('https://', '').slice(0, 24) + '…' : 'standalone');
+          }
+          // IPFS overview card
+          if (d.ipfs !== undefined) {
+            const ipfsSt = document.getElementById('d-ipfs-status');
+            if (ipfsSt) ipfsSt.textContent = d.ipfs.enabled ? (d.ipfs.numPins || 0) + ' pins' : 'offline';
+            const ipfsSub = document.getElementById('d-ipfs-sub');
+            if (ipfsSub) ipfsSub.textContent = d.ipfs.enabled
+              ? (d.ipfs.repoSize ? Math.round(d.ipfs.repoSize / (1024*1024)) + ' MB · ' + (d.ipfs.peers || 0) + ' IPFS peers' : (d.ipfs.peers || 0) + ' IPFS peers')
+              : 'IPFS daemon not running';
+          }
           // Memory
           if (d.memory) {
             const memEl = document.getElementById("mem-entries");
@@ -3921,85 +3894,119 @@
         } catch { log('Vote failed: network error', 'error'); }
       }
 
-      // ─── NaaS Infrastructure Data ─────────────────────────
+      // ─── Validators Data ───────────────────────────────────
       async function loadNaaS() {
         try {
-          const r = await fetch(API + '/api/node/naas');
-          if (!r.ok) return;
-          const d = await r.json();
+          // Load validator states + fee stats in parallel
+          const [valRes, feeRes] = await Promise.allSettled([
+            fetch(API + '/api/validators'),
+            fetch(API + '/api/fees'),
+          ]);
 
-          // NaaS page: Tier
-          const tierEl = document.getElementById('naas-tier');
-          if (tierEl) tierEl.textContent = d.tier || '—';
-          const hwEl = document.getElementById('naas-hw-details');
-          if (hwEl && d.hardware) {
-            hwEl.textContent = d.hardware.cpu_cores + ' cores · ' + d.hardware.ram_gb + ' GB RAM · ' + d.hardware.disk_gb + ' GB disk' + (d.hardware.has_gpu ? ' · GPU' : '');
+          // Fee stats → overview cards
+          if (feeRes.status === 'fulfilled' && feeRes.value.ok) {
+            const fees = await feeRes.value.json();
+            const gr = document.getElementById('d-gold-reserve');
+            if (gr) gr.textContent = (fees.gold_reserve_gstd || 0).toFixed(4) + ' GSTD';
+            const gs = document.getElementById('d-gold-sub');
+            if (gs) gs.textContent = (fees.total_events || 0) + ' transactions · pending: ' + (fees.pending_gstd || 0).toFixed(4);
+            // Validator page totals
+            const vgr = document.getElementById('val-gold-reserve');
+            if (vgr) vgr.textContent = (fees.gold_reserve_gstd || 0).toFixed(4) + ' GSTD';
+            const vne = document.getElementById('val-node-earn');
+            if (vne) vne.textContent = (fees.node_earnings_gstd || 0).toFixed(4) + ' GSTD';
+            const vdf = document.getElementById('val-dev-fund');
+            if (vdf) vdf.textContent = (fees.dev_fund_gstd || 0).toFixed(4) + ' GSTD';
+            const vtf = document.getElementById('val-total-fees');
+            if (vtf) vtf.textContent = (fees.total_fees_gstd || 0).toFixed(4) + ' GSTD';
           }
 
-          // Age Multiplier ring
-          const mult = d.age_multiplier || 1.0;
-          const multPct = ((mult - 1.0) / 2.0) * 100; // 1.0=0%, 3.0=100%
-          const ring = document.getElementById('naas-mult-ring');
-          if (ring) ring.setAttribute('stroke-dasharray', Math.min(100, multPct) + ' 100');
-          const multVal = document.getElementById('naas-mult-value');
-          if (multVal) multVal.textContent = mult.toFixed(1) + 'x';
-          const streakEl = document.getElementById('naas-uptime-streak');
-          if (streakEl) streakEl.textContent = (d.uptime_streak_hours || 0) + 'h';
+          if (valRes.status !== 'fulfilled' || !valRes.value.ok) return;
+          const data = await valRes.value.json();
+          const validators = data.validators || [];
 
-          // Epoch earnings
-          const earnEl = document.getElementById('naas-epoch-earn');
-          if (earnEl) earnEl.textContent = '$' + (d.epoch_earnings_usd || 0).toFixed(4);
-          const estEl = document.getElementById('naas-est-monthly');
-          if (estEl) estEl.textContent = 'Est. ~' + (d.estimated_monthly_gstd || 0).toFixed(0) + ' GSTD/month';
+          const grid = document.getElementById('validators-grid');
+          if (!grid) return;
 
-          // Chain emojis
-          const chainIcon = { BTC: '₿', ETH: '⟠', TON: '💎', SOL: '☀️', MATIC: '🟣', AVAX: '🔺', ATOM: '⚛', ARB: '🔵', OP: '🔴', BNB: '🟡', DOT: '🟢', NEAR: '🌐', ADA: '💙', XLM: '⭐' };
-          // Chains grid
-          const chainsGrid = document.getElementById('naas-chains-grid');
-          if (chainsGrid && d.assigned_roles?.length) {
-            chainsGrid.innerHTML = d.assigned_roles.map(r => 
-              '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;text-align:center">' +
-              '<div style="font-size:24px;margin-bottom:4px">' + (chainIcon[r.chain] || '🔗') + '</div>' +
-              '<div style="font-weight:700;font-size:13px">' + r.chain + '</div>' +
-              '<div style="font-size:10px;color:var(--muted)">' + r.mode + ' · :' + r.rpcPort + '</div>' +
-              '<div style="font-size:10px;color:var(--emerald);margin-top:4px">+' + r.estimatedReward.toFixed(0) + ' GSTD/mo</div>' +
-              '</div>'
-            ).join('');
-          } else if (chainsGrid) {
-            chainsGrid.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);grid-column:1/-1">No chains assigned yet. Hardware profiler ran.</div>';
+          if (!validators.length) {
+            grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);grid-column:1/-1">No validators available.</div>';
+            return;
           }
 
-          // Containers list
-          const contEl = document.getElementById('naas-containers');
-          if (contEl && d.containers?.length) {
-            contEl.innerHTML = d.containers.map(c => 
-              '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
-              '<div><span style="color:' + (c.status === 'running' ? 'var(--emerald)' : 'var(--rose)') + ';font-size:8px">●</span> ' +
-              '<span style="font-weight:600">' + c.name + '</span></div>' +
-              '<div style="font-size:11px;color:var(--muted)">' + c.image + '</div>' +
-              '<div style="font-size:10px;color:' + (c.status === 'running' ? 'var(--emerald)' : 'var(--rose)') + '">' + c.status + '</div>' +
-              '</div>'
-            ).join('');
-          } else if (contEl) {
-            contEl.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted)">No NaaS containers running. Deploy chains from the Hardware Profiler.</div>';
-          }
+          grid.innerHTML = validators.map(v => {
+            const s = v.state;
+            const enabled = s.enabled;
+            const status = s.status;
+            const available = v.available;
 
-          // Dashboard overview cards
-          const dTier = document.getElementById('d-naas-tier');
-          if (dTier) dTier.textContent = d.tier || '—';
-          const dChains = document.getElementById('d-naas-chains');
-          if (dChains) dChains.textContent = (d.active_chains?.length || 0) + ' chains active';
-          const dMult = document.getElementById('d-multiplier');
-          if (dMult) dMult.textContent = mult.toFixed(1) + 'x';
-          const dMultSub = document.getElementById('d-mult-sub');
-          if (dMultSub) dMultSub.textContent = 'Uptime streak: ' + (d.uptime_streak_hours || 0) + 'h';
-          const dFloor = document.getElementById('d-floor-price');
-          if (dFloor) dFloor.textContent = '$' + (d.sovereign_fund?.floor_price_usd || 0).toFixed(4);
-          const dEpoch = document.getElementById('d-epoch-info');
-          if (dEpoch) dEpoch.textContent = 'Epoch ' + (d.sovereign_fund?.current_epoch || 1);
+            const statusColor = status === 'ready' ? 'var(--emerald)' :
+              status === 'syncing' ? 'var(--amber)' :
+              status === 'starting' ? '#2979ff' :
+              status === 'error' ? 'var(--rose)' : 'var(--muted)';
+
+            const toggleDisabled = !available ? 'opacity:0.5;cursor:not-allowed' : 'cursor:pointer';
+            const toggleColor = enabled ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.05)';
+            const toggleBorder = enabled ? '1px solid rgba(34,197,94,0.35)' : '1px solid rgba(255,255,255,0.1)';
+
+            return '<div class="card" style="' + (enabled ? 'border:1px solid rgba(34,197,94,0.2);' : '') + '">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+              '<div style="display:flex;align-items:center;gap:8px">' +
+              '<span style="font-size:22px">' + v.icon + '</span>' +
+              '<div><div style="font-weight:700;font-size:14px">' + v.name + '</div>' +
+              '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">' + v.type + '</div></div>' +
+              '</div>' +
+              '<label style="display:flex;align-items:center;gap:6px;' + (available ? 'cursor:pointer' : 'opacity:0.4') + '">' +
+              '<input type="checkbox" ' + (enabled ? 'checked' : '') + ' ' + (!available ? 'disabled' : '') +
+              ' onchange="toggleValidator(\'' + v.id + '\', this)" style="width:0;height:0;opacity:0">' +
+              '<div onclick="' + (available ? 'toggleValidator(\'' + v.id + '\', {checked:' + (!enabled) + '})' : '') + '" style="width:40px;height:22px;border-radius:11px;background:' + (enabled ? 'var(--emerald)' : 'rgba(255,255,255,0.1)') + ';position:relative;transition:background 0.3s;' + toggleDisabled + '">' +
+              '<div style="position:absolute;top:3px;left:' + (enabled ? '21px' : '3px') + ';width:16px;height:16px;border-radius:50%;background:white;transition:left 0.3s"></div>' +
+              '</div>' +
+              '</label>' +
+              '</div>' +
+              '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">' + v.description + '</div>' +
+              (enabled && status !== 'stopped' ?
+                '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">' +
+                '<span style="color:' + statusColor + ';font-size:9px">●</span>' +
+                '<span style="font-size:11px;color:' + statusColor + '">' + status.toUpperCase() +
+                (s.syncPct > 0 && s.syncPct < 100 ? ' ' + s.syncPct + '%' : '') + '</span>' +
+                (s.peers > 0 ? '<span style="font-size:10px;color:var(--muted)"> · ' + s.peers + ' peers</span>' : '') +
+                (s.blockHeight > 0 ? '<span style="font-size:10px;color:var(--muted)"> · block ' + s.blockHeight.toLocaleString() + '</span>' : '') +
+                '</div>' : '') +
+              (s.errorMsg ? '<div style="font-size:10px;color:var(--rose);margin-bottom:6px">' + s.errorMsg + '</div>' : '') +
+              '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:10px;color:var(--muted)">' +
+              '<div>RAM: ' + (v.ramMb >= 1024 ? (v.ramMb / 1024).toFixed(0) + 'GB' : v.ramMb + 'MB') + '</div>' +
+              '<div>Disk: ' + v.diskGb + 'GB</div>' +
+              '<div style="color:var(--emerald)">~' + v.earningsGstd + ' GSTD/d</div>' +
+              '</div>' +
+              (!available ?
+                '<div style="margin-top:8px;font-size:10px;color:var(--amber);padding:6px 8px;background:rgba(245,158,11,0.08);border-radius:6px;border:1px solid rgba(245,158,11,0.2)">' + v.heavyNote + '</div>' :
+                (!s.pid && !enabled ?
+                  '<button onclick="installValidator(\'' + v.id + '\')" style="margin-top:8px;width:100%;padding:6px;font-size:11px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:6px;color:var(--text);cursor:pointer">⬇ Install Binary</button>' : '')) +
+              '</div>';
+          }).join('');
         } catch (e) {
-          console.warn('NaaS load error:', e);
+          console.warn('Validators load error:', e);
         }
+      }
+
+      async function toggleValidator(id, checkbox) {
+        const checked = checkbox.checked !== undefined ? checkbox.checked : !checkbox;
+        try {
+          const r = await fetch(API + '/api/validators/' + id + '/toggle', { method: 'POST' });
+          const d = await r.json();
+          log((d.ok ? '✅' : '❌') + ' ' + (d.message || id), d.ok ? 'success' : 'error');
+          setTimeout(loadNaaS, 800);
+        } catch { log('Validator toggle failed', 'error'); }
+      }
+
+      async function installValidator(id) {
+        log('Installing ' + id + ' binary...', 'info');
+        try {
+          const r = await fetch(API + '/api/validators/' + id + '/install', { method: 'POST' });
+          const d = await r.json();
+          log((d.ok ? '✅ Installed: ' : '❌ ') + (d.message || id), d.ok ? 'success' : 'error');
+          if (d.ok) setTimeout(loadNaaS, 1000);
+        } catch { log('Install failed', 'error'); }
       }
 
       // ─── Sovereign Fund Data ───────────────────────────────

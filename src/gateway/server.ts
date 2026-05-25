@@ -28,6 +28,7 @@ import { Scheduler } from '../core/scheduler.js';
 import { PeerManager } from '../p2p/peers.js';
 import { IpfsClient } from '../storage/ipfs.js';
 import { FeeLedger } from '../fees/ledger.js';
+import { ValidatorManager, ChainId } from '../validators/manager.js';
 
 // Rewards are calculated server-side via /api/v1/nodes/heartbeat
 // Node does NOT self-award tokens
@@ -201,6 +202,7 @@ export class OmegaGateway {
     private peerManager: PeerManager | null = null;
     private ipfs: IpfsClient | null = null;
     private feeLedger: FeeLedger = new FeeLedger();
+    private validatorManager: ValidatorManager | null = null;
     private wallet: NodeWallet | null = null;
     private security: any = null;
     private orchestrator: any = null;
@@ -1469,6 +1471,14 @@ export class OmegaGateway {
                     };
                 })(),
                 gateway: { port: this.config.port, api_port: this.config.apiPort },
+                p2p: {
+                    enabled: !!this.peerManager,
+                    peers: this.peerManager?.getLivePeers().length || 0,
+                    url: this.peerManager?.getSelfUrl() || process.env.GSTD_PUBLIC_URL || '',
+                },
+                ipfs: this.ipfs ? await this.ipfs.getStats().catch(() => ({ enabled: false })) : { enabled: false },
+                fees: this.feeLedger.getStats(),
+                validators: this.validatorManager?.getAll() || [],
             });
         });
 
@@ -3984,6 +3994,31 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             }
         });
 
+        // ─── Validator Manager API ─────────────────────────────────────
+
+        // GET /api/validators — list all chains with hardware requirements + toggle state
+        this.app.get('/api/validators', (_req, res) => {
+            res.json({ validators: this.validatorManager?.getAll() || [] });
+        });
+
+        // POST /api/validators/:chain/toggle — enable/disable a chain
+        this.app.post('/api/validators/:chain/toggle', async (req, res) => {
+            if (!this.validatorManager) {
+                return res.status(503).json({ error: 'Validator manager not ready' });
+            }
+            const result = await this.validatorManager.toggle(req.params.chain as ChainId);
+            res.json(result);
+        });
+
+        // POST /api/validators/:chain/install — download native binary for chain
+        this.app.post('/api/validators/:chain/install', async (req, res) => {
+            if (!this.validatorManager) {
+                return res.status(503).json({ error: 'Validator manager not ready' });
+            }
+            const result = await this.validatorManager.installBinary(req.params.chain as ChainId);
+            res.json(result);
+        });
+
         logActivity('Core modules v4.0 initialized: EventBus, PlatformLink, ModelFailover, Diagnostics, UsageTracker, Scheduler', 'info');
     }
 
@@ -4020,6 +4055,12 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
         if (this.ipfs.isEnabled) {
             logActivity(`IPFS storage ready (peer: ${this.ipfs.peerIdShort}...)`, 'success');
         }
+    }
+
+    private _initValidators(): void {
+        this.validatorManager = new ValidatorManager();
+        this.validatorManager.startPolling();
+        logActivity('Validator manager ready (toggle chains from dashboard)', 'success');
     }
 
     private async _startPeerManager(): Promise<void> {
@@ -4133,9 +4174,10 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                             this.eventBus.broadcast('app', 'install:complete', data);
                         });
 
-                        // ─── P2P + IPFS ───────────────────────────
+                        // ─── P2P + IPFS + Validators ──────────────
                         this._initIpfs().catch(() => {});
                         this._startPeerManager().catch(() => {});
+                        this._initValidators();
 
                         console.log(`    Gateway ready on port ${port}`);
                         resolve();

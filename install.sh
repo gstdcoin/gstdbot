@@ -338,6 +338,44 @@ step 6 "Registering with GSTD Swarm..."
 info "Node registered (or will auto-register on heartbeat)"
 
 # ═══════════════════════════════════════════════════════════════
+# STEP 6.5: IPFS (Kubo) Setup — decentralized storage
+# ═══════════════════════════════════════════════════════════════
+IPFS_BIN="$HOME/ipfs-bin/ipfs"
+IPFS_PATH="$HOME/.ipfs"
+if [ ! -f "$IPFS_BIN" ]; then
+    info "Installing IPFS (Kubo)..."
+    mkdir -p "$HOME/ipfs-bin"
+    IPFS_ARCH="amd64"
+    case "$(uname -m)" in arm64|aarch64) IPFS_ARCH="arm64";; esac
+    KUBO_VER="v0.32.1"
+    KUBO_URL="https://dist.ipfs.tech/kubo/${KUBO_VER}/kubo_${KUBO_VER}_linux-${IPFS_ARCH}.tar.gz"
+    if curl -fsSL "$KUBO_URL" | tar -xz -C /tmp/kubo-tmp --strip-components=1 kubo/ipfs 2>/dev/null; then
+        mv /tmp/kubo-tmp/ipfs "$IPFS_BIN" && chmod +x "$IPFS_BIN"
+        info "IPFS binary installed"
+    else
+        warn "IPFS download failed — storage will be disabled"
+    fi
+fi
+
+if [ -f "$IPFS_BIN" ] && [ ! -d "$IPFS_PATH/config" ] && [ ! -f "$IPFS_PATH/config" ]; then
+    info "Initializing IPFS repository..."
+    IPFS_PATH="$IPFS_PATH" "$IPFS_BIN" init --profile=lowpower 2>/dev/null || true
+    IPFS_PATH="$IPFS_PATH" "$IPFS_BIN" config --json Datastore.StorageMax '"10GB"' 2>/dev/null || true
+    IPFS_PATH="$IPFS_PATH" "$IPFS_BIN" config --json Swarm.ConnMgr.HighWater 20 2>/dev/null || true
+    info "IPFS initialized"
+fi
+
+# Set up tunnel script (public URL via localhost.run)
+if [ -f "$INSTALL_DIR/tunnel.sh" ] && [ ! -x "$INSTALL_DIR/tunnel.sh" ]; then
+    chmod +x "$INSTALL_DIR/tunnel.sh"
+fi
+
+# Use ecosystem.config.js if available (includes ipfs + tunnel + gstdbot)
+if [ -f "$INSTALL_DIR/ecosystem.config.js" ] && command -v pm2 &>/dev/null; then
+    info "Using pm2 ecosystem (ipfs + tunnel + gstdbot)"
+fi
+
+# ═══════════════════════════════════════════════════════════════
 # STEP 7: Start Node (systemd or background)
 # ═══════════════════════════════════════════════════════════════
 step 7 "Starting GSTD Node OS..."
@@ -424,18 +462,29 @@ if [ "$USED_SYSTEMD" = false ]; then
     if command -v pm2 &>/dev/null; then
         cd "$INSTALL_DIR"
         # Stop old instances if running
+        pm2 delete gstdbot 2>/dev/null
         pm2 delete gstd-node 2>/dev/null
         pm2 delete gstd-bridge 2>/dev/null
+        pm2 delete ipfs 2>/dev/null
+        pm2 delete tunnel 2>/dev/null
 
-        # Start node with PM2 (auto-restart on crash, memory limit 512MB)
-        NODE_NAME="${NODE_NAME}" GSTD_DASHBOARD_PORT="$DASH_PORT" GSTD_NODE_ID="$NODE_ID" \
-            pm2 start dist/index.js --name gstd-node \
-            --max-memory-restart 512M \
-            --log "$CONFIG_DIR/node.log" \
-            --time \
-            --merge-logs
+        # Prefer ecosystem.config.js (includes ipfs + tunnel + gstdbot)
+        if [ -f "$INSTALL_DIR/ecosystem.config.js" ]; then
+            pm2 start "$INSTALL_DIR/ecosystem.config.js" 2>/dev/null || \
+            NODE_NAME="${NODE_NAME}" GSTD_DASHBOARD_PORT="$DASH_PORT" GSTD_NODE_ID="$NODE_ID" \
+                pm2 start dist/index.js --name gstdbot \
+                --max-memory-restart 768M \
+                --log "$CONFIG_DIR/node.log" \
+                --time --merge-logs
+        else
+            NODE_NAME="${NODE_NAME}" GSTD_DASHBOARD_PORT="$DASH_PORT" GSTD_NODE_ID="$NODE_ID" \
+                pm2 start dist/index.js --name gstdbot \
+                --max-memory-restart 768M \
+                --log "$CONFIG_DIR/node.log" \
+                --time --merge-logs
+        fi
 
-        # Start Bridge with PM2
+        # Start Bridge with PM2 (legacy)
         if [ -f "$CONFIG_DIR/bridge/gstd-bridge" ]; then
             pm2 start "$CONFIG_DIR/bridge/gstd-bridge" --name gstd-bridge \
                 --log "$CONFIG_DIR/bridge/bridge.log" \
@@ -454,10 +503,10 @@ if [ "$USED_SYSTEMD" = false ]; then
         pm2 set pm2-logrotate:retain 5 2>/dev/null
 
         sleep 3
-        if pm2 pid gstd-node >/dev/null 2>&1; then
+        if pm2 pid gstdbot >/dev/null 2>&1 || pm2 pid gstd-node >/dev/null 2>&1; then
             info "Running via PM2 (auto-restart, log rotation, memory guard)"
         else
-            warn "PM2 start failed. Check: pm2 logs gstd-node"
+            warn "PM2 start failed. Check: pm2 logs gstdbot"
         fi
         cd - >/dev/null
     else
