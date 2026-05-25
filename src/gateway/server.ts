@@ -3818,7 +3818,8 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                             wsClients: this.eventBus.getClientCount(),
                         }));
                         this.platformLink.setCapabilitiesProvider(() => ({
-                            models: ['groq/compound', 'llama-3.3-70b-versatile', 'qwen/qwen3-32b'],
+                            // Gateway reports no inference models — actual inference is served by swarm agent
+                            models: [],
                             channels: ['telegram', 'webchat'],
                             apps: this.appManager.getInstalled?.()?.length || 0,
                             memory: !!this.subsystems?.memory,
