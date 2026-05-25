@@ -549,6 +549,26 @@ export class OmegaGateway {
         });
 
         // ─── OpenAI-compatible chat completions ──────────────────
+        // ─── Direct Ollama endpoint (no GSTD network routing) ────
+        this.app.post('/v1/ollama/completions', async (req, res) => {
+            const { model = 'llama3.2:3b', messages, max_tokens = 2048, temperature } = req.body || {};
+            if (!messages?.length) return res.status(400).json({ error: 'messages required' });
+            const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
+            try {
+                const resp = await fetch(`${ollamaUrl}/v1/chat/completions`, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ model, messages, stream: false, max_tokens, temperature, keep_alive: -1 }),
+                    signal:  AbortSignal.timeout(90_000),
+                });
+                if (!resp.ok) { const t = await resp.text(); return res.status(502).json({ error: t }); }
+                const data = await resp.json();
+                res.json(data);
+            } catch (e: any) {
+                res.status(503).json({ error: e.message });
+            }
+        });
+
         this.app.post('/v1/chat/completions', async (req, res) => {
             try {
                 const { model, messages, stream = false } = req.body;
@@ -3802,11 +3822,29 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
         } catch (_) { /* Ollama not running yet */ }
     }
 
+    private async _preWarmOllama(): Promise<void> {
+        if (!this._availableModels.length) return;
+        const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
+        const model = this._availableModels[0];
+        try {
+            logActivity(`Pre-warming Ollama model: ${model}`, 'info');
+            await fetch(`${ollamaUrl}/v1/chat/completions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1, keep_alive: -1 }),
+                signal: AbortSignal.timeout(90_000),
+            });
+            logActivity(`Ollama model ${model} pre-warmed and pinned`, 'success');
+        } catch (_) { /* warm-up is best-effort */ }
+    }
+
     async start(): Promise<void> {
         const MAX_PORT_ATTEMPTS = 10;
         // Resolve Ollama models before heartbeat starts; refresh every 60s
         await this._refreshOllamaModels();
         setInterval(() => this._refreshOllamaModels(), 60_000);
+        // Pre-warm the first available model so first inference is fast
+        this._preWarmOllama();
         let port = this.config.apiPort;
 
         for (let attempt = 0; attempt < MAX_PORT_ATTEMPTS; attempt++) {

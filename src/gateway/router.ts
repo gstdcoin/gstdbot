@@ -151,7 +151,18 @@ export class NeuralRouter {
             console.warn('[Router] GSTD network unavailable:', err?.message?.substring(0, 80));
         }
 
-        // ─── L3: Fallback ───────────────────────────────────────────
+        // ─── L3: Local Ollama ──────────────────────────────────────
+        const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
+        try {
+            const ollamaModel = requestedModel.includes(':') ? requestedModel : 'llama3.2:3b';
+            const result = await this.callOllamaLocal(ollamaUrl, ollamaModel, messages, 2048);
+            this.cache.set(cacheKey, result.content, result.model);
+            return { ...result, latencyMs: Date.now() - start };
+        } catch (err: any) {
+            console.warn('[Router] Local Ollama unavailable:', err?.message?.substring(0, 80));
+        }
+
+        // ─── L4: Fallback ───────────────────────────────────────────
         return {
             content: '🐝 The GSTD Swarm is initialising. Please send your message again in a moment.',
             model: 'fallback',
@@ -159,6 +170,37 @@ export class NeuralRouter {
             latencyMs: Date.now() - start,
             usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
         };
+    }
+
+    // ─── Local Ollama call ───────────────────────────────────────
+    private async callOllamaLocal(ollamaUrl: string, model: string, messages: ChatMessage[], maxTokens: number): Promise<RouteResult> {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 90_000);
+        try {
+            const resp = await fetch(`${ollamaUrl}/v1/chat/completions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model, messages, stream: false, max_tokens: maxTokens, keep_alive: -1 }),
+                signal: controller.signal,
+            });
+            if (!resp.ok) throw new Error(`Ollama ${resp.status}: ${await resp.text()}`);
+            const data: any = await resp.json();
+            const content = stripThinkTags(data.choices?.[0]?.message?.content || '');
+            if (!content) throw new Error('Empty Ollama response');
+            return {
+                content,
+                model: data.model || model,
+                tier: 'gstd',
+                latencyMs: 0,
+                usage: {
+                    promptTokens:     data.usage?.prompt_tokens     || 0,
+                    completionTokens: data.usage?.completion_tokens || 0,
+                    totalTokens:      data.usage?.total_tokens      || 0,
+                },
+            };
+        } finally {
+            clearTimeout(timeout);
+        }
     }
 
     // ─── Single GSTD network call ─────────────────────────────────
