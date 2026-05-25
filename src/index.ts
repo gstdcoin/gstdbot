@@ -368,12 +368,9 @@ async function main(): Promise<void> {
         });
         try {
             p2pPeerId = await p2pNode.start();
-            p2pNode.on('task:received', (task: any) => {
-                logActivity(`P2P task received: ${task.taskId}`, 'info');
-            });
-            p2pNode.on('heartbeat:received', (hb: any) => {
-                logActivity(`P2P heartbeat from ${hb.nodeId}`, 'info');
-            });
+            // Wire P2P into SwarmAgent: P2P tasks routed through processTask(),
+            // P2P heartbeats used to dial new WAN peers for mesh formation
+            if (swarm) swarm.setP2PNode(p2pNode);
         } catch (e: any) {
             console.log(`    ⚠ P2P mesh: ${e.message} (platform-only mode)`);
         }

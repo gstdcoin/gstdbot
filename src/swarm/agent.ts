@@ -82,6 +82,7 @@ export class SwarmAgent {
     private startedAt = Date.now();
     private stats: SwarmStats;
     public sovereign: SovereignSuite;
+    private p2pNode: any = null;
 
     constructor(config: NodeConfig, wallet: NodeWallet, memory: CollectiveMemory) {
         this.config = config;
@@ -108,6 +109,33 @@ export class SwarmAgent {
             nextTierHours: 100,
             tasksByType: {},
         };
+    }
+
+    // ─── P2P Integration ─────────────────────────────────────────
+    setP2PNode(node: any): void {
+        this.p2pNode = node;
+
+        // Route P2P tasks directly into the same processing pipeline
+        node.on('task:received', (p2pTask: any) => {
+            const task: SwarmTask = {
+                id: p2pTask.taskId,
+                type: 'inference',
+                model: p2pTask.model,
+                prompt: p2pTask.prompt,
+                payload: { max_tokens: p2pTask.maxTokens },
+                reward_gstd: p2pTask.rewardGstd || 0,
+                requester: p2pTask.senderNodeId,
+                priority: 1,
+            };
+            this.processTask(task).catch(() => {});
+        });
+
+        // Use P2P heartbeats to dial new peers for WAN mesh formation
+        node.on('heartbeat:received', (hb: any) => {
+            if (hb.multiaddrs?.length) {
+                for (const ma of hb.multiaddrs) node.connectToPeer(ma).catch(() => {});
+            }
+        });
     }
 
     async start(): Promise<void> {
@@ -251,7 +279,7 @@ export class SwarmAgent {
             const walletAddr = this.wallet.getAddress();
 
             // Platform heartbeat expects: { wallet_address, node_name, node_version, uptime_hours, queries_served }
-            const payload = {
+            const payload: any = {
                 wallet_address: walletAddr || this.config.nodeId,
                 node_id: this.config.nodeId,
                 node_name: this.config.nodeName,
@@ -270,7 +298,13 @@ export class SwarmAgent {
                 version: this.config.version,
                 mode: this.config.mode,
                 memory_entries: this.memory.getEntryCount(),
+                capabilities: this.config.groq.models,
             };
+            // Include P2P multiaddrs so the platform can relay them to other nodes
+            if (this.p2pNode) {
+                const addrs = this.p2pNode.getMultiaddrs?.() || [];
+                if (addrs.length) payload.multiaddrs = addrs;
+            }
 
             const result = await this.apiCall('/nodes/heartbeat', payload);
 
@@ -450,6 +484,15 @@ export class SwarmAgent {
                 // Sync to sovereign mesh
                 const peerIds = result.peers.map((p: any) => p.node_id || p.name || 'unknown');
                 this.sovereign.updateMeshPeers(peerIds);
+                // Dial P2P multiaddrs to establish WAN mesh without central coordination
+                if (this.p2pNode) {
+                    for (const peer of result.peers) {
+                        const addrs: string[] = peer.multiaddrs || [];
+                        for (const ma of addrs) {
+                            this.p2pNode.connectToPeer(ma).catch(() => {});
+                        }
+                    }
+                }
             }
         } catch (_e) { }
     }
