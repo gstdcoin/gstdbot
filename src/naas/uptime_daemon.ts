@@ -239,13 +239,14 @@ export class UptimeDaemon {
     // ─── Tunnel URL ───────────────────────────────────────────
 
     private getTunnelUrl(): string | null {
-        // Priority: env var > localhost.run tunnel file > null
-        if (process.env.GSTD_PUBLIC_URL) return process.env.GSTD_PUBLIC_URL.replace(/\/$/, '');
+        // File takes priority — tunnel.sh always writes the CURRENT URL here,
+        // while process.env.GSTD_PUBLIC_URL is frozen at process startup.
         const file = '/tmp/gstd_tunnel_url.txt';
         if (existsSync(file)) {
             const url = readFileSync(file, 'utf-8').trim();
             if (url.startsWith('http')) return url;
         }
+        if (process.env.GSTD_PUBLIC_URL) return process.env.GSTD_PUBLIC_URL.replace(/\/$/, '');
         return null;
     }
 
