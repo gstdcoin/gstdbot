@@ -121,8 +121,10 @@ export class UptimeDaemon {
         // Public node URL for P2P discovery — read from tunnel or env
         const tunnelUrl = this.getTunnelUrl();
         const multiaddrs = tunnelUrl ? [tunnelUrl] : [];
+        // Detect available Ollama models for capability advertising
+        const capabilities = await this.getOllamaModels();
 
-        const heartbeat: UptimeHeartbeat & { wallet_address?: string; multiaddrs?: string[]; node_url?: string } = {
+        const heartbeat: UptimeHeartbeat & { wallet_address?: string; multiaddrs?: string[]; node_url?: string; capabilities?: string[] } = {
             node_id: this.nodeId,
             wallet: this.walletAddress,
             wallet_address: this.walletAddress,
@@ -131,6 +133,7 @@ export class UptimeDaemon {
             version: '3.4.0',
             containers,
             multiaddrs,
+            ...(capabilities.length && { capabilities }),
             ...(tunnelUrl && { node_url: tunnelUrl }),
             hardware: {
                 cpu_cores: cpuInfo.length,
@@ -217,6 +220,17 @@ export class UptimeDaemon {
         // Docker-based NaaS commands are no longer supported.
         const { action, image_id, container_name } = cmd;
         logActivity(`NaaS command received: ${action} ${image_id || container_name || ''} — use /api/validators/:chain/toggle instead`, 'warn');
+    }
+
+    // ─── Ollama Models ────────────────────────────────────────
+
+    private async getOllamaModels(): Promise<string[]> {
+        try {
+            const r = await fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(2000) });
+            if (!r.ok) return [];
+            const d: any = await r.json();
+            return (d.models || []).map((m: any) => m.name as string).filter(Boolean);
+        } catch { return []; }
     }
 
     // ─── Tunnel URL ───────────────────────────────────────────
