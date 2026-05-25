@@ -126,7 +126,7 @@ async function judge(prompt: string, candidates: CandidateResult[]): Promise<Jud
 }
 
 async function run(): Promise<void> {
-    const router = new NeuralRouter(process.env.GSTD_SWARM_URL || 'https://api.gstdtoken.com', true);
+    const router = new NeuralRouter(process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com', true);
 
     const reportLines: string[] = [];
     reportLines.push('# Quality Evaluation Report');

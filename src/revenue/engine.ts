@@ -60,7 +60,7 @@ const DEFAULT_RATES: RevenueRates = {
     staking_apy: 12,              // 12% annual
 };
 
-const PLATFORM_API = process.env.GSTD_API_URL || 'https://api.gstdtoken.com/api/v1';
+const PLATFORM_API = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
 const SETTLEMENT_BATCH_SIZE = 50;       // Settle after 50 events
 const SETTLEMENT_INTERVAL_MS = 300_000; // Or every 5 minutes
 

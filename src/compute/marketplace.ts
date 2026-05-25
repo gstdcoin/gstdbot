@@ -68,7 +68,7 @@ export interface MarketplaceStats {
     averageBidGSTD: number;
 }
 
-const PLATFORM_API = process.env.GSTD_API_URL || 'https://api.gstdtoken.com/api/v1';
+const PLATFORM_API = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
 const JOB_POLL_INTERVAL = 15_000;  // Poll for jobs every 15s
 
 // ─── Compute Marketplace ────────────────────────────────────────

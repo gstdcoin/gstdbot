@@ -49,7 +49,7 @@ function getPriceNano(method: string): number {
 // ─── Auth & Balance Check (calls GSTD Platform API) ─────────────
 async function checkAndDeductBalance(apiKey: string, priceNano: number): Promise<boolean> {
     try {
-        const resp = await fetch('https://api.gstdtoken.com/api/v1/rpc/charge', {
+        const resp = await fetch('https://app.gstdtoken.com/api/v1/rpc/charge', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

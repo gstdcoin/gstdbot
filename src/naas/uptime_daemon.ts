@@ -14,7 +14,7 @@ import { cpus, totalmem, freemem, loadavg } from 'os';
 import { logActivity } from '../gateway/server.js';
 
 const HEARTBEAT_INTERVAL_MS = 30_000; // Every 30 seconds
-const PLATFORM_URL = process.env.GSTD_SWARM_URL || 'https://api.gstdtoken.com';
+const PLATFORM_URL = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
 
 export interface ContainerStatus {
     name: string;

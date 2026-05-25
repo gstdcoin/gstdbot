@@ -40,7 +40,7 @@ export interface GatewayConfig {
 const DEFAULT_CONFIG: GatewayConfig = {
     port: 18789,
     apiPort: 8080,
-    swarmUrl: process.env.GSTD_SWARM_URL || 'https://api.gstdtoken.com',
+    swarmUrl: process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com',
     cocoonEnabled: process.env.GSTD_COCOON_ENABLED !== 'false',
     sovereigntyMode: (process.env.GSTD_SOVEREIGNTY_MODE as any) || 'full',
 };
@@ -433,7 +433,7 @@ export class OmegaGateway {
                 // Fallback: check via platform API when git is not available
                 try {
                     const currentVersion = require('../../package.json').version || 'unknown';
-                    const apiUrl = process.env.GSTD_API_URL || 'https://api.gstdtoken.com/api/v1';
+                    const apiUrl = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
                     const resp = await fetch(`${apiUrl}/nodes/update/check?version=${currentVersion}`, {
                         signal: AbortSignal.timeout(5000),
                     });
@@ -1281,7 +1281,7 @@ export class OmegaGateway {
         // ─── Tasks ───────────────────────────────────────────────
         this.app.get('/api/node/tasks', async (_req, res) => {
             try {
-                const resp = await fetch('https://api.gstdtoken.com/api/v1/monitor/unified').catch(() => null);
+                const resp = await fetch('https://app.gstdtoken.com/api/v1/monitor/unified').catch(() => null);
                 if (resp?.ok) { const data: any = await resp.json(); res.json({ pending: data.ecosystem?.tasks_pending || 0, completed: data.ecosystem?.tasks_completed || 0, processing: data.ecosystem?.tasks_processing || 0 }); return; }
             } catch (_e) { }
             res.json({ pending: 0, completed: 0, processing: 0 });
@@ -2211,7 +2211,7 @@ export class OmegaGateway {
         // ═══════════════════════════════════════════════════════════
         this.app.get('/api/swarm/network', async (_req, res) => {
             try {
-                const resp = await fetch('https://api.gstdtoken.com/api/v1/monitor/unified', {
+                const resp = await fetch('https://app.gstdtoken.com/api/v1/monitor/unified', {
                     signal: AbortSignal.timeout(5000)
                 }).catch(() => null);
                 if (resp?.ok) {
@@ -3735,7 +3735,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                 let fundBacking = 0;
                 let currentEpoch = 1;
                 try {
-                    const platformUrl = process.env.GSTD_SWARM_URL || 'https://api.gstdtoken.com';
+                    const platformUrl = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
                     const [fundRes] = await Promise.allSettled([
                         fetch(`${platformUrl}/api/v1/fund/status`, { signal: AbortSignal.timeout(3000) }).then(r => r.ok ? r.json() : null),
                     ]);
@@ -3773,7 +3773,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
         // GET /api/node/fund — Sovereign Fund live data
         this.app.get('/api/node/fund', async (_req, res) => {
             try {
-                const platformUrl = process.env.GSTD_SWARM_URL || 'https://api.gstdtoken.com';
+                const platformUrl = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
                 const [statusRes, epochRes, leaderboardRes] = await Promise.allSettled([
                     fetch(`${platformUrl}/api/v1/fund/status`, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null),
                     fetch(`${platformUrl}/api/v1/fund/epoch`, { signal: AbortSignal.timeout(5000) }).then(r => r.ok ? r.json() : null),

@@ -69,7 +69,7 @@ const CONTRACTS = {
     GOVERNANCE:    process.env.GSTD_CONTRACT_GOV      || 'UQCkXFlNRsubUp7Uh7lg_ScUqLCiff1QCLsdQU0a7kphqQED',  // Platform wallet
 };
 
-const PLATFORM_API = process.env.GSTD_API_URL || 'https://api.gstdtoken.com/api/v1';
+const PLATFORM_API = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
 
 // ─── Blockchain Manager ─────────────────────────────────────────
 export class BlockchainManager {
