@@ -192,6 +192,7 @@ export class OmegaGateway {
     private router: NeuralRouter;
     private sessions: SessionManager;
     private config: GatewayConfig;
+    private _availableModels: string[] = [];
     private clients = new Map<string, WebSocket>();
     private appManager: AppManager;
     private wallet: NodeWallet | null = null;
@@ -231,7 +232,7 @@ export class OmegaGateway {
         this.server = http.createServer(this.app);
 
         // ─── Core Module Init ────────────────────────────
-        this.nodeId = `gstd-${hostname()}-${process.pid}`;
+        this.nodeId = process.env.GSTD_NODE_ID || `gstd-${hostname()}-${process.pid}`;
 
         this.eventBus = new NodeEventBus(this.nodeId);
 
@@ -3790,8 +3791,22 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
         logActivity('Core modules v4.0 initialized: EventBus, PlatformLink, ModelFailover, Diagnostics, UsageTracker, Scheduler', 'info');
     }
 
+    private async _refreshOllamaModels(): Promise<void> {
+        const ollamaUrl = (process.env.OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '');
+        try {
+            const r = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(3000) });
+            if (r.ok) {
+                const d: any = await r.json();
+                this._availableModels = (d.models || []).map((m: any) => m.name as string).filter(Boolean);
+            }
+        } catch (_) { /* Ollama not running yet */ }
+    }
+
     async start(): Promise<void> {
         const MAX_PORT_ATTEMPTS = 10;
+        // Resolve Ollama models before heartbeat starts; refresh every 60s
+        await this._refreshOllamaModels();
+        setInterval(() => this._refreshOllamaModels(), 60_000);
         let port = this.config.apiPort;
 
         for (let attempt = 0; attempt < MAX_PORT_ATTEMPTS; attempt++) {
@@ -3818,8 +3833,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                             wsClients: this.eventBus.getClientCount(),
                         }));
                         this.platformLink.setCapabilitiesProvider(() => ({
-                            // Gateway reports no inference models — actual inference is served by swarm agent
-                            models: [],
+                            models: this._availableModels,
                             channels: ['telegram', 'webchat'],
                             apps: this.appManager.getInstalled?.()?.length || 0,
                             memory: !!this.subsystems?.memory,
