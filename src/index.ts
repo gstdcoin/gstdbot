@@ -497,15 +497,14 @@ async function main(): Promise<void> {
             try {
                 execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 180000 });
                 
-                // Verify TypeScript compilation
-                execSync('npx tsc --noEmit 2>/dev/null || true', { cwd: installDir, timeout: 60000 });
-                
-                // Check that main entry point exists
+                // Build TypeScript → dist/ (required since pm2 runs dist/index.js)
+                execSync('node_modules/.bin/tsc --skipLibCheck 2>/dev/null', { cwd: installDir, timeout: 90000 });
+
+                // Verify entry point was produced
                 const { existsSync: pathExists } = require('fs');
                 const distPath = join(installDir, 'dist', 'index.js');
-                const srcPath = join(installDir, 'src', 'index.ts');
-                if (!pathExists(distPath) && !pathExists(srcPath)) {
-                    throw new Error('Entry point missing after update');
+                if (!pathExists(distPath)) {
+                    throw new Error('Build succeeded but dist/index.js missing');
                 }
                 
                 logActivity(`Update verified (${remoteHash.slice(0,8)}). Restarting...`, 'success');
