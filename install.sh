@@ -365,9 +365,18 @@ if [ -f "$IPFS_BIN" ] && [ ! -d "$IPFS_PATH/config" ] && [ ! -f "$IPFS_PATH/conf
     info "IPFS initialized"
 fi
 
-# Set up tunnel script (public URL via localhost.run)
+# Set up Cloudflare Tunnel binary (public URL — accessible from Vercel/cloud)
 if [ -f "$INSTALL_DIR/tunnel.sh" ] && [ ! -x "$INSTALL_DIR/tunnel.sh" ]; then
     chmod +x "$INSTALL_DIR/tunnel.sh"
+fi
+if [ ! -f "$INSTALL_DIR/cloudflared" ]; then
+    ARCH=$(uname -m)
+    CF_ARCH="amd64"; [ "$ARCH" = "aarch64" ] && CF_ARCH="arm64"
+    info "Downloading cloudflared ($CF_ARCH)..."
+    curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${CF_ARCH}" \
+        -o "$INSTALL_DIR/cloudflared" && chmod +x "$INSTALL_DIR/cloudflared" \
+        && info "cloudflared installed" \
+        || warn "cloudflared download failed — tunnel may not work"
 fi
 
 # Use ecosystem.config.js if available (includes ipfs + tunnel + gstdbot)
