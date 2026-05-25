@@ -277,6 +277,7 @@ async function main(): Promise<void> {
         console.log(`  [11/${TOTAL_STEPS}] Initializing Traffic Relay...`);
         trafficRelay = new TrafficRelay(config.nodeId);
         trafficRelay.setRevenueEngine(revenue);
+        (trafficRelay as any).setFeeLedger(gateway.getFeeLedger());
         await trafficRelay.init();
         trafficRelay.mountRoutes(gateway.getExpressApp());
 

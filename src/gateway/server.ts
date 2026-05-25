@@ -1479,6 +1479,7 @@ export class OmegaGateway {
                 ipfs: this.ipfs ? await this.ipfs.getStats().catch(() => ({ enabled: false })) : { enabled: false },
                 fees: this.feeLedger.getStats(),
                 validators: this.validatorManager?.getAll() || [],
+                relay: (this.subsystems as any)?.trafficRelay?.getStats?.() || { enabled: false },
             });
         });
 
@@ -4228,6 +4229,11 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
     /** Expose Express app for external route registration (TMA, etc.) */
     getExpressApp(): express.Express {
         return this.app;
+    }
+
+    /** Expose fee ledger so relay and other subsystems can charge fees */
+    getFeeLedger(): FeeLedger {
+        return this.feeLedger;
     }
 
     async stop(): Promise<void> {
