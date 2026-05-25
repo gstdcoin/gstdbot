@@ -464,7 +464,7 @@ async function main(): Promise<void> {
         console.log('  ── Revenue Streams ──────────────────────────────');
         console.log('  💾 Storage:     ' + (storageVault?.isEnabled() ? `✓ ${storageStats?.totalCapacityGB} GB available` : 'disabled'));
         console.log('  💻 Compute:     ' + (computeMarket?.isEnabled() ? `✓ score ${computeStats?.benchmarkScore} pts` : 'disabled'));
-        console.log('  🧠 Inference:   ✓ 8 AI models (earn per query)');
+        console.log('  🧠 Inference:   ' + (config.groq.models.length > 0 ? `✓ ${config.groq.models.length} model(s): ${config.groq.models.join(', ')}` : 'no models detected'));
         console.log('  📡 Relay:       ' + (trafficRelay?.isEnabled() ? '✓ VPN/CDN/API proxy' : 'disabled'));
         console.log('  🌐 NaaS RPC:    ' + (naas ? `✓ ${naas.getStatus().active_chains.length} chains active` : 'disabled'));
         console.log('  🎓 Training:    ' + ((trainer?.getStats()?.activeJobs || 0) > 0 ? 'active' : '✓ ready'));

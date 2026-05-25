@@ -591,8 +591,13 @@ export class SwarmAgent {
     }
 
     private async processTask(task: SwarmTask): Promise<void> {
+        // Normalize: completions.ts uses task_id, internal tasks use id
+        if (!(task as any).id && (task as any).task_id) {
+            (task as any).id = (task as any).task_id;
+        }
+        const taskId = (task as any).id || (task as any).task_id || 'unknown';
         this.stats.tasksProcessing++;
-        logActivity(`Processing task: ${task.type} (${task.id.slice(0, 8)}...) reward: ${task.reward_gstd} GSTD`, 'info');
+        logActivity(`Processing task: ${task.type} (${taskId.slice(0, 8)}...) reward: ${task.reward_gstd} GSTD`, 'info');
 
         try {
             let result: any = null;
@@ -626,7 +631,7 @@ export class SwarmAgent {
 
             // Report completion — include campaign_id and reward so treasury accounting works
             await this.apiCall('/tasks/complete', {
-                task_id:      task.id,
+                task_id:      taskId,
                 node_id:      this.config.nodeId,
                 result,
                 wallet_address: this.wallet.getAddress(),
@@ -638,14 +643,14 @@ export class SwarmAgent {
             this.stats.tasksCompleted++;
             this.stats.totalEarnedGstd += task.reward_gstd;
             this.stats.tasksByType[task.type] = (this.stats.tasksByType[task.type] || 0) + 1;
-            logActivity(`${this.stats.tierIcon} Task ${task.id.slice(0, 8)} completed → +${task.reward_gstd} GSTD (${task.type}) [total: ${this.stats.tasksCompleted}]`, 'success');
+            logActivity(`${this.stats.tierIcon} Task ${taskId.slice(0, 8)} completed → +${task.reward_gstd} GSTD (${task.type}) [total: ${this.stats.tasksCompleted}]`, 'success');
 
             // Submit consensus vote for this task result (mesh decentralization)
             const resultHash = createHash('sha256').update(JSON.stringify(result)).digest('hex').slice(0, 16);
-            this.sovereign.submitConsensusVote(task.id, resultHash).catch(() => {});
+            this.sovereign.submitConsensusVote(taskId, resultHash).catch(() => {});
 
             // Record in wallet
-            this.wallet.recordVerifiedEarning(task.reward_gstd, task.type as any, `Task ${task.type}: ${task.id.slice(0, 8)}`, task.id);
+            this.wallet.recordVerifiedEarning(task.reward_gstd, task.type as any, `Task ${task.type}: ${taskId.slice(0, 8)}`, taskId);
 
             // Save to collective memory if inference
             if (task.type === 'inference' && task.prompt && result?.response) {
@@ -654,10 +659,10 @@ export class SwarmAgent {
 
         } catch (e: any) {
             this.stats.tasksFailed++;
-            logActivity(`Task ${task.id.slice(0, 8)} failed: ${e.message}`, 'error');
+            logActivity(`Task ${taskId.slice(0, 8)} failed: ${e.message}`, 'error');
 
             await this.apiCall('/tasks/fail', {
-                task_id: task.id,
+                task_id: taskId,
                 node_id: this.config.nodeId,
                 error: e.message,
             }).catch(() => { });
