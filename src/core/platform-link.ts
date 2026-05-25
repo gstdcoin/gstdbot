@@ -113,22 +113,25 @@ export class PlatformLink extends EventEmitter {
 
     private async sendHeartbeat() {
         const stats = this.statsCollector?.() || {};
+        const caps = this.capabilitiesProvider?.() || {};
 
         try {
-            // Send heartbeat with fields matching backend HandleHeartbeat:
-            // wallet_address, node_name, node_version, uptime_hours, queries_served
             const resp = await fetch(`${this.platformUrl}/api/v1/nodes/heartbeat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Wallet-Address': this.walletAddress,
+                    'X-Node-Id': this.nodeId,
                 },
                 body: JSON.stringify({
+                    node_id:       this.nodeId,
                     wallet_address: this.walletAddress,
-                    node_name: `Node-${this.nodeId}`,
-                    node_version: this.version,
-                    uptime_hours: Math.round(process.uptime() / 3600),
+                    node_name:     `Node-${this.nodeId}`,
+                    node_version:  this.version,
+                    uptime_hours:  Math.round(process.uptime() / 3600),
                     queries_served: stats.queryCount || 0,
+                    capabilities:  (caps as any).models || [],
+                    mode:          'node',
                 }),
                 signal: AbortSignal.timeout(10000),
             });
