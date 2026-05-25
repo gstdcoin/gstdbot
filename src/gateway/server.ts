@@ -27,6 +27,7 @@ import { UsageTracker } from '../core/usage-tracker.js';
 import { Scheduler } from '../core/scheduler.js';
 import { PeerManager } from '../p2p/peers.js';
 import { IpfsClient } from '../storage/ipfs.js';
+import { FeeLedger } from '../fees/ledger.js';
 
 // Rewards are calculated server-side via /api/v1/nodes/heartbeat
 // Node does NOT self-award tokens
@@ -199,6 +200,7 @@ export class OmegaGateway {
     private appManager: AppManager;
     private peerManager: PeerManager | null = null;
     private ipfs: IpfsClient | null = null;
+    private feeLedger: FeeLedger = new FeeLedger();
     private wallet: NodeWallet | null = null;
     private security: any = null;
     private orchestrator: any = null;
@@ -566,7 +568,10 @@ export class OmegaGateway {
                     signal:  AbortSignal.timeout(90_000),
                 });
                 if (!resp.ok) { const t = await resp.text(); return res.status(502).json({ error: t }); }
-                const data = await resp.json();
+                const data: any = await resp.json();
+                // ─── Charge fee ────────────────────────────────
+                const tokens = data.usage?.completion_tokens || 0;
+                this.feeLedger.chargeInference(model, tokens);
                 res.json(data);
             } catch (e: any) {
                 res.status(503).json({ error: e.message });
@@ -657,7 +662,9 @@ export class OmegaGateway {
                 : Buffer.from(JSON.stringify(content));
             const result = await this.ipfs.add(data, name || 'file');
             if (!result) return res.status(500).json({ error: 'IPFS add failed' });
-            res.json({ ok: true, cid: result.cid, size: result.size });
+            // Charge storage fee (1 day minimum)
+            const fee = this.feeLedger.chargeStorage(result.size, 1);
+            res.json({ ok: true, cid: result.cid, size: result.size, fee_gstd: fee.total });
         });
 
         // GET /api/storage/get/:cid — retrieve content by CID
@@ -685,7 +692,10 @@ export class OmegaGateway {
             if (!cid) return res.status(400).json({ error: 'cid required' });
             const ok = await this.ipfs.pin(cid, name || '', owner_node || '');
             if (!ok) return res.status(500).json({ error: 'pin failed' });
-            res.json({ ok: true, cid });
+            // Charge pin fee (1 day minimum, estimate 1MB if size unknown)
+            const pin = this.ipfs.getPin(cid);
+            const fee = this.feeLedger.chargePin(pin?.size || 1024 * 1024, 1);
+            res.json({ ok: true, cid, fee_gstd: fee.total });
         });
 
         // DELETE /api/storage/pin/:cid — unpin a CID
@@ -695,6 +705,44 @@ export class OmegaGateway {
             }
             const ok = await this.ipfs.unpin(req.params.cid);
             res.json({ ok });
+        });
+
+        // ─── Fee Ledger API ────────────────────────────────────────────
+
+        // GET /api/fees — full stats: gold reserve, distribution, recent events
+        this.app.get('/api/fees', (_req, res) => {
+            const stats = this.feeLedger.getStats();
+            res.json({
+                ...stats,
+                split: { gold_reserve: '50%', node_operator: '30%', dev_fund: '20%' },
+                rates: {
+                    inference:       '0.001 GSTD / request',
+                    inference_tokens:'0.0005 GSTD / 1K tokens',
+                    storage:         '0.00001 GSTD / MB / day',
+                    relay:           '0.005 GSTD / GB',
+                },
+            });
+        });
+
+        // GET /api/fees/reserve — gold reserve summary (public — shows token backing)
+        this.app.get('/api/fees/reserve', (_req, res) => {
+            const s = this.feeLedger.getStats();
+            res.json({
+                gold_reserve_gstd: s.gold_reserve_gstd,
+                pending_settlement_gstd: s.pending_gstd,
+                settled_gstd: s.settled_gstd,
+                total_transactions: s.total_events,
+                node_id: process.env.GSTD_NODE_ID || 'unknown',
+                // Gold reserve grows with every fee collected in the network
+                // When settled on-chain: sent to gold reserve wallet on TON
+                ton_reserve_wallet: process.env.GSTD_RESERVE_WALLET || 'not configured',
+            });
+        });
+
+        // GET /api/fees/events — recent fee events
+        this.app.get('/api/fees/events', (req, res) => {
+            const limit = Math.min(parseInt(req.query.limit as string || '50'), 200);
+            res.json({ events: this.feeLedger.getRecentEvents(limit) });
         });
 
         this.app.post('/v1/chat/completions', async (req, res) => {
