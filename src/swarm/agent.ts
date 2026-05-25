@@ -80,10 +80,12 @@ export class SwarmAgent {
     private connected = false;
     private heartbeatTimer: NodeJS.Timeout | null = null;
     private taskPollTimer: NodeJS.Timeout | null = null;
+    private priorityPollTimer: NodeJS.Timeout | null = null;
     private startedAt = Date.now();
     private stats: SwarmStats;
     public sovereign: SovereignSuite;
     private p2pNode: any = null;
+    private avgLatencyMs = 0;
 
     constructor(config: NodeConfig, wallet: NodeWallet, memory: CollectiveMemory) {
         this.config = config;
@@ -156,8 +158,11 @@ export class SwarmAgent {
         // well within the Vercel KV free tier (3K req/day).
         this.heartbeatTimer = setInterval(() => this.heartbeat(), 8 * 60_000);
 
-        // Start task polling (every 30 seconds)
+        // Start task polling (every 30 seconds for general queue)
         this.taskPollTimer = setInterval(() => this.pollTasks(), 30_000);
+
+        // Priority inference queue poll (every 5 seconds — fast path for AI routing)
+        this.priorityPollTimer = setInterval(() => this.pollPriorityInference(), 5_000);
 
         // Fetch peers every 60 seconds
         setInterval(() => this.fetchPeers(), 60_000);
@@ -188,6 +193,7 @@ export class SwarmAgent {
     async stop(): Promise<void> {
         if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
         if (this.taskPollTimer) clearInterval(this.taskPollTimer);
+        if (this.priorityPollTimer) clearInterval(this.priorityPollTimer);
 
         // Stop sovereign instruments
         await this.sovereign.stop();
@@ -311,6 +317,7 @@ export class SwarmAgent {
                 gpu_vram_mb:     resources.gpu_vram_mb,
                 bandwidth_mbps:  resources.bandwidth_mbps,
                 cpu_score:       resources.cpu_score,
+                avg_latency_ms:  this.avgLatencyMs || undefined,
             };
             // Include P2P multiaddrs so the platform can relay them to other nodes
             if (this.p2pNode) {
@@ -563,6 +570,26 @@ export class SwarmAgent {
         } catch (_e) { }
     }
 
+    // ─── Priority Inference Queue (5s fast path) ─────────────────
+    private async pollPriorityInference(): Promise<void> {
+        if (!this.connected) return;
+        const load = loadavg()[0] / cpus().length;
+        if (load > this.config.swarm.maxCPU / 100) return;
+
+        try {
+            const result = await this.apiCall('/tasks/poll', {
+                node_id:       this.config.nodeId,
+                capabilities:  this.config.groq.models,
+                resources:     this.getResourceStats(),
+                priority_only: true,
+            });
+
+            if (result?.task) {
+                await this.processTask(result.task);
+            }
+        } catch (_e) { }
+    }
+
     private async processTask(task: SwarmTask): Promise<void> {
         this.stats.tasksProcessing++;
         logActivity(`Processing task: ${task.type} (${task.id.slice(0, 8)}...) reward: ${task.reward_gstd} GSTD`, 'info');
@@ -641,13 +668,14 @@ export class SwarmAgent {
 
     // ─── Task Processors ─────────────────────────────────────────
     private async processInference(task: SwarmTask): Promise<any> {
-        // Use Groq API for inference
-        const model = task.model || 'llama-3.3-70b-versatile';
-        const apiKey = process.env.GROQ_API_KEY;
+        const model    = task.model || 'llama-3.3-70b-versatile';
+        const messages = (task as any).messages || [{ role: 'user', content: task.prompt }];
+        const maxTok   = (task as any).max_tokens || (task.payload?.max_tokens) || 2048;
+        const temp     = (task as any).temperature ?? 0.7;
+        const apiKey   = process.env.GROQ_API_KEY;
+        const startMs  = Date.now();
 
-        if (!apiKey) {
-            throw new Error('GROQ_API_KEY not configured');
-        }
+        if (!apiKey) throw new Error('GROQ_API_KEY not configured');
 
         const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -655,21 +683,38 @@ export class SwarmAgent {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`,
             },
-            body: JSON.stringify({
-                model,
-                messages: [{ role: 'user', content: task.prompt }],
-                max_tokens: 2048,
-                temperature: 0.7,
-            }),
+            body: JSON.stringify({ model, messages, max_tokens: maxTok, temperature: temp }),
+            signal: AbortSignal.timeout(30_000),
         });
 
         if (!resp.ok) throw new Error(`Groq API error: ${resp.status}`);
         const data: any = await resp.json();
-        return {
+
+        const latencyMs = Date.now() - startMs;
+        // Update local EMA latency for scoring
+        this.avgLatencyMs = this.avgLatencyMs
+            ? Math.round(this.avgLatencyMs * 0.7 + latencyMs * 0.3)
+            : latencyMs;
+
+        const result = {
             response: data.choices?.[0]?.message?.content || '',
+            choices:  data.choices,
             model,
-            tokens: data.usage?.total_tokens || 0,
+            tokens:   data.usage?.total_tokens || 0,
         };
+
+        // Post result to platform so completions.ts short-poll can pick it up
+        if (task.id) {
+            this.apiCall('/tasks/result', {
+                task_id:    task.id,
+                node_id:    this.config.nodeId,
+                result,
+                latency_ms: latencyMs,
+                model,
+            }).catch(() => {});
+        }
+
+        return result;
     }
 
     private async processEmbedding(task: SwarmTask): Promise<any> {
