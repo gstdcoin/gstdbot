@@ -667,31 +667,57 @@ export class SwarmAgent {
     }
 
     // ─── Task Processors ─────────────────────────────────────────
+
+    // Calls an OpenAI-compatible chat completions endpoint.
+    // Supports Groq, Ollama, and any compatible API.
+    private async callOpenAICompat(
+        baseUrl: string, apiKey: string | undefined,
+        model: string, messages: any[], maxTok: number, temp: number,
+    ): Promise<any> {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+        const resp = await fetch(`${baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ model, messages, max_tokens: maxTok, temperature: temp }),
+            signal: AbortSignal.timeout(60_000),
+        });
+        if (!resp.ok) throw new Error(`API error ${resp.status}: ${await resp.text().catch(() => '')}`);
+        return resp.json();
+    }
+
     private async processInference(task: SwarmTask): Promise<any> {
         const model    = task.model || 'llama-3.3-70b-versatile';
         const messages = (task as any).messages || [{ role: 'user', content: task.prompt }];
         const maxTok   = (task as any).max_tokens || (task.payload?.max_tokens) || 2048;
         const temp     = (task as any).temperature ?? 0.7;
-        const apiKey   = process.env.GROQ_API_KEY;
         const startMs  = Date.now();
 
-        if (!apiKey) throw new Error('GROQ_API_KEY not configured');
+        let data: any;
 
-        const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({ model, messages, max_tokens: maxTok, temperature: temp }),
-            signal: AbortSignal.timeout(30_000),
-        });
+        // Backend priority:
+        // 1. Groq (fast, free tier, requires GROQ_API_KEY)
+        // 2. Ollama (local, no key, requires OLLAMA_URL)
+        // 3. Any OpenAI-compatible API at GSTD_INFERENCE_URL + GSTD_INFERENCE_KEY
+        const groqKey  = process.env.GROQ_API_KEY;
+        const ollamaUrl = (process.env.OLLAMA_URL || '').replace(/\/$/, '');
+        const customUrl = (process.env.GSTD_INFERENCE_URL || '').replace(/\/$/, '');
+        const customKey = process.env.GSTD_INFERENCE_KEY;
 
-        if (!resp.ok) throw new Error(`Groq API error: ${resp.status}`);
-        const data: any = await resp.json();
+        if (groqKey) {
+            const groqModel = model.includes('/') ? model.split('/').pop()! : model;
+            data = await this.callOpenAICompat(
+                'https://api.groq.com/openai/v1', groqKey, groqModel, messages, maxTok, temp);
+        } else if (ollamaUrl) {
+            // Ollama uses OpenAI-compatible /v1/chat/completions
+            data = await this.callOpenAICompat(`${ollamaUrl}/v1`, undefined, model, messages, maxTok, temp);
+        } else if (customUrl) {
+            data = await this.callOpenAICompat(`${customUrl}/v1`, customKey, model, messages, maxTok, temp);
+        } else {
+            throw new Error('No AI backend configured. Set GROQ_API_KEY, OLLAMA_URL, or GSTD_INFERENCE_URL in .env');
+        }
 
         const latencyMs = Date.now() - startMs;
-        // Update local EMA latency for scoring
         this.avgLatencyMs = this.avgLatencyMs
             ? Math.round(this.avgLatencyMs * 0.7 + latencyMs * 0.3)
             : latencyMs;
@@ -699,7 +725,7 @@ export class SwarmAgent {
         const result = {
             response: data.choices?.[0]?.message?.content || '',
             choices:  data.choices,
-            model,
+            model:    data.model || model,
             tokens:   data.usage?.total_tokens || 0,
         };
 
