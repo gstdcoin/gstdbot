@@ -57,6 +57,38 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 
+// ─── AI Backend Model Detection ─────────────────────────────────
+// Returns the list of models this node can actually serve.
+// Priority: Ollama local models first, then Groq models if key is set.
+async function resolveAvailableModels(): Promise<string[]> {
+    const models: string[] = [];
+
+    // Ollama — query locally installed models
+    const ollamaUrl = (process.env.OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '');
+    try {
+        const resp = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(3000) });
+        if (resp.ok) {
+            const data: any = await resp.json();
+            for (const m of (data.models || [])) {
+                if (m.name) models.push(m.name);
+            }
+        }
+    } catch (_e) { /* Ollama not running yet */ }
+
+    // Groq — add well-known models when API key is configured
+    if (process.env.GROQ_API_KEY) {
+        models.push(
+            'llama-3.3-70b-versatile', 'llama-3.1-8b-instant',
+            'meta-llama/llama-4-scout-17b-16e-instruct', 'qwen/qwen3-32b',
+            'openai/gpt-oss-120b', 'openai/gpt-oss-20b',
+            'moonshotai/kimi-k2-instruct', 'mixtral-8x7b-32768',
+        );
+    }
+
+    // No backend? Fallback to empty list — heartbeat will report 0 capabilities
+    return [...new Set(models)]; // deduplicate
+}
+
 // ─── Node Configuration ─────────────────────────────────────────
 export interface NodeConfig {
     version: string;
@@ -73,7 +105,7 @@ export interface NodeConfig {
     mobileNode: { enabled: boolean };
 }
 
-function loadConfig(): NodeConfig {
+async function loadConfig(): Promise<NodeConfig> {
     const configPath = join(homedir(), '.config', 'gstdbot', 'config.json');
     const defaults: NodeConfig = {
         version: '3.4.0',
@@ -93,7 +125,9 @@ function loadConfig(): NodeConfig {
             enabled: process.env.GSTD_DASHBOARD !== 'false',
         },
         groq: {
-            models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'meta-llama/llama-4-scout-17b-16e-instruct', 'qwen/qwen3-32b', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'moonshotai/kimi-k2-instruct'],
+            // Models are resolved at runtime: Ollama models + Groq models (if key is set).
+            // This static list is the fallback when no backend is detected yet.
+            models: await resolveAvailableModels(),
         },
         memory: {
             redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
@@ -131,7 +165,7 @@ function loadConfig(): NodeConfig {
 
 // ─── Main ────────────────────────────────────────────────────────
 async function main(): Promise<void> {
-    const config = loadConfig();
+    const config = await loadConfig();
     const startTime = Date.now();
     const isPlatform = config.mode === 'platform';
     const TOTAL_STEPS = isPlatform ? 7 : 17;
