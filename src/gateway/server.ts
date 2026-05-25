@@ -26,6 +26,7 @@ import { Diagnostics } from '../core/diagnostics.js';
 import { UsageTracker } from '../core/usage-tracker.js';
 import { Scheduler } from '../core/scheduler.js';
 import { PeerManager } from '../p2p/peers.js';
+import { IpfsClient } from '../storage/ipfs.js';
 
 // Rewards are calculated server-side via /api/v1/nodes/heartbeat
 // Node does NOT self-award tokens
@@ -197,6 +198,7 @@ export class OmegaGateway {
     private clients = new Map<string, WebSocket>();
     private appManager: AppManager;
     private peerManager: PeerManager | null = null;
+    private ipfs: IpfsClient | null = null;
     private wallet: NodeWallet | null = null;
     private security: any = null;
     private orchestrator: any = null;
@@ -580,6 +582,9 @@ export class OmegaGateway {
                 node_id:      process.env.GSTD_NODE_ID || 'unknown',
                 node_url:     this.peerManager?.getSelfUrl() || process.env.GSTD_PUBLIC_URL || '',
                 capabilities: this._availableModels,
+                storage: this.ipfs?.isEnabled
+                    ? { enabled: true, ipfs_peer_id: this.ipfs.peerIdShort, pins: this.ipfs.getPins().length }
+                    : { enabled: false },
                 peers: peers.map(p => ({
                     node_id: p.nodeId, url: p.url,
                     capabilities: p.capabilities, latency_ms: p.latencyMs,
@@ -613,6 +618,83 @@ export class OmegaGateway {
             if (!node_id || !url) return res.status(400).json({ error: 'node_id and url required' });
             this.peerManager?.registerPeer(node_id, url, capabilities);
             res.json({ ok: true, registered: node_id });
+        });
+
+        // ─── IPFS Storage API ──────────────────────────────────────────
+
+        // GET /api/storage — stats + pin list
+        this.app.get('/api/storage', async (_req, res) => {
+            if (!this.ipfs?.isEnabled) {
+                return res.json({ enabled: false, reason: 'IPFS daemon not running' });
+            }
+            const [stats, pins] = await Promise.all([
+                this.ipfs.getStats(),
+                Promise.resolve(this.ipfs.getPins()),
+            ]);
+            res.json({
+                enabled: true,
+                peer_id: stats.peerId,
+                ipfs_peers: stats.peers,
+                repo_size_mb: Math.round(stats.repoSize / (1024 * 1024) * 10) / 10,
+                pins: pins.length,
+                pin_list: pins.map(p => ({
+                    cid: p.cid, name: p.name,
+                    size_kb: Math.round(p.size / 1024),
+                    pinned_at: p.pinnedAt,
+                })),
+            });
+        });
+
+        // POST /api/storage/add — upload content, returns CID
+        this.app.post('/api/storage/add', async (req, res) => {
+            if (!this.ipfs?.isEnabled) {
+                return res.status(503).json({ error: 'IPFS not available' });
+            }
+            const { content, name } = req.body || {};
+            if (!content) return res.status(400).json({ error: 'content required' });
+            const data = typeof content === 'string'
+                ? Buffer.from(content, 'utf-8')
+                : Buffer.from(JSON.stringify(content));
+            const result = await this.ipfs.add(data, name || 'file');
+            if (!result) return res.status(500).json({ error: 'IPFS add failed' });
+            res.json({ ok: true, cid: result.cid, size: result.size });
+        });
+
+        // GET /api/storage/get/:cid — retrieve content by CID
+        this.app.get('/api/storage/get/:cid', async (req, res) => {
+            if (!this.ipfs?.isEnabled) {
+                return res.status(503).json({ error: 'IPFS not available' });
+            }
+            const { cid } = req.params;
+            if (!cid || !/^[a-zA-Z0-9]+$/.test(cid)) {
+                return res.status(400).json({ error: 'Invalid CID' });
+            }
+            const data = await this.ipfs.cat(cid);
+            if (!data) return res.status(404).json({ error: 'CID not found' });
+            res.setHeader('Content-Type', 'application/octet-stream');
+            res.setHeader('X-IPFS-CID', cid);
+            res.send(data);
+        });
+
+        // POST /api/storage/pin — pin an existing CID from the network
+        this.app.post('/api/storage/pin', async (req, res) => {
+            if (!this.ipfs?.isEnabled) {
+                return res.status(503).json({ error: 'IPFS not available' });
+            }
+            const { cid, name, owner_node } = req.body || {};
+            if (!cid) return res.status(400).json({ error: 'cid required' });
+            const ok = await this.ipfs.pin(cid, name || '', owner_node || '');
+            if (!ok) return res.status(500).json({ error: 'pin failed' });
+            res.json({ ok: true, cid });
+        });
+
+        // DELETE /api/storage/pin/:cid — unpin a CID
+        this.app.delete('/api/storage/pin/:cid', async (req, res) => {
+            if (!this.ipfs?.isEnabled) {
+                return res.status(503).json({ error: 'IPFS not available' });
+            }
+            const ok = await this.ipfs.unpin(req.params.cid);
+            res.json({ ok });
         });
 
         this.app.post('/v1/chat/completions', async (req, res) => {
@@ -3884,6 +3966,14 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
         } catch (_) { /* warm-up is best-effort */ }
     }
 
+    private async _initIpfs(): Promise<void> {
+        this.ipfs = new IpfsClient();
+        await this.ipfs.init();
+        if (this.ipfs.isEnabled) {
+            logActivity(`IPFS storage ready (peer: ${this.ipfs.peerIdShort}...)`, 'success');
+        }
+    }
+
     private async _startPeerManager(): Promise<void> {
         const os = await import('os');
         const publicUrl = process.env.GSTD_PUBLIC_URL || '';
@@ -3995,7 +4085,8 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                             this.eventBus.broadcast('app', 'install:complete', data);
                         });
 
-                        // ─── P2P Peer Manager ─────────────────────
+                        // ─── P2P + IPFS ───────────────────────────
+                        this._initIpfs().catch(() => {});
                         this._startPeerManager().catch(() => {});
 
                         console.log(`    Gateway ready on port ${port}`);

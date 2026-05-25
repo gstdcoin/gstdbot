@@ -22,6 +22,20 @@ const dotenv = loadEnv(path.join(__dirname, '.env'));
 module.exports = {
   apps: [
   {
+    name: 'ipfs',
+    script: '/home/bot/ipfs-bin/ipfs',
+    args: 'daemon --migrate=true',
+    cwd: '/home/bot',
+    env: {
+      IPFS_PATH: '/home/bot/.ipfs',
+      HOME: '/home/bot',
+    },
+    autorestart: true,
+    restart_delay: 10000,
+    out_file: '/home/bot/gstdbot/logs/ipfs.log',
+    error_file: '/home/bot/gstdbot/logs/ipfs.error.log',
+  },
+  {
     name: 'tunnel',
     script: '/home/bot/gstdbot/tunnel.sh',
     interpreter: '/bin/bash',
