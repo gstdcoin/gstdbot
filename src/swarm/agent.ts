@@ -12,6 +12,7 @@
 
 import { cpus, totalmem, freemem, platform, arch, loadavg } from 'os';
 import { createHash } from 'crypto';
+import { execSync } from 'child_process';
 import { logActivity } from '../gateway/server.js';
 import type { NodeConfig } from '../index.js';
 import type { NodeWallet } from '../wallet/manager.js';
@@ -164,6 +165,10 @@ export class SwarmAgent {
         // Refresh tier info every 5 minutes
         setInterval(() => this.fetchRewardsInfo(), 5 * 60_000);
 
+        // Scan and join new campaigns every 10 minutes
+        setInterval(() => this.joinActiveCampaigns().catch(() => {}), 10 * 60_000);
+        setTimeout(() => this.joinActiveCampaigns().catch(() => {}), 15_000); // initial check after 15s
+
         // Start Sovereign Protocol instruments (staking, P2P, mesh, governance, lending)
         await this.sovereign.start();
 
@@ -278,6 +283,8 @@ export class SwarmAgent {
             const ramUsage = Math.round(((totalmem() - freemem()) / totalmem()) * 100);
             const walletAddr = this.wallet.getAddress();
 
+            const resources = this.getResourceStats();
+
             // Platform heartbeat expects: { wallet_address, node_name, node_version, uptime_hours, queries_served }
             const payload: any = {
                 wallet_address: walletAddr || this.config.nodeId,
@@ -291,14 +298,19 @@ export class SwarmAgent {
                 signal: 100 - ramUsage,
                 cpu_usage: Math.round(load[0] * 100 / cpus().length),
                 ram_usage: ramUsage,
-                ram_free_mb: Math.round(freemem() / 1048576),
                 tasks_completed: this.stats.tasksCompleted,
                 tasks_processing: this.stats.tasksProcessing,
                 uptime: Math.round((Date.now() - this.startedAt) / 1000),
                 version: this.config.version,
                 mode: this.config.mode,
                 memory_entries: this.memory.getEntryCount(),
-                capabilities: this.config.groq.models,
+                capabilities:    this.config.groq.models,
+                // Resource stats for marketplace matching
+                storage_free_gb: resources.storage_free_gb,
+                ram_free_mb:     resources.ram_free_mb,
+                gpu_vram_mb:     resources.gpu_vram_mb,
+                bandwidth_mbps:  resources.bandwidth_mbps,
+                cpu_score:       resources.cpu_score,
             };
             // Include P2P multiaddrs so the platform can relay them to other nodes
             if (this.p2pNode) {
@@ -474,6 +486,35 @@ export class SwarmAgent {
         }
     }
 
+    // ─── Campaign Auto-Join ──────────────────────────────────────
+    private joinedCampaigns = new Set<string>();
+
+    private async joinActiveCampaigns(): Promise<void> {
+        if (!this.connected) return;
+        try {
+            const result = await this.apiCall('/campaigns/list', {}, 'GET');
+            if (!result?.campaigns?.length) return;
+
+            const resources = this.getResourceStats();
+
+            for (const campaign of result.campaigns) {
+                if (this.joinedCampaigns.has(campaign.id)) continue;
+
+                const joinResult = await this.apiCall('/campaigns/join', {
+                    campaign_id:  campaign.id,
+                    node_id:      this.config.nodeId,
+                    capabilities: this.config.groq.models,
+                    resources,
+                });
+
+                if (joinResult?.ok) {
+                    this.joinedCampaigns.add(campaign.id);
+                    logActivity(`Joined campaign: "${campaign.title}" by ${campaign.company} → ${campaign.reward_per_task} GSTD/task`, 'success');
+                }
+            }
+        } catch (_e) { }
+    }
+
     // ─── Peer Discovery ─────────────────────────────────────────
     private async fetchPeers(): Promise<void> {
         if (!this.connected) return;
@@ -510,9 +551,10 @@ export class SwarmAgent {
 
         try {
             const result = await this.apiCall('/tasks/poll', {
-                node_id: this.config.nodeId,
-                capabilities: this.getCapabilities(),
-                max_tasks: 1,
+                node_id:      this.config.nodeId,
+                capabilities: this.config.groq.models,
+                resources:    this.getResourceStats(),
+                max_tasks:    1,
             });
 
             if (result?.task) {
@@ -555,12 +597,15 @@ export class SwarmAgent {
                     }
             }
 
-            // Report completion
+            // Report completion — include campaign_id and reward so treasury accounting works
             await this.apiCall('/tasks/complete', {
-                task_id: task.id,
-                node_id: this.config.nodeId,
+                task_id:      task.id,
+                node_id:      this.config.nodeId,
                 result,
                 wallet_address: this.wallet.getAddress(),
+                reward_gstd:  task.reward_gstd,
+                protocol_fee: (task as any).protocol_fee || 0,
+                campaign_id:  (task as any).campaign_id || null,
             });
 
             this.stats.tasksCompleted++;
@@ -671,6 +716,33 @@ export class SwarmAgent {
             frames,
             completion_time_ms: duration,
             hash: createHash('sha256').update(Date.now().toString()).digest('hex').slice(0, 16)
+        };
+    }
+
+    // ─── Resource Stats ──────────────────────────────────────────
+    private getResourceStats() {
+        let storageFreeGb = 0;
+        try {
+            const { statfsSync: sfs } = require('fs');
+            const fs = sfs(process.env.GSTD_STORAGE || process.env.HOME || '/');
+            storageFreeGb = Math.round(fs.bfree * fs.bsize / (1024 ** 3) * 10) / 10;
+        } catch { /* ignore */ }
+
+        let gpuVramMb = 0;
+        try {
+            const vram = execSync('nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null', { encoding: 'utf-8', timeout: 3000 }).trim();
+            gpuVramMb = parseInt(vram) || 0;
+        } catch { /* no GPU */ }
+
+        const load  = loadavg()[0];
+        const cores = cpus().length;
+
+        return {
+            storage_free_gb: storageFreeGb,
+            ram_free_mb:     Math.round(freemem() / 1048576),
+            gpu_vram_mb:     gpuVramMb,
+            bandwidth_mbps:  0,
+            cpu_score:       Math.round(cores * 1000 / Math.max(load + 0.1, 0.1)),
         };
     }
 
