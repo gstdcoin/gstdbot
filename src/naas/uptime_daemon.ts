@@ -11,6 +11,7 @@
 
 import { execSync } from 'child_process';
 import { cpus, totalmem, freemem, loadavg } from 'os';
+import { readFileSync, existsSync } from 'fs';
 import { logActivity } from '../gateway/server.js';
 
 const HEARTBEAT_INTERVAL_MS = 30_000; // Every 30 seconds
@@ -117,7 +118,11 @@ export class UptimeDaemon {
         const freeRam = freemem();
         const disk = this.getDiskUsage();
 
-        const heartbeat: UptimeHeartbeat & { wallet_address?: string } = {
+        // Public node URL for P2P discovery — read from tunnel or env
+        const tunnelUrl = this.getTunnelUrl();
+        const multiaddrs = tunnelUrl ? [tunnelUrl] : [];
+
+        const heartbeat: UptimeHeartbeat & { wallet_address?: string; multiaddrs?: string[]; node_url?: string } = {
             node_id: this.nodeId,
             wallet: this.walletAddress,
             wallet_address: this.walletAddress,
@@ -125,6 +130,8 @@ export class UptimeDaemon {
             tier: this.classifyTier(cpuInfo.length, totalRam / (1024 ** 3), this.cachedIOPS),
             version: '3.4.0',
             containers,
+            multiaddrs,
+            ...(tunnelUrl && { node_url: tunnelUrl }),
             hardware: {
                 cpu_cores: cpuInfo.length,
                 cpu_usage: Math.round(loadavg()[0] / cpuInfo.length * 100),
@@ -135,6 +142,7 @@ export class UptimeDaemon {
                 disk_iops: this.cachedIOPS,
                 ping_ms: this.cachedPing,
                 chains: runningChains,
+                rpc_endpoint: tunnelUrl || undefined,
             },
         };
 
@@ -209,6 +217,19 @@ export class UptimeDaemon {
         // Docker-based NaaS commands are no longer supported.
         const { action, image_id, container_name } = cmd;
         logActivity(`NaaS command received: ${action} ${image_id || container_name || ''} — use /api/validators/:chain/toggle instead`, 'warn');
+    }
+
+    // ─── Tunnel URL ───────────────────────────────────────────
+
+    private getTunnelUrl(): string | null {
+        // Priority: env var > localhost.run tunnel file > null
+        if (process.env.GSTD_PUBLIC_URL) return process.env.GSTD_PUBLIC_URL.replace(/\/$/, '');
+        const file = '/tmp/gstd_tunnel_url.txt';
+        if (existsSync(file)) {
+            const url = readFileSync(file, 'utf-8').trim();
+            if (url.startsWith('http')) return url;
+        }
+        return null;
     }
 
     // ─── Hardware Benchmarks ─────────────────────────────────
