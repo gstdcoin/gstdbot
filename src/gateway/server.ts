@@ -25,6 +25,7 @@ import { ModelFailover } from '../core/model-failover.js';
 import { Diagnostics } from '../core/diagnostics.js';
 import { UsageTracker } from '../core/usage-tracker.js';
 import { Scheduler } from '../core/scheduler.js';
+import { PeerManager } from '../p2p/peers.js';
 
 // Rewards are calculated server-side via /api/v1/nodes/heartbeat
 // Node does NOT self-award tokens
@@ -195,6 +196,7 @@ export class OmegaGateway {
     private _availableModels: string[] = [];
     private clients = new Map<string, WebSocket>();
     private appManager: AppManager;
+    private peerManager: PeerManager | null = null;
     private wallet: NodeWallet | null = null;
     private security: any = null;
     private orchestrator: any = null;
@@ -567,6 +569,50 @@ export class OmegaGateway {
             } catch (e: any) {
                 res.status(503).json({ error: e.message });
             }
+        });
+
+        // ─── P2P Peer API ──────────────────────────────────────────────
+
+        // GET /api/peers — list live peers (public, used by other nodes for discovery)
+        this.app.get('/api/peers', (_req, res) => {
+            const peers = this.peerManager?.getLivePeers() || [];
+            res.json({
+                node_id:      process.env.GSTD_NODE_ID || 'unknown',
+                node_url:     process.env.GSTD_PUBLIC_URL || '',
+                capabilities: this._availableModels,
+                peers: peers.map(p => ({
+                    node_id: p.nodeId, url: p.url,
+                    capabilities: p.capabilities, latency_ms: p.latencyMs,
+                })),
+                peer_count: peers.length,
+            });
+        });
+
+        // POST /api/peers/heartbeat — receive heartbeat from another node
+        this.app.post('/api/peers/heartbeat', (req, res) => {
+            const body = req.body;
+            if (!body?.nodeId || !body?.url) {
+                return res.status(400).json({ error: 'nodeId and url required' });
+            }
+            const start = Date.now();
+            if (this.peerManager) {
+                this.peerManager.receiveHeartbeat(body, Date.now() - start);
+            }
+            // Respond with our own peer list so caller learns about the network
+            const peers = this.peerManager?.getLivePeers() || [];
+            res.json({
+                ok: true,
+                node_id: process.env.GSTD_NODE_ID || 'unknown',
+                peers: peers.map(p => ({ nodeId: p.nodeId, url: p.url, capabilities: p.capabilities })),
+            });
+        });
+
+        // POST /api/peers/register — simple registration without full heartbeat
+        this.app.post('/api/peers/register', (req, res) => {
+            const { node_id, url, capabilities = [] } = req.body || {};
+            if (!node_id || !url) return res.status(400).json({ error: 'node_id and url required' });
+            this.peerManager?.registerPeer(node_id, url, capabilities);
+            res.json({ ok: true, registered: node_id });
         });
 
         this.app.post('/v1/chat/completions', async (req, res) => {
@@ -3838,6 +3884,37 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
         } catch (_) { /* warm-up is best-effort */ }
     }
 
+    private async _startPeerManager(): Promise<void> {
+        const os = await import('os');
+        const publicUrl = process.env.GSTD_PUBLIC_URL || '';
+        if (!publicUrl) {
+            logActivity('GSTD_PUBLIC_URL not set — P2P peer discovery disabled. Set it to enable multi-node routing.', 'info');
+        }
+        this.peerManager = new PeerManager({
+            nodeId:       process.env.GSTD_NODE_ID || `node-${os.hostname()}`,
+            url:          publicUrl,
+            capabilities: this._availableModels,
+            version:      '3.5.0',
+            cpuCores:     os.cpus().length,
+            ramGb:        Math.round(os.totalmem() / (1024 ** 3)),
+            uptime:       process.uptime(),
+            tasksHandled: this.metrics.totalRequests,
+        });
+        this.router.setPeerManager(this.peerManager);
+        await this.peerManager.start();
+
+        // Refresh capabilities in peer manager as models change
+        setInterval(() => {
+            if (this.peerManager) {
+                (this.peerManager as any).selfInfo.capabilities = this._availableModels;
+                (this.peerManager as any).selfInfo.uptime = process.uptime();
+                (this.peerManager as any).selfInfo.tasksHandled = this.metrics.totalRequests;
+            }
+        }, 60_000);
+
+        logActivity(`P2P Peer Manager started. Public URL: ${publicUrl || 'none'}`, 'success');
+    }
+
     async start(): Promise<void> {
         const MAX_PORT_ATTEMPTS = 10;
         // Resolve Ollama models before heartbeat starts; refresh every 60s
@@ -3917,6 +3994,9 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                         this.appManager.on?.('install:complete', (data: any) => {
                             this.eventBus.broadcast('app', 'install:complete', data);
                         });
+
+                        // ─── P2P Peer Manager ─────────────────────
+                        this._startPeerManager().catch(() => {});
 
                         console.log(`    Gateway ready on port ${port}`);
                         resolve();

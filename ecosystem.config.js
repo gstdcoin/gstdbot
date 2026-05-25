@@ -22,18 +22,18 @@ const dotenv = loadEnv(path.join(__dirname, '.env'));
 module.exports = {
   apps: [
   {
-    name: 'ollama',
-    script: '/home/bot/ollama-bin/bin/ollama',
-    args: 'serve',
-    cwd: '/home/bot',
+    name: 'tunnel',
+    script: '/home/bot/gstdbot/tunnel.sh',
+    interpreter: '/bin/bash',
+    cwd: '/home/bot/gstdbot',
     env: {
-      OLLAMA_HOME: '/home/bot/.ollama',
-      HOME: '/home/bot',
+      ...dotenv,
     },
     autorestart: true,
     restart_delay: 5000,
-    out_file: '/home/bot/gstdbot/logs/ollama.log',
-    error_file: '/home/bot/gstdbot/logs/ollama.error.log',
+    out_file: '/home/bot/gstdbot/logs/tunnel.log',
+    error_file: '/home/bot/gstdbot/logs/tunnel.error.log',
+    merge_logs: true,
   },
   {
     name: 'gstdbot',

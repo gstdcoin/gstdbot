@@ -120,12 +120,13 @@ class ResponseCache {
 }
 
 export class NeuralRouter {
-    private networkUrl: string;
     private cache = new ResponseCache();
+    private peerManager: import('../p2p/peers.js').PeerManager | null = null;
 
-    constructor(swarmUrl: string, _cocoonEnabled: boolean) {
-        // swarmUrl is the base URL e.g. https://app.gstdtoken.com
-        this.networkUrl = swarmUrl;
+    constructor(_swarmUrl: string, _cocoonEnabled: boolean) {}
+
+    setPeerManager(pm: import('../p2p/peers.js').PeerManager): void {
+        this.peerManager = pm;
     }
 
     async route(requestedModel: string, messages: ChatMessage[]): Promise<RouteResult> {
@@ -141,25 +142,35 @@ export class NeuralRouter {
             };
         }
 
-        // ─── L2: GSTD Node Network ─────────────────────────────────
-        const model = GSTD_MODELS.includes(requestedModel) ? requestedModel : DEFAULT_MODEL;
-        try {
-            const result = await this.callGSTDNetwork(model, messages, 2048);
-            this.cache.set(cacheKey, result.content, result.model);
-            return { ...result, tier: 'gstd', latencyMs: Date.now() - start };
-        } catch (err: any) {
-            console.warn('[Router] GSTD network unavailable:', err?.message?.substring(0, 80));
-        }
+        const ollamaModel = requestedModel.includes(':') ? requestedModel : 'llama3.2:3b';
+        const ollamaUrl   = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
 
-        // ─── L3: Local Ollama ──────────────────────────────────────
-        const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
+        // ─── L2: Local Ollama (primary — no external deps) ─────────
         try {
-            const ollamaModel = requestedModel.includes(':') ? requestedModel : 'llama3.2:3b';
             const result = await this.callOllamaLocal(ollamaUrl, ollamaModel, messages, 2048);
             this.cache.set(cacheKey, result.content, result.model);
             return { ...result, latencyMs: Date.now() - start };
         } catch (err: any) {
             console.warn('[Router] Local Ollama unavailable:', err?.message?.substring(0, 80));
+        }
+
+        // ─── L3: P2P Peer Network ──────────────────────────────────
+        if (this.peerManager) {
+            const peer = this.peerManager.getBestPeer(ollamaModel);
+            if (peer) {
+                try {
+                    const r = await this.peerManager.forwardToPeer(peer, ollamaModel, messages, 2048, 0.7);
+                    this.cache.set(cacheKey, r.content, r.model);
+                    return {
+                        content: r.content, model: r.model, tier: 'gstd',
+                        nodeId: peer.nodeId,
+                        latencyMs: Date.now() - start,
+                        usage: { promptTokens: 0, completionTokens: r.tokens, totalTokens: r.tokens },
+                    };
+                } catch (err: any) {
+                    console.warn('[Router] Peer', peer.nodeId, 'failed:', err?.message?.substring(0, 60));
+                }
+            }
         }
 
         // ─── L4: Fallback ───────────────────────────────────────────
@@ -203,37 +214,30 @@ export class NeuralRouter {
         }
     }
 
-    // ─── Single GSTD network call ─────────────────────────────────
+    // ─── Single network call: local Ollama or best peer ──────────
     async callGSTDNetwork(model: string, messages: ChatMessage[], maxTokens: number = 2048): Promise<RouteResult> {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30_000);
+        const ollamaUrl   = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
+        const ollamaModel = model.includes(':') ? model : 'llama3.2:3b';
+
+        // Try local first
         try {
-            const resp = await fetch(`${this.networkUrl}/api/v1/chat/completions`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model, messages, stream: false, max_tokens: maxTokens }),
-                signal: controller.signal,
-            });
-            if (!resp.ok) throw new Error(`Network ${resp.status}`);
-            const data: any = await resp.json();
-            const rawContent = data.choices?.[0]?.message?.content || '';
-            const content = stripThinkTags(rawContent);
-            if (!content) throw new Error('Empty network response');
-            return {
-                content,
-                model: data.model || model,
-                tier: 'gstd',
-                latencyMs: 0,
-                nodeId: data._gstd?.node_id,
-                usage: {
-                    promptTokens:     data.usage?.prompt_tokens     || 0,
-                    completionTokens: data.usage?.completion_tokens || 0,
-                    totalTokens:      data.usage?.total_tokens      || 0,
-                },
-            };
-        } finally {
-            clearTimeout(timeout);
+            return await this.callOllamaLocal(ollamaUrl, ollamaModel, messages, maxTokens);
+        } catch { /* fall through to peers */ }
+
+        // Try best peer
+        if (this.peerManager) {
+            const peer = this.peerManager.getBestPeer(ollamaModel);
+            if (peer) {
+                const r = await this.peerManager.forwardToPeer(peer, ollamaModel, messages, maxTokens, 0.7);
+                return {
+                    content: r.content, model: r.model, tier: 'gstd',
+                    nodeId: peer.nodeId, latencyMs: 0,
+                    usage: { promptTokens: 0, completionTokens: r.tokens, totalTokens: r.tokens },
+                };
+            }
         }
+
+        throw new Error('No local Ollama or peer available');
     }
 
     // ─── SmartMix: Collective Intelligence via GSTD network ──────
