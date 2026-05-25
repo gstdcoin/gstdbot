@@ -611,7 +611,7 @@ export class OmegaGateway {
                         },
                         _gstd: {
                             tier: result.tier,
-                            sovereignty: result.tier !== 'commercial',
+                            sovereignty: result.tier !== 'fallback',
                             latency_ms: result.latencyMs,
                         },
                     });
@@ -3563,15 +3563,13 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                     this.wallet.recordQueryServed();
                 }
                 break;
-            case 'swarm':
-            case 'groq':
+            case 'gstd':
                 this.metrics.swarmRequests++;
                 if (this.wallet) {
                     this.wallet.recordQueryServed();
                 }
                 break;
             case 'fallback':
-            case 'commercial':
                 this.metrics.commercialRequests++;
                 if (this.wallet) {
                     this.wallet.recordQueryServed();

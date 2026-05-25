@@ -18,7 +18,7 @@ curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | 
 
 | You provide | The network pays you |
 |---|---|
-| AI inference (Groq / local Ollama) | GSTD tokens per task |
+| AI inference (served via GSTD network) | GSTD tokens per task |
 | Blockchain node hosting (TON, XRPL, ETH…) | 85% of RPC revenue |
 | Compute for bridge validation | Share of bridge fees |
 | Storage shards | GSTD per GB/month |
@@ -26,14 +26,16 @@ curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | 
 
 **The more you contribute, the more you earn. There is no ceiling.**
 
+No external AI API keys required — all inference is routed through the GSTD node network itself.
+
 ---
 
 ## Architecture
 
 ```
 Your Hardware
-├── AI Engine          — 8 Groq models + local Ollama, serves inference tasks
-├── Swarm Agent        — polls task queue, processes jobs, reports completion
+├── AI Engine          — serves inference tasks via the GSTD network protocol
+├── Swarm Agent        — polls priority task queue, processes jobs, reports completion
 ├── P2P Mesh           — libp2p (mDNS + Bootstrap), direct node-to-node comms
 ├── NaaS Orchestrator  — auto-deploys blockchain nodes via Docker based on RAM
 ├── Bridge Sidecar     — optional cross-chain bridge validator (gstd-bridge)
@@ -49,7 +51,9 @@ Your Hardware
 ## What Runs Automatically
 
 ### AI Inference
-Your node polls `app.gstdtoken.com/api/v1/tasks/poll` every 30 seconds. When a task arrives (type: `inference`), it calls Groq API and returns the result. Groq's free tier handles **14,400 requests/day** — more than enough to start earning without any cost.
+Your node polls `app.gstdtoken.com/api/v1/tasks/poll` every 5 seconds for priority inference tasks. When a task arrives (type: `inference`), the node processes it using the configured AI backend and posts the result back to the platform. The result is returned to the requesting client within seconds.
+
+All inference is served through the GSTD network — no external AI provider accounts or API keys required.
 
 ### Node-as-a-Service (NaaS)
 Based on your hardware, the node auto-deploys blockchain infrastructure via Docker:
@@ -96,7 +100,7 @@ git clone https://github.com/gstdcoin/gstdbot
 cd gstdbot
 npm install --legacy-peer-deps
 cp .env.example .env
-nano .env   # add your GROQ_API_KEY
+nano .env   # set your node ID and optional Telegram token
 npm start
 ```
 
@@ -104,7 +108,6 @@ npm start
 
 ```bash
 docker run -d \
-  -e GROQ_API_KEY=your_key \
   -e GSTD_API_URL=https://app.gstdtoken.com/api/v1 \
   -p 8080:8080 \
   --name gstdbot \
@@ -120,11 +123,8 @@ Open `http://localhost:8080` to see your dashboard.
 Copy `.env.example` to `.env` and set:
 
 ```env
-# Required
-GROQ_API_KEY=gsk_...         # Free at console.groq.com
-
 # Optional — auto-generated on first run
-GSTD_NODE_ID=               
+GSTD_NODE_ID=
 GSTD_API_URL=https://app.gstdtoken.com/api/v1
 
 # P2P (optional — mDNS works on LAN without this)
@@ -139,6 +139,8 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_ADMIN_IDS=
 ```
 
+No external AI API keys are needed. Inference is served entirely through the GSTD node network.
+
 ---
 
 ## Source Structure
@@ -148,10 +150,9 @@ src/
 ├── index.ts                # Boot sequence
 ├── core/
 │   ├── platform-link.ts    # Heartbeat + registration with Vercel API
-│   ├── scheduler.ts        # Cron-style task scheduler
-│   └── model-failover.ts   # Groq → Ollama failover
+│   └── scheduler.ts        # Cron-style task scheduler
 ├── swarm/
-│   ├── agent.ts            # Task polling, processing, earnings
+│   ├── agent.ts            # Task polling, processing, earnings, latency tracking
 │   ├── orchestrator.ts     # Multi-node load balancing
 │   └── sovereign.ts        # Staking, P2P mesh, governance
 ├── p2p/
@@ -161,13 +162,14 @@ src/
 │   ├── orchestrator.ts     # Docker container lifecycle
 │   └── revenue_flywheel.ts # Track NaaS earnings
 ├── gateway/
+│   ├── router.ts           # NeuralRouter — all inference via GSTD network
 │   └── server.ts           # Express API + WebSocket dashboard
 ├── wallet/
 │   └── manager.ts          # TON wallet, staking, earnings ledger
 ├── memory/
 │   └── collective.ts       # Shared knowledge (L1+L2+L3)
 └── channels/
-    └── telegram.ts         # Telegram bot integration
+    └── telegram.ts         # Telegram bot — AI chat via GSTD network
 ```
 
 ---
@@ -175,32 +177,52 @@ src/
 ## How Nodes Work Together
 
 ```
-                    app.gstdtoken.com  (Vercel)
-                    ┌──────────────────────────┐
-                    │  Node Registry (KV)      │
-                    │  Task Queue (KV)         │
-                    │  Stats API               │
-                    └──────────┬───────────────┘
-                               │  REST API
-          ┌────────────────────┼────────────────────┐
-          │                    │                    │
-       Node A              Node B               Node C
-      Groq AI           NaaS Docker           GPU Compute
-      ┌──────┐           ┌──────┐              ┌──────┐
-      │  P2P │◄─────────►│  P2P │◄────────────►│  P2P │
-      └──────┘           └──────┘              └──────┘
-         ▲                  ▲                     ▲
-         │                  │                     │
-       Users    ────────────────────────────►   DApps
-                  (tasks routed to best node)
+                    app.gstdtoken.com  (Vercel + Upstash Redis)
+                    ┌──────────────────────────────────────────┐
+                    │  Node Registry (KV)                      │
+                    │  Priority Task Queue (KV per node)       │
+                    │  Task Results (KV with TTL)              │
+                    │  Stats + Network Info                    │
+                    └──────────────┬───────────────────────────┘
+                                   │  HTTPS REST API
+          ┌────────────────────────┼────────────────────────┐
+          │                        │                        │
+       Node A                  Node B                   Node C
+      AI Inference           NaaS Docker             GPU Compute
+      ┌──────────┐           ┌──────────┐            ┌──────────┐
+      │   P2P    │◄─────────►│   P2P    │◄──────────►│   P2P    │
+      └──────────┘           └──────────┘            └──────────┘
+           ▲                      ▲                       ▲
+           │                      │                       │
+         Users  ─────────────────────────────────────►  DApps
+                    (tasks routed to best available node)
 ```
 
 1. Node registers with platform on startup
-2. Heartbeats every 8 minutes to stay visible
-3. Polls task queue every 30 seconds
-4. Processes task (AI/compute/storage)
-5. Reports completion → earnings recorded
-6. P2P mesh enables direct routing (bypass platform for low-latency tasks)
+2. Heartbeats every 8 minutes — reports load, latency, capabilities
+3. Polls priority task queue every 5 seconds
+4. Processes task (AI inference / compute / storage)
+5. Posts result back to platform — client receives it in seconds
+6. P2P mesh enables direct routing for low-latency tasks
+
+---
+
+## Supported AI Models
+
+The node serves inference for any model it has available:
+
+| Model | Notes |
+|---|---|
+| `llama-3.3-70b-versatile` | Default — maps from `gpt-4`, `gpt-4o`, `auto` |
+| `llama-3.1-8b-instant` | Fast — maps from `gpt-3.5-turbo` |
+| `meta-llama/llama-4-scout-17b-16e-instruct` | Latest Llama 4 |
+| `qwen/qwen3-32b` | Strong reasoning |
+| `moonshotai/kimi-k2-instruct` | Long context |
+| `openai/gpt-oss-120b` | Large |
+| `openai/gpt-oss-20b` | Balanced |
+| `mixtral-8x7b-32768` | Fast, large context |
+
+Model availability is reported in the node's heartbeat. The platform routes each request to the best node that supports the requested model.
 
 ---
 

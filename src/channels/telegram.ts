@@ -157,7 +157,7 @@ export class TelegramChannel {
 
         this.bot.use(session({
             initial: (): SessionData => ({
-                model: 'groq/compound',
+                model: 'auto',
                 history: [],
             }),
         }));
@@ -226,7 +226,7 @@ export class TelegramChannel {
         this.bot.command('start', async (ctx) => {
             if (ctx.chat?.type !== 'private') return;
             ctx.session.history = [];
-            ctx.session.model = 'groq/compound';
+            ctx.session.model = 'auto';
             const lang = this.lang(ctx);
 
             // Parse deep link payload: /start sponsor-{signalId}-{starsCost}
@@ -365,7 +365,7 @@ export class TelegramChannel {
                 const msg = `📊 <b>GSTD Statistics</b>\n\n` +
                       `🏥 Status: <b>${health.status === 'healthy' ? '✅ Online' : '⚠️ Issues'}</b>\n` +
                       `💎 Contract TON: <b>${(contract.balance_ton || 0).toFixed(2)} TON</b>\n` +
-                      `🧠 AI: <b>${health.sovereign_ai?.inference || 'Groq Cloud'}</b>\n` +
+                      `🧠 AI: <b>${health.sovereign_ai?.inference || 'GSTD Network'}</b>\n` +
                       `🥩 Staking APY: <b>${platform.apy || 12}%</b>\n` +
                       `🔒 Min. stake: <b>${platform.min_stake || 1} GSTD</b>`;
                 await ctx.reply(msg, { parse_mode: 'HTML' });
@@ -387,15 +387,15 @@ export class TelegramChannel {
             const lang = this.lang(ctx);
 
             const models = [
-                { id: 'groq/compound', label: '🌐 GSTD Compound AI' },
-                { id: 'auto', label: '🤖 Auto (best available)' },
-                { id: 'llama-3.3-70b-versatile', label: '🦙 Llama 3.3 70B' },
-                { id: 'llama-3.1-8b-instant', label: '⚡ Llama 3.1 8B (fast)' },
-                { id: 'meta-llama/llama-4-scout-17b-16e-instruct', label: '🔭 Llama 4 Scout' },
-                { id: 'qwen/qwen3-32b', label: '🐉 Qwen3 32B' },
-                { id: 'openai/gpt-oss-120b', label: '🧠 GPT-OSS 120B' },
-                { id: 'openai/gpt-oss-20b', label: '💡 GPT-OSS 20B' },
-                { id: 'moonshotai/kimi-k2-instruct-0905', label: '🌙 Kimi K2' },
+                { id: 'auto',                                         label: '🤖 Auto (best available)' },
+                { id: 'llama-3.3-70b-versatile',                      label: '🦙 Llama 3.3 70B' },
+                { id: 'llama-3.1-8b-instant',                         label: '⚡ Llama 3.1 8B (fast)' },
+                { id: 'meta-llama/llama-4-scout-17b-16e-instruct',     label: '🔭 Llama 4 Scout' },
+                { id: 'qwen/qwen3-32b',                                label: '🐉 Qwen3 32B' },
+                { id: 'openai/gpt-oss-120b',                           label: '🧠 GPT-OSS 120B' },
+                { id: 'openai/gpt-oss-20b',                            label: '💡 GPT-OSS 20B' },
+                { id: 'moonshotai/kimi-k2-instruct',                   label: '🌙 Kimi K2' },
+                { id: 'mixtral-8x7b-32768',                            label: '🌀 Mixtral 8x7B' },
             ];
 
             const current = ctx.session.model || 'auto';
@@ -910,15 +910,15 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                 ctx.session.model = selectedModel;
 
                 const modelNames: Record<string, string> = {
-                    'groq/compound': '🌐 GSTD Compound AI',
-                    'auto': '🤖 Auto (best available)',
-                    'llama-3.3-70b-versatile': '🦙 Llama 3.3 70B',
-                    'llama-3.1-8b-instant': '⚡ Llama 3.1 8B',
-                    'meta-llama/llama-4-scout-17b-16e-instruct': '🔭 Llama 4 Scout',
-                    'qwen/qwen3-32b': '🐉 Qwen3 32B',
-                    'openai/gpt-oss-120b': '🧠 GPT-OSS 120B',
-                    'openai/gpt-oss-20b': '💡 GPT-OSS 20B',
-                    'moonshotai/kimi-k2-instruct-0905': '🌙 Kimi K2',
+                    'auto':                                        '🤖 Auto (best available)',
+                    'llama-3.3-70b-versatile':                    '🦙 Llama 3.3 70B',
+                    'llama-3.1-8b-instant':                       '⚡ Llama 3.1 8B',
+                    'meta-llama/llama-4-scout-17b-16e-instruct':  '🔭 Llama 4 Scout',
+                    'qwen/qwen3-32b':                              '🐉 Qwen3 32B',
+                    'openai/gpt-oss-120b':                        '🧠 GPT-OSS 120B',
+                    'openai/gpt-oss-20b':                         '💡 GPT-OSS 20B',
+                    'moonshotai/kimi-k2-instruct':                '🌙 Kimi K2',
+                    'mixtral-8x7b-32768':                         '🌀 Mixtral 8x7B',
                 };
 
                 const name = modelNames[selectedModel] || selectedModel;
