@@ -745,9 +745,10 @@ export class SwarmAgent {
         };
 
         // Post result to platform so completions.ts short-poll can pick it up
-        if (task.id) {
+        const resultTaskId = (task as any).task_id || task.id;
+        if (resultTaskId) {
             this.apiCall('/tasks/result', {
-                task_id:    task.id,
+                task_id:    resultTaskId,
                 node_id:    this.config.nodeId,
                 result,
                 latency_ms: latencyMs,
