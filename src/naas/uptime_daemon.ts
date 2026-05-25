@@ -174,60 +174,30 @@ export class UptimeDaemon {
         }
     }
 
-    // ─── Container Discovery ─────────────────────────────────
+    // ─── Native Validator Discovery (no Docker) ──────────────
 
     private getContainerStatuses(): ContainerStatus[] {
+        // Check native validator processes by probing their RPC ports.
+        // We moved away from Docker — validators run as native binaries.
+        const NATIVE_VALIDATORS = [
+            { name: 'gstd-native-eth', chain: 'ETH', port: 8545,  image: 'helios-light-client' },
+            { name: 'gstd-native-btc', chain: 'BTC', port: 8332,  image: 'bitcoin-core-pruned' },
+            { name: 'gstd-native-ton', chain: 'TON', port: 43677, image: 'ton-lite-client' },
+        ];
+
         const containers: ContainerStatus[] = [];
-        try {
-            const output = execSync(
-                'docker ps -a --filter "name=gstd-naas" --format "{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}"',
-                { encoding: 'utf-8', timeout: 5000 }
-            ).trim();
-
-            if (!output) return containers;
-
-            for (const line of output.split('\n')) {
-                const [name, image, status, ports] = line.split('|');
-                const isRunning = status?.toLowerCase().startsWith('up');
-                let uptimeSeconds = 0;
-                if (isRunning && status) {
-                    const uptimeMatch = status.match(/Up\s+(?:About\s+)?(\d+)\s*(second|minute|hour|day|week|month)s?/i);
-                    if (uptimeMatch) {
-                        const val = parseInt(uptimeMatch[1]);
-                        const unit = uptimeMatch[2].toLowerCase();
-                        const multipliers: Record<string, number> = { second: 1, minute: 60, hour: 3600, day: 86400, week: 604800, month: 2592000 };
-                        uptimeSeconds = val * (multipliers[unit] || 1);
-                    } else if (status.match(/Up\s+About\s+an?\s+hour/i)) {
-                        uptimeSeconds = 3600;
-                    }
-                }
-
-                // Detect chain from container name: gstd-naas-eth-rpc → eth
-                const chainMatch = name?.match(/gstd-naas-(\w+)/);
-                const chain = chainMatch?.[1]?.toUpperCase();
-
-                // Detect RPC port
-                const portMatch = ports?.match(/:(\d+)->/);
-                const rpcPort = portMatch ? parseInt(portMatch[1]) : undefined;
-
-                // Measure RPC latency for running containers
-                let rpcLatency: number | undefined;
-                if (isRunning && rpcPort) {
-                    rpcLatency = this.measureRPCLatency(rpcPort);
-                }
-
-                containers.push({
-                    name: name || 'unknown',
-                    image: image || 'unknown',
-                    status: isRunning ? 'running' : 'stopped',
-                    uptime_seconds: uptimeSeconds,
-                    chain,
-                    rpc_port: rpcPort,
-                    rpc_latency_ms: rpcLatency,
-                });
-            }
-        } catch {
-            // Docker not available or no containers
+        for (const v of NATIVE_VALIDATORS) {
+            const latency = this.measureRPCLatency(v.port);
+            const isRunning = latency !== undefined;
+            containers.push({
+                name:             v.name,
+                image:            v.image,
+                status:           isRunning ? 'running' : 'stopped',
+                uptime_seconds:   0,
+                chain:            v.chain,
+                rpc_port:         v.port,
+                rpc_latency_ms:   latency,
+            });
         }
         return containers;
     }
@@ -235,54 +205,10 @@ export class UptimeDaemon {
     // ─── NaaS Command Execution ──────────────────────────────
 
     private executeNaaSCommand(cmd: any): void {
-        try {
-            const { action, image_id, container_name, resource_limits } = cmd;
-            logActivity(`NaaS command: ${action} ${image_id || container_name}`, 'info');
-
-            switch (action) {
-                case 'deploy': {
-                    const image = cmd.docker_image || image_id;
-                    const name = container_name || `gstd-naas-${image_id}`;
-                    const memLimit = resource_limits?.memory || '4g';
-                    const cpuLimit = resource_limits?.cpus || '2.0';
-
-                    // Pull image
-                    execSync(`docker pull ${image}`, { timeout: 300000, stdio: 'pipe' });
-                    // Run container
-                    execSync(
-                        `docker run -d --name ${name} --restart unless-stopped --memory ${memLimit} --cpus ${cpuLimit} ${image}`,
-                        { timeout: 30000, stdio: 'pipe' }
-                    );
-                    logActivity(`Deployed: ${name} (${image})`, 'success');
-                    break;
-                }
-                case 'stop':
-                    execSync(`docker stop ${container_name}`, { timeout: 30000, stdio: 'pipe' });
-                    logActivity(`Stopped: ${container_name}`, 'info');
-                    break;
-                case 'restart':
-                    execSync(`docker restart ${container_name}`, { timeout: 30000, stdio: 'pipe' });
-                    logActivity(`Restarted: ${container_name}`, 'info');
-                    break;
-                case 'remove':
-                    execSync(`docker rm -f ${container_name}`, { timeout: 30000, stdio: 'pipe' });
-                    logActivity(`Removed: ${container_name}`, 'info');
-                    break;
-                case 'update':
-                    execSync(`docker pull ${cmd.docker_image}`, { timeout: 300000, stdio: 'pipe' });
-                    execSync(`docker stop ${container_name} && docker rm ${container_name}`, { timeout: 30000, stdio: 'pipe' });
-                    execSync(
-                        `docker run -d --name ${container_name} --restart unless-stopped ${cmd.docker_image}`,
-                        { timeout: 30000, stdio: 'pipe' }
-                    );
-                    logActivity(`Updated: ${container_name}`, 'success');
-                    break;
-                default:
-                    logActivity(`Unknown NaaS command: ${action}`, 'warn');
-            }
-        } catch (err: any) {
-            logActivity(`NaaS command failed: ${err.message}`, 'error');
-        }
+        // Validator lifecycle is managed via ValidatorManager (native binaries).
+        // Docker-based NaaS commands are no longer supported.
+        const { action, image_id, container_name } = cmd;
+        logActivity(`NaaS command received: ${action} ${image_id || container_name || ''} — use /api/validators/:chain/toggle instead`, 'warn');
     }
 
     // ─── Hardware Benchmarks ─────────────────────────────────
