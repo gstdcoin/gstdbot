@@ -578,7 +578,7 @@ export class OmegaGateway {
             const peers = this.peerManager?.getLivePeers() || [];
             res.json({
                 node_id:      process.env.GSTD_NODE_ID || 'unknown',
-                node_url:     process.env.GSTD_PUBLIC_URL || '',
+                node_url:     this.peerManager?.getSelfUrl() || process.env.GSTD_PUBLIC_URL || '',
                 capabilities: this._availableModels,
                 peers: peers.map(p => ({
                     node_id: p.nodeId, url: p.url,

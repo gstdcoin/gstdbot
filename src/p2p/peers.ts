@@ -21,7 +21,17 @@ import { EventEmitter } from 'events';
 
 const PEER_TTL_MS    = 5 * 60_000;   // peer considered dead after 5 min no heartbeat
 const HEARTBEAT_INTERVAL = 30_000;    // broadcast to all peers every 30s
-const PEERS_FILE = join(process.env.GSTD_CONFIG_DIR || '/home/bot/.config/gstdbot', 'peers.json');
+const PEERS_FILE   = join(process.env.GSTD_CONFIG_DIR || '/home/bot/.config/gstdbot', 'peers.json');
+const TUNNEL_URL_FILE = '/tmp/gstd_tunnel_url.txt';
+
+function resolvePublicUrl(configured: string): string {
+    // Prefer tunnel file (updated live by tunnel.sh) over static config
+    try {
+        const fromFile = readFileSync(TUNNEL_URL_FILE, 'utf-8').trim();
+        if (fromFile.startsWith('http')) return fromFile;
+    } catch { /* file may not exist yet */ }
+    return configured;
+}
 
 export interface PeerInfo {
     nodeId:       string;
@@ -198,12 +208,17 @@ export class PeerManager extends EventEmitter {
         const livePeers = this.getLivePeers().slice(0, 20);
         return {
             ...this.selfInfo,
+            url: resolvePublicUrl(this.selfInfo.url), // always fresh from tunnel file
             peers: livePeers.map(p => ({
                 nodeId: p.nodeId,
                 url: p.url,
                 capabilities: p.capabilities,
             })),
         };
+    }
+
+    getSelfUrl(): string {
+        return resolvePublicUrl(this.selfInfo.url);
     }
 
     // ─── Internal: heartbeat to all live peers ────────────────────────
