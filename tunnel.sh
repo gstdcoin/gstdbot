@@ -11,6 +11,20 @@ CF_BIN="$(dirname "$0")/cloudflared"
 
 log() { echo "[$(date -u +%H:%M:%S)] $*" | tee -a "$LOG"; }
 
+GSTDAI_DIR="/home/bot/gstdai"
+
+update_github_node_url() {
+  local url="$1"
+  local node_url_file="$GSTDAI_DIR/node-url.txt"
+  [ -d "$GSTDAI_DIR/.git" ] || return
+  echo "$url" > "$node_url_file"
+  (cd "$GSTDAI_DIR" && git add node-url.txt && \
+    git -c user.email="bot@gstdtoken.com" -c user.name="GSTD Pi Node" \
+      commit -m "Update Pi node URL: $url" --no-gpg-sign && \
+    git push origin main 2>&1 | tail -3) && log "GitHub node-url.txt updated" \
+    || log "GitHub update failed"
+}
+
 update_vercel() {
   local url="$1"
   if [ -z "$VERCEL_TOKEN" ]; then
@@ -51,6 +65,7 @@ while true; do
   if [ -n "$TUNNEL_URL" ]; then
     log "Tunnel active: $TUNNEL_URL"
     echo "$TUNNEL_URL" > "$URL_FILE"
+    update_github_node_url "$TUNNEL_URL"
     update_vercel "$TUNNEL_URL"
     ENV_FILE="/home/bot/gstdbot/.env"
     if grep -q "^GSTD_PUBLIC_URL=" "$ENV_FILE" 2>/dev/null; then
