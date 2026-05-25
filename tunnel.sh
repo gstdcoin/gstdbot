@@ -15,13 +15,37 @@ GSTDAI_DIR="/home/bot/gstdai"
 
 update_github_node_url() {
   local url="$1"
-  local node_url_file="$GSTDAI_DIR/node-url.txt"
   [ -d "$GSTDAI_DIR/.git" ] || return
-  echo "$url" > "$node_url_file"
-  (cd "$GSTDAI_DIR" && git add node-url.txt && \
+
+  # Update simple URL file
+  echo "$url" > "$GSTDAI_DIR/node-url.txt"
+
+  # Update nodes-registry.json for nodes/list and network/info fallback
+  local ts; ts=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
+  cat > "$GSTDAI_DIR/nodes-registry.json" << JSONEOF
+[
+  {
+    "node_id": "gstd-pi-bootstrap",
+    "name": "Node-gstd-pi-bootstrap",
+    "mode": "node",
+    "version": "3.4.0",
+    "capabilities": ["llama3.2:3b"],
+    "multiaddrs": ["$url"],
+    "node_url": "$url",
+    "platform": "linux",
+    "cpu_cores": 4,
+    "has_gpu": false,
+    "tasks_completed": 0,
+    "uptime_hours": 0,
+    "last_seen": "$ts"
+  }
+]
+JSONEOF
+
+  (cd "$GSTDAI_DIR" && git add node-url.txt nodes-registry.json && \
     git -c user.email="bot@gstdtoken.com" -c user.name="GSTD Pi Node" \
       commit -m "Update Pi node URL: $url" --no-gpg-sign && \
-    git push origin main 2>&1 | tail -3) && log "GitHub node-url.txt updated" \
+    git push origin main 2>&1 | tail -3) && log "GitHub node registry updated" \
     || log "GitHub update failed"
 }
 
