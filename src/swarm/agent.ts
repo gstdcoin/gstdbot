@@ -709,8 +709,23 @@ export class SwarmAgent {
             data = await this.callOpenAICompat(
                 'https://api.groq.com/openai/v1', groqKey, groqModel, messages, maxTok, temp);
         } else if (ollamaUrl) {
-            // Ollama uses OpenAI-compatible /v1/chat/completions
-            data = await this.callOpenAICompat(`${ollamaUrl}/v1`, undefined, model, messages, maxTok, temp);
+            // Ollama: try the requested model first; fall back to first available local model
+            let ollamaModel = model;
+            try {
+                const tagsResp = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(3000) });
+                if (tagsResp.ok) {
+                    const tags: any = await tagsResp.json();
+                    const available: string[] = (tags.models || []).map((m: any) => m.name);
+                    const hasExact = available.includes(model) ||
+                        available.some(m => m.replace(/[^a-z0-9]/gi, '').toLowerCase()
+                            === model.replace(/[^a-z0-9]/gi, '').toLowerCase());
+                    if (!hasExact && available.length > 0) {
+                        ollamaModel = available[0]; // use first installed model
+                        logActivity(`Model ${model} not in Ollama, using ${ollamaModel}`, 'warn');
+                    }
+                }
+            } catch (_e) { /* use requested model anyway */ }
+            data = await this.callOpenAICompat(`${ollamaUrl}/v1`, undefined, ollamaModel, messages, maxTok, temp);
         } else if (customUrl) {
             data = await this.callOpenAICompat(`${customUrl}/v1`, customKey, model, messages, maxTok, temp);
         } else {
