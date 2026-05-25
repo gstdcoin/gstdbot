@@ -80,6 +80,9 @@ export class UptimeDaemon {
         this.cachedIOPS = this.measureDiskIOPS();
         this.cachedPing = this.measurePlatformPing();
 
+        // Pre-warm Ollama models so cold-start latency doesn't kill first inference
+        this.warmupOllamaModels().catch(() => {});
+
         // Send first heartbeat immediately
         this.sendHeartbeat().catch(() => {});
 
@@ -296,6 +299,29 @@ export class UptimeDaemon {
             };
         } catch {
             return { total: 0, used: 0 };
+        }
+    }
+
+    // ─── Ollama Warmup ───────────────────────────────────────
+    private async warmupOllamaModels(): Promise<void> {
+        const models = await this.getOllamaModels();
+        if (models.length === 0) return;
+        const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
+        for (const model of models.slice(0, 1)) {
+            try {
+                // Send a minimal request to pre-load the model; keep_alive:-1 keeps it warm forever
+                await fetch(`${ollamaUrl}/v1/chat/completions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model, stream: false, keep_alive: -1,
+                        messages: [{ role: 'user', content: 'hi' }],
+                        max_tokens: 1,
+                    }),
+                    signal: AbortSignal.timeout(120_000),
+                });
+                logActivity(`Ollama model warmed up: ${model}`, 'info');
+            } catch { /* warmup failure is non-critical */ }
         }
     }
 
