@@ -821,20 +821,23 @@ export class OmegaGateway {
             }
         });
 
-        // ─── Models list ─────────────────────────────────────────
-        this.app.get('/v1/models', (_req, res) => {
-            res.json({
-                object: 'list',
-                data: [
-                    { id: 'auto', object: 'model', owned_by: 'gstd-swarm', description: 'Sovereign neural router — auto-selects best model' },
-                    { id: 'gstd-flash', object: 'model', owned_by: 'gstd-swarm', description: 'Fast: llama-3.1-8b-instant' },
-                    { id: 'gstd-pro', object: 'model', owned_by: 'gstd-swarm', description: 'Balanced: llama-3.3-70b-versatile' },
-                    { id: 'gstd-ultra', object: 'model', owned_by: 'gstd-swarm', description: 'Deep reasoning: qwen/qwen3-32b' },
-                    { id: 'llama-4-scout', object: 'model', owned_by: 'meta', description: 'Meta Llama 4 Scout 17B MoE' },
-                    { id: 'kimi-k2', object: 'model', owned_by: 'moonshot', description: 'Moonshot Kimi K2 Instruct' },
-                    { id: 'cocoon-auto', object: 'model', owned_by: 'cocoon-tee', description: 'TEE confidential GPU compute' },
-                ],
-            });
+        // ─── Models list (OpenAI-compatible — includes installed Ollama models) ──
+        this.app.get('/v1/models', async (_req, res) => {
+            const base = [
+                { id: 'auto', object: 'model', owned_by: 'gstd-swarm', description: 'Sovereign router — auto-selects best model' },
+                { id: 'gstd-flash', object: 'model', owned_by: 'gstd-swarm', description: 'Fast: llama-3.1-8b-instant via Groq' },
+                { id: 'gstd-pro', object: 'model', owned_by: 'gstd-swarm', description: 'Balanced: llama-3.3-70b-versatile via Groq' },
+                { id: 'gstd-ultra', object: 'model', owned_by: 'gstd-swarm', description: 'Deep reasoning: qwen/qwen3-32b via Groq' },
+            ];
+            // Add installed local Ollama models so VSCode/Cursor/Continue.dev discover them
+            const ollamaModels = this._availableModels.map(id => ({
+                id,
+                object: 'model',
+                owned_by: 'local-ollama',
+                description: `Local Ollama model (offline, private)`,
+                created: Math.floor(Date.now() / 1000),
+            }));
+            res.json({ object: 'list', data: [...ollamaModels, ...base] });
         });
 
         // ─── Sovereignty Index ───────────────────────────────────
@@ -4129,6 +4132,58 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             } catch (e: any) {
                 res.status(500).json({ ok: false, error: e.message });
             }
+        });
+
+        // GET /api/node/hardware — hardware specs for model recommendations
+        this.app.get('/api/node/hardware', (_req, res) => {
+            const os = require('os') as typeof import('os');
+            const { execSync } = require('child_process') as typeof import('child_process');
+            const totalRam   = os.totalmem();
+            const freeRam    = os.freemem();
+            const cpuList    = os.cpus();
+            // Disk free
+            let diskFreeGb = 0, diskTotalGb = 0;
+            try {
+                const df = execSync("df -BG / | tail -1", { encoding: 'utf-8', timeout: 3000 });
+                const parts = df.trim().split(/\s+/);
+                diskTotalGb = parseInt(parts[1]?.replace('G','') || '0');
+                diskFreeGb  = parseInt(parts[3]?.replace('G','') || '0');
+            } catch (_) {}
+            // GPU
+            let gpu = { detected: false, vram_mb: 0, model: '' };
+            try {
+                const gOut = execSync('nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits 2>/dev/null', { encoding: 'utf-8', timeout: 3000 });
+                const parts = gOut.trim().split(',').map((s: string) => s.trim());
+                if (parts[0]) gpu = { detected: true, model: parts[0], vram_mb: parseInt(parts[1]) || 0 };
+            } catch (_) {}
+
+            const totalRamGb = totalRam / (1024 ** 3);
+            const freeRamGb  = freeRam  / (1024 ** 3);
+
+            // Model size guide (RAM needed to run, conservative): model_id → gb
+            const modelRamReq: Record<string, number> = {
+                'llama3.2:1b': 1.0, 'gemma2:2b': 1.5, 'phi3:mini': 2.0,
+                'llama3.2:3b': 2.2, 'qwen2.5:3b': 2.2, 'nomic-embed-text': 0.5,
+                'mistral:7b': 5.0, 'llama3.1:8b': 5.5, 'codellama:7b': 5.0,
+                'qwen2.5:7b': 5.5, 'gemma2:9b': 6.5, 'deepseek-r1:7b': 5.0,
+            };
+
+            res.json({
+                ram: {
+                    total_gb: Math.round(totalRamGb * 10) / 10,
+                    free_gb:  Math.round(freeRamGb  * 10) / 10,
+                    used_gb:  Math.round((totalRamGb - freeRamGb) * 10) / 10,
+                },
+                cpu: { cores: cpuList.length, model: cpuList[0]?.model || 'Unknown' },
+                disk: { total_gb: diskTotalGb, free_gb: diskFreeGb },
+                gpu,
+                model_recommendations: Object.entries(modelRamReq).map(([id, ram_gb]) => ({
+                    id,
+                    ram_required_gb: ram_gb,
+                    can_run: freeRamGb >= ram_gb || (gpu.detected && gpu.vram_mb / 1024 >= ram_gb),
+                    recommended: freeRamGb >= ram_gb * 1.2,
+                })),
+            });
         });
 
         // GET /api/node/rating — compute node rating & rewards multiplier

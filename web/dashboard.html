@@ -981,6 +981,9 @@
         </div>
 
         <div class="nav-section">System</div>
+        <div class="nav-item" onclick="showPage('connect');loadConnectPage()" id="nav-connect">
+          <span class="ic">🔌</span><span>Connect Apps</span>
+        </div>
         <div class="nav-item" onclick="showPage('access')" id="nav-access">
           <span class="ic">🔑</span><span>Remote Access</span>
         </div>
@@ -2224,6 +2227,87 @@
       </div>
 
       <!-- ═══ PAGE: Settings ═══ -->
+      <!-- ═══ PAGE: Connect Apps ═══ -->
+      <div class="page" id="page-connect">
+        <!-- API Endpoint Card -->
+        <div class="card" style="margin-bottom:16px;border:1px solid rgba(6,182,212,0.25)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="card-label" style="margin:0">🔌 Your Local AI API Endpoint</div>
+            <span id="conn-status-dot" style="font-size:11px;color:var(--emerald);font-weight:700">● Online</span>
+          </div>
+          <div style="margin:10px 0;display:flex;align-items:center;gap:8px">
+            <code id="conn-api-url" style="flex:1;padding:10px 14px;background:#0a0a14;border-radius:8px;font-size:13px;color:#06b6d4;border:1px solid #222;font-family:JetBrains Mono,monospace">http://127.0.0.1:8080</code>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('conn-api-url').textContent);log('API URL copied!','success')"
+              style="padding:8px 14px;border-radius:8px;border:1px solid #333;background:#15151e;color:#aaa;font-size:12px;cursor:pointer;white-space:nowrap">📋 Copy</button>
+          </div>
+          <p style="font-size:11px;color:var(--muted);margin-top:4px">This is a fully OpenAI-compatible API. Use it in any app that supports OpenAI endpoints.</p>
+        </div>
+
+        <!-- Installed models quick reference -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-label">🤖 Available Models (use as model ID)</div>
+          <div id="conn-models-list" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
+            <span style="color:var(--muted);font-size:11px">Loading...</span>
+          </div>
+        </div>
+
+        <!-- Tool setup cards -->
+        <div class="grid-2" style="margin-bottom:16px">
+
+          <!-- VS Code + Continue.dev -->
+          <div class="card">
+            <div class="card-label">💻 VS Code — Continue.dev</div>
+            <p style="font-size:11px;color:var(--muted);margin:6px 0 10px">Install the <strong style="color:var(--text)">Continue</strong> extension, then add to config.json:</p>
+            <pre id="conn-vscode-cfg" style="background:#0a0a14;border-radius:8px;padding:12px;font-size:11px;color:var(--text);overflow:auto;border:1px solid #222;font-family:JetBrains Mono,monospace;white-space:pre-wrap">Loading...</pre>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('conn-vscode-cfg').textContent);log('Config copied!','success')"
+              style="margin-top:8px;padding:6px 12px;border-radius:6px;border:1px solid #333;background:#15151e;color:#aaa;font-size:11px;cursor:pointer">📋 Copy Config</button>
+          </div>
+
+          <!-- Cursor IDE -->
+          <div class="card">
+            <div class="card-label">🖱 Cursor IDE</div>
+            <p style="font-size:11px;color:var(--muted);margin:6px 0 10px">Go to <strong style="color:var(--text)">Settings → Models → Add Model</strong>:</p>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div class="info-row"><span class="k">API Base URL</span><span id="conn-cursor-url" class="v" style="font-family:JetBrains Mono,monospace;font-size:10px;cursor:pointer" onclick="navigator.clipboard.writeText(this.textContent);log('Copied!','success')">—</span></div>
+              <div class="info-row"><span class="k">API Key</span><span class="v" style="font-family:JetBrains Mono,monospace;font-size:10px">local (any value)</span></div>
+              <div class="info-row"><span class="k">Model</span><span id="conn-cursor-model" class="v" style="font-family:JetBrains Mono,monospace;font-size:10px">—</span></div>
+            </div>
+            <p style="font-size:10px;color:var(--muted);margin-top:8px">Click model name above to copy it.</p>
+          </div>
+
+          <!-- Jan.ai -->
+          <div class="card">
+            <div class="card-label">🟠 Jan.ai</div>
+            <p style="font-size:11px;color:var(--muted);margin:6px 0 10px">Go to <strong style="color:var(--text)">Settings → Extensions → Remote LLM</strong>:</p>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div class="info-row"><span class="k">API URL</span><span id="conn-jan-url" class="v" style="font-family:JetBrains Mono,monospace;font-size:10px;cursor:pointer" onclick="navigator.clipboard.writeText(this.textContent);log('Copied!','success')">—</span></div>
+              <div class="info-row"><span class="k">Model</span><span id="conn-jan-model" class="v" style="font-family:JetBrains Mono,monospace;font-size:10px">—</span></div>
+            </div>
+          </div>
+
+          <!-- Python / curl quick test -->
+          <div class="card">
+            <div class="card-label">🐍 Python / curl Test</div>
+            <p style="font-size:11px;color:var(--muted);margin:6px 0 10px">Test your API directly:</p>
+            <pre id="conn-curl-example" style="background:#0a0a14;border-radius:8px;padding:12px;font-size:10px;color:var(--text);overflow:auto;border:1px solid #222;font-family:JetBrains Mono,monospace;white-space:pre-wrap">Loading...</pre>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('conn-curl-example').textContent);log('Copied!','success')"
+              style="margin-top:8px;padding:6px 12px;border-radius:6px;border:1px solid #333;background:#15151e;color:#aaa;font-size:11px;cursor:pointer">📋 Copy</button>
+          </div>
+        </div>
+
+        <!-- Ollama compatibility note -->
+        <div class="card" style="border:1px solid rgba(139,92,246,0.2)">
+          <div class="card-label">ℹ️ Compatibility</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-top:8px">
+            <p>• <strong style="color:var(--text)">OpenAI API</strong> — Full compatibility: <code style="font-family:JetBrains Mono,monospace;font-size:11px;background:#0a0a14;padding:1px 5px;border-radius:3px">/v1/chat/completions</code> and <code style="font-family:JetBrains Mono,monospace;font-size:11px;background:#0a0a14;padding:1px 5px;border-radius:3px">/v1/models</code></p>
+            <p>• <strong style="color:var(--text)">Local models</strong> route via Ollama on this machine. <strong style="color:var(--text)">Cloud models</strong> route via Groq (GSTD network).</p>
+            <p>• <strong style="color:var(--text)">No API key required</strong> for local access. Remote access needs your dashboard PIN token.</p>
+            <p>• Supports streaming (<code style="font-family:JetBrains Mono,monospace;font-size:11px;background:#0a0a14;padding:1px 5px;border-radius:3px">"stream": true</code>), tools, and system prompts.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ PAGE: Settings ═══ -->
       <div class="page" id="page-settings">
         <div class="grid-2">
           <div class="card">
@@ -3131,6 +3215,7 @@
           sovereign: "Sovereign Fund",
           models: "AI Models",
           ipfs: "IPFS Storage",
+          connect: "Connect Apps",
         };
         document.getElementById("page-title").textContent =
           titles[name] || name;
@@ -4282,9 +4367,10 @@
 
       async function loadModels() {
         try {
-          const [modelsRes, ratingRes] = await Promise.all([
+          const [modelsRes, ratingRes, hwRes] = await Promise.all([
             fetch(API + '/api/ollama/models').then(r => r.ok ? r.json() : null),
             fetch(API + '/api/node/rating').then(r => r.ok ? r.json() : null),
+            fetch(API + '/api/node/hardware').then(r => r.ok ? r.json() : null),
           ]);
 
           // Rating cards
@@ -4361,7 +4447,20 @@
               '<div style="font-size:10px;color:var(--muted);margin-bottom:4px;font-family:JetBrains Mono,monospace">' + m.id + '</div>' +
               '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">' + m.desc + '</div>' +
               '<div style="display:flex;justify-content:space-between;align-items:center">' +
-              '<span style="font-size:10px;color:var(--muted)">' + m.size_gb + ' GB download</span>' +
+              (function() {
+                // Hardware check
+                let hwNote = '';
+                if (hwRes) {
+                  const freeRam = hwRes.ram?.free_gb || 0;
+                  const freeDisk = hwRes.disk?.free_gb || 0;
+                  const ramOk  = freeRam  >= m.size_gb * 1.1;
+                  const diskOk = freeDisk >= m.size_gb * 1.2;
+                  if (!diskOk) hwNote = '<span style="font-size:9px;color:var(--rose)">⚠ Need ' + (m.size_gb*1.2).toFixed(0) + 'GB disk</span>';
+                  else if (!ramOk) hwNote = '<span style="font-size:9px;color:var(--amber)">⚠ Low RAM (' + freeRam.toFixed(1) + 'GB free)</span>';
+                  else hwNote = '<span style="font-size:9px;color:var(--emerald)">✓ Fits hardware</span>';
+                }
+                return '<div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:10px;color:var(--muted)">' + m.size_gb + ' GB download</span>' + hwNote + '</div>';
+              })() +
               (m.installed
                 ? '<span style="font-size:11px;color:var(--emerald);font-weight:700">✓ Installed</span>'
                 : '<button onclick="pullModel(\'' + m.id + '\')" style="padding:5px 12px;border-radius:6px;border:none;background:linear-gradient(135deg,#8b5cf622,#06b6d422);border:1px solid rgba(139,92,246,0.3);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer">⬇ Install</button>') +
@@ -4571,6 +4670,111 @@
         } catch (e) {
           log('Unpin error: ' + e.message, 'error');
         }
+      }
+
+      // ─── Connect Apps Page ─────────────────────────────────
+      async function loadConnectPage() {
+        try {
+          const [modelsRes, hwRes] = await Promise.all([
+            fetch(API + '/v1/models').then(r => r.ok ? r.json() : null),
+            fetch(API + '/api/node/hardware').then(r => r.ok ? r.json() : null),
+          ]);
+
+          const host = window.location.hostname;
+          const isLocal = (host === 'localhost' || host === '127.0.0.1');
+          const apiBase = window.location.protocol + '//' + host + ':8080';
+          const apiV1   = apiBase + '/v1';
+
+          // Show API URL
+          const urlEl = document.getElementById('conn-api-url');
+          if (urlEl) urlEl.textContent = apiV1;
+
+          // Cursor fields
+          const cursorUrl = document.getElementById('conn-cursor-url');
+          if (cursorUrl) { cursorUrl.textContent = apiV1; cursorUrl.title = 'Click to copy'; }
+
+          // Jan.ai
+          const janUrl = document.getElementById('conn-jan-url');
+          if (janUrl) janUrl.textContent = apiV1;
+
+          // Get first installed model
+          const localModels = (modelsRes?.data || []).filter((m) => m.owned_by === 'local-ollama');
+          const firstModel = localModels[0]?.id || 'llama3.2:3b';
+
+          // Models list
+          const modelsListEl = document.getElementById('conn-models-list');
+          if (modelsListEl && localModels.length > 0) {
+            modelsListEl.innerHTML = localModels.map(m =>
+              '<span onclick="navigator.clipboard.writeText(\'' + m.id + '\');log(\'Model ID copied!\',\'success\')" style="padding:4px 10px;border-radius:6px;background:rgba(139,92,246,0.12);color:#a78bfa;font-size:11px;font-weight:700;cursor:pointer;font-family:JetBrains Mono,monospace" title="Click to copy">' + m.id + '</span>'
+            ).join('');
+          } else if (modelsListEl) {
+            modelsListEl.innerHTML = '<span style="color:var(--muted);font-size:11px">No local models. Install one from the Models page first.</span>';
+          }
+
+          // Cursor model
+          const cursorModel = document.getElementById('conn-cursor-model');
+          if (cursorModel) {
+            cursorModel.textContent = firstModel;
+            cursorModel.style.cursor = 'pointer';
+            cursorModel.title = 'Click to copy';
+            cursorModel.onclick = () => { navigator.clipboard.writeText(firstModel); log('Model ID copied!', 'success'); };
+          }
+          const janModel = document.getElementById('conn-jan-model');
+          if (janModel) janModel.textContent = firstModel;
+
+          // VS Code Continue.dev config
+          const vscodeConfig = JSON.stringify({
+            models: [{
+              title: 'GSTD Node — ' + firstModel,
+              model: firstModel,
+              apiBase: apiV1,
+              apiKey: 'local',
+              provider: 'openai',
+            }]
+          }, null, 2);
+          const vscodeCfgEl = document.getElementById('conn-vscode-cfg');
+          if (vscodeCfgEl) vscodeCfgEl.textContent = vscodeConfig;
+
+          // curl example
+          const curlExample = 'curl ' + apiV1 + '/chat/completions \\\n  -H "Content-Type: application/json" \\\n  -d \'{"model":"' + firstModel + '","messages":[{"role":"user","content":"Hello!"}]}\'';
+          const curlEl = document.getElementById('conn-curl-example');
+          if (curlEl) curlEl.textContent = curlExample;
+
+          // Hardware RAM info
+          if (hwRes) {
+            const statusDot = document.getElementById('conn-status-dot');
+            if (statusDot) statusDot.textContent = '● Online · ' + hwRes.ram?.free_gb?.toFixed(1) + 'GB RAM free';
+          }
+        } catch (e) {
+          console.warn('Connect page load error:', e);
+        }
+      }
+
+      // ─── Enhanced Update Check (with changelog) ────────────────
+      async function checkUpdate() {
+        try {
+          const r = await fetch(API + '/api/check-update');
+          if (!r.ok) return;
+          const d = await r.json();
+          const btn = document.getElementById('update-btn');
+          if (btn && d.update_available) {
+            btn.style.display = 'block';
+            btn.textContent = '🔄 Update available (' + d.commits_behind + ' commits)';
+            // Show a non-blocking notification banner on the dashboard
+            let banner = document.getElementById('update-banner');
+            if (!banner) {
+              banner = document.createElement('div');
+              banner.id = 'update-banner';
+              banner.style.cssText = 'position:fixed;top:0;left:240px;right:0;padding:8px 16px;background:rgba(34,197,94,0.12);border-bottom:1px solid rgba(34,197,94,0.25);z-index:500;display:flex;align-items:center;gap:12px;font-size:12px';
+              document.body.appendChild(banner);
+            }
+            const changelog = (d.changelog || []).slice(0, 3).join(' · ');
+            banner.innerHTML = '<span style="color:var(--emerald);font-weight:700">🔄 Update available: v' + (d.remote_hash || '') + '</span>' +
+              (changelog ? '<span style="color:var(--muted)">' + changelog + '</span>' : '') +
+              '<button onclick="runUpdate()" style="margin-left:auto;padding:4px 12px;border-radius:6px;border:1px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.15);color:var(--emerald);font-size:11px;font-weight:700;cursor:pointer">Install Update</button>' +
+              '<button onclick="document.getElementById(\'update-banner\').remove()" style="padding:4px 8px;border:none;background:none;color:var(--muted);cursor:pointer">✕</button>';
+          }
+        } catch (_) {}
       }
 
       refresh();
