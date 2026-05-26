@@ -4211,6 +4211,43 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             });
         });
 
+        // GET /api/node/resources — resource usage (for Resources page)
+        this.app.get('/api/node/resources', (_req, res) => {
+            const os = require('os') as typeof import('os');
+            const totalRam = os.totalmem();
+            const freeRam = os.freemem();
+            const cpuLoad = os.loadavg();
+            res.json({
+                cpu: {
+                    cores: os.cpus().length,
+                    usage_pct: currentCpuUsage,
+                    load_1m: Math.round(cpuLoad[0] * 100) / 100,
+                    model: os.cpus()[0]?.model || 'Unknown',
+                },
+                ram: {
+                    total_mb: Math.round(totalRam / 1024 / 1024),
+                    used_mb: Math.round((totalRam - freeRam) / 1024 / 1024),
+                    free_mb: Math.round(freeRam / 1024 / 1024),
+                    pct: Math.round((totalRam - freeRam) / totalRam * 100),
+                },
+                ollama: {
+                    models: this._availableModels,
+                    requests_served: this.metrics.totalRequests,
+                },
+                uptime_hours: Math.round(process.uptime() / 3600 * 10) / 10,
+            });
+        });
+
+        // POST /api/memory/recall — graceful stub (Memory requires Redis)
+        this.app.post('/api/memory/recall', (_req, res) => {
+            res.json({ results: [], total: 0, connected: false, message: 'Memory requires Redis configuration' });
+        });
+
+        // GET /api/vaults — liquidity vaults stub
+        this.app.get('/api/vaults', (_req, res) => {
+            res.json({ vaults: [], total_locked: 0, apy: 0, message: 'Vaults not yet deployed on-chain' });
+        });
+
         logActivity('Core modules v4.0 initialized: EventBus, PlatformLink, ModelFailover, Diagnostics, UsageTracker, Scheduler', 'info');
     }
 
