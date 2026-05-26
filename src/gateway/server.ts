@@ -829,7 +829,7 @@ export class OmegaGateway {
                 { id: 'gstd-pro', object: 'model', owned_by: 'gstd-swarm', description: 'Balanced: llama-3.3-70b-versatile via Groq' },
                 { id: 'gstd-ultra', object: 'model', owned_by: 'gstd-swarm', description: 'Deep reasoning: qwen/qwen3-32b via Groq' },
             ];
-            // Add installed local Ollama models so VSCode/Cursor/Continue.dev discover them
+            // Add installed local Ollama models so OpenAI-compatible clients discover them
             const ollamaModels = this._availableModels.map(id => ({
                 id,
                 object: 'model',
