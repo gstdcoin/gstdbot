@@ -17,7 +17,7 @@ INSTALL_DIR="${GSTD_INSTALL_DIR:-$HOME/gstdbot}"
 CONFIG_DIR="$HOME/.config/gstdbot"
 STATE_FILE="$CONFIG_DIR/.install_state"
 LOG_FILE="$CONFIG_DIR/install.log"
-API_URL="https://api.gstdtoken.com/v1"
+API_URL="https://app.gstdtoken.com/api/v1"
 REPO_URL="https://github.com/gstdcoin/gstdbot.git"
 
 # ─── Colors ──────────────────────────────────────────────────────
