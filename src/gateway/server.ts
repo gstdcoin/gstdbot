@@ -1764,6 +1764,34 @@ export class OmegaGateway {
             }
         });
 
+        // Convenience aliases so dashboard can call predictable URLs
+        this.app.post('/api/node/restart', (_req, res) => {
+            logActivity('Node restart initiated...', 'warn');
+            res.json({ ok: true, message: 'Restarting node...' });
+            setTimeout(() => process.exit(0), 1000);
+        });
+
+        this.app.post('/api/node/stop', (_req, res) => {
+            logActivity('Node stop initiated...', 'warn');
+            res.json({ ok: true, message: 'Node stopping. Use pm2 start gstdbot to restart.' });
+            setTimeout(() => process.exit(1), 1000);
+        });
+
+        this.app.post('/api/node/update', async (_req, res) => {
+            try {
+                const cwd = join(__dirname, '../..');
+                const branch = getDefaultBranch(cwd);
+                execSync(`git pull origin ${branch} --ff-only`, { cwd, encoding: 'utf-8', timeout: 30000 });
+                execSync('npm install --legacy-peer-deps 2>&1 | tail -5 || true', { cwd, encoding: 'utf-8', timeout: 120000 });
+                execSync('node_modules/.bin/tsc --skipLibCheck 2>&1 | tail -5 || true', { cwd, encoding: 'utf-8', timeout: 60000 });
+                logActivity('Update complete! Restart to apply.', 'success');
+                res.json({ ok: true, message: 'Updated. Restart to apply changes.' });
+            } catch (e: any) {
+                logActivity('Update failed: ' + e.message, 'error');
+                res.json({ ok: false, message: 'Update failed: ' + e.message });
+            }
+        });
+
         // ─── Sovereign Liquidity Network (DLN) ───────────────────
         this.app.get('/api/node/dln', (_req, res) => {
             res.json({
