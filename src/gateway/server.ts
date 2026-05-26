@@ -4020,6 +4020,142 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             res.json(result);
         });
 
+        // ─── Ollama Model Management ─────────────────────────────────────
+
+        const POPULAR_MODELS = [
+            { id: 'llama3.2:3b',        name: 'Llama 3.2 3B',       size_gb: 2.0,  desc: 'Fast, great for edge devices',       family: 'llama',   tier: 'light'    },
+            { id: 'llama3.2:1b',        name: 'Llama 3.2 1B',       size_gb: 0.8,  desc: 'Ultra-fast, minimal RAM needed',     family: 'llama',   tier: 'minimal'  },
+            { id: 'llama3.1:8b',        name: 'Llama 3.1 8B',       size_gb: 4.7,  desc: 'Best quality/speed balance',         family: 'llama',   tier: 'standard' },
+            { id: 'mistral:7b',         name: 'Mistral 7B',         size_gb: 4.1,  desc: 'Strong reasoning, long context',     family: 'mistral', tier: 'standard' },
+            { id: 'phi3:mini',          name: 'Phi-3 Mini',         size_gb: 2.4,  desc: 'Microsoft, great at math & code',    family: 'phi',     tier: 'light'    },
+            { id: 'gemma2:2b',          name: 'Gemma 2 2B',         size_gb: 1.6,  desc: 'Google, efficient & precise',        family: 'gemma',   tier: 'light'    },
+            { id: 'gemma2:9b',          name: 'Gemma 2 9B',         size_gb: 5.4,  desc: 'Google, high quality output',        family: 'gemma',   tier: 'standard' },
+            { id: 'qwen2.5:3b',         name: 'Qwen 2.5 3B',        size_gb: 2.0,  desc: 'Alibaba, strong multilingual',       family: 'qwen',    tier: 'light'    },
+            { id: 'qwen2.5:7b',         name: 'Qwen 2.5 7B',        size_gb: 4.7,  desc: 'Alibaba, coding & math champion',   family: 'qwen',    tier: 'standard' },
+            { id: 'deepseek-r1:7b',     name: 'DeepSeek R1 7B',     size_gb: 4.7,  desc: 'Reasoning specialist, step-by-step', family: 'deepseek', tier: 'standard' },
+            { id: 'codellama:7b',       name: 'CodeLlama 7B',       size_gb: 3.8,  desc: 'Meta, specialized code generation', family: 'llama',   tier: 'standard' },
+            { id: 'nomic-embed-text',   name: 'Nomic Embed Text',   size_gb: 0.3,  desc: 'Text embeddings for search/RAG',    family: 'embed',   tier: 'minimal'  },
+        ];
+
+        // GET /api/ollama/models — installed + catalog
+        this.app.get('/api/ollama/models', async (_req, res) => {
+            const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
+            let installed: any[] = [];
+            let running: any[] = [];
+            try {
+                const r = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(3000) });
+                if (r.ok) installed = ((await r.json() as any).models || []).map((m: any) => ({
+                    id: m.name, size: m.size, modified_at: m.modified_at, details: m.details,
+                }));
+            } catch (_) {}
+            try {
+                const r = await fetch(`${ollamaUrl}/api/ps`, { signal: AbortSignal.timeout(2000) });
+                if (r.ok) running = ((await r.json() as any).models || []).map((m: any) => m.name as string);
+            } catch (_) {}
+            const installedIds = new Set(installed.map((m: any) => m.id));
+            const catalog = POPULAR_MODELS.map(m => ({ ...m, installed: installedIds.has(m.id) }));
+            res.json({ installed, running, catalog, ollama_available: installed.length > 0 || running.length >= 0 });
+        });
+
+        // POST /api/ollama/models/pull — SSE stream of download progress
+        this.app.post('/api/ollama/models/pull', async (req, res) => {
+            const { model } = req.body || {};
+            if (!model || typeof model !== 'string' || !/^[a-z0-9:._/-]+$/i.test(model)) {
+                return res.status(400).json({ error: 'Invalid model name' });
+            }
+            const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
+            logActivity(`Pulling Ollama model: ${model}`, 'info');
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('X-Accel-Buffering', 'no');
+            try {
+                const pullResp = await fetch(`${ollamaUrl}/api/pull`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: model, stream: true }),
+                    signal: AbortSignal.timeout(30 * 60 * 1000),
+                });
+                if (!pullResp.ok || !pullResp.body) {
+                    const err = await pullResp.text().catch(() => 'unknown error');
+                    res.write(`data: ${JSON.stringify({ error: err })}\n\n`);
+                    return res.end();
+                }
+                const reader = (pullResp.body as any).getReader();
+                const decoder = new TextDecoder();
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const text = decoder.decode(value, { stream: true });
+                    for (const line of text.split('\n')) {
+                        if (!line.trim()) continue;
+                        try {
+                            const data = JSON.parse(line);
+                            res.write(`data: ${JSON.stringify(data)}\n\n`);
+                            if (data.status === 'success') {
+                                logActivity(`Model pulled: ${model}`, 'success');
+                                await this._refreshOllamaModels();
+                            }
+                        } catch (_) {}
+                    }
+                }
+            } catch (e: any) {
+                res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`);
+            }
+            res.end();
+        });
+
+        // DELETE /api/ollama/models/:name — remove a model
+        this.app.delete('/api/ollama/models/:name', async (req, res) => {
+            const model = decodeURIComponent(req.params.name);
+            if (!/^[a-z0-9:._/-]+$/i.test(model)) {
+                return res.status(400).json({ error: 'Invalid model name' });
+            }
+            const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
+            try {
+                const r = await fetch(`${ollamaUrl}/api/delete`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: model }),
+                    signal: AbortSignal.timeout(10000),
+                });
+                if (r.ok) {
+                    logActivity(`Model removed: ${model}`, 'info');
+                    await this._refreshOllamaModels();
+                    res.json({ ok: true, removed: model });
+                } else {
+                    const err = await r.text().catch(() => 'delete failed');
+                    res.status(400).json({ ok: false, error: err });
+                }
+            } catch (e: any) {
+                res.status(500).json({ ok: false, error: e.message });
+            }
+        });
+
+        // GET /api/node/rating — compute node rating & rewards multiplier
+        this.app.get('/api/node/rating', (_req, res) => {
+            const installedCount = this._availableModels.length;
+            const totalRequests  = this.metrics.totalRequests;
+            const uptimeHours    = process.uptime() / 3600;
+            // Score breakdown (max 100)
+            const modelScore    = Math.min(installedCount * 12, 48);
+            const activityScore = Math.min(Math.floor(Math.sqrt(totalRequests) * 3), 32);
+            const uptimeScore   = Math.min(Math.floor(uptimeHours * 1.5), 20);
+            const total = modelScore + activityScore + uptimeScore;
+            const tier  = total >= 80 ? 'diamond' : total >= 60 ? 'gold' : total >= 40 ? 'silver' : 'bronze';
+            const multiplier = total >= 80 ? 3.0 : total >= 60 ? 2.0 : total >= 40 ? 1.5 : 1.0;
+            res.json({
+                score: total,
+                max_score: 100,
+                tier,
+                multiplier,
+                breakdown: {
+                    models:   { score: modelScore,    max: 48, value: installedCount, unit: 'models' },
+                    activity: { score: activityScore, max: 32, value: totalRequests,  unit: 'requests' },
+                    uptime:   { score: uptimeScore,   max: 20, value: Math.round(uptimeHours * 10) / 10, unit: 'hours' },
+                },
+            });
+        });
+
         logActivity('Core modules v4.0 initialized: EventBus, PlatformLink, ModelFailover, Diagnostics, UsageTracker, Scheduler', 'info');
     }
 

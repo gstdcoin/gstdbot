@@ -935,7 +935,14 @@
         <div class="nav-section">AI Platform</div>
         <div class="nav-item" onclick="showPage('chat')" id="nav-chat">
           <span class="ic">💬</span><span>AI Chat</span>
-          <span class="badge badge-green">8 models</span>
+          <span class="badge badge-green" id="sb-models-count">—</span>
+        </div>
+        <div class="nav-item" onclick="showPage('models');loadModels()" id="nav-models">
+          <span class="ic">🤖</span><span>Models</span>
+          <span class="badge badge-green">NEW</span>
+        </div>
+        <div class="nav-item" onclick="showPage('ipfs');loadIPFS()" id="nav-ipfs">
+          <span class="ic">📦</span><span>IPFS Storage</span>
         </div>
         <div class="nav-item" onclick="showPage('memory')" id="nav-memory">
           <span class="ic">🧠</span><span>Memory</span>
@@ -2013,6 +2020,159 @@
         </div>
       </div>
 
+      <!-- ═══ PAGE: Models ═══ -->
+      <div class="page" id="page-models">
+        <!-- Rating Card -->
+        <div class="grid-3" style="margin-bottom:16px">
+          <div class="card" style="text-align:center">
+            <div class="card-label">⭐ Node Rating</div>
+            <div id="m-score" class="card-value" style="font-size:36px;font-weight:900;color:#8b5cf6">—</div>
+            <div id="m-tier" class="card-sub" style="font-size:12px;margin-top:4px;font-weight:700">loading...</div>
+          </div>
+          <div class="card" style="text-align:center">
+            <div class="card-label">✖ Rewards Multiplier</div>
+            <div id="m-mult" class="card-value" style="font-size:32px;font-weight:900;color:#22c55e">×—</div>
+            <div class="card-sub">More models = more GSTD</div>
+          </div>
+          <div class="card" style="text-align:center">
+            <div class="card-label">🤖 Installed Models</div>
+            <div id="m-count" class="card-value" style="font-size:32px;font-weight:900;color:#06b6d4">—</div>
+            <div class="card-sub">Local Ollama models</div>
+          </div>
+        </div>
+
+        <!-- Rating Breakdown -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-label">📊 Rating Breakdown</div>
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span style="font-size:12px;color:var(--text)">🤖 Models installed</span>
+                <span id="m-model-pts" style="font-size:12px;color:#8b5cf6;font-weight:700">0 / 48 pts</span>
+              </div>
+              <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">
+                <div id="m-model-bar" style="height:100%;background:#8b5cf6;border-radius:3px;width:0%;transition:width 0.5s"></div>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span style="font-size:12px;color:var(--text)">⚡ Requests served</span>
+                <span id="m-activity-pts" style="font-size:12px;color:#06b6d4;font-weight:700">0 / 32 pts</span>
+              </div>
+              <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">
+                <div id="m-activity-bar" style="height:100%;background:#06b6d4;border-radius:3px;width:0%;transition:width 0.5s"></div>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span style="font-size:12px;color:var(--text)">⏱ Uptime hours</span>
+                <span id="m-uptime-pts" style="font-size:12px;color:#22c55e;font-weight:700">0 / 20 pts</span>
+              </div>
+              <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">
+                <div id="m-uptime-bar" style="height:100%;background:#22c55e;border-radius:3px;width:0%;transition:width 0.5s"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Installed Models -->
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="card-label" style="margin:0">🖥 Installed Models</div>
+            <button onclick="loadModels()" style="padding:5px 12px;border-radius:6px;border:1px solid #333;background:#15151e;color:#aaa;font-size:11px;cursor:pointer">↻ Refresh</button>
+          </div>
+          <div id="m-installed-list">
+            <div style="color:var(--muted);font-size:12px;text-align:center;padding:24px">Loading...</div>
+          </div>
+        </div>
+
+        <!-- Model Catalog -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="card-label" style="margin:0">🌐 Available Models</div>
+            <span style="font-size:10px;color:var(--muted)">Downloaded from Ollama Hub</span>
+          </div>
+          <div id="m-catalog" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">
+            <div style="color:var(--muted);font-size:12px;text-align:center;padding:24px;grid-column:1/-1">Loading catalog...</div>
+          </div>
+        </div>
+
+        <!-- Pull Progress overlay -->
+        <div id="m-pull-overlay" style="display:none;position:fixed;bottom:20px;right:20px;width:320px;background:#0d0d1a;border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:16px;z-index:1000;box-shadow:0 8px 32px rgba(0,0,0,0.5)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span id="m-pull-title" style="font-size:12px;font-weight:700;color:var(--text)">Downloading...</span>
+            <button onclick="cancelPull()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button>
+          </div>
+          <div id="m-pull-status" style="font-size:11px;color:var(--muted);margin-bottom:8px">Starting download...</div>
+          <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;margin-bottom:6px">
+            <div id="m-pull-bar" style="height:100%;background:linear-gradient(90deg,#8b5cf6,#06b6d4);border-radius:3px;width:0%;transition:width 0.3s"></div>
+          </div>
+          <div id="m-pull-pct" style="font-size:10px;color:var(--accent);text-align:right">0%</div>
+        </div>
+      </div>
+
+      <!-- ═══ PAGE: IPFS Storage ═══ -->
+      <div class="page" id="page-ipfs">
+        <!-- Stats Row -->
+        <div class="grid-3" style="margin-bottom:16px">
+          <div class="card" style="text-align:center">
+            <div class="card-label">📡 IPFS Status</div>
+            <div id="ipfs-status-dot" class="card-value" style="font-size:24px">⏳</div>
+            <div id="ipfs-peer-id" class="card-sub">Connecting...</div>
+          </div>
+          <div class="card" style="text-align:center">
+            <div class="card-label">📌 Pinned Files</div>
+            <div id="ipfs-pins-count" class="card-value" style="color:#06b6d4">—</div>
+            <div id="ipfs-repo-size" class="card-sub">0 MB used</div>
+          </div>
+          <div class="card" style="text-align:center">
+            <div class="card-label">🌐 Network Peers</div>
+            <div id="ipfs-peers-count" class="card-value" style="color:#22c55e">—</div>
+            <div class="card-sub">Connected IPFS nodes</div>
+          </div>
+        </div>
+
+        <!-- Upload File -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-label">⬆ Upload to IPFS</div>
+          <p style="font-size:12px;color:var(--muted);margin:6px 0 12px">Upload text or JSON content — get a permanent CID you can share with anyone.</p>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <input id="ipfs-upload-name" type="text" placeholder="File name (optional)"
+              style="padding:8px 12px;border-radius:8px;border:1px solid #333;background:#15151e;color:white;font-size:12px;width:100%">
+            <textarea id="ipfs-upload-content" placeholder="Paste text or JSON content here..."
+              style="padding:8px 12px;border-radius:8px;border:1px solid #333;background:#15151e;color:white;font-size:12px;min-height:100px;resize:vertical;font-family:JetBrains Mono,monospace;width:100%"></textarea>
+            <button onclick="ipfsUpload()" style="padding:10px 20px;border-radius:8px;border:none;background:linear-gradient(135deg,#8b5cf6,#06b6d4);color:white;font-weight:700;font-size:13px;cursor:pointer;align-self:flex-start">
+              📤 Upload to IPFS
+            </button>
+          </div>
+          <div id="ipfs-upload-result" style="margin-top:10px;font-size:12px;display:none"></div>
+        </div>
+
+        <!-- Fetch by CID -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-label">🔍 Fetch by CID</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input id="ipfs-cid-input" type="text" placeholder="QmXxx... or bafy..."
+              style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #333;background:#15151e;color:white;font-size:12px;font-family:JetBrains Mono,monospace">
+            <button onclick="ipfsFetch()" style="padding:8px 16px;border-radius:8px;border:1px solid rgba(6,182,212,0.3);background:rgba(6,182,212,0.1);color:#06b6d4;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap">
+              Fetch →
+            </button>
+          </div>
+          <pre id="ipfs-fetch-result" style="display:none;margin-top:10px;padding:12px;background:#0a0a14;border-radius:8px;font-size:11px;color:var(--text);overflow:auto;max-height:200px;border:1px solid #222"></pre>
+        </div>
+
+        <!-- Pinned Files List -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="card-label" style="margin:0">📋 Pinned Files</div>
+            <button onclick="loadIPFS()" style="padding:5px 12px;border-radius:6px;border:1px solid #333;background:#15151e;color:#aaa;font-size:11px;cursor:pointer">↻ Refresh</button>
+          </div>
+          <div id="ipfs-pin-list">
+            <div style="color:var(--muted);font-size:12px;text-align:center;padding:24px">Loading...</div>
+          </div>
+        </div>
+      </div>
+
       <!-- ═══ PAGE: Training ═══ -->
       <div class="page" id="page-training">
         <div class="grid-3">
@@ -2969,6 +3129,8 @@
           appstore: "App Store",
           naas: "Validators",
           sovereign: "Sovereign Fund",
+          models: "AI Models",
+          ipfs: "IPFS Storage",
         };
         document.getElementById("page-title").textContent =
           titles[name] || name;
@@ -4112,6 +4274,302 @@
           }
         } catch (e) {
           console.warn('Sovereign legacy load error:', e);
+        }
+      }
+
+      // ─── Model Management ─────────────────────────────────
+      let pullEventSource = null;
+
+      async function loadModels() {
+        try {
+          const [modelsRes, ratingRes] = await Promise.all([
+            fetch(API + '/api/ollama/models').then(r => r.ok ? r.json() : null),
+            fetch(API + '/api/node/rating').then(r => r.ok ? r.json() : null),
+          ]);
+
+          // Rating cards
+          if (ratingRes) {
+            const tierColors = { diamond: '#a78bfa', gold: '#f59e0b', silver: '#94a3b8', bronze: '#f97316' };
+            const tierNames  = { diamond: '💎 Diamond', gold: '🥇 Gold', silver: '🥈 Silver', bronze: '🥉 Bronze' };
+            const color = tierColors[ratingRes.tier] || '#8b5cf6';
+            document.getElementById('m-score').textContent = ratingRes.score;
+            document.getElementById('m-score').style.color = color;
+            document.getElementById('m-tier').textContent = tierNames[ratingRes.tier] || ratingRes.tier;
+            document.getElementById('m-tier').style.color = color;
+            document.getElementById('m-mult').textContent = '×' + ratingRes.multiplier;
+            const b = ratingRes.breakdown;
+            document.getElementById('m-model-pts').textContent = b.models.score + ' / ' + b.models.max + ' pts';
+            document.getElementById('m-model-bar').style.width = (b.models.score / b.models.max * 100) + '%';
+            document.getElementById('m-activity-pts').textContent = b.activity.score + ' / ' + b.activity.max + ' pts (' + b.activity.value + ' reqs)';
+            document.getElementById('m-activity-bar').style.width = (b.activity.score / b.activity.max * 100) + '%';
+            document.getElementById('m-uptime-pts').textContent = b.uptime.score + ' / ' + b.uptime.max + ' pts (' + b.uptime.value + 'h)';
+            document.getElementById('m-uptime-bar').style.width = (b.uptime.score / b.uptime.max * 100) + '%';
+          }
+
+          if (!modelsRes) {
+            document.getElementById('m-installed-list').innerHTML = '<div style="color:var(--rose);font-size:12px;text-align:center;padding:16px">Ollama not available. Make sure Ollama is running.</div>';
+            document.getElementById('m-count').textContent = '0';
+            return;
+          }
+
+          const installed = modelsRes.installed || [];
+          document.getElementById('m-count').textContent = installed.length;
+          const sbCount = document.getElementById('sb-models-count');
+          if (sbCount) sbCount.textContent = installed.length + ' local';
+
+          // Installed list
+          const instEl = document.getElementById('m-installed-list');
+          if (installed.length === 0) {
+            instEl.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:24px">No models installed yet. Install one from the catalog below.</div>';
+          } else {
+            instEl.innerHTML = installed.map(m => {
+              const isRunning = (modelsRes.running || []).includes(m.id);
+              const sizeMb = Math.round((m.size || 0) / 1024 / 1024);
+              const sizeStr = sizeMb >= 1024 ? (sizeMb / 1024).toFixed(1) + ' GB' : sizeMb + ' MB';
+              const fam = (m.details?.family || 'llm').toLowerCase();
+              const famColor = { llama: '#8b5cf6', mistral: '#06b6d4', phi: '#0ea5e9', gemma: '#22c55e', qwen: '#f59e0b', deepseek: '#f97316', embed: '#64748b' }[fam] || '#6b6b80';
+              return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
+                '<div style="display:flex;align-items:center;gap:10px">' +
+                '<div style="width:8px;height:8px;border-radius:50%;background:' + (isRunning ? 'var(--emerald)' : 'rgba(255,255,255,0.15)') + ';flex-shrink:0"></div>' +
+                '<div>' +
+                '<div style="font-weight:700;font-size:13px;color:var(--text)">' + m.id + '</div>' +
+                '<div style="font-size:10px;margin-top:2px">' +
+                '<span style="background:' + famColor + '22;color:' + famColor + ';padding:1px 7px;border-radius:4px;font-weight:700;font-size:9px;text-transform:uppercase">' + fam + '</span>' +
+                (m.details?.parameter_size ? '<span style="color:var(--muted);margin-left:6px">' + m.details.parameter_size + '</span>' : '') +
+                (isRunning ? '<span style="color:var(--emerald);margin-left:8px;font-size:9px;font-weight:700">● RUNNING</span>' : '') +
+                '</div>' +
+                '</div>' +
+                '</div>' +
+                '<div style="display:flex;align-items:center;gap:10px">' +
+                '<span style="font-size:11px;color:var(--muted);font-family:JetBrains Mono,monospace">' + sizeStr + '</span>' +
+                '<button onclick="removeModel(\'' + m.id.replace(/'/g, "\\'") + '\')" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(244,63,94,0.3);background:rgba(244,63,94,0.08);color:var(--rose);font-size:11px;cursor:pointer">Remove</button>' +
+                '</div>' +
+                '</div>';
+            }).join('');
+          }
+
+          // Catalog
+          const catalog = modelsRes.catalog || [];
+          const catalogEl = document.getElementById('m-catalog');
+          catalogEl.innerHTML = catalog.map(m => {
+            const tierBadgeColor = { minimal: '#64748b', light: '#22c55e', standard: '#8b5cf6' }[m.tier] || '#6b6b80';
+            return '<div style="background:rgba(255,255,255,0.025);border:1px solid ' + (m.installed ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.06)') + ';border-radius:10px;padding:12px">' +
+              '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">' +
+              '<div style="font-weight:700;font-size:13px;color:var(--text)">' + m.name + '</div>' +
+              '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:' + tierBadgeColor + '22;color:' + tierBadgeColor + ';font-weight:700;white-space:nowrap">' + m.tier.toUpperCase() + '</span>' +
+              '</div>' +
+              '<div style="font-size:10px;color:var(--muted);margin-bottom:4px;font-family:JetBrains Mono,monospace">' + m.id + '</div>' +
+              '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">' + m.desc + '</div>' +
+              '<div style="display:flex;justify-content:space-between;align-items:center">' +
+              '<span style="font-size:10px;color:var(--muted)">' + m.size_gb + ' GB download</span>' +
+              (m.installed
+                ? '<span style="font-size:11px;color:var(--emerald);font-weight:700">✓ Installed</span>'
+                : '<button onclick="pullModel(\'' + m.id + '\')" style="padding:5px 12px;border-radius:6px;border:none;background:linear-gradient(135deg,#8b5cf622,#06b6d422);border:1px solid rgba(139,92,246,0.3);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer">⬇ Install</button>') +
+              '</div>' +
+              '</div>';
+          }).join('');
+
+        } catch (e) {
+          console.warn('Models load error:', e);
+          document.getElementById('m-installed-list').innerHTML = '<div style="color:var(--rose);font-size:12px;text-align:center;padding:16px">Error: ' + e.message + '</div>';
+        }
+      }
+
+      function pullModel(modelId) {
+        if (pullEventSource) pullEventSource.close();
+        const overlay = document.getElementById('m-pull-overlay');
+        overlay.style.display = 'block';
+        document.getElementById('m-pull-title').textContent = 'Downloading ' + modelId;
+        document.getElementById('m-pull-status').textContent = 'Starting...';
+        document.getElementById('m-pull-bar').style.width = '0%';
+        document.getElementById('m-pull-pct').textContent = '0%';
+        log('Pulling model: ' + modelId, 'info');
+
+        fetch(API + '/api/ollama/models/pull', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: modelId }),
+        }).then(resp => {
+          const reader = resp.body.getReader();
+          const decoder = new TextDecoder();
+          function readChunk() {
+            reader.read().then(({ done, value }) => {
+              if (done) {
+                document.getElementById('m-pull-status').textContent = 'Complete!';
+                setTimeout(() => {
+                  overlay.style.display = 'none';
+                  loadModels();
+                }, 2000);
+                return;
+              }
+              const text = decoder.decode(value, { stream: true });
+              for (const line of text.split('\n')) {
+                if (!line.startsWith('data:')) continue;
+                try {
+                  const data = JSON.parse(line.slice(5));
+                  if (data.error) {
+                    document.getElementById('m-pull-status').textContent = '❌ ' + data.error;
+                    log('Pull error: ' + data.error, 'error');
+                    return;
+                  }
+                  if (data.status) document.getElementById('m-pull-status').textContent = data.status;
+                  if (data.total && data.completed) {
+                    const pct = Math.round(data.completed / data.total * 100);
+                    document.getElementById('m-pull-bar').style.width = pct + '%';
+                    document.getElementById('m-pull-pct').textContent = pct + '%';
+                  }
+                  if (data.status === 'success') {
+                    log('Model installed: ' + modelId, 'success');
+                    setTimeout(() => { overlay.style.display = 'none'; loadModels(); }, 1500);
+                  }
+                } catch (_) {}
+              }
+              readChunk();
+            });
+          }
+          readChunk();
+        }).catch(e => {
+          document.getElementById('m-pull-status').textContent = '❌ ' + e.message;
+          log('Pull failed: ' + e.message, 'error');
+        });
+      }
+
+      function cancelPull() {
+        if (pullEventSource) { pullEventSource.close(); pullEventSource = null; }
+        document.getElementById('m-pull-overlay').style.display = 'none';
+      }
+
+      async function removeModel(modelId) {
+        if (!confirm('Remove model "' + modelId + '"? This frees disk space but the model must be re-downloaded to use it again.')) return;
+        log('Removing model: ' + modelId, 'info');
+        try {
+          const r = await fetch(API + '/api/ollama/models/' + encodeURIComponent(modelId), { method: 'DELETE' });
+          const d = await r.json();
+          log(d.ok ? '✅ Model removed: ' + modelId : '❌ ' + d.error, d.ok ? 'success' : 'error');
+          setTimeout(loadModels, 500);
+        } catch (e) {
+          log('Remove failed: ' + e.message, 'error');
+        }
+      }
+
+      // ─── IPFS Management ──────────────────────────────────
+      async function loadIPFS() {
+        try {
+          const r = await fetch(API + '/api/storage');
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const d = await r.json();
+
+          const statusDot = document.getElementById('ipfs-status-dot');
+          const peerId    = document.getElementById('ipfs-peer-id');
+          const pinsCount = document.getElementById('ipfs-pins-count');
+          const repoSize  = document.getElementById('ipfs-repo-size');
+          const peersCount = document.getElementById('ipfs-peers-count');
+
+          if (!d.enabled) {
+            if (statusDot) statusDot.textContent = '⚫';
+            if (peerId) peerId.textContent = 'IPFS daemon not running';
+            if (pinsCount) pinsCount.textContent = '0';
+            if (peersCount) peersCount.textContent = '0';
+            document.getElementById('ipfs-pin-list').innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:24px">IPFS is not available. Start the IPFS daemon to use this feature.</div>';
+            return;
+          }
+
+          if (statusDot) statusDot.textContent = '🟢';
+          if (peerId) peerId.textContent = (d.peer_id || '').slice(0, 20) + (d.peer_id?.length > 20 ? '...' : '');
+          if (pinsCount) pinsCount.textContent = d.pins || 0;
+          if (repoSize) repoSize.textContent = (d.repo_size_mb || 0).toFixed(1) + ' MB used';
+          if (peersCount) peersCount.textContent = d.ipfs_peers || 0;
+
+          const pinList = document.getElementById('ipfs-pin-list');
+          const pins = d.pin_list || [];
+          if (pins.length === 0) {
+            pinList.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:24px">No pinned files yet. Upload content above to get started.</div>';
+          } else {
+            pinList.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
+              '<tr style="border-bottom:1px solid rgba(255,255,255,0.06)">' +
+              '<th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600">Name</th>' +
+              '<th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600">CID</th>' +
+              '<th style="padding:6px 8px;text-align:right;color:var(--muted);font-weight:600">Size</th>' +
+              '<th style="padding:6px 8px;text-align:right;color:var(--muted);font-weight:600">Actions</th></tr>' +
+              pins.map(p => {
+                const shortCid = p.cid ? (p.cid.slice(0, 12) + '...' + p.cid.slice(-6)) : '—';
+                const sizeStr = p.size_kb >= 1024 ? (p.size_kb / 1024).toFixed(1) + ' MB' : (p.size_kb || 0) + ' KB';
+                return '<tr style="border-bottom:1px solid rgba(255,255,255,0.03)">' +
+                  '<td style="padding:6px 8px;font-weight:600">' + (p.name || 'Unnamed') + '</td>' +
+                  '<td style="padding:6px 8px;font-family:JetBrains Mono,monospace;font-size:10px">' +
+                  '<span title="' + p.cid + '" onclick="navigator.clipboard.writeText(\'' + p.cid + '\');log(\'CID copied!\',\'success\')" style="cursor:pointer;color:var(--cyan)">' + shortCid + '</span>' +
+                  '</td>' +
+                  '<td style="padding:6px 8px;text-align:right;color:var(--muted)">' + sizeStr + '</td>' +
+                  '<td style="padding:6px 8px;text-align:right">' +
+                  '<button onclick="ipfsUnpin(\'' + p.cid + '\')" style="padding:3px 8px;border-radius:5px;border:1px solid rgba(244,63,94,0.3);background:rgba(244,63,94,0.08);color:var(--rose);font-size:10px;cursor:pointer">Unpin</button>' +
+                  '</td></tr>';
+              }).join('') +
+              '</table>';
+          }
+        } catch (e) {
+          console.warn('IPFS load error:', e);
+          document.getElementById('ipfs-pin-list').innerHTML = '<div style="color:var(--rose);font-size:12px;text-align:center;padding:16px">Error: ' + e.message + '</div>';
+        }
+      }
+
+      async function ipfsUpload() {
+        const name    = document.getElementById('ipfs-upload-name').value.trim();
+        const content = document.getElementById('ipfs-upload-content').value.trim();
+        const result  = document.getElementById('ipfs-upload-result');
+        if (!content) { log('Enter content to upload', 'warn'); return; }
+        result.style.display = 'block';
+        result.textContent = '⏳ Uploading...';
+        result.style.color = 'var(--muted)';
+        try {
+          const r = await fetch(API + '/api/storage/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content, name: name || 'upload-' + Date.now() }),
+          });
+          const d = await r.json();
+          if (d.cid) {
+            result.innerHTML = '✅ Uploaded! CID: <span style="font-family:JetBrains Mono,monospace;color:var(--cyan);cursor:pointer" onclick="navigator.clipboard.writeText(\'' + d.cid + '\');log(\'CID copied!\',\'success\')">' + d.cid + '</span>';
+            result.style.color = 'var(--emerald)';
+            log('IPFS upload: ' + d.cid, 'success');
+            document.getElementById('ipfs-upload-content').value = '';
+            document.getElementById('ipfs-upload-name').value = '';
+            setTimeout(loadIPFS, 500);
+          } else {
+            result.textContent = '❌ ' + (d.error || 'Upload failed');
+            result.style.color = 'var(--rose)';
+          }
+        } catch (e) {
+          result.textContent = '❌ ' + e.message;
+          result.style.color = 'var(--rose)';
+        }
+      }
+
+      async function ipfsFetch() {
+        const cid = document.getElementById('ipfs-cid-input').value.trim();
+        const resultEl = document.getElementById('ipfs-fetch-result');
+        if (!cid) { log('Enter a CID', 'warn'); return; }
+        resultEl.style.display = 'block';
+        resultEl.textContent = '⏳ Fetching...';
+        try {
+          const r = await fetch(API + '/api/storage/get/' + encodeURIComponent(cid));
+          if (!r.ok) { resultEl.textContent = '❌ Not found or error ' + r.status; return; }
+          const text = await r.text();
+          resultEl.textContent = text.slice(0, 2000) + (text.length > 2000 ? '\n... (truncated)' : '');
+          log('IPFS fetch: ' + cid.slice(0, 16) + '...', 'success');
+        } catch (e) {
+          resultEl.textContent = '❌ ' + e.message;
+        }
+      }
+
+      async function ipfsUnpin(cid) {
+        if (!confirm('Unpin ' + cid.slice(0, 16) + '...? The data will still exist on other IPFS nodes.')) return;
+        try {
+          const r = await fetch(API + '/api/storage/pin/' + encodeURIComponent(cid), { method: 'DELETE' });
+          const d = await r.json();
+          log(d.ok ? '✅ Unpinned ' + cid.slice(0, 12) + '...' : '❌ Unpin failed', d.ok ? 'success' : 'error');
+          setTimeout(loadIPFS, 500);
+        } catch (e) {
+          log('Unpin error: ' + e.message, 'error');
         }
       }
 
