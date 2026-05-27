@@ -13,6 +13,7 @@
 import { cpus, totalmem, freemem, platform, arch, loadavg } from 'os';
 import { createHash } from 'crypto';
 import { execSync } from 'child_process';
+import { readFileSync } from 'fs';
 import { logActivity } from '../gateway/server.js';
 import type { NodeConfig } from '../index.js';
 import type { NodeWallet } from '../wallet/manager.js';
@@ -319,6 +320,15 @@ export class SwarmAgent {
                 cpu_score:       resources.cpu_score,
                 avg_latency_ms:  this.avgLatencyMs || undefined,
             };
+            // Include node_url (Cloudflare tunnel) for locality-aware routing
+            const tunnelUrl = (() => {
+                try { return readFileSync('/tmp/gstd_tunnel_url.txt', 'utf8').trim(); } catch { return ''; }
+            })() || process.env.GSTD_PUBLIC_URL || '';
+            if (tunnelUrl) {
+                payload.node_url  = tunnelUrl;
+                // models_loaded: currently available Ollama models for locality scoring
+                payload.models_loaded = this.config.models.available;
+            }
             // Include P2P multiaddrs so the platform can relay them to other nodes
             if (this.p2pNode) {
                 const addrs = this.p2pNode.getMultiaddrs?.() || [];
