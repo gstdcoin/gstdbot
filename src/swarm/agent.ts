@@ -310,7 +310,7 @@ export class SwarmAgent {
                 version: this.config.version,
                 mode: this.config.mode,
                 memory_entries: this.memory.getEntryCount(),
-                capabilities:    this.config.groq.models,
+                capabilities:    this.config.models.available,
                 // Resource stats for marketplace matching
                 storage_free_gb: resources.storage_free_gb,
                 ram_free_mb:     resources.ram_free_mb,
@@ -510,7 +510,7 @@ export class SwarmAgent {
                 const joinResult = await this.apiCall('/campaigns/join', {
                     campaign_id:  campaign.id,
                     node_id:      this.config.nodeId,
-                    capabilities: this.config.groq.models,
+                    capabilities: this.config.models.available,
                     resources,
                 });
 
@@ -559,7 +559,7 @@ export class SwarmAgent {
         try {
             const result = await this.apiCall('/tasks/poll', {
                 node_id:      this.config.nodeId,
-                capabilities: this.config.groq.models,
+                capabilities: this.config.models.available,
                 resources:    this.getResourceStats(),
                 max_tasks:    1,
             });
@@ -579,7 +579,7 @@ export class SwarmAgent {
         try {
             const result = await this.apiCall('/tasks/poll', {
                 node_id:       this.config.nodeId,
-                capabilities:  this.config.groq.models,
+                capabilities:  this.config.models.available,
                 resources:     this.getResourceStats(),
                 priority_only: true,
             });
@@ -701,20 +701,14 @@ export class SwarmAgent {
         let data: any;
 
         // Backend priority:
-        // 1. Groq (fast, free tier, requires GROQ_API_KEY)
-        // 2. Ollama (local, no key, requires OLLAMA_URL)
-        // 3. Any OpenAI-compatible API at GSTD_INFERENCE_URL + GSTD_INFERENCE_KEY
-        const groqKey  = process.env.GROQ_API_KEY;
-        const ollamaUrl = (process.env.OLLAMA_URL || '').replace(/\/$/, '');
+        // 1. Ollama (local sovereign — no external deps)
+        // 2. Any OpenAI-compatible API at GSTD_INFERENCE_URL + GSTD_INFERENCE_KEY
+        const ollamaUrl = (process.env.OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '');
         const customUrl = (process.env.GSTD_INFERENCE_URL || '').replace(/\/$/, '');
         const customKey = process.env.GSTD_INFERENCE_KEY;
 
-        if (groqKey) {
-            const groqModel = model.includes('/') ? model.split('/').pop()! : model;
-            data = await this.callOpenAICompat(
-                'https://api.groq.com/openai/v1', groqKey, groqModel, messages, maxTok, temp);
-        } else if (ollamaUrl) {
-            // Ollama: try the requested model first; fall back to first available local model
+        if (ollamaUrl) {
+            // Ollama: try the requested model; fall back to first available local model
             let ollamaModel = model;
             try {
                 const tagsResp = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(3000) });
@@ -734,7 +728,7 @@ export class SwarmAgent {
         } else if (customUrl) {
             data = await this.callOpenAICompat(`${customUrl}/v1`, customKey, model, messages, maxTok, temp);
         } else {
-            throw new Error('No AI backend configured. Set GROQ_API_KEY, OLLAMA_URL, or GSTD_INFERENCE_URL in .env');
+            throw new Error('No AI backend configured. Set OLLAMA_URL or GSTD_INFERENCE_URL in .env');
         }
 
         const latencyMs = Date.now() - startMs;
@@ -857,7 +851,7 @@ export class SwarmAgent {
             ram_total_mb: Math.round(totalmem() / 1048576),
             ram_free_mb: Math.round(freemem() / 1048576),
             gpu,
-            models: this.config.groq.models,
+            models: this.config.models.available,
             max_cpu: this.config.swarm.maxCPU,
             max_ram: this.config.swarm.maxRAM,
             mode: this.config.mode,

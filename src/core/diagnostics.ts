@@ -173,25 +173,24 @@ export class Diagnostics {
 
     private async checkGroqApi(): Promise<DiagCheck> {
         try {
-            const key = process.env.GROQ_API_KEY;
-            if (!key) {
-                return { name: 'Groq API', category: 'models', status: 'warn', message: 'GROQ_API_KEY not set', fixHint: 'Set GROQ_API_KEY for AI model access' };
-            }
+            const ollamaUrl = (process.env.OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '');
             const start = Date.now();
-            const resp = await fetch('https://api.groq.com/openai/v1/models', {
-                headers: { 'Authorization': `Bearer ${key}` },
-                signal: AbortSignal.timeout(5000),
-            });
+            const resp = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(5000) });
             const latency = Date.now() - start;
-            return {
-                name: 'Groq API',
-                category: 'models',
-                status: resp.ok ? 'ok' : 'warn',
-                message: resp.ok ? `Connected (${latency}ms)` : `Status ${resp.status}`,
-                details: { latencyMs: latency, status: resp.status },
-            };
+            if (resp.ok) {
+                const data: any = await resp.json();
+                const models = (data.models || []).map((m: any) => m.name);
+                return {
+                    name: 'Ollama (Sovereign AI)',
+                    category: 'models',
+                    status: 'ok',
+                    message: `${models.length} model(s) available (${latency}ms): ${models.join(', ') || 'none'}`,
+                    details: { latencyMs: latency, models },
+                };
+            }
+            return { name: 'Ollama (Sovereign AI)', category: 'models', status: 'warn', message: `Ollama returned ${resp.status}`, fixHint: 'Run: ollama pull llama3.2:3b' };
         } catch (e: any) {
-            return { name: 'Groq API', category: 'models', status: 'error', message: e.message };
+            return { name: 'Ollama (Sovereign AI)', category: 'models', status: 'error', message: 'Ollama not reachable — run: ollama serve', fixHint: 'Install from ollama.ai or run scripts/pull-models.sh' };
         }
     }
 

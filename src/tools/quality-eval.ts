@@ -1,37 +1,17 @@
+/**
+ * Quality Evaluation Tool — GSTD Sovereign Network
+ * Compares GSTD free/standard tiers against single-model baselines.
+ * Uses local Ollama as judge (no external AI dependencies).
+ */
 import { mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { NeuralRouter, type ChatMessage, type SmartMixTier } from '../gateway/router.js';
 
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_KEY = process.env.GROQ_API_KEY || '';
+const OLLAMA_URL = (process.env.OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '');
 
-if (!GROQ_KEY) {
-    throw new Error('GROQ_API_KEY is required for quality evaluation');
-}
-
-type CandidateResult = {
-    id: string;
-    label: string;
-    content: string;
-};
-
-type JudgeScore = {
-    id: string;
-    overall: number;
-    correctness: number;
-    depth: number;
-    actionability: number;
-    clarity: number;
-    safety: number;
-    rationale: string;
-};
-
-type JudgeResponse = {
-    ranking: string[];
-    scores: JudgeScore[];
-    winner: string;
-    summary: string;
-};
+type CandidateResult = { id: string; label: string; content: string };
+type JudgeScore = { id: string; overall: number; correctness: number; depth: number; actionability: number; clarity: number; safety: number; rationale: string };
+type JudgeResponse = { ranking: string[]; scores: JudgeScore[]; winner: string; summary: string };
 
 const PROMPTS: Array<{ name: string; text: string }> = [
     {
@@ -49,103 +29,71 @@ const PROMPTS: Array<{ name: string; text: string }> = [
 ];
 
 const BASELINE_MODELS = [
-    { id: 'baseline_llama70b', label: 'Baseline Llama 70B', model: 'llama-3.3-70b-versatile' },
-    { id: 'baseline_qwen32b', label: 'Baseline Qwen 32B', model: 'qwen/qwen3-32b' },
+    { id: 'baseline_llama3b', label: 'Baseline llama3.2:3b', model: 'llama3.2:3b' },
+    { id: 'baseline_llama8b', label: 'Baseline llama3.1:8b', model: 'llama3.1:8b' },
 ];
 
-async function callGroq(model: string, messages: ChatMessage[], maxTokens = 1600, temperature = 0.4): Promise<string> {
-    const retryModels = [model, 'openai/gpt-oss-20b', 'llama-3.1-8b-instant'];
-    let lastError = 'unknown';
-    for (const selectedModel of retryModels) {
-        for (let attempt = 1; attempt <= 3; attempt++) {
-            const resp = await fetch(GROQ_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${GROQ_KEY}`,
-                },
-                body: JSON.stringify({
-                    model: selectedModel,
-                    messages,
-                    max_tokens: maxTokens,
-                    temperature,
-                }),
-            });
-            if (resp.ok) {
-                const data: any = await resp.json();
-                const content = data?.choices?.[0]?.message?.content || '';
-                if (content) return content;
-                lastError = `Empty response from ${selectedModel}`;
-            } else {
-                const err = await resp.text().catch(() => '');
-                lastError = `Groq ${resp.status}: ${err.slice(0, 120)}`;
-                if (resp.status === 429) {
-                    await new Promise(r => setTimeout(r, 1200 * attempt));
-                    continue;
-                }
-            }
-            break;
-        }
-    }
-    throw new Error(lastError);
+async function callOllama(model: string, messages: ChatMessage[], maxTokens = 1600, temperature = 0.4): Promise<string> {
+    const resp = await fetch(`${OLLAMA_URL}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature, stream: false }),
+        signal: AbortSignal.timeout(120_000),
+    });
+    if (!resp.ok) throw new Error(`Ollama ${resp.status}: ${await resp.text().catch(() => '')}`);
+    const data: any = await resp.json();
+    const content = data?.choices?.[0]?.message?.content || '';
+    if (!content) throw new Error('Empty Ollama response');
+    return content;
 }
 
 function sanitizeForJudge(text: string): string {
-    return text
-        .replace(/<think>[\s\S]*?<\/think>/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 3500);
+    return text.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/\s+/g, ' ').trim().slice(0, 3500);
 }
 
 async function judge(prompt: string, candidates: CandidateResult[]): Promise<JudgeResponse> {
     const payload = candidates.map(c => `ID: ${c.id}\nLABEL: ${c.label}\nANSWER:\n${sanitizeForJudge(c.content)}`).join('\n\n---\n\n');
     const judgeMessages: ChatMessage[] = [
-        {
-            role: 'system',
-            content: 'You are a strict and unbiased AI answer evaluator. Evaluate quality only. Do not reward style over correctness. Prefer factual, deep, practical, safe responses. Return valid JSON only.',
-        },
+        { role: 'system', content: 'You are a strict and unbiased AI answer evaluator. Return valid JSON only.' },
         {
             role: 'user',
-            content:
-                `Task prompt:\n${prompt}\n\n` +
-                `Candidates:\n${payload}\n\n` +
-                'Return ONLY JSON with this exact shape: ' +
-                '{"ranking":["id1","id2","id3","id4"],"winner":"id","summary":"...","scores":[{"id":"...","overall":0-10,"correctness":0-10,"depth":0-10,"actionability":0-10,"clarity":0-10,"safety":0-10,"rationale":"..."}]}',
+            content: `Task prompt:\n${prompt}\n\nCandidates:\n${payload}\n\nReturn ONLY JSON: {"ranking":["id1","id2"],"winner":"id","summary":"...","scores":[{"id":"...","overall":0-10,"correctness":0-10,"depth":0-10,"actionability":0-10,"clarity":0-10,"safety":0-10,"rationale":"..."}]}`,
         },
     ];
 
-    const raw = await callGroq('openai/gpt-oss-20b', judgeMessages, 1400, 0.1);
+    // Use best available Ollama model for judging
+    let judgeModel = 'llama3.2:3b';
+    try {
+        const tags: any = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(3000) }).then(r => r.json());
+        const models: string[] = (tags.models || []).map((m: any) => m.name as string);
+        const preferred = ['llama3.1:8b', 'qwen2.5:7b', 'mistral:7b', 'llama3.2:3b'];
+        for (const p of preferred) {
+            if (models.some(m => m.startsWith(p.split(':')[0]))) { judgeModel = p; break; }
+        }
+        if (judgeModel === 'llama3.2:3b' && models.length > 0) judgeModel = models[0];
+    } catch { /* use default */ }
+
+    const raw = await callOllama(judgeModel, judgeMessages, 1400, 0.1);
     const jsonStart = raw.indexOf('{');
     const jsonEnd = raw.lastIndexOf('}');
-    if (jsonStart < 0 || jsonEnd <= jsonStart) {
-        throw new Error('Judge returned non-JSON output');
-    }
-    const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
-    return parsed as JudgeResponse;
+    if (jsonStart < 0 || jsonEnd <= jsonStart) throw new Error('Judge returned non-JSON output');
+    return JSON.parse(raw.slice(jsonStart, jsonEnd + 1)) as JudgeResponse;
 }
 
 async function run(): Promise<void> {
+    console.log(`[quality-eval] Using Ollama at ${OLLAMA_URL}`);
+
     const router = new NeuralRouter(process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com', true);
+    const reportLines: string[] = [
+        '# Quality Evaluation Report',
+        '',
+        `Generated: ${new Date().toISOString()}`,
+        '',
+        'Compared candidates: our_free, our_standard, baseline_llama3b, baseline_llama8b',
+        '',
+    ];
 
-    const reportLines: string[] = [];
-    reportLines.push('# Quality Evaluation Report');
-    reportLines.push('');
-    reportLines.push(`Generated: ${new Date().toISOString()}`);
-    reportLines.push('');
-    reportLines.push('Compared candidates:');
-    reportLines.push('- our_free (GSTD free mode)');
-    reportLines.push('- our_standard (GSTD paid standard mode)');
-    reportLines.push('- baseline_llama70b');
-    reportLines.push('- baseline_qwen32b');
-    reportLines.push('');
-
-    const winCount: Record<string, number> = {
-        our_free: 0,
-        our_standard: 0,
-        baseline_llama70b: 0,
-        baseline_qwen32b: 0,
-    };
+    const winCount: Record<string, number> = { our_free: 0, our_standard: 0, baseline_llama3b: 0, baseline_llama8b: 0 };
 
     for (const p of PROMPTS) {
         const chatMessages: ChatMessage[] = [{ role: 'user', content: p.text }];
@@ -154,25 +102,16 @@ async function run(): Promise<void> {
         const ourResults = await Promise.all(
             tiers.map(async tier => {
                 const out = await router.routeSmartMix(tier, chatMessages);
-                return {
-                    id: tier === 'free' ? 'our_free' : 'our_standard',
-                    label: tier === 'free' ? 'Our Free Mode' : 'Our Paid Standard Mode',
-                    content: out.content,
-                } as CandidateResult;
+                return { id: tier === 'free' ? 'our_free' : 'our_standard', label: tier === 'free' ? 'Our Free Mode' : 'Our Paid Standard Mode', content: out.content } as CandidateResult;
             })
         );
 
         const baselineResults = await Promise.all(
             BASELINE_MODELS.map(async b => {
-                const content = await callGroq(
-                    b.model,
-                    [
-                        { role: 'system', content: 'Provide the best possible answer with strong correctness, depth, and practical value.' },
-                        { role: 'user', content: p.text },
-                    ],
-                    2000,
-                    0.4
-                );
+                const content = await callOllama(b.model, [
+                    { role: 'system', content: 'Provide the best possible answer with strong correctness, depth, and practical value.' },
+                    { role: 'user', content: p.text },
+                ], 2000, 0.4);
                 return { id: b.id, label: b.label, content } as CandidateResult;
             })
         );
@@ -182,31 +121,20 @@ async function run(): Promise<void> {
         const winnerId = judged.ranking?.[0] || judged.winner;
         if (winnerId && winCount[winnerId] !== undefined) winCount[winnerId] += 1;
 
-        reportLines.push(`## Prompt: ${p.name}`);
-        reportLines.push('');
-        reportLines.push(`Winner: \`${winnerId}\``);
-        reportLines.push(`Ranking: ${judged.ranking.map(x => `\`${x}\``).join(' > ')}`);
-        reportLines.push('');
-        reportLines.push('| Candidate | Overall | Correctness | Depth | Actionability | Clarity | Safety |');
-        reportLines.push('|---|---:|---:|---:|---:|---:|---:|');
+        reportLines.push(`## Prompt: ${p.name}`, '', `Winner: \`${winnerId}\``, `Ranking: ${judged.ranking.map(x => `\`${x}\``).join(' > ')}`, '');
+        reportLines.push('| Candidate | Overall | Correctness | Depth | Actionability | Clarity | Safety |', '|---|---:|---:|---:|---:|---:|---:|');
         for (const s of judged.scores) {
             reportLines.push(`| \`${s.id}\` | ${s.overall} | ${s.correctness} | ${s.depth} | ${s.actionability} | ${s.clarity} | ${s.safety} |`);
         }
-        reportLines.push('');
-        reportLines.push(`Judge summary: ${judged.summary}`);
-        reportLines.push('');
+        reportLines.push('', `Judge summary: ${judged.summary}`, '');
     }
 
-    reportLines.push('## Aggregate Wins');
-    reportLines.push('');
-    reportLines.push(`- our_free: ${winCount.our_free}/${PROMPTS.length}`);
-    reportLines.push(`- our_standard: ${winCount.our_standard}/${PROMPTS.length}`);
-    reportLines.push(`- baseline_llama70b: ${winCount.baseline_llama70b}/${PROMPTS.length}`);
-    reportLines.push(`- baseline_qwen32b: ${winCount.baseline_qwen32b}/${PROMPTS.length}`);
-    reportLines.push('');
-    reportLines.push('Interpretation:');
-    reportLines.push('- If our_free is not consistently top-2, improve free-mode synthesis protocol.');
-    reportLines.push('- our_standard should dominate strongest baseline on most prompts.');
+    reportLines.push('## Aggregate Wins', '',
+        `- our_free: ${winCount.our_free}/${PROMPTS.length}`,
+        `- our_standard: ${winCount.our_standard}/${PROMPTS.length}`,
+        `- baseline_llama3b: ${winCount.baseline_llama3b}/${PROMPTS.length}`,
+        `- baseline_llama8b: ${winCount.baseline_llama8b}/${PROMPTS.length}`,
+    );
 
     const reportsDir = join(process.cwd(), 'reports');
     mkdirSync(reportsDir, { recursive: true });

@@ -245,11 +245,10 @@ export class OmegaGateway {
         this.eventBus = new NodeEventBus(this.nodeId);
 
         this.modelFailover = new ModelFailover([
-            'groq/compound',
-            'llama-3.3-70b-versatile',
-            'meta-llama/llama-4-scout-17b-16e-instruct',
-            'qwen/qwen3-32b',
-            'moonshotai/kimi-k2-instruct',
+            'llama3.2:3b',
+            'llama3.1:8b',
+            'qwen2.5:7b',
+            'mistral:7b',
         ]);
 
         this.usageTracker = new UsageTracker();
@@ -3501,7 +3500,7 @@ if(window.speechSynthesis){const u=new SpeechSynthesisUtterance(reply);u.rate=1;
   <span style="font-size:28px">\ud83e\udd9e</span>
   <div>
     <div style="font-size:15px;font-weight:800">OpenClaw Control Panel</div>
-    <div style="font-size:10px;color:var(--muted)">openclaw-gstd/1.0 \u2022 Default: groq/compound</div>
+    <div style="font-size:10px;color:var(--muted)">openclaw-gstd/1.0 \u2022 Sovereign GSTD Network</div>
   </div>
   <div style="margin-left:auto"><span class="oc-badge" style="background:rgba(16,185,129,0.1);color:#10b981">LIVE</span></div>
 </div>
@@ -3599,15 +3598,15 @@ function showOcThink(){
   const c=document.getElementById('oc-content');
   c.innerHTML=\`
     <div style="margin-bottom:12px"><span style="font-size:13px;font-weight:700">\ud83e\udde0 Compound AI \u2014 Robot Planning</span></div>
-    <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Use <b style="color:#f97316">groq/compound</b> for multi-step reasoning, web search, and robot planning.</p>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Sovereign multi-step reasoning via GSTD node network. No external dependencies.</p>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
       <span style="font-size:10px;color:var(--muted);font-weight:700">MODEL:</span>
       <select id="oc-model" style="width:auto">
-        <option value="groq/compound">groq/compound (Default)</option>
-        <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
-        <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout</option>
-        <option value="moonshotai/kimi-k2-instruct">Kimi K2</option>
-        <option value="qwen/qwen3-32b">Qwen3 32B</option>
+        <option value="auto">auto (Best available)</option>
+        <option value="llama3.2:3b">llama3.2:3b (Fast)</option>
+        <option value="llama3.1:8b">llama3.1:8b (Balanced)</option>
+        <option value="qwen2.5:7b">qwen2.5:7b (Analytical)</option>
+        <option value="mistral:7b">mistral:7b (Creative)</option>
       </select>
     </div>
     <div style="position:relative;margin-bottom:12px">

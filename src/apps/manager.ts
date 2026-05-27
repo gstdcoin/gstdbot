@@ -784,7 +784,7 @@ const BUILTIN_APPS: AppManifest[] = [
         id: 'openclaw',
         name: 'OpenClaw AI Gateway',
         version: '2.1.0',
-        description: 'Full OpenClaw robot control panel. Manage agents, tasks, and use groq/compound AI for robot planning. Dashboard, agent list, task marketplace, compound model inference.',
+        description: 'Full OpenClaw robot control panel. Manage agents, tasks, and use auto AI for robot planning. Dashboard, agent list, task marketplace, compound model inference.',
         icon: '🦞',
         author: 'OpenClaw',
         category: 'ai',
@@ -1258,8 +1258,8 @@ export class AppManager extends EventEmitter {
                     }
                     if (step.name.includes('model') || step.name.includes('AI') || step.name.includes('inference')) {
                         writeFileSync(join(dataDir, 'models.json'), JSON.stringify({
-                            default: 'groq/compound',
-                            available: ['groq/compound', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
+                            default: 'auto',
+                            available: ['auto', 'llama3.1:8b', 'llama3.2:3b'],
                         }));
                     }
                 }, 500 + Math.random() * 300)) {

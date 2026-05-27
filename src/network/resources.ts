@@ -191,7 +191,7 @@ export class ResourceSharing {
                 latencyMs: 10,
                 region: process.env.GSTD_REGION || 'auto',
             },
-            models: this.config.groq.models,
+            models: this.config.models.available,
             pricePerUnit: this.pricing,
         };
     }
@@ -241,24 +241,22 @@ export class ResourceSharing {
 
     private async handleInferenceRequest(req: ResourceRequest): Promise<any> {
         const { model, prompt, max_tokens } = req.requirements;
-        const apiKey = process.env.GROQ_API_KEY;
+        const ollamaUrl = (process.env.OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '');
+        const ollamaModel = model || 'llama3.2:3b';
 
-        if (!apiKey) throw new Error('No GROQ_API_KEY');
-
-        const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const resp = await fetch(`${ollamaUrl}/v1/chat/completions`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: model || 'llama-3.3-70b-versatile',
+                model: ollamaModel,
                 messages: [{ role: 'user', content: prompt }],
                 max_tokens: max_tokens || 2048,
+                stream: false,
             }),
+            signal: AbortSignal.timeout(90_000),
         });
 
-        if (!resp.ok) throw new Error(`Groq: ${resp.status}`);
+        if (!resp.ok) throw new Error(`Ollama: ${resp.status}`);
         return resp.json();
     }
 

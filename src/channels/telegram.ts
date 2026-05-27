@@ -386,16 +386,18 @@ export class TelegramChannel {
             if (ctx.chat?.type !== 'private') return;
             const lang = this.lang(ctx);
 
+            // Models available on GSTD sovereign network (Ollama-compatible IDs).
+            // Routed to the node in the swarm that has the requested model.
+            // Larger models require swarm nodes with 16GB+ RAM.
             const models = [
-                { id: 'auto',                                         label: '🤖 Auto (best available)' },
-                { id: 'llama-3.3-70b-versatile',                      label: '🦙 Llama 3.3 70B' },
-                { id: 'llama-3.1-8b-instant',                         label: '⚡ Llama 3.1 8B (fast)' },
-                { id: 'meta-llama/llama-4-scout-17b-16e-instruct',     label: '🔭 Llama 4 Scout' },
-                { id: 'qwen/qwen3-32b',                                label: '🐉 Qwen3 32B' },
-                { id: 'openai/gpt-oss-120b',                           label: '🧠 GPT-OSS 120B' },
-                { id: 'openai/gpt-oss-20b',                            label: '💡 GPT-OSS 20B' },
-                { id: 'moonshotai/kimi-k2-instruct',                   label: '🌙 Kimi K2' },
-                { id: 'mixtral-8x7b-32768',                            label: '🌀 Mixtral 8x7B' },
+                { id: 'auto',          label: '🤖 Auto — swarm picks best node' },
+                { id: 'llama3.2:3b',   label: '🐝 Llama 3.2 3B — fast (Pi nodes)' },
+                { id: 'llama3.1:8b',   label: '⚡ Llama 3.1 8B — balanced' },
+                { id: 'qwen2.5:7b',    label: '🐉 Qwen 2.5 7B — analytical' },
+                { id: 'mistral:7b',    label: '🌀 Mistral 7B — creative' },
+                { id: 'phi3:medium',   label: '💡 Phi-3 Medium — efficient' },
+                { id: 'llama3.1:70b',  label: '🦙 Llama 3.1 70B — deep (32GB nodes)' },
+                { id: 'qwen2.5:32b',   label: '🧠 Qwen 2.5 32B — reasoning (32GB nodes)' },
             ];
 
             const current = ctx.session.model || 'auto';

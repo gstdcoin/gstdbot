@@ -73,21 +73,36 @@ export class PeerManager extends EventEmitter {
 
     async start(): Promise<void> {
         // 1. Seed peers from env
-        const seedUrls = (process.env.GSTD_SEED_PEERS || '')
+        const envSeeds = (process.env.GSTD_SEED_PEERS || '')
             .split(',').map(s => s.trim()).filter(s => s.startsWith('http'));
-        for (const url of seedUrls) {
+
+        // 2. Also fetch seed URL from GitHub (Pi bootstrap node publishes its tunnel URL there)
+        const githubSeeds: string[] = [];
+        try {
+            const resp = await fetch(
+                `https://raw.githubusercontent.com/gstdcoin/ai/main/gstd-seed-peers.txt?t=${Math.floor(Date.now() / 60000)}`,
+                { signal: AbortSignal.timeout(4000) }
+            );
+            if (resp.ok) {
+                const urls = (await resp.text()).split('\n').map(s => s.trim()).filter(s => s.startsWith('http'));
+                githubSeeds.push(...urls);
+            }
+        } catch { /* GitHub unavailable — use env seeds */ }
+
+        const allSeeds = [...new Set([...envSeeds, ...githubSeeds])];
+        for (const url of allSeeds) {
             if (url !== this.selfInfo.url) {
                 this.peers.set(url, this.placeholder(url));
             }
         }
 
-        // 2. Ping all known peers immediately
+        // 3. Ping all known peers immediately
         await this.pingAll();
 
-        // 3. Start heartbeat loop
+        // 4. Start heartbeat loop
         this.heartbeatTimer = setInterval(() => this.heartbeatAll(), HEARTBEAT_INTERVAL);
 
-        console.log(`[Peers] Started. Known peers: ${this.peers.size} | Self: ${this.selfInfo.url}`);
+        console.log(`[Peers] Started. Known peers: ${this.peers.size} (${githubSeeds.length} from GitHub) | Self: ${this.selfInfo.url}`);
     }
 
     stop(): void {

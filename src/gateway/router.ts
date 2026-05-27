@@ -35,19 +35,42 @@ function stripThinkTags(text: string): string {
     return text.replace(/<think>[\s\S]*?<\/think>\s*/gi, '').trim();
 }
 
-// Available models on the GSTD network
+// Available models on the GSTD network (Ollama-compatible IDs).
+// Larger models auto-route to capable swarm nodes via PeerManager.
 const GSTD_MODELS = [
-    'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
-    'meta-llama/llama-4-scout-17b-16e-instruct',
-    'qwen/qwen3-32b',
-    'openai/gpt-oss-120b',
-    'openai/gpt-oss-20b',
-    'moonshotai/kimi-k2-instruct',
-    'mixtral-8x7b-32768',
+    'llama3.2:3b',
+    'llama3.1:8b',
+    'qwen2.5:7b',
+    'mistral:7b',
+    'phi3:medium',
+    'llama3.1:70b',
+    'qwen2.5:32b',
 ];
 
-const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+const DEFAULT_MODEL = 'llama3.2:3b';
+
+// Map legacy Groq/OpenAI-style model IDs → Ollama model IDs.
+// Called when routing requests that use old model name conventions.
+const MODEL_MAP: Record<string, string> = {
+    'llama-3.3-70b-versatile':                      'llama3.1:70b',
+    'llama-3.1-70b-versatile':                      'llama3.1:70b',
+    'llama-3.1-8b-instant':                         'llama3.1:8b',
+    'llama-3.2-3b-preview':                         'llama3.2:3b',
+    'meta-llama/llama-4-scout-17b-16e-instruct':    'llama3.1:8b',
+    'qwen/qwen3-32b':                               'qwen2.5:32b',
+    'openai/gpt-oss-120b':                          'llama3.1:70b',
+    'openai/gpt-oss-20b':                           'qwen2.5:7b',
+    'moonshotai/kimi-k2-instruct':                  'qwen2.5:7b',
+    'mixtral-8x7b-32768':                           'mistral:7b',
+    'groq/compound':                                'llama3.2:3b',
+};
+
+function toOllamaModel(model: string): string {
+    if (MODEL_MAP[model]) return MODEL_MAP[model];
+    if (model.includes(':')) return model; // already Ollama format
+    // Unknown legacy ID: fall back to default
+    return DEFAULT_MODEL;
+}
 
 const DEEP_THINK = (specialty: string) => `You are a world-class expert in ${specialty} with decades of experience. Precision is paramount.
 
@@ -142,7 +165,7 @@ export class NeuralRouter {
             };
         }
 
-        const ollamaModel = requestedModel.includes(':') ? requestedModel : 'llama3.2:3b';
+        const ollamaModel = toOllamaModel(requestedModel);
         const ollamaUrl   = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
 
         // ─── L2: Local Ollama (primary — no external deps) ─────────
@@ -217,7 +240,7 @@ export class NeuralRouter {
     // ─── Single network call: local Ollama or best peer ──────────
     async callGSTDNetwork(model: string, messages: ChatMessage[], maxTokens: number = 2048): Promise<RouteResult> {
         const ollamaUrl   = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
-        const ollamaModel = model.includes(':') ? model : 'llama3.2:3b';
+        const ollamaModel = toOllamaModel(model);
 
         // Try local first
         try {

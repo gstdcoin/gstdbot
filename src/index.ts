@@ -75,16 +75,6 @@ async function resolveAvailableModels(): Promise<string[]> {
         }
     } catch (_e) { /* Ollama not running yet */ }
 
-    // Groq — add well-known models when API key is configured
-    if (process.env.GROQ_API_KEY) {
-        models.push(
-            'llama-3.3-70b-versatile', 'llama-3.1-8b-instant',
-            'meta-llama/llama-4-scout-17b-16e-instruct', 'qwen/qwen3-32b',
-            'openai/gpt-oss-120b', 'openai/gpt-oss-20b',
-            'moonshotai/kimi-k2-instruct', 'mixtral-8x7b-32768',
-        );
-    }
-
     // No backend? Fallback to empty list — heartbeat will report 0 capabilities
     return [...new Set(models)]; // deduplicate
 }
@@ -98,7 +88,7 @@ export interface NodeConfig {
     installDir: string;
     swarm: { enabled: boolean; maxCPU: number; maxRAM: number; apiUrl: string };
     dashboard: { host: string; port: number; enabled: boolean };
-    groq: { models: string[] };
+    models: { available: string[] };
     memory: { redisUrl: string; chromaUrl: string; enabled: boolean };
     apps: { enabled: boolean; dataDir: string };
     tonconnect: { enabled: boolean; network: 'mainnet' | 'testnet'; bridgeUrl: string };
@@ -124,10 +114,9 @@ async function loadConfig(): Promise<NodeConfig> {
             port: parseInt(process.env.GSTD_DASHBOARD_PORT || '8080'),
             enabled: process.env.GSTD_DASHBOARD !== 'false',
         },
-        groq: {
-            // Models are resolved at runtime: Ollama models + Groq models (if key is set).
-            // This static list is the fallback when no backend is detected yet.
-            models: await resolveAvailableModels(),
+        models: {
+            // Resolved at runtime from local Ollama. Updated after each model pull.
+            available: await resolveAvailableModels(),
         },
         memory: {
             redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
@@ -465,7 +454,7 @@ async function main(): Promise<void> {
         console.log('  ── Revenue Streams ──────────────────────────────');
         console.log('  💾 Storage:     ' + (storageVault?.isEnabled() ? `✓ ${storageStats?.totalCapacityGB} GB available` : 'disabled'));
         console.log('  💻 Compute:     ' + (computeMarket?.isEnabled() ? `✓ score ${computeStats?.benchmarkScore} pts` : 'disabled'));
-        console.log('  🧠 Inference:   ' + (config.groq.models.length > 0 ? `✓ ${config.groq.models.length} model(s): ${config.groq.models.join(', ')}` : 'no models detected'));
+        console.log('  🧠 Inference:   ' + (config.models.available.length > 0 ? `✓ ${config.models.available.length} model(s): ${config.models.available.join(', ')}` : 'no models detected — run scripts/pull-models.sh'));
         console.log('  📡 Relay:       ' + (trafficRelay?.isEnabled() ? '✓ VPN/CDN/API proxy' : 'disabled'));
         console.log('  🌐 NaaS RPC:    ' + (naas ? `✓ ${naas.getStatus().active_chains.length} chains active` : 'disabled'));
         console.log('  🎓 Training:    ' + ((trainer?.getStats()?.activeJobs || 0) > 0 ? 'active' : '✓ ready'));
