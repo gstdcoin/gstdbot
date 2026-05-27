@@ -179,19 +179,19 @@ export class TelegramChannel {
 
     private setupCommands(): void {
         this.bot.api.setMyCommands([
-            { command: 'start', description: 'Start the bot' },
-            { command: 'new', description: 'New conversation' },
-            { command: 'balance', description: '💎 Check GSTD balance' },
-            { command: 'wallet', description: '🔗 Connect/view wallet' },
-            { command: 'staking', description: '🥩 Stake GSTD' },
-            { command: 'earn', description: '🧠 How to earn GSTD' },
-            { command: 'bridge', description: '🌉 Cross-chain bridge' },
+            { command: 'start',    description: '🚀 Start — join the network' },
+            { command: 'earn',     description: '🐝 Earn GSTD — run a node, get rewards' },
+            { command: 'wallet',   description: '🔗 Link wallet to receive rewards' },
+            { command: 'node',     description: '📱 Run mobile node from your phone' },
+            { command: 'balance',  description: '💎 Balance, tier & earnings' },
+            { command: 'loan',     description: '🏦 Borrow against your GSTD' },
+            { command: 'model',    description: '🤖 Switch AI model' },
+            { command: 'staking',  description: '🥩 Stake GSTD for APY' },
+            { command: 'bridge',   description: '🌉 Cross-chain bridge' },
             { command: 'referral', description: '👥 Invite & earn' },
-            { command: 'model', description: 'Switch model' },
-            { command: 'apikey', description: 'Get free API key' },
-            { command: 'node', description: '📱 Run mobile node' },
-            { command: 'status', description: 'Session status' },
-            { command: 'help', description: 'Help & commands' },
+            { command: 'new',      description: '🔄 New conversation' },
+            { command: 'status',   description: '📊 Session status' },
+            { command: 'help',     description: '❓ Help & commands' },
         ]).catch((e: any) => console.log('[Bot] setMyCommands (private) failed:', e.message));
 
         // Group commands
@@ -267,25 +267,38 @@ export class TelegramChannel {
             });
         });
         // ── /node — Launch Mobile Node (Mini App) ──
+        // ── /loan ──
+        this.bot.command('loan', async (ctx) => {
+            if (ctx.chat?.type !== 'private') return;
+            return this.handleLoan(ctx, this.lang(ctx));
+        });
+
         this.bot.command('node', async (ctx) => {
             if (ctx.chat?.type !== 'private') return;
             const lang = this.lang(ctx);
             const tmaUrl = process.env.GSTD_TMA_URL || 'https://gstdtoken.com/tma';
 
             const msg = `📱 <b>GSTD Mobile Node</b>\n\n` +
-                  `Run a node right from your phone!\n\n` +
-                  `🐝 Earn GSTD automatically\n` +
-                  `⚡ Zero setup — one tap\n` +
-                  `🔗 Wallet via TON Connect\n` +
-                  `💎 Tiers: Bronze → Silver → Gold → Platinum\n\n` +
-                  `<i>Tap the button below to start your node:</i>`;
+                  `Share your phone's resources — earn GSTD automatically.\n\n` +
+                  `<b>You need 0 GSTD to start.</b> Just link your wallet and tap Launch.\n\n` +
+                  `💰 <b>Earnings:</b>\n` +
+                  `• 🥉 Bronze — 0.5 GSTD/h  (any phone)\n` +
+                  `• 🥈 Silver — 1.0 GSTD/h  (mid-range)\n` +
+                  `• 🥇 Gold   — 2.0 GSTD/h  (flagship)\n` +
+                  `• 💎 Platinum — 5.0 GSTD/h (tablet / PC-class)\n\n` +
+                  `<b>What your node does:</b>\n` +
+                  `⚙️ Serves AI inference requests from the network\n` +
+                  `🔗 Relays P2P traffic between nodes\n` +
+                  `💾 Caches model outputs for faster responses\n\n` +
+                  `<i>After earning, spend GSTD on better AI models or take a loan — /loan</i>`;
 
             await ctx.reply(msg, {
                 parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [
                         [{ text: '🚀 Launch Node', web_app: { url: tmaUrl } }],
-                        [{ text: '📊 Network Stats', callback_data: 'node_stats' }],
+                        [{ text: '🔗 Link Wallet First', callback_data: 'link_wallet_prompt' },
+                         { text: '📊 Network Stats', callback_data: 'node_stats' }],
                     ],
                 },
             });
@@ -553,6 +566,34 @@ export class TelegramChannel {
                 // 👥 Referrals
                 if (text === '👥 Referrals') {
                     return this.handleReferral(ctx, lang);
+                }
+                // 🏦 Loan
+                if (text === '🏦 Loan' || text.toLowerCase() === 'loan' || /^loan\s+\d/.test(text.toLowerCase())) {
+                    // "loan 50" shortcut — parse amount directly
+                    const quickMatch = text.match(/^loan\s+(\d+(\.\d+)?)/i);
+                    if (quickMatch) {
+                        const borrowAmount = parseFloat(quickMatch[1]);
+                        const collateralNeeded = parseFloat((borrowAmount / 0.70).toFixed(2));
+                        try {
+                            const walletData = await this.apiCall(`/api/v1/telegram/bot/wallet?telegram_id=${ctx.from.id}`);
+                            const wallet = walletData.wallet || '';
+                            if (!wallet) {
+                                return ctx.reply('❌ Link your wallet first: /wallet');
+                            }
+                            const result = await this.apiCall('/api/v1/loans/create', {
+                                method: 'POST',
+                                body: { wallet, collateral_gstd: collateralNeeded },
+                            });
+                            const msg = `✅ <b>Loan Created!</b>\n\n` +
+                                  `🔒 Locked: <b>${collateralNeeded} GSTD</b>\n` +
+                                  `💳 Credit: <b>${result.borrowed_gstd} GSTD</b>\n` +
+                                  `📊 Health factor: ${result.health_factor}`;
+                            return ctx.reply(msg, { parse_mode: 'HTML' });
+                        } catch (err: any) {
+                            return ctx.reply(`❌ ${err.message?.slice(0, 80)}`);
+                        }
+                    }
+                    return this.handleLoan(ctx, lang);
                 }
                 // 🔗 TON Wallet Address Detection (EQ... or UQ... or 0:...)
                 const tonAddressRegex = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
@@ -935,6 +976,87 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                 return this.handleBalance(ctx, lang);
             }
 
+            // earn_menu callback
+            if (data === 'earn_menu') {
+                await ctx.answerCallbackQuery();
+                return this.handleEarn(ctx, lang);
+            }
+
+            // loan_menu callback
+            if (data === 'loan_menu') {
+                await ctx.answerCallbackQuery();
+                return this.handleLoan(ctx, lang);
+            }
+
+            // loan_<amount> — quick loan buttons
+            if (data.startsWith('loan_') && !data.includes('repay')) {
+                await ctx.answerCallbackQuery();
+                const amountStr = data.replace('loan_', '');
+                const borrowAmount = parseFloat(amountStr);
+                if (isNaN(borrowAmount)) return;
+                const collateralNeeded = parseFloat((borrowAmount / 0.70).toFixed(2));
+
+                try {
+                    const walletData = await this.apiCall(`/api/v1/telegram/bot/wallet?telegram_id=${ctx.from.id}`);
+                    const wallet = walletData.wallet || '';
+                    if (!wallet) {
+                        return ctx.reply('❌ Link your wallet first: /wallet');
+                    }
+                    const result = await this.apiCall('/api/v1/loans/create', {
+                        method: 'POST',
+                        body: { wallet, collateral_gstd: collateralNeeded },
+                    });
+                    const msg = `✅ <b>Loan Created!</b>\n\n` +
+                          `🔒 Locked: <b>${collateralNeeded} GSTD</b> collateral\n` +
+                          `💳 Received: <b>${result.borrowed_gstd} GSTD</b> credit\n` +
+                          `📊 Health factor: ${result.health_factor}\n` +
+                          `💸 Interest: 0.5%/day\n\n` +
+                          `Use credit for AI queries, storage, compute.\n` +
+                          `Repay anytime via /loan → Repay All.`;
+                    return ctx.reply(msg, { parse_mode: 'HTML' });
+                } catch (err: any) {
+                    const isInsufficient = err.message?.includes('402') || err.message?.includes('Insufficient');
+                    const msg = isInsufficient
+                        ? `❌ Insufficient GSTD.\n\nYou need <b>${collateralNeeded} GSTD</b> as collateral to borrow ${borrowAmount} GSTD.\n\n🐝 Run a node to earn more: /earn`
+                        : `❌ Loan error: ${err.message?.slice(0, 80)}`;
+                    return ctx.reply(msg, { parse_mode: 'HTML' });
+                }
+            }
+
+            // loan_repay_all
+            if (data === 'loan_repay_all') {
+                await ctx.answerCallbackQuery();
+                try {
+                    const walletData = await this.apiCall(`/api/v1/telegram/bot/wallet?telegram_id=${ctx.from.id}`);
+                    const wallet = walletData.wallet || '';
+                    if (!wallet) return ctx.reply('❌ Link your wallet first: /wallet');
+
+                    const loanData = await this.apiCall(`/api/v1/loans/list?wallet=${wallet}`);
+                    const active = loanData.active_loans || [];
+                    if (!active.length) {
+                        return ctx.reply('✅ No active loans to repay.');
+                    }
+                    let repaidCount = 0;
+                    let totalReleased = 0;
+                    for (const loan of active) {
+                        try {
+                            const r = await this.apiCall('/api/v1/loans/repay', {
+                                method: 'POST',
+                                body: { wallet, loan_id: loan.loan_id, repay_gstd: 'all' },
+                            });
+                            repaidCount++;
+                            totalReleased += r.collateral_released || 0;
+                        } catch (_e) { /* skip individual failures */ }
+                    }
+                    const msg = `✅ <b>Repaid ${repaidCount} loan(s)</b>\n\n` +
+                          `🔓 Collateral released: <b>${totalReleased.toFixed(4)} GSTD</b>\n\n` +
+                          `Use /balance to see your updated balance.`;
+                    return ctx.reply(msg, { parse_mode: 'HTML' });
+                } catch (err: any) {
+                    return ctx.reply(`❌ Repayment error: ${err.message?.slice(0, 80)}`);
+                }
+            }
+
             await ctx.answerCallbackQuery();
         });
     }
@@ -1039,29 +1161,70 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
 
     private async handleBalance(ctx: any, lang: string) {
         try {
-            const data = await this.apiCall(`/api/v1/telegram/bot/balance?telegram_id=${ctx.from.id}`);
+            const [balData, walletData] = await Promise.all([
+                this.apiCall(`/api/v1/telegram/bot/balance?telegram_id=${ctx.from.id}`).catch(() => ({})),
+                this.apiCall(`/api/v1/telegram/bot/wallet?telegram_id=${ctx.from.id}`).catch(() => ({})),
+            ]);
 
-            const costPerPro = SMARTMIX_TIERS.standard.cost;
-            const proReqs = costPerPro > 0 ? Math.floor((data.balance_gstd || 0) / costPerPro) : 999;
-            const pending = data.pending_gstd || 0;
+            const balance = (balData as any).balance_gstd || 0;
+            const swarm   = (balData as any).swarm_balance || 0;
+            const pending = (balData as any).pending_gstd  || 0;
+            const wallet  = (walletData as any).wallet || '';
 
-            let msg: string;
-            {
-                msg = `💎 <b>My Balance</b>\n\n💰 <b>${(data.balance_gstd || 0).toFixed(4)} GSTD</b> (L1 TON)\n🐝 <b>${(data.swarm_balance || 0).toFixed(4)} GSTD</b> (L1 Swarm / Zero Gas)\n\n⚡ Pro requests: <b>${proReqs}</b>`;
-                if (pending > 0) {
-                    msg += `\n\n⏳ <b>Mining reward: ${pending.toFixed(4)} GSTD</b>\n   └ After commission: <b>${(pending * 0.85).toFixed(4)} GSTD</b>\n   └ 10% → Development Fund, 5% → Sovereign AI Pool`;
-                }
-                msg += `\n\n<i>🆓 Free model always available\n⚡ Pro = ${costPerPro.toFixed(1)} GSTD/request ($${SMARTMIX_TIERS.standard.costUsd})</i>`;
+            // Fetch tier info
+            let tierSection = '';
+            let nextTierGstd = 0;
+            try {
+                const tierData = await this.apiCall(`/api/v1/access/tier?wallet=${wallet}`);
+                const t  = tierData.current_tier;
+                const nt = tierData.next_tier;
+                nextTierGstd = tierData.gstd_to_next || 0;
+
+                const models = t.ai_models[0] === '*' ? 'All models' : t.ai_models.slice(0, 3).join(', ') + (t.ai_models.length > 3 ? '...' : '');
+                tierSection = `\n\n${t.emoji} <b>Tier: ${t.name}</b>\n` +
+                    `   └ Models: ${models}\n` +
+                    `   └ Queries: ${t.queries_per_day === null ? 'Unlimited' : t.queries_per_day + '/day'}\n` +
+                    (nt ? `   └ <i>+${nextTierGstd.toFixed(1)} GSTD → ${nt.emoji} ${nt.name}</i>` : `   └ <i>Maximum tier!</i>`);
+            } catch (_e) {}
+
+            // Pending reward line
+            let pendingLine = '';
+            if (pending > 0) {
+                pendingLine = `\n\n⏳ <b>Pending reward: ${pending.toFixed(4)} GSTD</b>\n` +
+                    `   └ Accumulated by your node — /earn to claim`;
             }
 
-            const inlineKeyboard: any[][] = [];
+            // Wallet status
+            const walletLine = wallet
+                ? `🔗 ${wallet.slice(0, 6)}...${wallet.slice(-4)}`
+                : `⚠️ No wallet linked — /wallet to link (required to receive rewards)`;
+
+            const msg = `💎 <b>My Balance</b>\n\n` +
+                  `${walletLine}\n\n` +
+                  `💰 <b>${balance.toFixed(4)} GSTD</b>` +
+                  (swarm > 0 ? `\n🐝 <b>${swarm.toFixed(4)} GSTD</b> (swarm credit)` : '') +
+                  tierSection +
+                  pendingLine +
+                  `\n\n<b>Use your GSTD:</b>\n` +
+                  `🤖 AI queries — spend from balance per request\n` +
+                  `🏦 /loan — borrow against GSTD collateral\n` +
+                  `🥩 /staking — lock for APY rewards`;
+
+            const buttons: any[][] = [];
+            if (!wallet) {
+                buttons.push([{ text: '🔗 Link Wallet', callback_data: 'link_wallet_prompt' }]);
+            }
             if (pending >= 0.01) {
-                inlineKeyboard.push([{ text: '🎁 Claim Reward', callback_data: 'claim_reward' }]);
+                buttons.push([{ text: '🎁 Claim Reward', callback_data: 'claim_reward' }]);
             }
+            if (balance > 0) {
+                buttons.push([{ text: '🏦 Take a Loan', callback_data: 'loan_menu' }]);
+            }
+            buttons.push([{ text: '🐝 Earn More', callback_data: 'earn_menu' }]);
 
             await ctx.reply(msg, {
                 parse_mode: 'HTML',
-                reply_markup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
+                reply_markup: buttons.length > 0 ? { inline_keyboard: buttons } : undefined,
             });
         } catch (_e) {
             await ctx.reply('❌ Error loading balance');
@@ -1273,12 +1436,38 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             const walletData = await this.apiCall(`/api/v1/telegram/bot/wallet?telegram_id=${ctx.from.id}`);
             if (walletData.linked && walletData.wallet) {
                 const shortWallet = walletData.wallet.slice(0, 6) + '...' + walletData.wallet.slice(-4);
-                const msg = `🔗 <b>Your Wallet</b>\n\n✅ Linked: <code>${walletData.wallet}</code>\n📋 ${shortWallet}\n\n💡 To change wallet, send a new TON wallet address in the chat.\n\nExample: <code>EQDv...</code>`;
+
+                // Fetch tier info
+                let tierLine = '';
+                try {
+                    const tierData = await this.apiCall(`/api/v1/access/tier?wallet=${walletData.wallet}`);
+                    const t = tierData.current_tier;
+                    tierLine = `\n\n${t.emoji} <b>Access tier: ${t.name}</b>\n` +
+                        (tierData.gstd_to_next > 0 ? `   └ Next tier in <b>${tierData.gstd_to_next.toFixed(1)} GSTD</b> — keep running your node!` : `   └ Maximum tier unlocked`);
+                } catch (_e) {}
+
+                const msg = `🔗 <b>Your Wallet</b>\n\n✅ <code>${walletData.wallet}</code>` +
+                      tierLine +
+                      `\n\n💡 To change wallet, paste a new TON address (<code>EQ...</code>) in the chat.` +
+                      `\n🐝 /earn — start earning GSTD with your node` +
+                      `\n🏦 /loan — borrow against your GSTD balance`;
                 return ctx.reply(msg, { parse_mode: 'HTML' });
             }
         } catch (_e) { }
 
-        const msg = `🔗 <b>Connect Wallet</b>\n\n⚠️ No wallet linked.\n\nSend your TON wallet address in the chat.\n\nExample: <code>EQDv...</code>\n\n❓ No wallet?\n• <a href="https://tonkeeper.com">Tonkeeper</a>\n• <a href="https://mytonwallet.io">MyTonWallet</a>\n\n💡 <i>After linking, all purchased GSTD will be credited to your wallet.</i>`;
+        const msg = `🔗 <b>Link Your Wallet — Step 1 to Earning</b>\n\n` +
+              `<b>You don't need any GSTD to start.</b>\n` +
+              `Linking your wallet is the only requirement to receive node rewards.\n\n` +
+              `👉 Paste your TON wallet address in the chat:\n<code>EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO</code>\n\n` +
+              `Formats accepted:\n` +
+              `• <code>EQ...</code> (TON user-friendly)\n` +
+              `• <code>UQ...</code> (non-bounceable)\n` +
+              `• <code>0:abc...</code> (raw hex)\n\n` +
+              `❓ No wallet yet?\n` +
+              `• <a href="https://tonkeeper.com">Tonkeeper</a> (iOS / Android / Chrome)\n` +
+              `• <a href="https://mytonwallet.io">MyTonWallet</a> (web)\n\n` +
+              `<i>After linking: run a node → earn GSTD → use for AI queries or loans</i>`;
+
         await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
     }
 
@@ -1310,30 +1499,140 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
     }
 
     private async handleEarn(ctx: any, lang: string) {
-        const tmaUrl = process.env.GSTD_TMA_URL || 'https://gstdtoken.com/tma';
+        const tmaUrl    = process.env.GSTD_TMA_URL || 'https://gstdtoken.com/tma';
         const nodeOsUrl = 'https://github.com/gstdcoin/gstdbot';
 
-        const msg = `🧠 <b>Earn GSTD</b>\n\nJoin the Swarm and earn GSTD passively:\n\n` +
-              `🖥 <b>Desktop Node</b> — install Node OS on computer (max earnings)\n` +
-              `📱 <b>Mobile Node</b> — run directly in Telegram\n` +
-              `🥩 <b>Staking</b> — lock GSTD and earn APY\n\n` +
-              `💰 <b>Rewards:</b>\n` +
-              `• 0.10 GSTD/hour for uptime\n` +
-              `• 0.001 GSTD per completed query\n` +
-              `• Streak bonus for consecutive days\n\n` +
-              `<i>Commission: 10% → Development Fund, 5% → Sovereign AI Pool</i>`;
+        // Check if user already has a wallet linked
+        let walletLinked = false;
+        let pendingGstd = 0;
+        try {
+            const walletData = await this.apiCall(`/api/v1/telegram/bot/wallet?telegram_id=${ctx.from.id}`);
+            walletLinked = walletData.linked && !!walletData.wallet;
+        } catch (_e) {}
+        try {
+            const balData = await this.apiCall(`/api/v1/telegram/bot/balance?telegram_id=${ctx.from.id}`);
+            pendingGstd = balData.pending_gstd || 0;
+        } catch (_e) {}
+
+        const step1 = walletLinked ? `✅ <b>Step 1: Wallet linked</b>` : `1️⃣ <b>Link your wallet</b> → /wallet\n   (Any TON address — you need 0 GSTD to start)`;
+        const step2 = `2️⃣ <b>Run a node</b> — share your device's resources`;
+        const step3 = `3️⃣ <b>Earn GSTD automatically</b> — paid for every hour online`;
+        const step4 = `4️⃣ <b>Use GSTD</b> for AI queries, better models, or loans`;
+
+        const earningRates = `\n\n💰 <b>Earning rates:</b>\n` +
+            `📱 Mobile Bronze — <b>0.5 GSTD/h</b> (any phone, zero setup)\n` +
+            `📱 Mobile Silver — <b>1.0 GSTD/h</b> (mid-range device)\n` +
+            `📱 Mobile Gold   — <b>2.0 GSTD/h</b> (flagship phone)\n` +
+            `🖥 Desktop 8GB   — <b>1.5 GSTD/h</b> (serves AI queries)\n` +
+            `🖥 Desktop 32GB  — <b>5.0 GSTD/h</b> (flagship node, best models)`;
+
+        const unlocks = `\n\n🔓 <b>What GSTD unlocks:</b>\n` +
+            `🌱 0 GSTD → Free basic AI (always)\n` +
+            `🐝 10 GSTD → More models + higher query limit\n` +
+            `⚡ 100 GSTD → Council of 3 experts\n` +
+            `🔥 1 000 GSTD → Panel of 5, flagship models\n` +
+            `🧠 10 000 GSTD → Full swarm, every model\n` +
+            `🏦 Any amount → Take a loan using GSTD as collateral`;
+
+        const pendingNote = pendingGstd > 0.001
+            ? `\n\n⏳ <b>Pending reward: ${pendingGstd.toFixed(4)} GSTD</b> — /balance to claim`
+            : '';
+
+        const msg = `🐝 <b>Earn GSTD — No Tokens Needed to Start</b>\n\n` +
+              step1 + `\n` + step2 + `\n` + step3 + `\n` + step4 +
+              earningRates + unlocks + pendingNote;
+
+        const buttons: any[][] = [];
+        if (!walletLinked) {
+            buttons.push([{ text: '🔗 Step 1: Link Wallet', callback_data: 'link_wallet_prompt' }]);
+        }
+        buttons.push([{ text: '📱 Launch Mobile Node', web_app: { url: tmaUrl } }]);
+        buttons.push([{ text: '🖥 Install Desktop Node', url: nodeOsUrl }]);
+        if (pendingGstd > 0.001) {
+            buttons.push([{ text: '🎁 Claim Reward', callback_data: 'claim_reward' }]);
+        }
+        buttons.push([{ text: '💎 My Balance & Tier', callback_data: 'check_balance' }]);
 
         await ctx.reply(msg, {
             parse_mode: 'HTML',
             link_preview_options: { is_disabled: true },
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: '🖥 Install Node OS', url: nodeOsUrl }],
-                    [{ text: '📱 Mobile Node', web_app: { url: tmaUrl } }],
-                    [{ text: '💎 Check Balance', callback_data: 'check_balance' }],
-                ]
-            }
+            reply_markup: { inline_keyboard: buttons },
         });
+    }
+
+    private async handleLoan(ctx: any, lang: string) {
+        // Fetch wallet + balance
+        let wallet = '';
+        let balance = 0;
+        let locked  = 0;
+
+        try {
+            const walletData = await this.apiCall(`/api/v1/telegram/bot/wallet?telegram_id=${ctx.from.id}`);
+            wallet = walletData.wallet || '';
+        } catch (_e) {}
+
+        if (!wallet) {
+            const msg = `🏦 <b>GSTD Loans</b>\n\n` +
+                  `First, link your TON wallet to use the loan system.\n\n` +
+                  `/wallet — link your wallet`;
+            return ctx.reply(msg, { parse_mode: 'HTML' });
+        }
+
+        try {
+            const loanData = await this.apiCall(`/api/v1/loans/list?wallet=${wallet}`);
+            balance = loanData.credit_balance || 0;
+            locked  = loanData.locked_collateral || 0;
+
+            const active = loanData.active_loans || [];
+            const shortWallet = wallet.slice(0, 6) + '...' + wallet.slice(-4);
+
+            let activeSection = '';
+            if (active.length > 0) {
+                activeSection = `\n\n📋 <b>Active loans:</b>\n`;
+                for (const l of active.slice(0, 3)) {
+                    activeSection += `• ${l.loan_id.slice(-8)}: ${l.total_owed.toFixed(2)} GSTD owed | ` +
+                        `HF: ${l.health_factor.toFixed(2)} | ` +
+                        `Collateral: ${l.collateral_gstd.toFixed(2)} GSTD\n`;
+                }
+            }
+
+            const balRaw = await this.apiCall(`/api/v1/balance/public?wallet=${wallet}`).catch(() => ({}));
+            const gstdBalance = (balRaw as any).balance_gstd || 0;
+
+            const msg = `🏦 <b>GSTD Loans</b>\n\n` +
+                  `💼 Wallet: ${shortWallet}\n` +
+                  `💰 Balance: <b>${gstdBalance.toFixed(4)} GSTD</b>\n` +
+                  `🔒 Locked collateral: <b>${locked.toFixed(4)} GSTD</b>\n` +
+                  `💳 Credit balance: <b>${balance.toFixed(4)} GSTD</b>\n` +
+                  activeSection +
+                  `\n\n<b>How it works:</b>\n` +
+                  `1. Lock GSTD as collateral\n` +
+                  `2. Receive 70% of it as credit (LTV 70%)\n` +
+                  `3. Spend credit on AI queries, storage, compute\n` +
+                  `4. Repay anytime to unlock collateral\n\n` +
+                  `📊 Terms: 0.5%/day interest · Min 1 GSTD · Max 3 loans\n\n` +
+                  `<i>To take a loan, reply with the amount to lock as collateral:\n` +
+                  `Example: <code>loan 10</code> → locks 10 GSTD, gives 7 GSTD credit</i>`;
+
+            const buttons: any[][] = [];
+            if (gstdBalance >= 1) {
+                buttons.push([
+                    { text: '🏦 Borrow 10 GSTD (lock 14.3)', callback_data: 'loan_10' },
+                ]);
+                buttons.push([
+                    { text: '🏦 Borrow 50 GSTD (lock 71.4)', callback_data: 'loan_50' },
+                    { text: '🏦 Borrow 100 GSTD (lock 143)', callback_data: 'loan_100' },
+                ]);
+            }
+            if (active.length > 0) {
+                buttons.push([{ text: '💳 Repay All Loans', callback_data: 'loan_repay_all' }]);
+            }
+            buttons.push([{ text: '🐝 Earn More GSTD', callback_data: 'earn_menu' }]);
+
+            return ctx.reply(msg, { parse_mode: 'HTML', reply_markup: { inline_keyboard: buttons } });
+        } catch (_e) {
+            await ctx.reply('❌ Error loading loan information. Try again later.');
+        }
     }
 
     private async handleApiKeyIssue(ctx: any, lang: string) {

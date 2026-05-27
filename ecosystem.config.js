@@ -22,6 +22,24 @@ const dotenv = loadEnv(path.join(__dirname, '.env'));
 module.exports = {
   apps: [
   {
+    name: 'ollama',
+    script: '/home/bot/ollama-bin/bin/ollama',
+    args: 'serve',
+    cwd: '/home/bot',
+    env: {
+      OLLAMA_HOME: '/home/bot/.ollama',
+      HOME: '/home/bot',
+      PATH: '/home/bot/ollama-bin/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+    },
+    autorestart: true,
+    restart_delay: 5000,
+    out_file: '/home/bot/gstdbot/logs/ollama.log',
+    error_file: '/home/bot/gstdbot/logs/ollama.error.log',
+    merge_logs: true,
+    log_date_format: 'YYYY-MM-DD HH:mm:ss',
+    max_memory_restart: '3G',
+  },
+  {
     name: 'ipfs',
     script: '/home/bot/ipfs-bin/ipfs',
     args: 'daemon --migrate=true',
