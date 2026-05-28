@@ -1578,7 +1578,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             `🖥 Desktop 32GB RAM    — <b>5.0 GSTD/h</b>`;
 
         const installCmd = `\n\n🖥 <b>Desktop install (1 command):</b>\n` +
-            `<code>docker run -d -p 8080:8080 -e GSTD_WALLET_ADDRESS=YOUR_WALLET goldenbit/gstd-node</code>\n` +
+            `<code>docker run -d -p 8080:8080 -e GSTD_WALLET_ADDRESS=YOUR_WALLET ghcr.io/gstdcoin/gstd-node:latest</code>\n` +
             `<i>Or: <code>curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash</code></i>`;
 
         const unlocks = `\n\n🔓 <b>What GSTD unlocks:</b>\n` +

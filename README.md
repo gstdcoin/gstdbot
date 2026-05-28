@@ -109,9 +109,10 @@ npm start
 ```bash
 docker run -d \
   -e GSTD_API_URL=https://app.gstdtoken.com/api/v1 \
+  -e GSTD_WALLET_ADDRESS=YOUR_TON_WALLET \
   -p 8080:8080 \
-  --name gstdbot \
-  ghcr.io/gstdcoin/gstdbot:latest
+  --name gstd-node \
+  ghcr.io/gstdcoin/gstd-node:latest
 ```
 
 Open `http://localhost:8080` to see your dashboard.
