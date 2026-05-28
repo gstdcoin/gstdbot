@@ -1549,54 +1549,65 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
         const tmaUrl    = process.env.GSTD_TMA_URL || 'https://gstdtoken.com/tma';
         const nodeOsUrl = 'https://github.com/gstdcoin/gstdbot';
 
-        // Check if user already has a wallet linked
+        // Fetch wallet + balance + network stats in parallel
         let walletLinked = false;
-        let pendingGstd = 0;
+        let pendingGstd  = 0;
+        let totalNodes   = 0;
         try {
-            const walletData = await this.apiCall(`/api/v1/telegram/bot/wallet?telegram_id=${ctx.from.id}`);
-            walletLinked = walletData.linked && !!walletData.wallet;
-        } catch (_e) {}
-        try {
-            const balData = await this.apiCall(`/api/v1/telegram/bot/balance?telegram_id=${ctx.from.id}`);
-            pendingGstd = balData.pending_gstd || 0;
+            const [walletData, balData, netData] = await Promise.all([
+                this.apiCall(`/api/v1/telegram/bot/wallet?telegram_id=${ctx.from.id}`).catch(() => ({})),
+                this.apiCall(`/api/v1/telegram/bot/balance?telegram_id=${ctx.from.id}`).catch(() => ({})),
+                this.apiCall('/api/v1/nodes/rewards/network').catch(() => ({})),
+            ]);
+            walletLinked = (walletData as any).linked && !!(walletData as any).wallet;
+            pendingGstd  = (balData   as any).pending_gstd || 0;
+            totalNodes   = (netData   as any).total_nodes  || 0;
         } catch (_e) {}
 
-        const step1 = walletLinked ? `✅ <b>Step 1: Wallet linked</b>` : `1️⃣ <b>Link your wallet</b> → /wallet\n   (Any TON address — you need 0 GSTD to start)`;
-        const step2 = `2️⃣ <b>Run a node</b> — share your device's resources`;
-        const step3 = `3️⃣ <b>Earn GSTD automatically</b> — paid for every hour online`;
-        const step4 = `4️⃣ <b>Use GSTD</b> for AI queries, better models, or loans`;
+        const step1 = walletLinked
+            ? `✅ <b>Wallet linked</b>`
+            : `1️⃣ <b>Link TON wallet</b> → /wallet  <i>(need 0 GSTD to start)</i>`;
 
-        const earningRates = `\n\n💰 <b>Earning rates:</b>\n` +
-            `📱 Mobile Bronze — <b>0.5 GSTD/h</b> (any phone, zero setup)\n` +
-            `📱 Mobile Silver — <b>1.0 GSTD/h</b> (mid-range device)\n` +
-            `📱 Mobile Gold   — <b>2.0 GSTD/h</b> (flagship phone)\n` +
-            `🖥 Desktop 8GB   — <b>1.5 GSTD/h</b> (serves AI queries)\n` +
-            `🖥 Desktop 32GB  — <b>5.0 GSTD/h</b> (flagship node, best models)`;
+        const earlyBirdNote = `\n\n🚀 <b>Early Bird Bonus (active now)</b>\n` +
+            `Nodes running <b>before token launch</b> earn a <b>×1.5 multiplier</b> on all accumulated GSTD.\n` +
+            `The network has <b>${totalNodes > 0 ? totalNodes : '—'} active node${totalNodes !== 1 ? 's' : ''}</b> today — join while the pool is small.`;
+
+        const earningRates = `\n\n💰 <b>Earning rates (guaranteed):</b>\n` +
+            `📱 Mobile (any phone)  — <b>0.5–2 GSTD/h</b>\n` +
+            `🖥 Desktop 8GB RAM     — <b>1.5 GSTD/h</b>\n` +
+            `🖥 Desktop 32GB RAM    — <b>5.0 GSTD/h</b>`;
+
+        const installCmd = `\n\n🖥 <b>Desktop install (1 command):</b>\n` +
+            `<code>docker run -d -p 8080:8080 -e GSTD_WALLET_ADDRESS=YOUR_WALLET goldenbit/gstd-node</code>\n` +
+            `<i>Or: <code>curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash</code></i>`;
 
         const unlocks = `\n\n🔓 <b>What GSTD unlocks:</b>\n` +
-            `🌱 0 GSTD → Free basic AI (always)\n` +
-            `🐝 10 GSTD → More models + higher query limit\n` +
-            `⚡ 100 GSTD → Council of 3 experts\n` +
-            `🔥 1 000 GSTD → Panel of 5, flagship models\n` +
-            `🧠 10 000 GSTD → Full swarm, every model\n` +
-            `🏦 Any amount → Take a loan using GSTD as collateral`;
+            `🌱 0 GSTD → Free AI (always)\n` +
+            `⚡ 100 GSTD → Council of 3 models\n` +
+            `🔥 1 000 GSTD → Panel of 5 flagship models\n` +
+            `🧠 10 000 GSTD → Full swarm + free API key\n` +
+            `🏦 Any GSTD → Borrow against collateral`;
 
         const pendingNote = pendingGstd > 0.001
-            ? `\n\n⏳ <b>Pending reward: ${pendingGstd.toFixed(4)} GSTD</b> — /balance to claim`
+            ? `\n\n⏳ <b>Pending: ${pendingGstd.toFixed(4)} GSTD</b> — tap Claim below`
             : '';
 
-        const msg = `🐝 <b>Earn GSTD — No Tokens Needed to Start</b>\n\n` +
-              step1 + `\n` + step2 + `\n` + step3 + `\n` + step4 +
-              earningRates + unlocks + pendingNote;
+        const msg = `🐝 <b>Earn GSTD — Zero Cost to Start</b>\n\n` +
+              step1 + `\n2️⃣ <b>Run a node</b> — phone or desktop\n` +
+              `3️⃣ <b>Earn GSTD every hour</b> automatically` +
+              earlyBirdNote + earningRates + installCmd + unlocks + pendingNote;
 
         const buttons: any[][] = [];
         if (!walletLinked) {
             buttons.push([{ text: '🔗 Step 1: Link Wallet', callback_data: 'link_wallet_prompt' }]);
         }
-        buttons.push([{ text: '📱 Launch Mobile Node', web_app: { url: tmaUrl } }]);
-        buttons.push([{ text: '🖥 Install Desktop Node', url: nodeOsUrl }]);
+        buttons.push([{ text: '📱 Launch Mobile Node (instant)', web_app: { url: tmaUrl } }]);
+        buttons.push([
+            { text: '🖥 Desktop Docs', url: nodeOsUrl },
+            { text: '🏆 Leaderboard', url: 'https://gstdtoken.com/leaderboard' },
+        ]);
         if (pendingGstd > 0.001) {
-            buttons.push([{ text: '🎁 Claim Reward', callback_data: 'claim_reward' }]);
+            buttons.push([{ text: '🎁 Claim Pending Reward', callback_data: 'claim_reward' }]);
         }
         buttons.push([{ text: '💎 My Balance & Tier', callback_data: 'check_balance' }]);
 
