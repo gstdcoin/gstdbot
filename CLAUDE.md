@@ -21,8 +21,8 @@ NODE_NAME=my-node
 ```
 
 ## CI/CD
-- `ci.yml` — TypeScript check + tests on every push
-- `docker.yml` — builds + pushes multi-arch Docker image on main/tags
+- `ci.yml` — TypeScript check + tests on every push (uses node_modules/.bin/tsc, not global npx)
+- `docker.yml` — builds + pushes multi-arch Docker image to GHCR (ghcr.io/gstdcoin/gstd-node) on main/tags
 
 ## Task loop
 1. Node registers at startup → `POST /api/v1/nodes/register`

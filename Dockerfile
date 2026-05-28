@@ -1,6 +1,6 @@
 # ═══════════════════════════════════════════════════════
 # GSTD Node OS — Production Dockerfile
-# Ready-to-run: docker run -p 8080:8080 gstdcoin/node
+# Ready-to-run: docker run -p 8080:8080 ghcr.io/gstdcoin/gstd-node:latest
 # ═══════════════════════════════════════════════════════
 
 # ─── Stage 1: Build ──────────────────────────────────
@@ -13,7 +13,7 @@ RUN npm ci --legacy-peer-deps 2>/dev/null || npm install --legacy-peer-deps
 COPY tsconfig.json ./
 COPY src/ ./src/
 
-RUN npx tsc --skipLibCheck
+RUN node_modules/.bin/tsc --skipLibCheck
 
 # ─── Stage 2: Runtime ────────────────────────────────
 FROM node:22-alpine
