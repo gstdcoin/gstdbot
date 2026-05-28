@@ -1483,14 +1483,51 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                 },
             });
             const shortWallet = walletAddress.slice(0, 6) + '...' + walletAddress.slice(-4);
-            let msg: string;
-            {
-                msg = `✅ <b>Wallet Linked!</b>\n\n📋 ${shortWallet}\n<code>${walletAddress}</code>\n\n💰 All purchased GSTD will be credited to this wallet.`;
-                if (result.subsidized) {
-                    msg += '\n\n🎁 <b>Bonus:</b> Some TON sent to your wallet for first transactions!';
-                }
+
+            // Fetch live GSTD price for accurate Stars rate
+            const STAR_USD = 0.013;
+            let gstdPrice = 0;
+            try {
+                const priceData = await this.apiCall('/api/v1/market/price');
+                gstdPrice = priceData.gstd_price_usd || 0;
+            } catch (_e) {}
+            const gstdPerStar = gstdPrice > 0 ? STAR_USD / gstdPrice : 10;
+
+            const tiers = [
+                { stars: 10,  label: 'Starter' },
+                { stars: 50,  label: 'Pro' },
+                { stars: 200, label: 'Ultra' },
+            ];
+
+            const tierLines = tiers.map(t => {
+                const gstd = Math.floor(t.stars * gstdPerStar);
+                return `${t.stars}⭐ → <b>${gstd} GSTD</b>`;
+            }).join('  ·  ');
+
+            let msg = `✅ <b>Wallet Linked!</b>\n\n` +
+                `📋 <code>${walletAddress}</code>\n\n` +
+                `🎯 GSTD purchases now go <b>directly to your TON wallet</b>.\n\n` +
+                `⭐ <b>Buy GSTD with Telegram Stars:</b>\n${tierLines}\n` +
+                `<i>Rate: 1⭐ ≈ ${gstdPerStar.toFixed(0)} GSTD ($${STAR_USD})</i>`;
+
+            if (result.subsidized) {
+                msg += '\n\n🎁 <b>Bonus:</b> Some TON sent to your wallet for first transactions!';
             }
-            await ctx.reply(msg, { parse_mode: 'HTML' });
+
+            const buyButtons = tiers.map(t => {
+                const gstd = Math.floor(t.stars * gstdPerStar);
+                return { text: `${t.stars}⭐ → ${gstd} GSTD`, callback_data: `buy_${t.stars}` };
+            });
+
+            await ctx.reply(msg, {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [
+                        buyButtons,
+                        [{ text: '🐝 Earn GSTD for free', callback_data: 'earn_menu' }],
+                    ],
+                },
+            });
         } catch (err: any) {
             console.error('[Bot] Link wallet error:', err.message);
             const errMsg = '❌ Failed to link wallet. Check the address and try again.';

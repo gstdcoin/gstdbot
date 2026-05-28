@@ -702,7 +702,7 @@ export class SwarmAgent {
     }
 
     private async processInference(task: SwarmTask): Promise<any> {
-        const model    = task.model || 'llama-3.3-70b-versatile';
+        const model    = task.model || this.config.models.available[0] || 'llama3.2:3b';
         const messages = (task as any).messages || [{ role: 'user', content: task.prompt }];
         const maxTok   = (task as any).max_tokens || (task.payload?.max_tokens) || 2048;
         const temp     = (task as any).temperature ?? 0.7;

@@ -12,6 +12,7 @@
  */
 
 import { EventEmitter } from 'events';
+import { readFileSync } from 'fs';
 
 export interface NodeCapabilities {
     models: string[];
@@ -99,6 +100,7 @@ export class PlatformLink extends EventEmitter {
                 }),
                 signal: AbortSignal.timeout(10000),
             });
+            if (!resp.ok) throw new Error(`Register failed: ${resp.status}`);
             const data: any = await resp.json();
             this.registered = true;
             this.failCount = 0;
@@ -113,7 +115,13 @@ export class PlatformLink extends EventEmitter {
 
     private async sendHeartbeat() {
         const stats = this.statsCollector?.() || {};
-        const caps = this.capabilitiesProvider?.() || {};
+        const caps  = this.capabilitiesProvider?.() || {};
+        const models: string[] = (caps as any).models || [];
+
+        // Read tunnel URL for locality-aware routing
+        const tunnelUrl = (() => {
+            try { return readFileSync('/tmp/gstd_tunnel_url.txt', 'utf8').trim(); } catch { return ''; }
+        })() || process.env.GSTD_PUBLIC_URL || '';
 
         try {
             const resp = await fetch(`${this.platformUrl}/api/v1/nodes/heartbeat`, {
@@ -124,18 +132,21 @@ export class PlatformLink extends EventEmitter {
                     'X-Node-Id': this.nodeId,
                 },
                 body: JSON.stringify({
-                    node_id:       this.nodeId,
+                    node_id:        this.nodeId,
                     wallet_address: this.walletAddress,
-                    node_name:     `Node-${this.nodeId}`,
-                    node_version:  this.version,
-                    uptime_hours:  Math.round(process.uptime() / 3600),
+                    node_name:      `Node-${this.nodeId}`,
+                    node_version:   this.version,
+                    uptime_hours:   Math.round(process.uptime() / 3600),
                     queries_served: stats.queryCount || 0,
-                    capabilities:  (caps as any).models || [],
-                    mode:          'node',
+                    capabilities:   models,
+                    models_loaded:  models,
+                    mode:           'node',
+                    ...(tunnelUrl && { node_url: tunnelUrl }),
                 }),
                 signal: AbortSignal.timeout(10000),
             });
 
+            if (!resp.ok) throw new Error(`Heartbeat ${resp.status}`);
             const data: any = await resp.json();
             this.lastHeartbeat = new Date();
             this.failCount = 0;

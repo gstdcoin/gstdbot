@@ -52,6 +52,7 @@ module.exports = {
     restart_delay: 10000,
     out_file: '/home/bot/gstdbot/logs/ipfs.log',
     error_file: '/home/bot/gstdbot/logs/ipfs.error.log',
+    max_memory_restart: '512M',
   },
   {
     name: 'tunnel',
@@ -66,6 +67,7 @@ module.exports = {
     out_file: '/home/bot/gstdbot/logs/tunnel.log',
     error_file: '/home/bot/gstdbot/logs/tunnel.error.log',
     merge_logs: true,
+    max_memory_restart: '256M',
   },
   {
     name: 'gstdbot',
@@ -77,6 +79,7 @@ module.exports = {
       ...dotenv,
     },
     // Restart policy
+    autorestart: true,
     restart_delay: 15000,
     max_restarts: 10,
     min_uptime: '30s',

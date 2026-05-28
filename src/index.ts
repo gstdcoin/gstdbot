@@ -15,7 +15,7 @@
  * ═══════════════════════════════════════════════════════
  *
  * Boot sequence:
- *  1. AI Gateway (Groq + Ollama)
+ *  1. AI Gateway (Ollama — sovereign inference)
  *  2. Blockchain Manager (GSTD wallet + staking)
  *  3. Revenue Engine (unified 6-stream earnings tracker)
  *  4. Collective Memory (L1 Map + L2 Redis + L3 Platform)
@@ -59,7 +59,7 @@ import { homedir } from 'os';
 
 // ─── AI Backend Model Detection ─────────────────────────────────
 // Returns the list of models this node can actually serve.
-// Priority: Ollama local models first, then Groq models if key is set.
+// Priority: Ollama local models (sovereign inference, no external deps).
 async function resolveAvailableModels(): Promise<string[]> {
     const models: string[] = [];
 
@@ -182,7 +182,7 @@ async function main(): Promise<void> {
     const desiredPort = parseInt(process.env.GSTD_DASHBOARD_PORT || process.env.GSTD_API_PORT || '8080');
     const gateway = new OmegaGateway({
         apiPort: desiredPort,
-        swarmUrl: process.env.GSTD_SWARM_URL || process.env.OLLAMA_URL || 'https://app.gstdtoken.com',
+        swarmUrl: process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com',
         cocoonEnabled: process.env.GSTD_COCOON_ENABLED !== 'false',
         sovereigntyMode: (process.env.GSTD_SOVEREIGNTY_MODE as any) || 'full',
     });
