@@ -106,6 +106,7 @@ export interface TelegramConfig {
 interface SessionData {
     model: string;
     history: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+    referrerId?: string;
 }
 
 type GSTDContext = Context & { session: SessionData };
@@ -249,6 +250,14 @@ export class TelegramChannel {
             if (payload.startsWith('buy')) {
                 // Direct buy link
                 return this.handleTopUp(ctx, lang);
+            }
+
+            if (payload.startsWith('ref_')) {
+                const referrerId = payload.replace('ref_', '').trim();
+                if (referrerId && referrerId !== String(ctx.from?.id)) {
+                    ctx.session.referrerId = referrerId;
+                    console.log(`[Bot] Referral from ${referrerId} for user ${ctx.from?.id}`);
+                }
             }
 
             const s = SMARTMIX_TIERS;
@@ -1476,10 +1485,11 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             const result = await this.apiCall('/api/v1/telegram/bot/link', {
                 method: 'POST',
                 body: {
-                    telegram_id: ctx.from.id,
+                    telegram_id:   ctx.from.id,
                     wallet_address: walletAddress,
-                    username: ctx.from.username || '',
-                    first_name: ctx.from.first_name || '',
+                    username:      ctx.from.username   || '',
+                    first_name:    ctx.from.first_name || '',
+                    referrer_id:   ctx.session.referrerId || undefined,
                 },
             });
             const shortWallet = walletAddress.slice(0, 6) + '...' + walletAddress.slice(-4);
