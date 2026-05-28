@@ -423,13 +423,13 @@ export class SwarmAgent {
             let buildOk = true;
             try {
                 execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 120000 });
-                execSync('npx tsc --noEmit --skipLibCheck 2>/dev/null', { cwd: installDir, timeout: 60000 });
-                
+                execSync('./node_modules/.bin/tsc --noEmit --skipLibCheck 2>/dev/null', { cwd: installDir, timeout: 60000 });
+
                 // Verify entry point exists
                 const entryPoint = installDir + '/dist/index.js';
                 if (!fs.existsSync(entryPoint)) {
                     // Try building
-                    execSync('npx tsc --skipLibCheck 2>/dev/null', { cwd: installDir, timeout: 60000 });
+                    execSync('./node_modules/.bin/tsc --skipLibCheck 2>/dev/null', { cwd: installDir, timeout: 60000 });
                     if (!fs.existsSync(entryPoint)) {
                         buildOk = false;
                     }

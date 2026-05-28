@@ -76,6 +76,7 @@ module.exports = {
     interpreter: '/home/bot/.nvm/versions/node/v20.20.2/bin/node',
     env: {
       NODE_ENV: 'production',
+      GSTD_NAAS_ENABLED: 'false',
       ...dotenv,
     },
     // Restart policy
