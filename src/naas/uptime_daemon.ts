@@ -171,6 +171,10 @@ export class UptimeDaemon {
                         this.executeNaaSCommand(cmd);
                     }
                 }
+                // Pull queued models (node operator requested via UI)
+                if (data.pull_queue && Array.isArray(data.pull_queue) && data.pull_queue.length > 0) {
+                    this.processPullQueue(data.pull_queue);
+                }
             }
         } catch (err) {
             if (this.heartbeatCount % 10 === 0) {
@@ -223,6 +227,33 @@ export class UptimeDaemon {
         // Docker-based NaaS commands are no longer supported.
         const { action, image_id, container_name } = cmd;
         logActivity(`NaaS command received: ${action} ${image_id || container_name || ''} — use /api/validators/:chain/toggle instead`, 'warn');
+    }
+
+    // ─── Pull Queue: Download new models queued by node operator ────
+    private pullingModels = new Set<string>();
+
+    private processPullQueue(models: string[]): void {
+        for (const model of models) {
+            if (this.pullingModels.has(model)) continue;
+            this.pullingModels.add(model);
+            logActivity(`Pulling model: ${model}`, 'info');
+            // Run ollama pull in background (non-blocking)
+            import('child_process').then(({ spawn }) => {
+                const proc = spawn('ollama', ['pull', model], { stdio: 'pipe' });
+                proc.on('close', (code) => {
+                    this.pullingModels.delete(model);
+                    if (code === 0) {
+                        logActivity(`Model pulled successfully: ${model}`, 'success');
+                    } else {
+                        logActivity(`Model pull failed (exit ${code}): ${model}`, 'error');
+                    }
+                });
+                proc.on('error', () => {
+                    this.pullingModels.delete(model);
+                    logActivity(`ollama not found or pull error for: ${model}`, 'error');
+                });
+            });
+        }
     }
 
     // ─── Ollama Models ────────────────────────────────────────

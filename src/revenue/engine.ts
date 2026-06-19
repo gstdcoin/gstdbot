@@ -18,7 +18,7 @@
 import { logActivity } from '../gateway/server.js';
 
 // ─── Revenue Stream Types ────────────────────────────────────────
-export type RevenueStream = 'storage' | 'compute' | 'inference' | 'relay' | 'training' | 'staking';
+export type RevenueStream = 'storage' | 'compute' | 'inference' | 'relay' | 'training';
 
 export interface EarningEvent {
     id: string;
@@ -47,7 +47,6 @@ export interface RevenueRates {
     inference_per_query: number;
     relay_per_gb: number;
     training_per_epoch: number;
-    staking_apy: number;
 }
 
 // ─── Default GSTD Reward Rates ──────────────────────────────────
@@ -57,7 +56,6 @@ const DEFAULT_RATES: RevenueRates = {
     inference_per_query: 0.001,   // 0.001 GSTD per AI query
     relay_per_gb: 0.005,          // 0.005 GSTD per GB relayed
     training_per_epoch: 0.05,     // 0.05 GSTD per training epoch
-    staking_apy: 12,              // 12% annual
 };
 
 const PLATFORM_API = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
@@ -89,7 +87,6 @@ export class RevenueEngine {
                 inference: { earned: 0, pending: 0, events: 0 },
                 relay: { earned: 0, pending: 0, events: 0 },
                 training: { earned: 0, pending: 0, events: 0 },
-                staking: { earned: 0, pending: 0, events: 0 },
             },
             lastSettlement: null,
             settlementsCount: 0,
@@ -106,7 +103,7 @@ export class RevenueEngine {
             this.settlePending().catch(() => {});
         }, SETTLEMENT_INTERVAL_MS);
 
-        logActivity(`Revenue Engine started — 6 streams active, wallet: ${this.walletAddress.slice(0,8)}...`, 'success');
+        logActivity(`Revenue Engine started — inference earnings active, wallet: ${this.walletAddress.slice(0,8)}...`, 'success');
     }
 
     setWalletAddress(addr: string): void {
@@ -162,16 +159,6 @@ export class RevenueEngine {
         const amount = Math.round(epochs * this.rates.training_per_epoch * 10000) / 10000;
         return this.recordEarning('training', amount, `Training ${baseModel} (${epochs} epochs, job ${jobId})`, {
             epochs, base_model: baseModel, job_id: jobId,
-        });
-    }
-
-    /** 🪙 Staking: passive rewards (calculated periodically) */
-    earnStaking(stakedAmount: number, periodHours: number): EarningEvent {
-        const dailyRate = this.rates.staking_apy / 365 / 100;
-        const days = periodHours / 24;
-        const amount = Math.round(stakedAmount * dailyRate * days * 10000) / 10000;
-        return this.recordEarning('staking', amount, `Staking reward (${stakedAmount} GSTD × ${this.rates.staking_apy}% APY)`, {
-            staked: stakedAmount, period_hours: periodHours,
         });
     }
 
@@ -289,7 +276,6 @@ export class RevenueEngine {
                         inference_per_query: data.rates.inference_per_query ?? this.rates.inference_per_query,
                         relay_per_gb: data.rates.relay_per_gb ?? this.rates.relay_per_gb,
                         training_per_epoch: data.rates.training_per_epoch ?? this.rates.training_per_epoch,
-                        staking_apy: data.rates.staking_apy ?? this.rates.staking_apy,
                     };
                 }
             }
