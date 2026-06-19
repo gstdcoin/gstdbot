@@ -32,6 +32,7 @@
  */
 
 import { OmegaGateway, logActivity } from './gateway/server.js';
+import { detectOdysseus } from './odysseus/detector.js';
 import { SecurityHardening } from './security/hardening.js';
 import { SwarmOrchestrator } from './swarm/orchestrator.js';
 import { TelegramChannel } from './channels/telegram.js';
@@ -74,6 +75,13 @@ async function resolveAvailableModels(): Promise<string[]> {
             }
         }
     } catch (_e) { /* Ollama not running yet */ }
+
+    // Odysseus — detect special AI workspace capabilities
+    const odysseus = await detectOdysseus();
+    if (odysseus.running && odysseus.models.length > 0) {
+        models.push(...odysseus.models);
+        console.log(`  🔮 Odysseus detected: ${odysseus.models.join(', ')}`);
+    }
 
     // No backend? Fallback to empty list — heartbeat will report 0 capabilities
     return [...new Set(models)]; // deduplicate
