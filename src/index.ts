@@ -1,23 +1,21 @@
 /**
- * GSTD SuperNode OS — Main Orchestrator (gstdd)
+ * GSTD Node OS — Main Orchestrator (gstdd)
  *
  * ═══════════════════════════════════════════════════════
- * ONE NODE TO RULE THEM ALL — 6 Revenue Streams:
- *   💾 Storage Provider  — earn GSTD for hosting data (Storj/Filecoin)
- *   💻 GPU Compute       — earn GSTD for running jobs (Akash/io.net)
- *   🧠 AI Inference      — earn GSTD for answering queries (GSTD native)
- *   📡 Traffic Relay     — earn GSTD for proxying traffic (Helium DePIN)
- *   🎓 Model Training    — earn GSTD for federated training (io.net)
- *   🪙 Staking           — earn GSTD passive yield (12% APY)
+ * DePIN AI Compute Node — Earn GSTD for AI inference:
+ *   🧠 AI Inference      — earn GSTD for answering queries (90% of fee)
+ *   💾 Storage Provider  — earn GSTD for hosting data [optional]
+ *   💻 GPU Compute       — earn GSTD for running jobs [optional]
+ *   📡 Traffic Relay     — earn GSTD for proxying traffic [optional]
+ *   🎓 Model Training    — earn GSTD for federated training [optional]
  *
- * All earnings interact with real GSTD token on TON blockchain
- * via SettlementRouter.tact smart contract.
+ * GSTD is a utility token. Earnings come from real usage — not staking.
  * ═══════════════════════════════════════════════════════
  *
  * Boot sequence:
  *  1. AI Gateway (Ollama — sovereign inference)
- *  2. Blockchain Manager (GSTD wallet + staking)
- *  3. Revenue Engine (unified 6-stream earnings tracker)
+ *  2. Blockchain Manager (GSTD wallet)
+ *  3. Revenue Engine (earnings tracker)
  *  4. Collective Memory (L1 Map + L2 Redis + L3 Platform)
  *  5. Swarm Agent (P2P task processing + earnings)
  *  6. Resource Sharing (sell compute/GPU for GSTD)
@@ -466,7 +464,6 @@ async function main(): Promise<void> {
         console.log('  📡 Relay:       ' + (trafficRelay?.isEnabled() ? '✓ VPN/CDN/API proxy' : 'disabled'));
         console.log('  🌐 NaaS RPC:    ' + (naas ? `✓ ${naas.getStatus().active_chains.length} chains active` : 'disabled'));
         console.log('  🎓 Training:    ' + ((trainer?.getStats()?.activeJobs || 0) > 0 ? 'active' : '✓ ready'));
-        console.log('  🪙 Staking:     ✓ 12% APY');
         console.log('  ── Infrastructure ───────────────────────────────');
         console.log('  🐝 Swarm:       ' + (swarm?.isConnected() ? '✓ connected' : 'standalone'));
         console.log('  💰 Wallet:      ' + (wallet.getAddress() || 'auto-generated'));
@@ -482,8 +479,8 @@ async function main(): Promise<void> {
             }
         }
         console.log('');
-        console.log('  💡 All 6 revenue streams earn GSTD automatically!');
-        console.log('     Settlement → GSTD token on TON blockchain');
+        console.log('  💡 Serving AI requests earns GSTD automatically!');
+        console.log('     Earnings → GSTD token on TON blockchain (90% of inference fees)');
         console.log('');
 
         logActivity('GSTD Node OS v' + config.version + ' booted in ' + bootTime + 's', 'success');
