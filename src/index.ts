@@ -178,8 +178,8 @@ async function main(): Promise<void> {
         console.log('  ╚═══════════════════════════════════════════════════════╝');
         console.log('');
     }
-    console.log('  🐝  ONE NODE TO RULE THEM ALL — 6 Revenue Streams');
-    console.log('  🐝  💾 Storage  💻 Compute  🧠 AI  📡 Relay  🎓 Training  🪙 Staking');
+    console.log('  🐝  DePIN AI Compute Node — earn GSTD for inference');
+    console.log('  🐝  💾 Storage  💻 Compute  🧠 AI Inference  📡 Relay  🎓 Training');
     console.log('  🐝 ═══════════════════════════════════════════════════');
     console.log('');
 
@@ -448,8 +448,8 @@ async function main(): Promise<void> {
 
         console.log('');
         console.log('  ╔═══════════════════════════════════════════════════════╗');
-        console.log('  ║  🐝 GSTD SuperNode — Ready! (' + bootTime + 's)                   ║');
-        console.log('  ║  ONE NODE TO RULE THEM ALL — 6 Revenue Streams        ║');
+        console.log('  ║  🐝 GSTD Node — Ready! (' + bootTime + 's)                        ║');
+        console.log('  ║  DePIN AI Compute Network — earn GSTD for inference    ║');
         console.log('  ╚═══════════════════════════════════════════════════════╝');
         console.log('');
         console.log('  👉 Dashboard: http://localhost:' + dashPort);
