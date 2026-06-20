@@ -7,13 +7,13 @@
  *   Relay:         0.005 GSTD / GB
  *
  * Each fee is split:
- *   50% → Gold Reserve  (accumulates → token backing)
+ *   50% → Ecosystem Treasury  (accumulates → buybacks)
  *   30% → Node operator (who processed the request)
  *   20% → Dev Fund      (protocol development)
  *
  * Ledger is stored locally in fees_ledger.json.
  * No external API needed. Settlement to TON happens in batches
- * when the gold reserve wallet is configured.
+ * when the treasury wallet is configured.
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'fs';

@@ -271,7 +271,7 @@ export class SovereignSuite {
             // Claim pending rewards first
             await this.apiPost('/nodes/claim-rewards', { owner_wallet: walletAddr });
 
-            // Auto-stake claimed rewards at best rate (365 days for 36% APY + 2x node bonus = 72%)
+            // Re-stake claimed rewards (auto-compound node earnings back into the node)
             const stakeResult = await this.apiPost('/sovereign/stake', {
                 wallet: walletAddr,
                 amount: rewards.total_pending,
@@ -280,7 +280,7 @@ export class SovereignSuite {
 
             if (stakeResult?.stake_id) {
                 this.state.stakedAmount += rewards.total_pending;
-                logActivity(`♻️ Auto-compound: ${rewards.total_pending.toFixed(4)} GSTD staked @ 72% APY`, 'success');
+                logActivity(`♻️ Auto-compound: ${rewards.total_pending.toFixed(4)} GSTD re-staked`, 'success');
             }
         } catch (_e) { }
     }
@@ -381,8 +381,8 @@ export class SovereignSuite {
         const uptimePerHour = 0.01;
         // Query reward: average 5 queries/hour * 0.0001 = 0.0005/hour  
         const queryPerHour = 0.0005;
-        // Staking yield: 72% APY on staked amount (36% * 2x node bonus)
-        const stakingPerHour = this.state.stakedAmount * 0.72 / 8760;
+        // Re-staked amount earns proportional inference fees (proportional to staked share)
+        const stakingPerHour = this.state.stakedAmount > 0 ? this.state.stakedAmount * 0.001 / 8760 : 0;
         // Revenue share: 85% of platform fees (estimated 0.001/hour per node)
         const revenuePerHour = 0.001;
         // Referral bonus: 5% of referred nodes' earnings
@@ -430,7 +430,7 @@ export class SovereignSuite {
             revenue_streams: {
                 uptime: { daily: p.uptimeReward, desc: 'Base uptime reward (0.01 GSTD/h)' },
                 queries: { daily: p.queryReward, desc: 'AI query processing reward' },
-                staking: { daily: p.stakingYield, desc: '72% APY on staked GSTD (36% base × 2x node bonus)' },
+                staking: { daily: p.stakingYield, desc: 'Re-staked earnings (proportional to node activity)' },
                 revenue_share: { daily: p.revenueShare, desc: '85% of platform fees distributed to nodes' },
                 referral: { daily: p.referralBonus, desc: '5% of referred nodes earnings' },
                 lending: { daily: p.lendingInterest, desc: 'Interest from micro-loans' },

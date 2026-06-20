@@ -305,12 +305,12 @@ export class BlockchainManager {
                     to: CONTRACTS.STAKING,
                     timestamp: new Date().toISOString(),
                     status: 'confirmed',
-                    description: `Staked ${amount} GSTD (APY: ${this.stakingInfo.apy}%)`,
+                    description: `Staked ${amount} GSTD`,
                 };
                 this.transactions.unshift(tx);
                 this.saveTransactions();
 
-                logActivity(`Staked ${amount} GSTD (APY: ${this.stakingInfo.apy}%)`, 'success');
+                logActivity(`Staked ${amount} GSTD`, 'success');
                 return true;
             }
         } catch (_e) { }
