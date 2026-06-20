@@ -878,7 +878,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                         const msg = 'ℹ️ No rewards to claim. Tap 🧠 Earn!';
                         return ctx.reply(msg);
                     }
-                    const msg = `✅ <b>Reward Claimed!</b>\n\n💰 Received: <b>${result.claimed_net.toFixed(4)} GSTD</b>\n🏗 Development Fund: <b>${result.gold_reserve.toFixed(4)} GSTD</b> (10%)\n⚡ Sovereign AI Pool: <b>${result.burned.toFixed(4)} GSTD</b> (5%)`;
+                    const msg = `✅ <b>Reward Claimed!</b>\n\n💰 Received: <b>${result.claimed_net.toFixed(4)} GSTD</b>\n🏗 Treasury: <b>${result.gold_reserve.toFixed(4)} GSTD</b> (10%)\n⚡ Network Pool: <b>${result.burned.toFixed(4)} GSTD</b> (5%)`;
                     return ctx.reply(msg, { parse_mode: 'HTML' });
                 } catch (_e) {
                     return ctx.reply('❌ Error claiming');
@@ -1348,8 +1348,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
         const msg = `🌉 <b>P2P Bridge — Cross-Chain Transfers</b>${feeInfo}\n\n` +
               `Transfer GSTD between blockchains:\n\n` +
               `🔹 <b>TON → Solana</b> — verified by node network\n` +
-              `🔹 <b>TON → XRPL</b> — instant bridge to XRP Ledger\n` +
-              `🔹 <b>PAXG ↔ GSTD</b> — swap for tokenized gold\n\n` +
+              `🔹 <b>TON → XRPL</b> — instant bridge to XRP Ledger\n\n` +
               `🛡️ All transfers verified by ecosystem nodes.\n\n` +
               `👇 Open the bridge:`;
 
@@ -1362,7 +1361,6 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                         { text: 'TON ↔ SOL', url: `${bridgeUrl}?from=ton&to=solana` },
                         { text: 'TON ↔ XRP', url: `${bridgeUrl}?from=ton&to=xrpl` },
                     ],
-                    [{ text: '💰 PAXG ↔ GSTD', url: `${bridgeUrl}?from=ton&to=paxg` }],
                 ]
             }
         });

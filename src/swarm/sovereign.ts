@@ -445,19 +445,17 @@ export class SovereignSuite {
                 yearly_profit_usd: p.totalYearly * gstdPrice - 8.64,
             },
             advantages: [
-                'No minimum investment — just run the software',
-                '72% APY with auto-compound (vs 0.5% bank savings)',
-                '6 revenue streams working 24/7',
-                'Deflationary token — value increases as supply burns',
-                'Vote on protocol changes — your node, your voice',
-                'Instant cross-border payments — no bank needed',
-                'Compute-backed value — not speculation',
-                'Fully autonomous — works even if platform is down',
+                'No minimum hardware — Raspberry Pi, laptop, or server',
+                'Earn GSTD for real compute served — not inflationary emissions',
+                'Open-source: verify every line on GitHub',
+                'Low operating cost — ~$0.72/month on minimal VPS',
+                'Earnings scale with network usage — more requests = more GSTD',
+                'Fully autonomous — works even if platform is temporarily down',
             ],
             vs_alternatives: {
-                bitcoin_mining: 'GSTD: $0.72/month cost vs Bitcoin: $100+/month electricity. GSTD: useful compute vs BTC: wasted energy.',
-                bank_savings: 'GSTD: 72% APY vs Bank: 0.5% APY. GSTD: you own your money. Bank: they own it.',
-                ethereum_staking: 'GSTD: no 32 ETH minimum ($80K). Run on any device. 72% vs 4% APY.',
+                bitcoin_mining: 'GSTD: $0.72/month cost vs Bitcoin: $100+/month electricity. GSTD: useful AI compute vs BTC: wasted energy.',
+                cloud_providers: 'GSTD: earn for idle compute vs Cloud: pay to rent servers. Run a node, monetize your hardware.',
+                centralized_ai: 'GSTD: open, permissionless, earn fees vs OpenAI: closed, pay monthly subscription.',
             },
         };
     }

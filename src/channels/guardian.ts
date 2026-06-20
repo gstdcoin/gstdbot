@@ -199,7 +199,7 @@ export class CommunityGuardian {
                     `• 🛡 Your data stays sovereign\n` +
                     `• 💰 Earn GSTD by connecting devices\n` +
                     `• 🆓 AI chat is free\n` +
-                    `• 🏦 Gold reserve backs the token\n\n` +
+                    `• ⚡ Open-source DePIN AI compute network\n\n` +
                     `Contract: \`${PLATFORM_KB.contract}\``,
                     { parse_mode: 'Markdown', link_preview_options: { is_disabled: true } }
                 );
@@ -461,7 +461,7 @@ RULES:
   • GSTD is a decentralized AI platform on TON blockchain
   • Users can chat with AI for free: ${PLATFORM_KB.chat}
   • Earn GSTD by connecting devices as nodes
-  • GSTD token is backed by gold reserve (XAUt)
+  • GSTD is a utility token — users pay GSTD for AI inference, node operators earn 90% of fees
   • Contract: ${PLATFORM_KB.contract}
   • Buy on STON.fi or DeDust
   • Dashboard: ${PLATFORM_KB.website}
