@@ -13,6 +13,8 @@ import type { NodeConfig } from '../index.js';
 import { SpecializationTracker } from './specialization.js';
 import { ThermalRouter, TrainingShard, TrainingPeer } from './thermal-router.js';
 import { GradientAggregator, GradientSubmission, AggregationResult, AggregatedCheckpoint } from './aggregator.js';
+import { NodeHealth, HealthSnapshot } from './health.js';
+import { OfflineQueue } from './offline-queue.js';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface TrainingJob {
@@ -89,6 +91,9 @@ export class SwarmTrainer {
     private peers: Map<string, TrainingPeer> = new Map();
     private stats: TrainingStats;
     private pollTimer: ReturnType<typeof setInterval> | null = null;
+    private health: NodeHealth | null = null;
+    private offlineQueue: OfflineQueue | null = null;
+    private healthSnapshot: HealthSnapshot | null = null;
 
     readonly specialization: SpecializationTracker;
     readonly router: ThermalRouter;
@@ -113,6 +118,28 @@ export class SwarmTrainer {
         if (hasOllama) logActivity('Ollama detected — local model management enabled', 'success');
 
         this.pollTimer = setInterval(() => this.pollTrainingJobs(), 30_000);
+
+        // Initialize health monitor
+        this.health = new NodeHealth(this.config.nodeId, this.config.swarm.apiUrl);
+
+        // Initialize offline queue (works even without SQLite)
+        this.offlineQueue = new OfflineQueue();
+        await this.offlineQueue.init();
+
+        // Start health refresh loop
+        setInterval(async () => {
+            if (this.health) {
+                this.healthSnapshot = await this.health.refresh(
+                    this.stats.activeJobs,
+                    this.offlineQueue?.pendingCount() || 0
+                );
+            }
+        }, 30_000);
+
+        // Initial health snapshot
+        this.healthSnapshot = await this.health.refresh(0, 0);
+        logActivity(`Node autonomy level: ${((this.healthSnapshot?.autonomyLevel || 0) * 100).toFixed(0)}%`, 'info');
+
         await this.loadModelRegistry();
 
         console.log('    Training: ' + (hasGpu ? 'GPU-accelerated' : 'CPU-only')
@@ -409,6 +436,20 @@ export class SwarmTrainer {
     getModels(): ModelEntry[] { return [...this.sharedModels]; }
     getStats(): TrainingStats { return { ...this.stats }; }
     getActiveJobs(): TrainingJob[] { return Array.from(this.activeJobs.values()); }
+
+    async getHealth(): Promise<HealthSnapshot | null> {
+        if (this.health) {
+            return await this.health.refresh(
+                this.stats.activeJobs,
+                this.offlineQueue?.pendingCount() || 0
+            );
+        }
+        return this.healthSnapshot;
+    }
+
+    getOfflineQueue(): OfflineQueue | null {
+        return this.offlineQueue;
+    }
 
     // ─── Helpers ─────────────────────────────────────────────────
     private async detectGPU(): Promise<boolean> {

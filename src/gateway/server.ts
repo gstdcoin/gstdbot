@@ -2956,6 +2956,14 @@ export class OmegaGateway {
             res.json({ leaderboard: trainer.getLeaderboard(domain), domain });
         });
 
+        // Node health snapshot
+        this.app.get('/api/training/health', async (_req, res) => {
+            const trainer = this.subsystems?.trainer;
+            if (!trainer) { res.json({ status: 'disabled' }); return; }
+            const health = trainer.getHealth ? await trainer.getHealth() : { status: 'no_health_monitor' };
+            res.json(health);
+        });
+
         // List supported base models
         this.app.get('/api/training/models', (_req, res) => {
             res.json({
