@@ -78,8 +78,13 @@ export interface TrainingStats {
 // Supported base models for V1
 export const SUPPORTED_MODELS: Record<string, { minVramGb: number; ollamaId: string }> = {
     'llama3.1:8b':  { minVramGb: 6, ollamaId: 'llama3.1:8b' },
+    'llama3.2:3b':  { minVramGb: 3, ollamaId: 'llama3.2:3b' },
+    'llama3.2:1b':  { minVramGb: 2, ollamaId: 'llama3.2:1b' },
     'qwen2.5:7b':   { minVramGb: 6, ollamaId: 'qwen2.5:7b' },
+    'qwen2.5:3b':   { minVramGb: 3, ollamaId: 'qwen2.5:3b' },
     'mistral:7b':   { minVramGb: 6, ollamaId: 'mistral:7b' },
+    'phi3:mini':    { minVramGb: 3, ollamaId: 'phi3:mini' },
+    'gemma2:2b':    { minVramGb: 2, ollamaId: 'gemma2:2b' },
 };
 
 // ─── Swarm Training Manager ─────────────────────────────────────
