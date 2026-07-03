@@ -2898,6 +2898,105 @@ export class OmegaGateway {
             res.json({ success: true, tokensEarned: tokensForWork * 0.95, jobProgress: job.progress + '%' });
         });
 
+        // ─── DISTRIBUTED FINE-TUNING ENDPOINTS ───────────────────
+        // Submit gradient from a training node
+        this.app.post('/api/training/gradient', (req, res) => {
+            const trainer = this.subsystems?.trainer;
+            if (!trainer) { res.status(503).json({ error: 'Training engine not available' }); return; }
+            const { jobId, nodeId, domain, metacognitiveScore, gradientNorm, datasetSize, valLossImprovement, loraPath } = req.body || {};
+            if (!jobId || !nodeId || metacognitiveScore === undefined || gradientNorm === undefined) {
+                res.status(400).json({ error: 'jobId, nodeId, metacognitiveScore, gradientNorm required' }); return;
+            }
+            const result = trainer.submitGradient({
+                jobId, nodeId, domain: domain || 'general',
+                metacognitiveScore: Number(metacognitiveScore),
+                gradientNorm: Number(gradientNorm),
+                datasetSize: Number(datasetSize) || 1,
+                valLossImprovement: Number(valLossImprovement) || 0,
+                loraPath: loraPath || '',
+                submittedAt: Date.now(),
+            });
+            res.json(result);
+        });
+
+        // Register a training peer node
+        this.app.post('/api/training/peer/register', (req, res) => {
+            const trainer = this.subsystems?.trainer;
+            if (!trainer) { res.status(503).json({ error: 'Training engine not available' }); return; }
+            const { nodeId, address, gpuAvailable, vramGb, capabilities } = req.body || {};
+            if (!nodeId || !address) { res.status(400).json({ error: 'nodeId and address required' }); return; }
+            trainer.registerPeer({
+                nodeId, address,
+                gpuAvailable: Boolean(gpuAvailable),
+                vramGb: Number(vramGb) || 0,
+                latencyMs: 0,
+                latencyHistory: [],
+                successRate: 0.8,
+                currentLoad: 0,
+                capabilities: capabilities || ['finetune'],
+            });
+            res.json({ ok: true, nodeId });
+        });
+
+        // Update peer load
+        this.app.post('/api/training/peer/load', (req, res) => {
+            const trainer = this.subsystems?.trainer;
+            if (!trainer) { res.status(503).json({ ok: false }); return; }
+            const { nodeId, load } = req.body || {};
+            if (!nodeId || load === undefined) { res.status(400).json({ error: 'nodeId and load required' }); return; }
+            trainer.updatePeerLoad(nodeId, Number(load));
+            res.json({ ok: true });
+        });
+
+        // Get specialization leaderboard
+        this.app.get('/api/training/leaderboard', (req, res) => {
+            const trainer = this.subsystems?.trainer;
+            if (!trainer) { res.json({ leaderboard: [], domain: 'general' }); return; }
+            const domain = (req.query.domain as string) || 'general';
+            res.json({ leaderboard: trainer.getLeaderboard(domain), domain });
+        });
+
+        // List supported base models
+        this.app.get('/api/training/models', (_req, res) => {
+            res.json({
+                models: [
+                    { id: 'llama3.1:8b',  name: 'Llama 3.1 8B',  minVramGb: 6, quantization: '4bit' },
+                    { id: 'qwen2.5:7b',   name: 'Qwen 2.5 7B',   minVramGb: 6, quantization: '4bit' },
+                    { id: 'mistral:7b',   name: 'Mistral 7B',     minVramGb: 6, quantization: '4bit' },
+                ],
+                dataFormat: 'JSONL Alpaca: {"instruction":"...","input":"...","output":"..."}',
+                minExamples: 500,
+                paymentToken: 'GSTD',
+                burnRate: 0.15,
+                nodeRewardRate: 0.80,
+                treasuryRate: 0.05,
+            });
+        });
+
+        // Get job details with aggregation checkpoint history
+        this.app.get('/api/training/jobs/:id', (req, res) => {
+            const trainer = this.subsystems?.trainer;
+            if (!trainer) { res.status(503).json({ error: 'Training engine not available' }); return; }
+            const job = trainer.getActiveJobs().find((j: any) => j.id === req.params.id);
+            if (!job) { res.status(404).json({ error: 'Job not found or completed' }); return; }
+            res.json({
+                ...job,
+                checkpoints: (job as any).checkpoints || [],
+                pendingSubmissions: trainer.aggregator?.getJobSubmissions(job.id)?.length || 0,
+            });
+        });
+
+        // Route a shard to best available peer
+        this.app.post('/api/training/route', (req, res) => {
+            const trainer = this.subsystems?.trainer;
+            if (!trainer) { res.status(503).json({ error: 'Training engine not available' }); return; }
+            const { shard } = req.body || {};
+            if (!shard?.id || !shard?.jobId) { res.status(400).json({ error: 'shard.id and shard.jobId required' }); return; }
+            const peer = trainer.routeShard(shard);
+            if (!peer) { res.status(503).json({ error: 'No capable peers available', shard }); return; }
+            res.json({ peer, shard });
+        });
+
         // ─── ENTERPRISE SWARM ENDPOINTS ───────────────────────────
         this.app.post('/api/enterprise/provision', (req, res) => {
             const { address, signature, cpuCores, ramGB, gpuCount, durationHours, tokensLocked } = req.body || {};
