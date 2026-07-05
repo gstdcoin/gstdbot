@@ -70,7 +70,7 @@ export class Diagnostics {
 
         // Network checks
         checks.push(await this.checkPlatformApi());
-        checks.push(await this.checkGroqApi());
+        checks.push(await this.checkOllamaApi());
 
         // Module checks
         checks.push(this.checkWallet());
@@ -171,7 +171,7 @@ export class Diagnostics {
         }
     }
 
-    private async checkGroqApi(): Promise<DiagCheck> {
+    private async checkOllamaApi(): Promise<DiagCheck> {
         try {
             const ollamaUrl = (process.env.OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '');
             const start = Date.now();

@@ -86,11 +86,11 @@ export class BlockchainManager {
         this.configDir = join(homedir(), '.config', 'gstdbot');
         this.stakingInfo = {
             staked: 0,
-            apy: 12,
+            apy: 0,
             rewardsPending: 0,
             rewardsTotal: 0,
             stakedSince: null,
-            lockPeriodDays: 30,
+            lockPeriodDays: 0,
             nextReward: null,
         };
     }

@@ -13,7 +13,7 @@
  * higher license cost, but also higher potential income.
  *
  * Modules:
- *   🧠 AI Inference    — Handles AI queries (Groq/Ollama)
+ *   🧠 AI Inference    — Handles AI queries (Ollama — sovereign local inference)
  *   📡 Traffic Relay   — Proxies traffic (VPN/CDN)
  *   💾 Storage Vault   — Stores network data
  *   💻 Compute Pool    — Performs computing tasks
@@ -51,7 +51,7 @@ export const NODE_MODULES: NodeModule[] = [
         id: 'ai_inference',
         name: 'AI Inference',
         icon: '🧠',
-        description: 'Answer AI queries using Groq/Ollama models',
+        description: 'Answer AI queries using Ollama (sovereign, local inference)',
         minCpu: 2, minRamGb: 4, minDiskGb: 10, needsGpu: false,
         basePriceGSTD: 50,
         earnMultiplier: 3.0,

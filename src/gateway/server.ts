@@ -710,12 +710,12 @@ export class OmegaGateway {
 
         // ─── Fee Ledger API ────────────────────────────────────────────
 
-        // GET /api/fees — full stats: gold reserve, distribution, recent events
+        // GET /api/fees — full stats: distribution, recent events
         this.app.get('/api/fees', (_req, res) => {
             const stats = this.feeLedger.getStats();
             res.json({
                 ...stats,
-                split: { gold_reserve: '50%', node_operator: '30%', dev_fund: '20%' },
+                split: { node_operator: '90%', protocol_treasury: '10%' },
                 rates: {
                     inference:       '0.001 GSTD / request',
                     inference_tokens:'0.0005 GSTD / 1K tokens',
@@ -725,18 +725,15 @@ export class OmegaGateway {
             });
         });
 
-        // GET /api/fees/reserve — gold reserve summary (public — shows token backing)
-        this.app.get('/api/fees/reserve', (_req, res) => {
+        // GET /api/fees/treasury — protocol treasury summary
+        this.app.get('/api/fees/treasury', (_req, res) => {
             const s = this.feeLedger.getStats();
             res.json({
-                gold_reserve_gstd: s.gold_reserve_gstd,
+                treasury_gstd:          s.treasury_gstd,
                 pending_settlement_gstd: s.pending_gstd,
-                settled_gstd: s.settled_gstd,
-                total_transactions: s.total_events,
-                node_id: process.env.GSTD_NODE_ID || 'unknown',
-                // Gold reserve grows with every fee collected in the network
-                // When settled on-chain: sent to gold reserve wallet on TON
-                ton_reserve_wallet: process.env.GSTD_RESERVE_WALLET || 'not configured',
+                settled_gstd:           s.settled_gstd,
+                total_transactions:     s.total_events,
+                node_id:                process.env.GSTD_NODE_ID || 'unknown',
             });
         });
 
@@ -2728,7 +2725,7 @@ export class OmegaGateway {
         // ═══════════════════════════════════════════════════════════
         const TIERS = {
             validator:  { minBalance: 1_000_000, label: 'TON Validator',      commission: 0.05 },
-            training:   { minBalance: 10_000_000, label: 'Model Training',    commission: 0.05 },
+            training:   { minBalance: 100, label: 'Model Training',    commission: 0.05 },
             enterprise: { minBalance: 100_000_000, label: 'Enterprise Swarm', commission: 0.05 },
         };
 
@@ -2791,7 +2788,7 @@ export class OmegaGateway {
             validatorRegistry[address] = {
                 address, stakedTotal: 0, commission: Math.min(valCommission || 10, 50) / 100,
                 stakers: {}, rewards: {}, registeredAt: Date.now(), active: true,
-                apy: 12 + Math.random() * 8, // 12-20% APY based on network conditions
+                apy: 0, // APY not applicable — validators earn per-request node fees (90% of each fee)
             };
             logActivity(`Validator registered: ${address.slice(0, 12)}... (${(valCommission || 10)}% commission)`, 'success');
             res.json({ success: true, validator: validatorRegistry[address] });
@@ -3283,27 +3280,12 @@ export class OmegaGateway {
             } catch (_e) { res.json({ error: 'Platform unreachable' }); }
         });
 
-        this.app.get('/api/sovereign/staking', async (_req, res) => {
-            const wallet = this.wallet?.getAddress() || '';
-            try {
-                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/staking/info?wallet=${wallet}`, { signal: AbortSignal.timeout(10000) });
-                res.json(await resp.json());
-            } catch (_e) { res.json({ error: 'Platform unreachable' }); }
-        });
-
-        this.app.post('/api/sovereign/stake', async (req, res) => {
-            const wallet = this.wallet?.getAddress();
-            const { amount, lock_days } = req.body || {};
-            try {
-                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/stake`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ wallet, amount, lock_days }),
-                    signal: AbortSignal.timeout(10000),
-                });
-                const data: any = await resp.json();
-                if (data.stake_id) logActivity(`💎 Staked ${amount} GSTD @ ${data.effective_apy}% APY`, 'success');
-                res.json(data);
-            } catch (_e) { res.json({ error: 'Platform unreachable' }); }
+        this.app.get('/api/sovereign/staking', (_req, res) => {
+            res.status(410).json({
+                status: 'discontinued',
+                note: 'On-chain staking contract has not been deployed. Earn GSTD by running a node — see /nodes.',
+                alternative: 'Node operators earn 90% of every AI inference fee automatically.',
+            });
         });
 
         this.app.post('/api/sovereign/pay', async (req, res) => {

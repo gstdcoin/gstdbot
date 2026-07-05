@@ -252,7 +252,7 @@ export class SovereignSuite {
             if (result) {
                 this.state.stakedAmount = result.your_staked || 0;
                 this.state.stakingEarned = result.your_earned || 0;
-                this.state.stakingAPY = this.state.stakedAmount > 0 ? 36 : 0; // Node operators get best rate
+                this.state.stakingAPY = 0; // Staking not active; node operators earn per-request fees
             }
         } catch (_e) { }
     }

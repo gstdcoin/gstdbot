@@ -3,10 +3,8 @@
  *
  * Economic cycle:
  *   Native tokens earned (ETH/SOL/BNB/etc.)
- *     → 60% paid to Provider node
- *     → 30% → TreasuryGold (→ XAUt)
- *     → 7%  → Buyback: buy GSTD from market
- *     → 3%  → Permanent Burn 🔥
+ *     → 90% paid to node operator (the node that served the request)
+ *     → 10% → Protocol Treasury (→ buybacks + liquidity)
  *
  * Reports earnings to platform and triggers on-chain settlement.
  */
@@ -24,10 +22,8 @@ export interface NativeEarning {
 }
 
 export interface FlywheelResult {
-    provider_gstd:  number;  // 60% → node operator
-    treasury_gstd:  number;  // 30% → gold reserve
-    buyback_gstd:   number;  // 7%  → market buyback
-    burned_gstd:    number;  // 3%  → permanent burn
+    provider_gstd:  number;  // 90% → node operator
+    treasury_gstd:  number;  // 10% → protocol treasury
     total_usd:      number;
     tx_hash?:       string;
 }
@@ -35,7 +31,6 @@ export interface FlywheelResult {
 // ─── Revenue Flywheel ────────────────────────────────────────────
 export class RevenueFlywheelConverter {
     private pendingEarnings: NativeEarning[] = [];
-    private totalBurned  = 0;
     private totalEarned  = 0;
     private timer: NodeJS.Timeout | null = null;
 
@@ -72,13 +67,9 @@ export class RevenueFlywheelConverter {
         const gstdPrice = await this.getGSTDPrice();
         const totalGSTDEquiv = totalUSD / gstdPrice;
 
-        // Apply flywheel split
-        const provider   = totalGSTDEquiv * 0.60;
-        const treasury   = totalGSTDEquiv * 0.30;
-        const buyback    = totalGSTDEquiv * 0.07;
-        const burn       = totalGSTDEquiv * 0.03;
-
-        this.totalBurned += burn;
+        // Apply flywheel split: 90% to node operator, 10% to protocol treasury
+        const provider   = totalGSTDEquiv * 0.90;
+        const treasury   = totalGSTDEquiv * 0.10;
 
         const payload = {
             batch_id:       `batch_${Date.now()}`,
@@ -93,9 +84,7 @@ export class RevenueFlywheelConverter {
             flywheel: {
                 provider_gstd: provider,
                 treasury_gstd: treasury,
-                buyback_gstd:  buyback,
-                burned_gstd:   burn,
-                split: '60/30/7/3',
+                split: '90/10',
             },
         };
 
@@ -147,9 +136,8 @@ export class RevenueFlywheelConverter {
     getStats() {
         return {
             pending_earnings: this.pendingEarnings.length,
-            total_burned_gstd: this.totalBurned,
             total_earned_usd:  this.totalEarned,
-            flywheel_split:    '60% provider / 30% treasury / 7% buyback / 3% burn',
+            flywheel_split:    '90% provider / 10% protocol treasury',
         };
     }
 }

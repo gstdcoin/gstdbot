@@ -252,7 +252,7 @@ const BUILTIN_APPS: AppManifest[] = [
         id: 'gstd-wallet',
         name: 'Wallet & Staking',
         version: '2.0.0',
-        description: 'Full GSTD/TON wallet with earnings tracker, staking (12% APY), transaction history, and auto-compound.',
+        description: 'Full GSTD/TON wallet with earnings tracker, node rewards history, and balance overview.',
         icon: '💰',
         author: 'GSTD Team',
         category: 'finance',

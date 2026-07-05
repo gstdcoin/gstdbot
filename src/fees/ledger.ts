@@ -7,9 +7,8 @@
  *   Relay:         0.005 GSTD / GB
  *
  * Each fee is split:
- *   50% → Ecosystem Treasury  (accumulates → buybacks)
- *   30% → Node operator (who processed the request)
- *   20% → Dev Fund      (protocol development)
+ *   90% → Node operator (who processed the request)
+ *   10% → Protocol Treasury (accumulates → liquidity + buybacks)
  *
  * Ledger is stored locally in fees_ledger.json.
  * No external API needed. Settlement to TON happens in batches
@@ -26,18 +25,17 @@ const LEDGER_FILE = join(
 
 // ─── Split ratios ─────────────────────────────────────────────────
 const SPLIT = {
-    gold_reserve: 0.50,
-    node_operator: 0.30,
-    dev_fund:      0.20,
+    node_operator: 0.90,   // 90% to the node that served the request
+    treasury:      0.10,   // 10% to protocol treasury
 };
 
 // ─── Fee rates (GSTD) ─────────────────────────────────────────────
 export const FEE_RATES = {
-    inference_per_request: 0.001,   // per AI query
+    inference_per_request: 0.001,    // per AI query
     inference_per_1k_tokens: 0.0005, // additional per 1K output tokens
-    storage_per_mb_day: 0.00001,    // per MB stored per day
-    relay_per_gb: 0.005,            // per GB relayed
-    pin_per_mb_day: 0.000005,       // per MB pinned per day
+    storage_per_mb_day: 0.00001,     // per MB stored per day
+    relay_per_gb: 0.005,             // per GB relayed
+    pin_per_mb_day: 0.000005,        // per MB pinned per day
 };
 
 export type FeeType = 'inference' | 'storage' | 'relay' | 'pin';
@@ -46,9 +44,8 @@ export interface FeeEvent {
     id:            string;
     type:          FeeType;
     total:         number;    // total GSTD fee
-    gold_reserve:  number;    // 50%
-    node_operator: number;    // 30%
-    dev_fund:      number;    // 20%
+    node_operator: number;    // 90%
+    treasury:      number;    // 10%
     description:   string;
     metadata:      Record<string, any>;
     timestamp:     string;
@@ -57,9 +54,8 @@ export interface FeeEvent {
 }
 
 export interface ReserveStats {
-    gold_reserve_gstd:  number;   // total accumulated
-    node_earnings_gstd: number;   // total to operators
-    dev_fund_gstd:      number;   // total to dev fund
+    treasury_gstd:      number;   // 10% accumulated for protocol
+    node_earnings_gstd: number;   // 90% paid to operators
     total_fees_gstd:    number;
     total_events:       number;
     by_type: Record<FeeType, { total: number; events: number }>;
@@ -73,9 +69,8 @@ export interface ReserveStats {
 export class FeeLedger {
     private events: FeeEvent[] = [];
     private totals = {
-        gold_reserve:  0,
         node_operator: 0,
-        dev_fund:      0,
+        treasury:      0,
         total:         0,
         settled:       0,
     };
@@ -130,13 +125,12 @@ export class FeeLedger {
     // ─── Core ─────────────────────────────────────────────────────
 
     private record(type: FeeType, total: number, description: string, metadata: Record<string, any>): FeeEvent {
-        const gold_reserve  = Math.round(total * SPLIT.gold_reserve  * 1e6) / 1e6;
         const node_operator = Math.round(total * SPLIT.node_operator * 1e6) / 1e6;
-        const dev_fund      = Math.round(total * SPLIT.dev_fund      * 1e6) / 1e6;
+        const treasury      = Math.round(total * SPLIT.treasury      * 1e6) / 1e6;
 
         const event: FeeEvent = {
             id:            `${type}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
-            type, total, gold_reserve, node_operator, dev_fund,
+            type, total, node_operator, treasury,
             description, metadata,
             timestamp:     new Date().toISOString(),
             settled_chain: false,
@@ -144,19 +138,16 @@ export class FeeLedger {
 
         this.events.push(event);
 
-        this.totals.gold_reserve  += gold_reserve;
         this.totals.node_operator += node_operator;
-        this.totals.dev_fund      += dev_fund;
+        this.totals.treasury      += treasury;
         this.totals.total         += total;
         this.byType[type].total   += total;
         this.byType[type].events  += 1;
 
-        // Notify RevenueEngine about node's share
         if (node_operator > 0) {
             this.onNodeEarning?.(node_operator, type);
         }
 
-        // Persist every 10 events to avoid excessive writes
         if (this.events.length % 10 === 0) this.save();
 
         return event;
@@ -166,14 +157,13 @@ export class FeeLedger {
 
     getStats(): ReserveStats {
         return {
-            gold_reserve_gstd:  Math.round(this.totals.gold_reserve  * 1e6) / 1e6,
+            treasury_gstd:      Math.round(this.totals.treasury      * 1e6) / 1e6,
             node_earnings_gstd: Math.round(this.totals.node_operator * 1e6) / 1e6,
-            dev_fund_gstd:      Math.round(this.totals.dev_fund      * 1e6) / 1e6,
             total_fees_gstd:    Math.round(this.totals.total         * 1e6) / 1e6,
             total_events:       this.events.length,
             by_type:            { ...this.byType },
             settled_gstd:       Math.round(this.totals.settled       * 1e6) / 1e6,
-            pending_gstd:       Math.round((this.totals.gold_reserve - this.totals.settled) * 1e6) / 1e6,
+            pending_gstd:       Math.round((this.totals.treasury - this.totals.settled) * 1e6) / 1e6,
             first_event:        this.events[0]?.timestamp,
             last_event:         this.events[this.events.length - 1]?.timestamp,
         };
@@ -183,17 +173,16 @@ export class FeeLedger {
         return this.events.slice(-limit).reverse();
     }
 
-    /** Mark gold_reserve portion as settled (sent to TON) */
+    /** Mark treasury portion as settled (sent to TON) */
     markSettled(amount: number, txHash: string): void {
         this.totals.settled += amount;
-        // Mark recent unsettled events
         let remaining = amount;
         for (let i = this.events.length - 1; i >= 0 && remaining > 0; i--) {
             const e = this.events[i];
             if (!e.settled_chain) {
                 e.settled_chain = true;
                 e.tx_hash = txHash;
-                remaining -= e.gold_reserve;
+                remaining -= e.treasury;
             }
         }
         this.save();
@@ -205,16 +194,22 @@ export class FeeLedger {
         try {
             if (!existsSync(LEDGER_FILE)) return;
             const raw = JSON.parse(readFileSync(LEDGER_FILE, 'utf-8'));
-            this.events   = raw.events   || [];
-            this.totals   = raw.totals   || this.totals;
-            this.byType   = raw.by_type  || this.byType;
+            this.events = raw.events || [];
+            // Migrate old gold_reserve field → treasury
+            if (raw.totals) {
+                this.totals.node_operator = raw.totals.node_operator || 0;
+                this.totals.treasury      = raw.totals.treasury || raw.totals.gold_reserve || 0;
+                this.totals.total         = raw.totals.total || 0;
+                this.totals.settled       = raw.totals.settled || 0;
+            }
+            this.byType = raw.by_type || this.byType;
         } catch { /* corrupt file → start fresh */ }
     }
 
     save(): void {
         try {
             writeFileSync(LEDGER_FILE, JSON.stringify({
-                events:  this.events.slice(-10_000), // keep last 10K events
+                events:  this.events.slice(-10_000),
                 totals:  this.totals,
                 by_type: this.byType,
             }, null, 2), 'utf-8');

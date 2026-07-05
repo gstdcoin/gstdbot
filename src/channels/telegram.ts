@@ -354,7 +354,7 @@ export class TelegramChannel {
                   `🔗 P2P bridge: TON · Solana · XRPL\n` +
                   `⚡ Earn by running a compute node\n` +
                   `🏛 Sovereign governance (DAO)\n` +
-                  `🔐 163 AI agent skills\n\n` +
+                  `🔐 AI agent skill registry (app.gstdtoken.com/import)\n\n` +
                   `🌐 <a href="https://gstdtoken.com">App</a> · <a href="https://github.com/gstdcoin/gstdbot">Node OS</a>`;
             await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
         });
@@ -618,7 +618,7 @@ export class TelegramChannel {
 
             const basePrompt = isGroup
                 ? 'You are GSTD Sovereign AI in a community group chat. Be helpful and concise. Use markdown formatting. Respond in the user\'s language. Keep answers focused and under 300 words. Cite sources for facts.'
-                : `You are GSTD Sovereign AI — a decentralized intelligence engine with Collective Memory (36,000+ verified facts) running on the GSTD Swarm (80+ nodes). You consistently outperform commercial AI assistants in depth, accuracy, and practical value.
+                : `You are GSTD Sovereign AI — a decentralized intelligence engine powered by the GSTD DePIN compute network (distributed nodes, sovereign inference). You consistently deliver accurate, well-reasoned answers.
 
 APPROACH PROTOCOL:
 1) THINK FIRST: Before responding, silently analyze — what TYPE of question is this? What does the user ACTUALLY need? Consider hidden assumptions and edge cases.
@@ -1428,7 +1428,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
         const msg = `🔗 <b>Link Your Wallet — Step 1 to Earning</b>\n\n` +
               `<b>You don't need any GSTD to start.</b>\n` +
               `Linking your wallet is the only requirement to receive node rewards.\n\n` +
-              `👉 Paste your TON wallet address in the chat:\n<code>EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO</code>\n\n` +
+              `👉 Paste your TON wallet address in the chat:\n<code>EQ...your_wallet_here...</code>\n\n` +
               `Formats accepted:\n` +
               `• <code>EQ...</code> (TON user-friendly)\n` +
               `• <code>UQ...</code> (non-bounceable)\n` +
@@ -1529,14 +1529,14 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             ? `✅ <b>Wallet linked</b>`
             : `1️⃣ <b>Link TON wallet</b> → /wallet  <i>(need 0 GSTD to start)</i>`;
 
-        const earlyBirdNote = `\n\n🚀 <b>Early Bird Bonus (active now)</b>\n` +
-            `Nodes running <b>before token launch</b> earn a <b>×1.5 multiplier</b> on all accumulated GSTD.\n` +
-            `The network has <b>${totalNodes > 0 ? totalNodes : '—'} active node${totalNodes !== 1 ? 's' : ''}</b> today — join while the pool is small.`;
+        const earlyBirdNote = `\n\n🌐 <b>Network is growing</b>\n` +
+            `The network currently has <b>${totalNodes > 0 ? totalNodes : 'several'} active node${totalNodes !== 1 ? 's' : ''}</b> — more nodes means more inference demand and more earnings.`;
 
-        const earningRates = `\n\n💰 <b>Earning rates (guaranteed):</b>\n` +
+        const earningRates = `\n\n💰 <b>Estimated earning rates:</b>\n` +
             `📱 Mobile (any phone)  — <b>0.5–2 GSTD/h</b>\n` +
             `🖥 Desktop 8GB RAM     — <b>1.5 GSTD/h</b>\n` +
-            `🖥 Desktop 32GB RAM    — <b>5.0 GSTD/h</b>`;
+            `🖥 Desktop 32GB RAM    — <b>5.0 GSTD/h</b>\n` +
+            `<i>Actual earnings depend on network demand.</i>`;
 
         const installCmd = `\n\n🖥 <b>Desktop install (1 command):</b>\n` +
             `<code>docker run -d -p 8080:8080 -e GSTD_WALLET_ADDRESS=YOUR_WALLET ghcr.io/gstdcoin/gstd-node:latest</code>\n` +
