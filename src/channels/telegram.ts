@@ -1400,26 +1400,6 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
         });
     }
 
-    private async handleStake(ctx: any, _lang: string) {
-        // Staking removed — redirect to node earning
-        const msg = `⚡ <b>Earn GSTD by Running a Node</b>\n\n` +
-              `GSTD is a utility token — earnings come from real AI compute, not staking.\n\n` +
-              `<b>How it works:</b>\n` +
-              `• Run Ollama on any machine\n` +
-              `• Install GSTD Node (one command)\n` +
-              `• Earn 90% of every AI inference fee your node processes\n\n` +
-              `Use /earn to get started.`;
-        await ctx.reply(msg, {
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: '⚡ How to Earn', callback_data: 'earn_menu' }],
-                    [{ text: '⭐ Buy GSTD', callback_data: 'buy_stars' }],
-                ]
-            }
-        });
-    }
-
     private async handleWallet(ctx: any, lang: string) {
         // Check if wallet is already linked
         try {

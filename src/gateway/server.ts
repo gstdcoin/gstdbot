@@ -255,7 +255,7 @@ export class OmegaGateway {
 
         this.diagnostics = new Diagnostics({
             nodeId: this.nodeId,
-            version: '3.4.0',
+            version: require('../../package.json').version,
             platformUrl: this.config.swarmUrl,
         });
 
@@ -263,7 +263,7 @@ export class OmegaGateway {
             platformUrl: this.config.swarmUrl,
             nodeId: this.nodeId,
             walletAddress: '', // Set later when wallet connects
-            version: '3.4.0',
+            version: require('../../package.json').version,
         });
 
         this.scheduler = new Scheduler();
@@ -1282,7 +1282,7 @@ export class OmegaGateway {
                 const up = process.uptime();
                 const hrs = Math.floor(up / 3600);
                 const mins = Math.floor((up % 3600) / 60);
-                await sendReply(`🐝 *GSTD Node Status*\n\n📊 Uptime: ${hrs}h ${mins}m\n💾 Memory: ${Math.round(used.rss / 1024 / 1024)}MB\n🔧 Version: 3.3.0\n🌐 Port: ${this.config.apiPort}\n\nCommands:\n/status — Node status\n/restart — Restart node\n/update — Check & apply updates\n/apps — List installed apps\n/earnings — View earnings\n/pin\\_reset — Reset dashboard PIN`);
+                await sendReply(`🐝 *GSTD Node Status*\n\n📊 Uptime: ${hrs}h ${mins}m\n💾 Memory: ${Math.round(used.rss / 1024 / 1024)}MB\n🔧 Version: ${require('../../package.json').version}\n🌐 Port: ${this.config.apiPort}\n\nCommands:\n/status — Node status\n/restart — Restart node\n/update — Check & apply updates\n/apps — List installed apps\n/earnings — View earnings\n/pin\\_reset — Reset dashboard PIN`);
             } else if (text === '/restart') {
                 await sendReply('🔄 Restarting node...');
                 setTimeout(() => process.exit(0), 1000);
@@ -1426,7 +1426,7 @@ export class OmegaGateway {
                     name: process.env.NODE_NAME || hostname(),
                     platform: platform(), arch: arch(),
                     uptime: process.uptime(), os_uptime: osUptime(),
-                    version: '3.4.0',
+                    version: require('../../package.json').version,
                     started_at: new Date(nodeStartedAt).toISOString(),
                     ip: getLocalIP(), pid: process.pid,
                 },
@@ -4016,7 +4016,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             const uptime = process.uptime();
             res.json({
                 nodeId: this.nodeId,
-                version: '3.4.0',
+                version: require('../../package.json').version,
                 uptime,
                 uptimeFormatted: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m`,
                 wallet: {

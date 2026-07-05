@@ -40,7 +40,7 @@ Your Hardware
 ├── NaaS Orchestrator  — auto-deploys blockchain nodes via Docker based on RAM
 ├── Bridge Sidecar     — optional cross-chain bridge validator (gstd-bridge)
 ├── Collective Memory  — shared knowledge base (L1 map + L2 Redis + L3 platform)
-├── Wallet Manager     — TON wallet, earnings tracker, staking interface
+├── Wallet Manager     — TON wallet, earnings tracker
 ├── Dashboard          — web UI at localhost:8080 (PIN-protected)
 ├── Telegram Bot       — remote node management via Telegram
 └── Security Layer     — AES-256, brute-force lockout, SSH hardening
@@ -155,7 +155,14 @@ src/
 ├── swarm/
 │   ├── agent.ts            # Task polling, processing, earnings, latency tracking
 │   ├── orchestrator.ts     # Multi-node load balancing
-│   └── sovereign.ts        # Staking, P2P mesh, governance
+│   └── sovereign.ts        # P2P mesh, governance, node economics
+├── training/
+│   ├── federated.ts        # SwarmTrainer — polls training jobs, submits gradients
+│   ├── aggregator.ts       # FedAvg gradient aggregation
+│   ├── specialization.ts   # Domain specialization tracking (EMA)
+│   ├── thermal-router.ts   # Entropy-based training peer routing
+│   ├── health.ts           # Node health self-diagnostics + autonomy level
+│   └── offline-queue.ts    # SQLite offline task queue (network resilience)
 ├── p2p/
 │   └── node.ts             # libp2p (mDNS + Bootstrap + Gossip)
 ├── naas/
@@ -166,7 +173,7 @@ src/
 │   ├── router.ts           # NeuralRouter — all inference via GSTD network
 │   └── server.ts           # Express API + WebSocket dashboard
 ├── wallet/
-│   └── manager.ts          # TON wallet, staking, earnings ledger
+│   └── manager.ts          # TON wallet, earnings ledger
 ├── memory/
 │   └── collective.ts       # Shared knowledge (L1+L2+L3)
 └── channels/

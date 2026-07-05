@@ -1,6 +1,6 @@
 {
     "name": "gstdbot",
-    "version": "3.4.0",
+    "version": "3.5.0",
     "description": "GSTD Node OS — Sovereign AI platform. Swarm computing, collective memory, GSTD token economy, 8 AI models.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
