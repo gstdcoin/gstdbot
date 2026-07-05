@@ -105,7 +105,7 @@ export class RevenueFlywheelConverter {
                 logActivity(
                     `🔥 Flywheel settled: $${totalUSD.toFixed(4)} USD | ` +
                     `+${provider.toFixed(4)} GSTD to you | ` +
-                    `${burn.toFixed(6)} GSTD burned | ` +
+                    `${treasury.toFixed(4)} GSTD to treasury | ` +
                     `TxHash: ${data.tx_hash || 'pending'}`,
                     'success'
                 );
