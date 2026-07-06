@@ -226,7 +226,7 @@ export class SwarmTrainer {
     // ─── Training Job Lifecycle ──────────────────────────────────
     async submitJob(config: Partial<TrainingJob>): Promise<string | null> {
         try {
-            const resp = await fetch(`${this.config.swarm.apiUrl}/training/submit`, {
+            const resp = await fetch(`${this.config.swarm.apiUrl}/training/jobs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ node_id: this.config.nodeId, ...config }),
@@ -234,8 +234,8 @@ export class SwarmTrainer {
             });
             if (resp.ok) {
                 const data: any = await resp.json();
-                logActivity(`Training job submitted: ${data.id}`, 'success');
-                return data.id;
+                logActivity(`Training job submitted: ${data.job_id}`, 'success');
+                return data.job_id;
             }
         } catch (_e) {}
         return null;
@@ -244,22 +244,22 @@ export class SwarmTrainer {
     private async pollTrainingJobs(): Promise<void> {
         if (!this.config.swarm.enabled) return;
         try {
-            const resp = await fetch(`${this.config.swarm.apiUrl}/training/poll`, {
+            const hasOllama = await this.checkOllama();
+            const caps: string[] = hasOllama ? ['finetune', 'inference'] : ['inference'];
+            const resp = await fetch(`${this.config.swarm.apiUrl}/tasks/poll`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    node_id: this.config.nodeId,
-                    capabilities: {
-                        gpu: await this.detectGPU(),
-                        ollama: await this.checkOllama(),
-                        max_memory_mb: Math.round(require('os').freemem() / 1048576),
-                    },
+                    node_id:      this.config.nodeId,
+                    capabilities: caps,
                 }),
                 signal: AbortSignal.timeout(5000),
             });
             if (resp.ok) {
                 const data: any = await resp.json();
-                if (data.job) await this.processTrainingJob(data.job);
+                if (data.task && data.task.type === 'finetune') {
+                    await this.processTrainingJob(data.task);
+                }
             }
         } catch (_e) {}
     }
@@ -283,10 +283,10 @@ export class SwarmTrainer {
             this.stats.completedJobs++;
             this.stats.gstdEarnedTraining += job.rewardGstd;
 
-            await fetch(`${this.config.swarm.apiUrl}/training/complete`, {
+            await fetch(`${this.config.swarm.apiUrl}/tasks/complete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ node_id: this.config.nodeId, job_id: job.id, status: 'complete' }),
+                body: JSON.stringify({ node_id: this.config.nodeId, task_id: job.id, job_id: job.id, status: 'complete' }),
                 signal: AbortSignal.timeout(10000),
             }).catch(() => {});
 
@@ -294,10 +294,10 @@ export class SwarmTrainer {
         } catch (e: any) {
             job.status = 'failed';
             logActivity(`Training failed: ${e.message}`, 'error');
-            await fetch(`${this.config.swarm.apiUrl}/training/fail`, {
+            await fetch(`${this.config.swarm.apiUrl}/tasks/fail`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ node_id: this.config.nodeId, job_id: job.id, error: e.message }),
+                body: JSON.stringify({ node_id: this.config.nodeId, task_id: job.id, error: e.message }),
                 signal: AbortSignal.timeout(5000),
             }).catch(() => {});
         } finally {

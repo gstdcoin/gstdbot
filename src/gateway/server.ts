@@ -323,12 +323,12 @@ export class OmegaGateway {
         if (!normalized) return 0;
         try {
             const resp = await fetch(
-                `${this.config.swarmUrl}/api/v1/wallet/${encodeURIComponent(normalized)}/balance`,
+                `${this.config.swarmUrl}/api/v1/access/tier?wallet=${encodeURIComponent(normalized)}`,
                 { signal: AbortSignal.timeout(5000) }
             );
             if (!resp.ok) return 0;
             const data: any = await resp.json().catch(() => ({}));
-            return Number(data?.gstd || 0);
+            return Number(data?.balance_gstd || data?.gstd || 0);
         } catch (_e) {
             return 0;
         }
@@ -919,7 +919,15 @@ export class OmegaGateway {
         });
 
         // ─── Swarm status ────────────────────────────────────────
-        this.app.get('/v1/swarm/status', (_req, res) => {
+        this.app.get('/v1/swarm/status', async (_req, res) => {
+            // Fetch actual models from local Ollama
+            let models_available: string[] = [];
+            try {
+                const ollamaUrl = (process.env.OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '');
+                const tags: any = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(2000) }).then(r => r.json());
+                models_available = (tags.models || []).map((m: any) => m.name);
+            } catch (_e) {}
+
             const agent = this.subsystems?.swarm;
             if (agent && typeof agent.getStats === 'function') {
                 const stats = agent.getStats();
@@ -935,7 +943,7 @@ export class OmegaGateway {
                     uptimeSeconds: stats.uptimeSeconds,
                     lastHeartbeat: stats.lastHeartbeat,
                     rank: stats.rank,
-                    models_available: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'qwen/qwen3-32b', 'meta-llama/llama-4-scout-17b-16e-instruct'],
+                    models_available,
                 });
             } else {
                 res.json({
@@ -943,7 +951,7 @@ export class OmegaGateway {
                     connected: false,
                     peersCount: 0,
                     tasksCompleted: 0,
-                    models_available: ['llama-3.3-70b-versatile'],
+                    models_available,
                 });
             }
         });
