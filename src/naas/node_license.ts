@@ -153,15 +153,15 @@ export interface LicenseTier {
     minMultiplier: number;
     maxMultiplier: number;
     maxModules: number;
-    stakingBonus: number;  // extra % on top of module earnings
+    earningsBonus: number;  // extra % on top of module earnings
 }
 
 const LICENSE_TIERS: LicenseTier[] = [
-    { name: 'Spark',      icon: '⚡', color: '#888',    minMultiplier: 0,    maxMultiplier: 0.75, maxModules: 2, stakingBonus: 0 },
-    { name: 'Flame',      icon: '🔥', color: '#ff6b35', minMultiplier: 0.75, maxMultiplier: 1.5,  maxModules: 4, stakingBonus: 5 },
-    { name: 'Storm',      icon: '⛈️', color: '#4ecdc4', minMultiplier: 1.5,  maxMultiplier: 2.5,  maxModules: 6, stakingBonus: 15 },
-    { name: 'Titan',      icon: '🏔️', color: '#ffd700', minMultiplier: 2.5,  maxMultiplier: 4.0,  maxModules: 8, stakingBonus: 30 },
-    { name: 'Sovereign',  icon: '👑', color: '#e040fb', minMultiplier: 4.0,  maxMultiplier: 99,   maxModules: 99, stakingBonus: 50 },
+    { name: 'Spark',      icon: '⚡', color: '#888',    minMultiplier: 0,    maxMultiplier: 0.75, maxModules: 2, earningsBonus: 0 },
+    { name: 'Flame',      icon: '🔥', color: '#ff6b35', minMultiplier: 0.75, maxMultiplier: 1.5,  maxModules: 4, earningsBonus: 5 },
+    { name: 'Storm',      icon: '⛈️', color: '#4ecdc4', minMultiplier: 1.5,  maxMultiplier: 2.5,  maxModules: 6, earningsBonus: 15 },
+    { name: 'Titan',      icon: '🏔️', color: '#ffd700', minMultiplier: 2.5,  maxMultiplier: 4.0,  maxModules: 8, earningsBonus: 30 },
+    { name: 'Sovereign',  icon: '👑', color: '#e040fb', minMultiplier: 4.0,  maxMultiplier: 99,   maxModules: 99, earningsBonus: 50 },
 ];
 
 function getTierForMultiplier(mult: number): LicenseTier {
@@ -218,7 +218,7 @@ export class NodeLicenseManager {
         const activated: ActivatedModule[] = toActivate.map(mod => {
             const cost = Math.round(mod.basePriceGSTD * mult);
             const baseEarnings = cost * mod.earnMultiplier;
-            const bonusEarnings = baseEarnings * tier.stakingBonus / 100;
+            const bonusEarnings = baseEarnings * tier.earningsBonus / 100;
             const totalEarnings = Math.round(baseEarnings + bonusEarnings);
             
             return {
@@ -255,7 +255,7 @@ export class NodeLicenseManager {
         console.log('╠══════════════════════════════════════════════════════╣');
         console.log(`║  Hardware: ${p.cpu_cores} CPU | ${p.ram_gb}GB RAM | ${p.disk_gb}GB Disk ${p.has_gpu ? '| GPU ✓' : ''}`);
         console.log(`║  Multiplier: ×${license.hardwareMultiplier} | Max Modules: ${t.maxModules}`);
-        console.log(`║  Staking Bonus: +${t.stakingBonus}%`);
+        console.log(`║  Earnings Bonus: +${t.earningsBonus}%`);
         console.log('╠══════════════════════════════════════════════════════╣');
         console.log('║  Active Modules:');
 
@@ -300,7 +300,7 @@ export class NodeLicenseManager {
                 monthly_earnings: license.totalMonthlyEarnings,
                 monthly_profit: license.netMonthlyProfit,
                 roi: parseFloat(license.roi.toFixed(2)),
-                staking_bonus_percent: license.tier.stakingBonus,
+                earnings_bonus_percent: license.tier.earningsBonus,
             },
         };
     }

@@ -71,17 +71,19 @@ Nodes discover each other via mDNS (LAN) and bootstrap peers (WAN). Once connect
 
 ---
 
-## Earning Tiers
+## Hardware Tiers
 
-The longer you run, the higher your tier and the higher your reward multiplier:
+Node tier is determined by hardware capability (hardware multiplier), not uptime. More powerful hardware unlocks more modules and higher earnings:
 
-| Tier | Uptime | Multiplier |
-|---|---|---|
-| Bronze | 0–48h | 1.0× |
-| Silver | 48–168h | 1.2× |
-| Gold | 168–336h | 1.5× |
-| Platinum | 336–720h | 2.0× |
-| Diamond | 720h+ | 3.0× |
+| Tier | Hardware Multiplier | Max Modules | Earnings Bonus |
+|---|---|---|---|
+| ⚡ Spark | ×0–0.75 | 2 | +0% |
+| 🔥 Flame | ×0.75–1.5 | 4 | +5% |
+| ⛈️ Storm | ×1.5–2.5 | 6 | +15% |
+| 🏔️ Titan | ×2.5–4.0 | 8 | +30% |
+| 👑 Sovereign | ×4.0+ | Unlimited | +50% |
+
+The hardware multiplier is calculated from CPU cores, RAM, disk, and GPU presence. A Raspberry Pi 4 is typically Spark or Flame; a 32-core server with GPU reaches Titan or Sovereign.
 
 ---
 
