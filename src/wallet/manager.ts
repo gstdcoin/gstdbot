@@ -35,7 +35,7 @@ export interface WalletBalance {
 export interface EarningEntry {
     timestamp: string;
     amount: number;
-    type: 'uptime' | 'inference' | 'embedding' | 'verification' | 'storage' | 'staking' | 'bonus' | 'bridge_verify';
+    type: 'uptime' | 'inference' | 'embedding' | 'verification' | 'storage' | 'bonus' | 'bridge_verify' | 'training';
     taskId?: string;
     description: string;
 }
@@ -48,10 +48,9 @@ export interface WalletStats {
     earningsMonth: number;
     earningsTotal: number;
     earningsHistory: EarningEntry[];
-    staking: {
-        staked: number;
-        apy: number;
-        rewardsPending: number;
+    training: {
+        jobs_completed: number;
+        lora_adapters: number;
     };
 }
 
@@ -102,15 +101,11 @@ export class NodeWallet {
         // Fetch real balance from platform
         await this.refreshBalance();
 
-        // Fetch staking data from platform
-        await this.syncStakingData();
-
         // NOTE: Heartbeat is handled by SwarmAgent (swarm/agent.ts) — no duplicate here.
         // Only wallet-level balance refresh and earnings persistence below.
 
-        // Refresh balance + staking from platform every 5 minutes
+        // Refresh balance from platform every 5 minutes
         setInterval(() => this.refreshBalance(), 5 * 60 * 1000);
-        setInterval(() => this.syncStakingData(), 5 * 60 * 1000);
 
         // Save earnings log periodically
         setInterval(() => this.saveEarnings(), 5 * 60 * 1000);
@@ -148,30 +143,16 @@ export class NodeWallet {
             earningsMonth: Math.round(earningsMonth * 10000) / 10000,
             earningsTotal: this.localBalance.totalEarned,
             earningsHistory: this.earnings.slice(0, 50), // Last 50
-            staking: { ...this.stakingCache },
+            training: { ...this.trainingCache },
         };
     }
 
-    // ─── Staking data (synced from backend) ──────────────────────
-    private stakingCache = { staked: 0, apy: 0, rewardsPending: 0 };
-    private stakingSyncTimer: NodeJS.Timeout | null = null;
+    // ─── Training stats (updated by SwarmAgent on task completion) ──
+    private trainingCache = { jobs_completed: 0, lora_adapters: 0 };
 
-    private async syncStakingData(): Promise<void> {
-        if (!this.wallet) return;
-        try {
-            const resp = await fetch(
-                `${this.config.swarm.apiUrl}/api/v1/staking/info?wallet=${encodeURIComponent(this.wallet.address)}`,
-                { signal: AbortSignal.timeout(5000) }
-            ).catch(() => null);
-            if (resp?.ok) {
-                const data: any = await resp.json();
-                this.stakingCache = {
-                    staked: data.wallet?.staked || 0,
-                    apy: data.wallet?.apy || 0,
-                    rewardsPending: data.wallet?.daily_reward || 0,
-                };
-            }
-        } catch (_e) {}
+    recordTrainingCompletion(): void {
+        this.trainingCache.jobs_completed += 1;
+        this.trainingCache.lora_adapters  += 1;
     }
 
     // ─── Record verified earning (only called after backend confirms) ──

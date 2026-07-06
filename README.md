@@ -234,6 +234,31 @@ Model availability is reported in the node's heartbeat. The platform routes each
 
 ---
 
+## Why GSTD Is Different
+
+Most DePIN networks do one thing. GSTD nodes do four — simultaneously, from the same hardware:
+
+| Feature | GSTD | io.net | Akash | Bittensor | Render |
+|---|---|---|---|---|---|
+| AI inference routing | ✅ ThermalRouter | ✅ | ❌ | ✅ partial | ❌ |
+| Federated fine-tuning | ✅ LoRA marketplace | ❌ | ❌ | ❌ | ❌ |
+| Blockchain NaaS | ✅ 5 chains | ❌ | ❌ | ❌ | ❌ |
+| Any hardware (phone/Pi/laptop/server) | ✅ | ❌ | ❌ | ❌ | ❌ GPU only |
+| Node operator revenue share | **90%** | ~70% | ~80% | ~82% | ~80% |
+| One-command install | ✅ | ❌ | ❌ | ❌ | ❌ |
+
+**Key innovations:**
+
+- **ThermalRouter** — routes each inference request using information entropy to the statistically optimal node. Unlike round-robin or latency-only routing, ThermalRouter models the entire swarm's capacity distribution and picks the node that minimizes response entropy. No other DePIN network does this.
+
+- **MetaCognitive quality gating** — before submitting a training gradient, each node self-evaluates the gradient quality (0–1 score) using a metacognitive evaluator. Low-quality gradients are discarded locally. This eliminates poisoning attacks without a central validator.
+
+- **Federated fine-tuning marketplace** — users submit a JSONL dataset and get back a LoRA adapter trained across the swarm. 10–30× cheaper than OpenAI fine-tuning. Nodes compete on quality score; the best gradients are aggregated using FedAvg with outlier rejection.
+
+- **Any hardware** — a Raspberry Pi 4, an old laptop, a phone (via Telegram bot), or a 256-core server. The node detects hardware and activates the matching modules automatically. No minimum GPU requirement.
+
+---
+
 ## Ecosystem
 
 | Repo | Description |

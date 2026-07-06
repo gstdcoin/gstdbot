@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
-# GSTD Node OS — One-Command Installer v3.3
+# GSTD Node OS — One-Command Installer v3.5
 # curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
 #
 # ✅ Fully automatic — no interactive prompts
@@ -12,7 +12,7 @@
 # ═══════════════════════════════════════════════════════════════
 set -euo pipefail
 
-VERSION="3.4.0"
+VERSION="3.5.0"
 INSTALL_DIR="${GSTD_INSTALL_DIR:-$HOME/gstdbot}"
 CONFIG_DIR="$HOME/.config/gstdbot"
 STATE_FILE="$CONFIG_DIR/.install_state"
@@ -69,7 +69,7 @@ for arg in "$@"; do
             echo "  GSTD_MODE=cloud|hybrid|sovereign"
             echo "  GSTD_PORT=8080"
             echo "  GSTD_INSTALL_DIR=~/gstdbot"
-            echo "  GROQ_API_KEY=your-key"
+            echo "  NODE_NAME=my-node"
             echo ""
             exit 0
             ;;
@@ -86,8 +86,8 @@ echo -e "${CYAN}"
 cat << 'BANNER'
 
   ╔══════════════════════════════════════════════════╗
-  ║   🐝 GSTD Node OS — Sovereign AI Platform       ║
-  ║      v3.3 • 27 Apps • Collective Intelligence    ║
+  ║   🐝 GSTD Node OS — Decentralized AI Compute     ║
+  ║      v3.5 • Inference + Fine-Tuning + NaaS       ║
   ╚══════════════════════════════════════════════════╝
 
 BANNER
@@ -300,8 +300,9 @@ cat > "$CONFIG_DIR/config.json" << CONF
     "port": ${DASH_PORT},
     "enabled": true
   },
-  "groq": {
-    "models": ["llama-3.3-70b-versatile","llama-3.1-8b-instant","meta-llama/llama-4-scout-17b-16e-instruct","meta-llama/llama-4-maverick-17b-128e-instruct","qwen/qwen3-32b","openai/gpt-oss-120b","openai/gpt-oss-20b","moonshotai/kimi-k2-instruct"]
+  "ollama": {
+    "url": "http://localhost:11434",
+    "models": ["llama3.2:3b","llama3.1:8b","qwen2.5:7b","phi3:mini","gemma2:2b"]
   },
   "memory": {
     "redisUrl": "redis://localhost:6379",
@@ -319,9 +320,9 @@ info "Config: $MODE mode, port $DASH_PORT, ID: ${NODE_ID:0:8}..."
 # Copy .env if missing
 if [ ! -f "$INSTALL_DIR/.env" ] && [ -f "$INSTALL_DIR/.env.example" ]; then
     cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"
-    # Inject GROQ key if available
-    if [ -n "${GROQ_API_KEY:-}" ]; then
-        sed -i "s|^GROQ_API_KEY=.*|GROQ_API_KEY=${GROQ_API_KEY}|" "$INSTALL_DIR/.env"
+    # Inject NODE_NAME if set
+    if [ -n "${NODE_NAME:-}" ]; then
+        sed -i "s|^NODE_NAME=.*|NODE_NAME=${NODE_NAME}|" "$INSTALL_DIR/.env"
     fi
     info ".env configured"
 fi
@@ -422,7 +423,7 @@ RestartSec=5
 Environment=NODE_NAME=${NODE_NAME}
 Environment=GSTD_DASHBOARD_PORT=${DASH_PORT}
 Environment=GSTD_NODE_ID=${NODE_ID}
-${GROQ_API_KEY:+Environment=GROQ_API_KEY=${GROQ_API_KEY}}
+Environment=NODE_NAME=${NODE_NAME}
 
 [Install]
 WantedBy=multi-user.target
@@ -639,12 +640,12 @@ echo -e "    ${CYAN}gstd-node status${NC}   — Check node health"
 
 echo ""
 echo -e "  ${BOLD}What your node does:${NC}"
-echo -e "    🤖 ${GREEN}AI Chat${NC}     — Chat with 8 free AI models"
-echo -e "    💰 ${GREEN}Earn GSTD${NC}   — Automatic earnings while running"
-echo -e "    🧠 ${GREEN}Memory${NC}      — Learns from the global network"
-echo -e "    📊 ${GREEN}Dashboard${NC}   — Monitor everything from your browser"
-echo -e "    📦 ${GREEN}52 Apps${NC}     — Full autonomous PC in your node"
-echo -e "    🛡️ ${GREEN}Security${NC}    — Rate limiting, hardened defaults"
+echo -e "    🤖 ${GREEN}AI Inference${NC} — Serve AI requests, earn 90% of each fee"
+echo -e "    🎓 ${GREEN}Fine-Tuning${NC}  — Train LoRA adapters for users (10× cheaper than cloud)"
+echo -e "    💰 ${GREEN}Earn GSTD${NC}    — Automatic token earnings while running"
+echo -e "    🌐 ${GREEN}NaaS${NC}         — Auto-host blockchain nodes (TON, ETH, SOL…)"
+echo -e "    📊 ${GREEN}Dashboard${NC}    — Monitor everything from your browser"
+echo -e "    🛡️ ${GREEN}Security${NC}     — Rate limiting, hardened defaults"
 echo ""
 echo -e "  ${BOLD}Re-run anytime to update:${NC}"
 echo -e "    ${CYAN}curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash${NC}"
