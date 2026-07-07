@@ -4371,6 +4371,42 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             res.json({ vaults: [], total_locked: 0, apy: 0, message: 'Vaults not yet deployed on-chain' });
         });
 
+        // GET /api/oracle/stats — trading bot oracle decision log
+        this.app.get('/api/oracle/stats', (_req, res) => {
+            const { readFileSync, existsSync } = require('fs');
+            const { join, dirname } = require('path');
+            const logPath = join(dirname(require('os').homedir()), 'bot', 'trading_bot', 'data', 'oracle_log.jsonl');
+            if (!existsSync(logPath)) {
+                return res.json({ total: 0, enter: 0, skip: 0, enter_pct: 0, avg_confidence: 0, avg_latency_ms: 0, sources: {}, recent: [] });
+            }
+            try {
+                const lines = readFileSync(logPath, 'utf-8')
+                    .split('\n').filter((l: string) => l.trim())
+                    .map((l: string) => { try { return JSON.parse(l); } catch { return null; } })
+                    .filter(Boolean);
+                if (!lines.length) return res.json({ total: 0, enter: 0, skip: 0, enter_pct: 0, avg_confidence: 0, avg_latency_ms: 0, sources: {}, recent: [] });
+                const total   = lines.length;
+                const entered = lines.filter((r: any) => r.enter).length;
+                const lats    = lines.map((r: any) => r.latency_ms || 0).filter((l: number) => l > 0);
+                const sources: Record<string, number> = {};
+                for (const r of lines) sources[r.source || 'unknown'] = (sources[r.source || 'unknown'] || 0) + 1;
+                const recent  = lines.slice(-20).reverse().map((r: any) => ({
+                    ts: r.ts, symbol: r.symbol, side: r.side,
+                    enter: r.enter, confidence: r.confidence,
+                    source: r.source, latency_ms: r.latency_ms,
+                }));
+                return res.json({
+                    total, enter: entered, skip: total - entered,
+                    enter_pct: Math.round(entered / total * 1000) / 10,
+                    avg_confidence: Math.round(lines.reduce((s: number, r: any) => s + (r.confidence || 0), 0) / total * 1000) / 1000,
+                    avg_latency_ms: lats.length ? Math.round(lats.reduce((a: number, b: number) => a + b, 0) / lats.length) : 0,
+                    sources, recent,
+                });
+            } catch (e: any) {
+                return res.status(500).json({ error: String(e.message || e) });
+            }
+        });
+
         logActivity('Core modules v4.0 initialized: EventBus, PlatformLink, ModelFailover, Diagnostics, UsageTracker, Scheduler', 'info');
     }
 
