@@ -395,13 +395,8 @@ pkill -f "node.*gstdbot.*dist/index.js" 2>/dev/null || true
 pkill -f "gstd-bridge" 2>/dev/null || true
 sleep 1
 
-# Download Bridge Node
-mkdir -p "$CONFIG_DIR/bridge"
-info "Downloading Bridge Validator..."
-(curl -fsSL https://gstdtoken.com/downloads/gstd-bridge.gz | gzip -d > "$CONFIG_DIR/bridge/gstd-bridge" && chmod +x "$CONFIG_DIR/bridge/gstd-bridge") || true
-if [ ! -f "$CONFIG_DIR/bridge/bridge.toml" ]; then
-    "$CONFIG_DIR/bridge/gstd-bridge" --init --config "$CONFIG_DIR/bridge/bridge.toml" 2>/dev/null || true
-fi
+# Bridge Validator — deployed separately (TON mainnet Phase 1.b)
+info "Bridge Validator: available after TON mainnet deployment"
 
 # Try systemd first (Linux only)
 USED_SYSTEMD=false
@@ -471,33 +466,24 @@ if [ "$USED_SYSTEMD" = false ]; then
 
     if command -v pm2 &>/dev/null; then
         cd "$INSTALL_DIR"
-        # Stop old instances if running
-        pm2 delete gstdbot 2>/dev/null
-        pm2 delete gstd-node 2>/dev/null
-        pm2 delete gstd-bridge 2>/dev/null
-        pm2 delete ipfs 2>/dev/null
-        pm2 delete tunnel 2>/dev/null
+        # Stop only gstdbot (leave ipfs/tunnel/ollama running — they have long uptime)
+        pm2 delete gstdbot 2>/dev/null || true
+        pm2 delete gstd-node 2>/dev/null || true
+        pm2 delete gstd-bridge 2>/dev/null || true
 
-        # Prefer ecosystem.config.js (includes ipfs + tunnel + gstdbot)
+        # Start gstdbot from ecosystem.config.js (other apps already running — pm2 skips them)
         if [ -f "$INSTALL_DIR/ecosystem.config.js" ]; then
-            pm2 start "$INSTALL_DIR/ecosystem.config.js" 2>/dev/null || \
+            pm2 start "$INSTALL_DIR/ecosystem.config.js" --only gstdbot 2>/dev/null || \
             NODE_NAME="${NODE_NAME}" GSTD_DASHBOARD_PORT="$DASH_PORT" GSTD_NODE_ID="$NODE_ID" \
                 pm2 start dist/index.js --name gstdbot \
                 --max-memory-restart 768M \
-                --log "$CONFIG_DIR/node.log" \
+                --log "$CONFIG_DIR/logs/node.log" \
                 --time --merge-logs
         else
             NODE_NAME="${NODE_NAME}" GSTD_DASHBOARD_PORT="$DASH_PORT" GSTD_NODE_ID="$NODE_ID" \
                 pm2 start dist/index.js --name gstdbot \
                 --max-memory-restart 768M \
-                --log "$CONFIG_DIR/node.log" \
-                --time --merge-logs
-        fi
-
-        # Start Bridge with PM2 (legacy)
-        if [ -f "$CONFIG_DIR/bridge/gstd-bridge" ]; then
-            pm2 start "$CONFIG_DIR/bridge/gstd-bridge" --name gstd-bridge \
-                --log "$CONFIG_DIR/bridge/bridge.log" \
+                --log "$CONFIG_DIR/logs/node.log" \
                 --time --merge-logs
         fi
 
@@ -609,8 +595,24 @@ else
 fi
 
 echo ""
-echo -e "  ${BOLD}👉 Next step — open your browser:${NC}"
-echo -e "     ${CYAN}http://localhost:${DASH_PORT}${NC}"
+echo -e "  ${BOLD}👉 Open your node dashboard:${NC}"
+
+# Try to find the Cloudflare tunnel URL from pm2 logs
+TUNNEL_URL=""
+if command -v pm2 &>/dev/null; then
+    TUNNEL_URL=$(pm2 logs tunnel --lines 100 --nostream 2>/dev/null | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1)
+fi
+
+# Local LAN IP
+LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+
+echo -e "     ${CYAN}http://localhost:${DASH_PORT}${NC}  (same machine)"
+if [ -n "$LOCAL_IP" ]; then
+    echo -e "     ${CYAN}http://${LOCAL_IP}:${DASH_PORT}${NC}  (local network)"
+fi
+if [ -n "$TUNNEL_URL" ]; then
+    echo -e "     ${GREEN}${TUNNEL_URL}${NC}  (anywhere, public)"
+fi
 echo ""
 echo -e "  ${BOLD}Your node info:${NC}"
 echo -e "    Mode:       ${MODE}"
