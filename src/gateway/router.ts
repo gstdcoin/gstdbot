@@ -170,7 +170,7 @@ export class NeuralRouter {
 
         // ─── L2: Local Ollama (primary — no external deps) ─────────
         try {
-            const result = await this.callOllamaLocal(ollamaUrl, ollamaModel, messages, 2048);
+            const result = await this.callOllamaLocal(ollamaUrl, ollamaModel, messages, 512);
             this.cache.set(cacheKey, result.content, result.model);
             return { ...result, latencyMs: Date.now() - start };
         } catch (err: any) {
