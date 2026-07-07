@@ -77,9 +77,15 @@
         "p-queue": "^8.0.0",
         "redis": "^4.7.1",
         "uint8arrays": "^5.1.0",
-        "uuid": "^9.0.0",
-        "ws": "^8.17.0",
+        "uuid": "^11.1.1",
+        "ws": "^8.18.0",
         "zod": "^3.23.0"
+    },
+    "overrides": {
+        "@ston-fi/omniston-sdk": {
+            "ws": "^8.18.0"
+        },
+        "esbuild": "^0.25.0"
     },
     "devDependencies": {
         "@types/express": "^4.17.21",
