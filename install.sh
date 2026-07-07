@@ -243,15 +243,16 @@ step 4 "Building..."
 cd "$INSTALL_DIR"
 
 # Always run npm install (fast if nothing changed)
-npm install --legacy-peer-deps 2>>"$LOG_FILE" || npm install 2>>"$LOG_FILE" || {
+# --no-audit: suppress vulnerability report (we audit and fix in CI — safe to omit here)
+npm install --no-audit --legacy-peer-deps >>"$LOG_FILE" 2>&1 || npm install --no-audit >>"$LOG_FILE" 2>&1 || {
     warn "npm install failed, cleaning cache..."
     rm -rf node_modules package-lock.json
-    npm install --legacy-peer-deps 2>>"$LOG_FILE"
+    npm install --no-audit --legacy-peer-deps >>"$LOG_FILE" 2>&1
 }
 info "Dependencies ✓"
 
 # Always rebuild TypeScript (fast if nothing changed)
-npx tsc 2>>"$LOG_FILE" || npx tsc --skipLibCheck 2>>"$LOG_FILE" || {
+node_modules/.bin/tsc >>"$LOG_FILE" 2>&1 || node_modules/.bin/tsc --skipLibCheck >>"$LOG_FILE" 2>&1 || {
     err "TypeScript build failed. Check: $LOG_FILE"
     exit 1
 }
@@ -628,17 +629,17 @@ if [ "$USED_SYSTEMD" = true ]; then
     echo -e "    ${GREEN}stop${NC}     sudo systemctl stop gstd-node"
 else
     echo -e "  ${BOLD}Useful commands:${NC}"
-    echo -e "    ${GREEN}restart${NC}  cd $INSTALL_DIR && node dist/index.js"
-    echo -e "    ${GREEN}logs${NC}     tail -f $CONFIG_DIR/node.log"
-    echo -e "    ${GREEN}stop${NC}     kill \$(cat $CONFIG_DIR/node.pid)"
+    echo -e "    ${GREEN}restart${NC}  pm2 restart gstdbot"
+    echo -e "    ${GREEN}logs${NC}     pm2 logs gstdbot"
+    echo -e "    ${GREEN}stop${NC}     pm2 stop gstdbot"
 fi
 
 echo ""
-echo -e "  ${BOLD}💥 NEW! Simple CLI Tool (Type anywhere):${NC}"
-echo -e "    ${CYAN}gstd-node rollback${NC} — Instantly revert a broken update"
+echo -e "  ${BOLD}CLI tool (type anywhere):${NC}"
 echo -e "    ${CYAN}gstd-node update${NC}   — Update to the newest version"
 echo -e "    ${CYAN}gstd-node logs${NC}     — View live console output"
 echo -e "    ${CYAN}gstd-node status${NC}   — Check node health"
+echo -e "    ${CYAN}gstd-node rollback${NC} — Revert a broken update"
 
 echo ""
 echo -e "  ${BOLD}What your node does:${NC}"
@@ -648,6 +649,9 @@ echo -e "    💰 ${GREEN}Earn GSTD${NC}    — Automatic token earnings while r
 echo -e "    🌐 ${GREEN}NaaS${NC}         — Auto-host blockchain nodes (TON, ETH, SOL…)"
 echo -e "    📊 ${GREEN}Dashboard${NC}    — Monitor everything from your browser"
 echo -e "    🛡️ ${GREEN}Security${NC}     — Rate limiting, hardened defaults"
+echo ""
+echo -e "  ${BOLD}First login — set your dashboard PIN in the browser${NC}"
+echo -e "    ${DIM}Forgot PIN? Run:${NC} rm ~/.config/gstdbot/dashboard_pin.hash && pm2 restart gstdbot"
 echo ""
 echo -e "  ${BOLD}Re-run anytime to update:${NC}"
 echo -e "    ${CYAN}curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash${NC}"
