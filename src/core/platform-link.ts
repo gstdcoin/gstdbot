@@ -99,7 +99,7 @@ export class PlatformLink extends EventEmitter {
                     'X-Wallet-Address': this.walletAddress,
                 },
                 body: JSON.stringify({
-                    name: `Node-${this.nodeId}`,
+                    name: process.env.NODE_NAME || this.nodeId,
                     specs: {
                         node_id: this.nodeId,
                         version: this.version,
@@ -144,7 +144,7 @@ export class PlatformLink extends EventEmitter {
                 body: JSON.stringify({
                     node_id:         this.nodeId,
                     wallet_address:  this.walletAddress,
-                    node_name:       `Node-${this.nodeId}`,
+                    node_name:       process.env.NODE_NAME || this.nodeId,
                     node_version:    this.version,
                     uptime_hours:    Math.round(process.uptime() / 3600),
                     queries_served:  stats.queryCount || 0,
