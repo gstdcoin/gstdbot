@@ -4407,6 +4407,21 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             }
         });
 
+        // PoI sidecar proxy — reads from local gstd_validation Flask API on :5002
+        const POI_BASE = `http://localhost:${process.env.POI_API_PORT || 5002}`;
+        for (const poiPath of ['/poi/summary', '/poi/recent', '/poi/stats/iw_distribution']) {
+            this.app.get(`/api/oracle${poiPath}`, async (_req, res) => {
+                try {
+                    const r = await fetch(`${POI_BASE}${poiPath}`, { signal: AbortSignal.timeout(5000) });
+                    const data = await r.json();
+                    res.setHeader('Cache-Control', 'public, max-age=30');
+                    res.json(data);
+                } catch (e: any) {
+                    res.status(503).json({ error: 'PoI sidecar unavailable', detail: e.message });
+                }
+            });
+        }
+
         logActivity('Core modules v4.0 initialized: EventBus, PlatformLink, ModelFailover, Diagnostics, UsageTracker, Scheduler', 'info');
     }
 
