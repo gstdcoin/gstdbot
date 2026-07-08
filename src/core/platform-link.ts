@@ -81,7 +81,11 @@ export class PlatformLink extends EventEmitter {
     setWalletAddress(address: string) { this.walletAddress = address; }
 
     async start(intervalMs = 60000) {
-        // Register
+        // Delay registration briefly so wallet.init() completes first
+        // (gateway.start() fires this before index.ts reaches wallet init at step 4)
+        if (!this.walletAddress) {
+            await new Promise(resolve => setTimeout(resolve, 6000));
+        }
         await this.register();
 
         // Start heartbeat loop
@@ -149,7 +153,7 @@ export class PlatformLink extends EventEmitter {
                     uptime_hours:    Math.round(process.uptime() / 3600),
                     queries_served:  stats.queryCount || 0,
                     tasks_completed: readOracleTaskCount(),
-                    gstd_earned:     stats.tasksCompleted ? stats.tasksCompleted * 0.00095 : 0,
+                    gstd_earned:     readOracleTaskCount() * 0.00095,
                     capabilities:    models,
                     models_loaded:   models,
                     mode:            'node',
