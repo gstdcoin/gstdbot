@@ -300,12 +300,12 @@ export class SwarmAgent {
                 node_version: this.config.version,
                 status: 'online',
                 uptime_hours: Math.round((Date.now() - this.startedAt) / 3600000),
-                queries_served: this.stats.tasksCompleted,
                 battery: 100 - Math.round(load[0] * 100 / cpus().length),
                 signal: 100 - ramUsage,
                 cpu_usage: Math.round(load[0] * 100 / cpus().length),
                 ram_usage: ramUsage,
-                tasks_completed: this.stats.tasksCompleted,
+                // tasks_completed intentionally omitted — PlatformLink owns this field
+                // (reads persistent oracle_log.jsonl; SwarmAgent counter resets on restart)
                 tasks_processing: this.stats.tasksProcessing,
                 uptime: Math.round((Date.now() - this.startedAt) / 1000),
                 version: this.config.version,
