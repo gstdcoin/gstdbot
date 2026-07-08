@@ -200,7 +200,39 @@
     .sidebar{width:56px}
     .sidebar .nav-section-label,.sidebar .nav-item span:not(.nav-icon),.logo-name,.logo-status,.node-id-badge{display:none}
     .main{margin-left:56px;padding:16px}
+    .quick-grid{grid-template-columns:1fr 1fr}
+    .app-store-grid{grid-template-columns:1fr}
   }
+
+  /* ── Quick Actions ──────────────────────────────────────────────────── */
+  .quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+  .quick-btn{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:14px;padding:18px 14px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden}
+  .quick-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--accent),var(--cyan));opacity:0;transition:opacity 0.2s}
+  .quick-btn:hover{border-color:rgba(139,92,246,0.5);transform:translateY(-2px);box-shadow:0 8px 24px rgba(139,92,246,0.15)}
+  .quick-btn:hover::before{opacity:0.06}
+  .qi{font-size:26px;margin-bottom:8px;display:block}
+  .ql{font-size:12px;font-weight:700;color:var(--text);letter-spacing:0.01em}
+  .qs{font-size:11px;color:var(--muted);margin-top:3px}
+
+  /* ── Sparkline canvas ───────────────────────────────────────────────── */
+  .stat-spark{display:block;width:100%;height:36px;margin-top:6px;border-radius:4px}
+
+  /* ── App Store ──────────────────────────────────────────────────────── */
+  .app-cat-wrap{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+  .app-cat-btn{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);color:var(--muted);background:none;transition:all 0.15s;font-family:inherit}
+  .app-cat-btn:hover{border-color:rgba(139,92,246,0.4);color:var(--text)}
+  .app-cat-btn.active{background:rgba(139,92,246,0.18);color:var(--accent);border-color:rgba(139,92,246,0.5)}
+  .app-store-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+  .app-card{background:rgba(255,255,255,0.025);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;transition:all 0.2s;cursor:default}
+  .app-card:hover{border-color:rgba(139,92,246,0.45);background:rgba(139,92,246,0.05);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
+  .app-card-head{display:flex;align-items:center;gap:12px}
+  .app-icon-box{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+  .app-card-meta{flex:1;min-width:0}
+  .app-card-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .app-card-cat{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;display:inline-block;margin-top:4px}
+  .app-card-desc{font-size:12px;color:var(--muted);line-height:1.55;flex:1}
+  .app-card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
+  .app-card-status{font-size:11px;display:flex;align-items:center;gap:4px}
 </style>
 </head>
 <body>
@@ -299,18 +331,44 @@
       <div><span class="badge badge-green"><span class="status-dot" style="width:6px;height:6px"></span>&nbsp;Online</span></div>
     </div>
 
+    <!-- Quick Actions -->
+    <div class="quick-grid">
+      <div class="quick-btn" onclick="showPage('chat')">
+        <span class="qi">💬</span>
+        <div class="ql">Chat with AI</div>
+        <div class="qs">Local LLM · private</div>
+      </div>
+      <div class="quick-btn" onclick="showPage('models')">
+        <span class="qi">⬇️</span>
+        <div class="ql">Pull a Model</div>
+        <div class="qs" id="qa-models">Expand capabilities</div>
+      </div>
+      <div class="quick-btn" onclick="showPage('wallet')">
+        <span class="qi">💰</span>
+        <div class="ql">My Wallet</div>
+        <div class="qs" id="qa-earn">— GSTD today</div>
+      </div>
+      <div class="quick-btn" onclick="showPage('api')">
+        <span class="qi">🛒</span>
+        <div class="ql">App Store</div>
+        <div class="qs" id="qa-apps">Browse apps</div>
+      </div>
+    </div>
+
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-label">CPU Usage</div>
         <div class="stat-val ta" id="h-cpu">—</div>
         <div class="bar-wrap"><div class="bar bar-purple" id="h-cpu-bar" style="width:0"></div></div>
         <div class="stat-sub" id="h-cpu-sub">—</div>
+        <canvas class="stat-spark" id="spark-cpu"></canvas>
       </div>
       <div class="stat-card">
         <div class="stat-label">RAM Usage</div>
         <div class="stat-val tc" id="h-ram">—</div>
         <div class="bar-wrap"><div class="bar bar-cyan" id="h-ram-bar" style="width:0"></div></div>
         <div class="stat-sub" id="h-ram-sub">—</div>
+        <canvas class="stat-spark" id="spark-ram"></canvas>
       </div>
       <div class="stat-card">
         <div class="stat-label">Disk Free</div>
@@ -327,6 +385,7 @@
         <div class="stat-label">GSTD Earned Today</div>
         <div class="stat-val ta" id="h-gstd">—</div>
         <div class="stat-sub">TON rewards</div>
+        <canvas class="stat-spark" id="spark-earn"></canvas>
       </div>
       <div class="stat-card">
         <div class="stat-label">AI Models</div>
@@ -590,9 +649,19 @@
     </div>
 
     <div class="card">
-      <div class="card-header">
-        <div class="card-title" style="margin-bottom:0">App Store</div>
-        <span class="muted sm" id="api-app-cnt">Loading...</span>
+      <div class="card-header" style="margin-bottom:16px">
+        <div>
+          <div class="card-title" style="margin-bottom:4px">App Store</div>
+          <span class="muted sm" id="api-app-cnt">Loading...</span>
+        </div>
+      </div>
+      <div class="app-cat-wrap" id="app-cat-wrap">
+        <button class="app-cat-btn active" onclick="filterApps('all',this)">All</button>
+        <button class="app-cat-btn" onclick="filterApps('ai',this)">🤖 AI</button>
+        <button class="app-cat-btn" onclick="filterApps('storage',this)">📦 Storage</button>
+        <button class="app-cat-btn" onclick="filterApps('validator',this)">⛓️ Validator</button>
+        <button class="app-cat-btn" onclick="filterApps('training',this)">🧠 Training</button>
+        <button class="app-cat-btn" onclick="filterApps('tools',this)">🔧 Tools</button>
       </div>
       <div id="api-apps"><div class="empty"><div class="ei">&#x1F6CD;</div><h4>Loading apps...</h4></div></div>
     </div>
@@ -690,6 +759,132 @@ let chatHistory = [];
 let pullCtrl = null;
 let nodeHwRam = 0;
 
+// Sparkline history (last 30 data points, sampled every 5s)
+const _hist = { cpu: [], ram: [], earn: [] };
+const HIST_MAX = 30;
+
+// All apps cache for category filtering
+let _allApps = [];
+
+// ── Sparkline ─────────────────────────────────────────────────────────
+function pushHist(cpu, ram, earn) {
+  [['cpu',cpu],['ram',ram],['earn',earn]].forEach(([k,v]) => {
+    _hist[k].push(v||0);
+    if(_hist[k].length > HIST_MAX) _hist[k].shift();
+  });
+}
+
+function drawSparkline(canvasId, data, hexColor) {
+  const c = document.getElementById(canvasId);
+  if(!c || data.length < 2) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = c.offsetWidth || 200;
+  const h = 36;
+  c.width = w * dpr; c.height = h * dpr;
+  c.style.width = w + 'px'; c.style.height = h + 'px';
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = (max - min) || 1;
+  const pts = data.map((v, i) => [
+    (i / (data.length - 1)) * w,
+    h - 4 - ((v - min) / range) * (h - 8)
+  ]);
+  // Fill gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, hexColor + '55');
+  grad.addColorStop(1, hexColor + '00');
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for(let i = 1; i < pts.length; i++) {
+    const mx = (pts[i-1][0] + pts[i][0]) / 2;
+    ctx.bezierCurveTo(mx, pts[i-1][1], mx, pts[i][1], pts[i][0], pts[i][1]);
+  }
+  ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+  // Line
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for(let i = 1; i < pts.length; i++) {
+    const mx = (pts[i-1][0] + pts[i][0]) / 2;
+    ctx.bezierCurveTo(mx, pts[i-1][1], mx, pts[i][1], pts[i][0], pts[i][1]);
+  }
+  ctx.strokeStyle = hexColor; ctx.lineWidth = 1.5; ctx.stroke();
+}
+
+// ── App Store ─────────────────────────────────────────────────────────
+const APP_THEMES = {
+  ai:        { bg: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', cat_bg: 'rgba(139,92,246,0.18)', cat_color: '#a78bfa' },
+  llm:       { bg: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', cat_bg: 'rgba(139,92,246,0.18)', cat_color: '#a78bfa' },
+  storage:   { bg: 'linear-gradient(135deg,#06b6d4,#0e7490)', cat_bg: 'rgba(6,182,212,0.18)',   cat_color: '#67e8f9' },
+  validator: { bg: 'linear-gradient(135deg,#f59e0b,#d97706)', cat_bg: 'rgba(245,158,11,0.18)',  cat_color: '#fcd34d' },
+  training:  { bg: 'linear-gradient(135deg,#22c55e,#16a34a)', cat_bg: 'rgba(34,197,94,0.18)',   cat_color: '#86efac' },
+  tools:     { bg: 'linear-gradient(135deg,#ec4899,#be185d)', cat_bg: 'rgba(236,72,153,0.18)',  cat_color: '#f9a8d4' },
+  monitor:   { bg: 'linear-gradient(135deg,#ef4444,#b91c1c)', cat_bg: 'rgba(239,68,68,0.18)',   cat_color: '#fca5a5' },
+  relay:     { bg: 'linear-gradient(135deg,#6366f1,#4338ca)', cat_bg: 'rgba(99,102,241,0.18)',  cat_color: '#a5b4fc' },
+};
+const APP_ICONS = {
+  ai:'🤖', llm:'🧠', storage:'📦', validator:'⛓️',
+  training:'🎓', tools:'🔧', monitor:'📊', relay:'🌐',
+};
+
+function renderApps(apps, filter) {
+  _allApps = apps;
+  const el = document.getElementById('api-apps');
+  const cat = (filter||'all').toLowerCase();
+  const list = cat === 'all' ? apps : apps.filter(a => {
+    const ac = (a.category || a.type || 'tools').toLowerCase();
+    return ac === cat || ac.includes(cat);
+  });
+  if(!list.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">🔍</div><h4>No apps in this category</h4><p>Try "All" to see everything</p></div>';
+    return;
+  }
+  el.innerHTML = '<div class="app-store-grid">' +
+    list.map(a => {
+      const rawCat = (a.category || a.type || 'tools').toLowerCase();
+      const theme = APP_THEMES[rawCat] || APP_THEMES.tools;
+      const icon  = APP_ICONS[rawCat] || '🔌';
+      const label = rawCat.charAt(0).toUpperCase() + rawCat.slice(1);
+      const inst  = a.status === 'installed' || a.installed;
+      const id    = esc(a.id || a.name || '');
+      return `<div class="app-card">
+        <div class="app-card-head">
+          <div class="app-icon-box" style="background:${theme.bg}">${icon}</div>
+          <div class="app-card-meta">
+            <div class="app-card-name">${esc(a.name || a.id || 'App')}</div>
+            <span class="app-card-cat" style="background:${theme.cat_bg};color:${theme.cat_color}">${label}</span>
+          </div>
+        </div>
+        <div class="app-card-desc">${esc(a.description || a.desc || 'A GSTD-compatible application for your node.')}</div>
+        <div class="app-card-foot">
+          ${inst
+            ? '<span class="app-card-status"><span style="color:var(--green)">●</span> Installed</span><button class="btn btn-danger btn-sm" onclick="uninstallApp(\''+id+'\')">Remove</button>'
+            : '<span class="app-card-status muted">Available</span><button class="btn btn-primary btn-sm" onclick="installApp(\''+id+'\')">Install</button>'
+          }
+        </div>
+      </div>`;
+    }).join('') + '</div>';
+}
+
+function filterApps(cat, btn) {
+  document.querySelectorAll('.app-cat-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(_allApps.length) renderApps(_allApps, cat);
+}
+
+async function uninstallApp(id) {
+  if(!confirm('Remove app "'+id+'"?')) return;
+  try {
+    const r = await api('/api/apps/uninstall', {method:'POST', body:JSON.stringify({app_id:id})});
+    const d = await r.json();
+    toast(r.ok ? 'App removed' : 'Error: '+(d.error||r.status));
+    if(r.ok) loadAPIPage();
+  } catch(e) { toast('Error: '+e.message); }
+}
+
 // ── Utilities ──────────────────────────────────────────────────────────
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function trunc(a,h=8,t=6){ if(!a) return '—'; return a.length>h+t+3?a.slice(0,h)+'...'+a.slice(-t):a; }
@@ -767,17 +962,20 @@ async function refreshHome(){
     api('/api/node/rating').then(r=>r.json()),
     api('/api/node/earnings').then(r=>r.json()),
   ]);
+  let _cpu=0, _ram=0, _earnVal=0;
   if(res.status==='fulfilled'){
     const d=res.value;
-    const cpu=d.cpu?.usage_pct||0,ram=d.ram?.pct||0;
-    set('h-cpu',cpu+'%');
-    const cb=document.getElementById('h-cpu-bar');if(cb)cb.style.width=cpu+'%';
+    _cpu=d.cpu?.usage_pct||0; _ram=d.ram?.pct||0;
+    set('h-cpu',_cpu+'%');
+    const cb=document.getElementById('h-cpu-bar');if(cb)cb.style.width=_cpu+'%';
     set('h-cpu-sub',(d.cpu?.cores||0)+' cores');
-    set('h-ram',ram+'%');
-    const rb=document.getElementById('h-ram-bar');if(rb)rb.style.width=ram+'%';
+    set('h-ram',_ram+'%');
+    const rb=document.getElementById('h-ram-bar');if(rb)rb.style.width=_ram+'%';
     set('h-ram-sub',fmtMB(d.ram?.used_mb)+' / '+fmtMB(d.ram?.total_mb));
     set('h-uptime',d.uptime_hours||0);
-    set('h-models',(d.ollama?.models||[]).length);
+    const mCnt=(d.ollama?.models||[]).length;
+    set('h-models',mCnt);
+    set('qa-models',mCnt+' model'+(mCnt!==1?'s':'')+' installed');
   }
   if(hw.status==='fulfilled'){
     const d=hw.value;nodeHwRam=d.ram?.total_gb||0;
@@ -789,10 +987,12 @@ async function refreshHome(){
   }
   if(wal.status==='fulfilled'){
     const d=wal.value;
-    document.getElementById('w-full').value=d.address||'';
+    try{document.getElementById('w-full').value=d.address||'';}catch(e){}
     set('h-addr',trunc(d.address||'',8,6));
-    set('h-earn',fmt4(d.earningsToday)+' GSTD');
-    set('h-gstd',fmt4(d.earningsToday));
+    _earnVal=d.earningsToday||0;
+    set('h-earn',fmt4(_earnVal)+' GSTD');
+    set('h-gstd',fmt4(_earnVal));
+    set('qa-earn',fmt4(_earnVal)+' GSTD today');
   }
   if(ipfs.status==='fulfilled'){
     const d=ipfs.value;
@@ -804,6 +1004,11 @@ async function refreshHome(){
     const d=rat.value;
     set('h-rating','Rating: '+d.score+'/'+d.max_score+' · '+d.tier);
   }
+  // Update sparkline history and redraw
+  pushHist(_cpu, _ram, _earnVal);
+  drawSparkline('spark-cpu',  _hist.cpu,  '#8b5cf6');
+  drawSparkline('spark-ram',  _hist.ram,  '#06b6d4');
+  drawSparkline('spark-earn', _hist.earn, '#22c55e');
   try {
     const s=await api('/api/node/status').then(r=>r.json());
     set('h-name',s.name||'GSTD Node');
@@ -1181,11 +1386,9 @@ async function loadAPIPage(){
     if(apps.status==='fulfilled'){
       const al=apps.value.apps||apps.value||[];
       set('api-app-cnt',al.length+' apps available');
-      const apEl=document.getElementById('api-apps');
-      if(!al.length){apEl.innerHTML='<div class="empty"><div class="ei">&#x1F6CD;</div><h4>No apps available</h4></div>';return;}
-      apEl.innerHTML='<table class="tbl"><thead><tr><th>App</th><th>Description</th><th></th></tr></thead><tbody>'+
-        al.slice(0,30).map(a=>`<tr><td class="fw6">${esc(a.name||a.id||'App')}</td><td class="muted sm">${esc(a.description||a.desc||'')}</td><td><button class="btn btn-secondary btn-sm" onclick="installApp('${esc(a.id||a.name||'')}')">Install</button></td></tr>`).join('')+
-        '</tbody></table>';
+      set('qa-apps',al.length+' apps available');
+      if(!al.length){document.getElementById('api-apps').innerHTML='<div class="empty"><div class="ei">&#x1F6CD;</div><h4>No apps available</h4><p>Check back later for new apps</p></div>';return;}
+      renderApps(al, 'all');
     }
   } catch(e){console.error('loadAPIPage',e);}
 }
