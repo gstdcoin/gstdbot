@@ -77,6 +77,14 @@
 
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
   .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .contract-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+  .contract-row:last-child{border-bottom:none}
+  .contract-row .muted{width:130px;flex-shrink:0}
+  .contract-row .mono{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .split-bar-wrap{display:flex;border-radius:8px;overflow:hidden;height:32px}
+  .split-seg{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden}
+  .status-chip{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(34,197,94,0.15);color:var(--green);border:1px solid rgba(34,197,94,0.3)}
 
   .bar-wrap{height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;margin-top:6px}
   .bar{height:100%;border-radius:3px;transition:width 0.5s}
@@ -196,7 +204,7 @@
   ::-webkit-scrollbar-thumb:hover{background:rgba(139,92,246,0.5)}
 
   @media(max-width:768px){
-    .grid-2,.grid-3{grid-template-columns:1fr}
+    .grid-2,.grid-3,.grid-4{grid-template-columns:1fr 1fr}
     .sidebar{width:56px}
     .sidebar .nav-section-label,.sidebar .nav-item span:not(.nav-icon),.logo-name,.logo-status,.node-id-badge{display:none}
     .main{margin-left:56px;padding:16px}
@@ -302,6 +310,7 @@
     <div class="nav-item" onclick="showPage('validators')"><span class="nav-icon">&#x26D3;</span><span>Validators</span></div>
     <div class="nav-section-label">Economy</div>
     <div class="nav-item" onclick="showPage('wallet')"><span class="nav-icon">&#x1F4B0;</span><span>Wallet</span></div>
+    <div class="nav-item" onclick="showPage('blockchain')"><span class="nav-icon">&#x26D3;&#xFE0F;</span><span>Blockchain</span></div>
     <div class="nav-section-label">Developer</div>
     <div class="nav-item" onclick="showPage('api')"><span class="nav-icon">&#x1F50C;</span><span>API &amp; Apps</span></div>
     <div class="nav-section-label">System</div>
@@ -667,6 +676,62 @@
     </div>
   </div>
 
+  <!-- BLOCKCHAIN -->
+  <div class="page" id="page-blockchain">
+    <div class="page-title">Blockchain</div>
+    <div class="page-subtitle">On-chain settlement stats — live from TON mainnet</div>
+
+    <!-- Settlement Master -->
+    <div class="card mb20">
+      <div class="row jb mb16">
+        <span class="fw6">SettlementMaster</span>
+        <a id="bc-sm-link" href="https://tonscan.org/address/EQAhuR_cEaIkRqs4gvgXSD-Qw2FRUkkBUZQkTBrFT5n-ZrSS" target="_blank" class="sm tc">View on TONScan &#x2197;</a>
+      </div>
+      <div class="grid-4 mb12">
+        <div class="stat-card"><div class="stat-val tg" id="bc-tasks">—</div><div class="stat-label">Tasks settled</div></div>
+        <div class="stat-card"><div class="stat-val ta" id="bc-settled">—</div><div class="stat-label">TON processed</div></div>
+        <div class="stat-card"><div class="stat-val tc" id="bc-gstd-sent">—</div><div class="stat-label">GSTD distributed</div></div>
+        <div class="stat-card"><div class="stat-val" id="bc-pool">—</div><div class="stat-label">GSTD pool left</div></div>
+      </div>
+      <div class="row jb sm muted">
+        <span>Split: 85% nodes / 10% treasury / 5% buyback</span>
+        <span id="bc-paused" style="color:var(--green)">Active</span>
+      </div>
+    </div>
+
+    <!-- Contract Addresses -->
+    <div class="card mb20">
+      <div class="fw6 mb12">Deployed Contracts</div>
+      <div class="contract-row"><span class="muted sm">GSTD Jetton</span><span class="mono sm tc" id="bc-addr-gstd">EQDv6cYW...tZskTO</span><a href="https://tonscan.org/address/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO" target="_blank" class="sm muted">&#x2197;</a></div>
+      <div class="contract-row"><span class="muted sm">SettlementMaster</span><span class="mono sm tc" id="bc-addr-sm">EQAhuR_...ZrSS</span><a href="https://tonscan.org/address/EQAhuR_cEaIkRqs4gvgXSD-Qw2FRUkkBUZQkTBrFT5n-ZrSS" target="_blank" class="sm muted">&#x2197;</a></div>
+      <div class="contract-row"><span class="muted sm">EcosystemTreasury</span><span class="mono sm tc" id="bc-addr-tre">EQAbtT...Ii_</span><a href="https://tonscan.org/address/EQAbtTCsty8-gpX-45eotGWxnYG1c7ew7NFsZ9LJBRiv_Ii_" target="_blank" class="sm muted">&#x2197;</a></div>
+      <div class="contract-row"><span class="muted sm">Escrow</span><span class="mono sm tc">EQDqdy...rTF</span><a href="https://tonscan.org/address/EQDqdyFsruwXzlScIVM0c7LKbBb4EOgwLeFO4bpNnuwc7rTF" target="_blank" class="sm muted">&#x2197;</a></div>
+      <div class="contract-row"><span class="muted sm">DAOVoting</span><span class="mono sm tc">EQBQXv...ck-z</span><a href="https://tonscan.org/address/EQBQXvFtHbQnuUuLgkF-TKYw5dgo__XCEzVfBIm_OfW2ck-z" target="_blank" class="sm muted">&#x2197;</a></div>
+      <div class="contract-row"><span class="muted sm">AgentRegistry</span><span class="mono sm tc">EQBfrc...LR9</span><a href="https://tonscan.org/address/EQBfrc8qzoJ39-9ldQyC2Wif4HXbYHXKARvCUlY0IbwqNLR9" target="_blank" class="sm muted">&#x2197;</a></div>
+    </div>
+
+    <!-- Revenue split visual -->
+    <div class="card mb20">
+      <div class="fw6 mb12">Revenue Split (per settlement)</div>
+      <div class="split-bar-wrap">
+        <div class="split-seg" style="width:85%;background:var(--accent)"><span>85% Nodes</span></div>
+        <div class="split-seg" style="width:10%;background:var(--cyan)"><span>10% Treasury</span></div>
+        <div class="split-seg" style="width:5%;background:var(--green)"><span>5% Buyback</span></div>
+      </div>
+    </div>
+
+    <!-- This node's on-chain status -->
+    <div class="card">
+      <div class="row jb mb12">
+        <span class="fw6">This Node On-Chain</span>
+        <span id="bc-node-status" class="status-chip">Checking...</span>
+      </div>
+      <div class="row jb mb8"><span class="muted sm">Wallet</span><span class="mono sm" id="bc-node-wallet">—</span></div>
+      <div class="row jb mb8"><span class="muted sm">GSTD Balance</span><span class="tc" id="bc-node-gstd">—</span></div>
+      <div class="row jb"><span class="muted sm">TON Balance</span><span class="tg" id="bc-node-ton">—</span></div>
+    </div>
+  </div>
+
   <!-- SETTINGS -->
   <div class="page" id="page-settings">
     <div class="page-title">Settings</div>
@@ -947,6 +1012,7 @@ function showPage(name){
     case 'ipfs':loadIPFS();break;
     case 'validators':loadValidators();break;
     case 'wallet':loadWallet();break;
+    case 'blockchain':loadBlockchain();break;
     case 'api':loadAPIPage();break;
     case 'settings':loadSettings();break;
   }
@@ -1534,6 +1600,75 @@ async function stopNode(){
     res.innerHTML='<span class="tr sm">'+(d.message||'Node stopping...')+'</span>';
   } catch(e){res.innerHTML='<span class="tr sm">Node may have stopped. Use pm2 to restart.</span>';}
   finally{btn.disabled=false;}
+}
+
+// ── Blockchain ─────────────────────────────────────────────────────────
+const SM_ADDR  = 'EQAhuR_cEaIkRqs4gvgXSD-Qw2FRUkkBUZQkTBrFT5n-ZrSS';
+const SM_JW    = 'EQAskT7GEZSB7AiHJU_RXkIE_2kfVjdzjUUZ_qSkUCuwX79O';
+const TONSCAN  = 'https://tonscan.org/address/';
+const TONAPI   = 'https://tonapi.io/v2';
+
+async function loadBlockchain(){
+  // Load SM stats via TonCenter RPC
+  try {
+    const r = await fetch(`https://toncenter.com/api/v2/runGetMethod`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({address:SM_ADDR,method:'get_settlement_stats',stack:[]})
+    });
+    const d = await r.json();
+    if(d.ok && d.result?.stack){
+      const s = d.result.stack;
+      // stack: [totalSettled, totalGSTDMinted, taskCount, baseRate]
+      const totalSettled   = parseInt(s[0]?.[1]||'0',16)/1e9;
+      const totalGSTDMinted = parseInt(s[1]?.[1]||'0',16)/1e9;
+      const taskCount      = parseInt(s[2]?.[1]||'0',16);
+      set('bc-tasks',   taskCount.toLocaleString());
+      set('bc-settled', totalSettled.toFixed(3)+' TON');
+      set('bc-gstd-sent', totalGSTDMinted.toFixed(2)+' GSTD');
+    }
+  } catch(e){}
+
+  // GSTD pool balance via TonAPI
+  try {
+    const r = await fetch(`${TONAPI}/accounts/${encodeURIComponent(SM_JW)}/jettons`,
+      {headers:{Accept:'application/json'}});
+    const d = await r.json();
+    for(const b of (d.balances||[])){
+      if((b.jetton?.symbol||'').includes('GSTD')){
+        const bal = (Number(b.balance)/1e9).toFixed(2);
+        set('bc-pool', bal+' GSTD');
+        break;
+      }
+    }
+  } catch(e){ set('bc-pool','—'); }
+
+  // This node's wallet balance
+  const statusR = await api('/api/node/status').then(r=>r.json()).catch(()=>null);
+  const walletAddr = statusR?.wallet?.address;
+  if(walletAddr){
+    set('bc-node-wallet', walletAddr.slice(0,10)+'...'+walletAddr.slice(-6));
+    try {
+      const r = await fetch(`${TONAPI}/accounts/${encodeURIComponent(walletAddr)}/jettons`,
+        {headers:{Accept:'application/json'}});
+      const d = await r.json();
+      let gstd = '0';
+      for(const b of (d.balances||[])){
+        if((b.jetton?.symbol||'').includes('GSTD')){gstd=(Number(b.balance)/1e9).toFixed(4);break;}
+      }
+      set('bc-node-gstd', gstd+' GSTD');
+      // TON balance
+      const tr = await fetch(`${TONAPI}/accounts/${encodeURIComponent(walletAddr)}`,
+        {headers:{Accept:'application/json'}});
+      const td = await tr.json();
+      set('bc-node-ton', ((Number(td.balance||0))/1e9).toFixed(4)+' TON');
+      const chip = document.getElementById('bc-node-status');
+      if(chip){ chip.textContent='Active'; chip.style.background='rgba(34,197,94,0.15)'; chip.style.color='var(--green)'; }
+    } catch(e){}
+  } else {
+    const chip = document.getElementById('bc-node-status');
+    if(chip){ chip.textContent='No wallet'; chip.style.background='rgba(239,68,68,0.15)'; chip.style.color='var(--red)'; }
+  }
 }
 
 // ── Boot ────────────────────────────────────────────────────────────────
