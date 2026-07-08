@@ -12,7 +12,17 @@
  */
 
 import { EventEmitter } from 'events';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
+import { homedir } from 'os';
+
+function readOracleTaskCount(): number {
+    try {
+        const logPath = join(homedir(), 'trading_bot', 'data', 'oracle_log.jsonl');
+        if (!existsSync(logPath)) return 0;
+        return readFileSync(logPath, 'utf-8').split('\n').filter(l => l.trim()).length;
+    } catch { return 0; }
+}
 
 export interface NodeCapabilities {
     models: string[];
@@ -132,15 +142,17 @@ export class PlatformLink extends EventEmitter {
                     'X-Node-Id': this.nodeId,
                 },
                 body: JSON.stringify({
-                    node_id:        this.nodeId,
-                    wallet_address: this.walletAddress,
-                    node_name:      `Node-${this.nodeId}`,
-                    node_version:   this.version,
-                    uptime_hours:   Math.round(process.uptime() / 3600),
-                    queries_served: stats.queryCount || 0,
-                    capabilities:   models,
-                    models_loaded:  models,
-                    mode:           'node',
+                    node_id:         this.nodeId,
+                    wallet_address:  this.walletAddress,
+                    node_name:       `Node-${this.nodeId}`,
+                    node_version:    this.version,
+                    uptime_hours:    Math.round(process.uptime() / 3600),
+                    queries_served:  stats.queryCount || 0,
+                    tasks_completed: readOracleTaskCount(),
+                    gstd_earned:     stats.tasksCompleted ? stats.tasksCompleted * 0.00095 : 0,
+                    capabilities:    models,
+                    models_loaded:   models,
+                    mode:            'node',
                     ...(tunnelUrl && { node_url: tunnelUrl }),
                 }),
                 signal: AbortSignal.timeout(10000),
