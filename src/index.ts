@@ -55,6 +55,8 @@ import { hostname } from 'os';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import { EventEmitter } from 'events';
+EventEmitter.defaultMaxListeners = 50;
 
 // ─── AI Backend Model Detection ─────────────────────────────────
 // Returns the list of models this node can actually serve.

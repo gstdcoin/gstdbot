@@ -4050,7 +4050,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                 let containers: any[] = [];
                 try {
                     const { execSync } = await import('child_process');
-                    const output = execSync('docker ps -a --filter "name=gstd" --format "{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}"', { encoding: 'utf-8', timeout: 5000 }).trim();
+                    const output = execSync('docker ps -a --filter "name=gstd" --format "{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}"', { encoding: 'utf-8', stdio: 'pipe', timeout: 5000 }).trim();
                     if (output) {
                         containers = output.split('\n').map(l => {
                             const [name, image, status, ports] = l.split('|');

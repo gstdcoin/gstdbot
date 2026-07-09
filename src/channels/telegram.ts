@@ -263,9 +263,9 @@ export class TelegramChannel {
             const msg = `🐝 <b>GSTD — Collective Intelligence</b>\n\n` +
                 `🆓 <b>Free:</b> boosted mode — fast responses with quality above typical commercial assistants.\n\n` +
                 `🧠 <b>Paid tiers:</b>\n` +
-                `🔬 Council of 3 (${s.standard.cost.toFixed(1)} GSTD ≈ $${s.standard.costUsd}) — strong consensus\n` +
-                `🔥 Panel of 5 (${s.pro.cost.toFixed(1)} GSTD ≈ $${s.pro.costUsd}) — much deeper and stronger\n` +
-                `🧠 Swarm of 7 (${s.ultra.cost.toFixed(1)} GSTD ≈ $${s.ultra.costUsd}) — maximum verification power\n\n` +
+                `🔬 Council of 3 (${s.standard.cost.toFixed(2)} GSTD ≈ $${s.standard.costUsd.toFixed(3)}) — strong consensus\n` +
+                `🔥 Panel of 5 (${s.pro.cost.toFixed(2)} GSTD ≈ $${s.pro.costUsd.toFixed(3)}) — much deeper and stronger\n` +
+                `🧠 Swarm of 7 (${s.ultra.cost.toFixed(2)} GSTD ≈ $${s.ultra.costUsd.toFixed(3)}) — maximum verification power\n\n` +
                 `🔑 Free Ultra-Speed API key: /apikey (requires 10000 GSTD on linked wallet)\n\n` +
                 `💡 <i>Tap 🧠 Intelligence to choose your level.</i>`;
 
@@ -290,10 +290,10 @@ export class TelegramChannel {
                   `Share your phone's resources — earn GSTD automatically.\n\n` +
                   `<b>You need 0 GSTD to start.</b> Just link your wallet and tap Launch.\n\n` +
                   `💰 <b>Earnings:</b>\n` +
-                  `• 🥉 Bronze — 0.5 GSTD/h  (any phone)\n` +
-                  `• 🥈 Silver — 1.0 GSTD/h  (mid-range)\n` +
-                  `• 🥇 Gold   — 2.0 GSTD/h  (flagship)\n` +
-                  `• 💎 Platinum — 5.0 GSTD/h (tablet / PC-class)\n\n` +
+                  `• 📱 Any phone — earns per inference request served\n` +
+                  `• 🖥 Desktop 8GB+ — higher throughput, more earnings\n` +
+                  `• 🖥 Desktop 32GB+ — run large models, premium rates\n` +
+                  `<i>Actual earnings scale with network demand.</i>\n\n` +
                   `<b>What your node does:</b>\n` +
                   `⚙️ Serves AI inference requests from the network\n` +
                   `🔗 Relays P2P traffic between nodes\n` +
@@ -349,13 +349,13 @@ export class TelegramChannel {
         this.bot.command('gstd', async (ctx) => {
             const lang = this.lang(ctx);
             const msg = `🐝 <b>GSTD — Sovereign AI Network</b>\n\n` +
-                  `🧠 8 free AI models\n` +
-                  `⛏ Earn via nodes (Desktop + Mobile)\n` +
-                  `🔗 P2P bridge: TON · Solana · XRPL\n` +
-                  `⚡ Earn by running a compute node\n` +
-                  `🏛 Sovereign governance (DAO)\n` +
-                  `🔐 AI agent skill registry (app.gstdtoken.com/import)\n\n` +
-                  `🌐 <a href="https://gstdtoken.com">App</a> · <a href="https://github.com/gstdcoin/gstdbot">Node OS</a>`;
+                  `🧠 Free AI chat (8+ models)\n` +
+                  `⛏ Earn GSTD by running a node (Desktop + Mobile)\n` +
+                  `⚡ Pay for AI with GSTD — operators earn 90% of fees\n` +
+                  `🏛 Community-governed DePIN on TON\n` +
+                  `🔐 MCP skill registry (app.gstdtoken.com/import)\n` +
+                  `💰 Buy GSTD on STON.fi DEX\n\n` +
+                  `🌐 <a href="https://app.gstdtoken.com">App</a> · <a href="https://github.com/gstdcoin/gstdbot">Node OS</a>`;
             await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
         });
 
@@ -367,8 +367,7 @@ export class TelegramChannel {
             }
             const msg = `💰 <b>How to Buy GSTD</b>\n\n` +
                   `1️⃣ <b>Telegram Stars</b> — directly in bot, ⭐️ Top Up button\n` +
-                  `2️⃣ <b>STON.fi DEX</b> — swap TON → GSTD\n` +
-                  `3️⃣ <b>P2P Bridge</b> — from Solana or XRPL\n\n` +
+                  `2️⃣ <b>STON.fi DEX</b> — swap TON → GSTD\n\n` +
                   `👉 <a href="https://t.me/GstdAppBot?start=buy">Buy in bot</a>`;
             await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
         });
@@ -1335,32 +1334,22 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
     }
 
     private async handleBridge(ctx: any, lang: string) {
-        const bridgeUrl = 'https://gstdtoken.com/bridge';
+        const stonUrl = 'https://app.ston.fi/swap?from=TON&to=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO';
 
-        let feeInfo = '';
-        try {
-            const data = await this.apiCall('/api/v1/bridge/config');
-            if (data.fee_percent) {
-                feeInfo = `\n\n📊 Bridge fee: <b>${data.fee_percent}%</b> | Min: ${data.min_amount || 10} GSTD`;
-            }
-        } catch (_e) {}
-
-        const msg = `🌉 <b>P2P Bridge — Cross-Chain Transfers</b>${feeInfo}\n\n` +
-              `Transfer GSTD between blockchains:\n\n` +
-              `🔹 <b>TON → Solana</b> — verified by node network\n` +
-              `🔹 <b>TON → XRPL</b> — instant bridge to XRP Ledger\n\n` +
-              `🛡️ All transfers verified by ecosystem nodes.\n\n` +
-              `👇 Open the bridge:`;
+        const msg = `🔄 <b>Swap TON → GSTD</b>\n\n` +
+              `The easiest way to get GSTD is via <b>STON.fi</b> — the leading TON DEX.\n\n` +
+              `1️⃣ Connect your TON wallet (Tonkeeper / MyTonWallet)\n` +
+              `2️⃣ Select TON → GSTD\n` +
+              `3️⃣ Confirm the swap\n\n` +
+              `💡 <i>Cross-chain bridge (TON ↔ Solana / XRPL) is on the roadmap.</i>`;
 
         await ctx.reply(msg, {
             parse_mode: 'HTML',
+            link_preview_options: { is_disabled: true },
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '🌉 Open Bridge', url: bridgeUrl }],
-                    [
-                        { text: 'TON ↔ SOL', url: `${bridgeUrl}?from=ton&to=solana` },
-                        { text: 'TON ↔ XRP', url: `${bridgeUrl}?from=ton&to=xrpl` },
-                    ],
+                    [{ text: '🔄 Swap on STON.fi', url: stonUrl }],
+                    [{ text: '⭐️ Buy with Telegram Stars', callback_data: 'top_up' }],
                 ]
             }
         });
