@@ -673,17 +673,23 @@ export class SwarmAgent {
                 campaign_id:  (task as any).campaign_id || null,
             });
 
+            // Tasks submitted without an explicit reward_gstd (e.g. via the
+            // generic /api/v1/tasks/submit endpoint) arrive as undefined --
+            // `+= undefined` would silently poison totalEarnedGstd to NaN for
+            // the rest of the process's lifetime. Treat as zero instead.
+            const rewardGstd = typeof task.reward_gstd === 'number' && !isNaN(task.reward_gstd) ? task.reward_gstd : 0;
+
             this.stats.tasksCompleted++;
-            this.stats.totalEarnedGstd += task.reward_gstd;
+            this.stats.totalEarnedGstd += rewardGstd;
             this.stats.tasksByType[task.type] = (this.stats.tasksByType[task.type] || 0) + 1;
-            logActivity(`${this.stats.tierIcon} Task ${taskId.slice(0, 8)} completed → +${task.reward_gstd} GSTD (${task.type}) [total: ${this.stats.tasksCompleted}]`, 'success');
+            logActivity(`${this.stats.tierIcon} Task ${taskId.slice(0, 8)} completed → +${rewardGstd} GSTD (${task.type}) [total: ${this.stats.tasksCompleted}]`, 'success');
 
             // Submit consensus vote for this task result (mesh decentralization)
             const resultHash = createHash('sha256').update(JSON.stringify(result)).digest('hex').slice(0, 16);
             this.sovereign.submitConsensusVote(taskId, resultHash).catch(() => {});
 
             // Record in wallet
-            this.wallet.recordVerifiedEarning(task.reward_gstd, task.type as any, `Task ${task.type}: ${taskId.slice(0, 8)}`, taskId);
+            this.wallet.recordVerifiedEarning(rewardGstd, task.type as any, `Task ${task.type}: ${taskId.slice(0, 8)}`, taskId);
 
             // Save to collective memory if inference
             if (task.type === 'inference' && task.prompt && result?.response) {

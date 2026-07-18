@@ -157,9 +157,14 @@ export class NodeWallet {
 
     // ─── Record verified earning (only called after backend confirms) ──
     recordVerifiedEarning(amount: number, type: EarningEntry['type'], description: string, taskId?: string): void {
+        // Tasks submitted without an explicit reward_gstd (e.g. via the
+        // generic /api/v1/tasks/submit endpoint) arrive here as undefined/NaN --
+        // treat as zero rather than crashing the whole task-completion flow.
+        const safeAmount = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
+
         const entry: EarningEntry = {
             timestamp: new Date().toISOString(),
-            amount,
+            amount: safeAmount,
             type,
             taskId,
             description,
@@ -168,10 +173,10 @@ export class NodeWallet {
         this.earnings.unshift(entry);
         if (this.earnings.length > 1000) this.earnings.length = 1000;
 
-        this.localBalance.totalEarned += amount;
-        this.localBalance.gstd += amount;
+        this.localBalance.totalEarned += safeAmount;
+        this.localBalance.gstd += safeAmount;
 
-        logActivity(`+${amount.toFixed(4)} GSTD (${type}: ${description}) [verified]`, 'success');
+        logActivity(`+${safeAmount.toFixed(4)} GSTD (${type}: ${description}) [verified]`, 'success');
     }
 
     /**
