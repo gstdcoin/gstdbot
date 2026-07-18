@@ -252,9 +252,8 @@ export class GstdP2PNode extends EventEmitter {
 
         this.node.addEventListener('peer:disconnect', (evt: any) => {
             const peerId = evt.detail.toString();
-            // Keep record — just mark stale, don't delete
-            const rec = this.peers.get(peerId);
-            if (rec) rec.lastSeen = rec.lastSeen; // already tracked by heartbeat TTL
+            // Keep the peer record on disconnect — staleness is already tracked
+            // via lastSeen + heartbeat TTL elsewhere, nothing to update here.
             this.emit('peer:disconnected', peerId);
         });
     }
@@ -515,7 +514,8 @@ export class GstdP2PNode extends EventEmitter {
         let offset = 0;
         for (const c of chunks) { merged.set(c, offset); offset += c.length; }
         const text = new TextDecoder().decode(merged);
-        // Strip any leading framing bytes
+        // Strip any leading control-byte framing (protocol garbage, not user input)
+        // eslint-disable-next-line no-control-regex
         return text.replace(/^[ -]+/, '');
     }
 
