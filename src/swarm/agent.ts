@@ -977,7 +977,11 @@ export class SwarmAgent {
     private async checkTrainingCapable(): Promise<boolean> {
         const scriptPath = join(this.config.installDir, 'scripts', 'finetune.py');
         try {
-            const stdout = await this.runPythonScript([scriptPath, '--check'], 10_000);
+            // Importing torch+transformers+peft alone takes ~17s on this Pi
+            // (measured live during verification) -- 10s was too tight and made
+            // this check silently fail every time, permanently blocking the
+            // 'finetune' capability despite the environment being genuinely ready.
+            const stdout = await this.runPythonScript([scriptPath, '--check'], 30_000);
             const result = JSON.parse(stdout.trim().split('\n').pop() || '{}');
             return result.capable === true;
         } catch (_e) {
