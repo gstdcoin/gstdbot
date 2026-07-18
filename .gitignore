@@ -8,6 +8,8 @@ coverage/
 dist/
 venv-training/
 .pip-tmp/
+__pycache__/
+*.pyc
 reports/
 tsconfig.tsbuildinfo
 .superpowers/
