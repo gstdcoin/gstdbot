@@ -80,6 +80,7 @@ export class SwarmAgent {
     private memory: CollectiveMemory;
     private connected = false;
     private heartbeatTimer: NodeJS.Timeout | null = null;
+    private heartbeatRetryTimer: NodeJS.Timeout | null = null;
     private taskPollTimer: NodeJS.Timeout | null = null;
     private priorityPollTimer: NodeJS.Timeout | null = null;
     private startedAt = Date.now();
@@ -193,6 +194,7 @@ export class SwarmAgent {
 
     async stop(): Promise<void> {
         if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+        if (this.heartbeatRetryTimer) clearTimeout(this.heartbeatRetryTimer);
         if (this.taskPollTimer) clearInterval(this.taskPollTimer);
         if (this.priorityPollTimer) clearInterval(this.priorityPollTimer);
 
@@ -373,6 +375,11 @@ export class SwarmAgent {
                 this.stats.connected = false;
                 logActivity('Heartbeat failed — connection lost', 'error');
             }
+            // Platform node TTL is 10 min; the main timer only fires every 8 min,
+            // so one failed heartbeat leaves no margin before the node's KV record
+            // expires. Retry quickly instead of waiting for the next full cycle.
+            if (this.heartbeatRetryTimer) clearTimeout(this.heartbeatRetryTimer);
+            this.heartbeatRetryTimer = setTimeout(() => this.heartbeat(), 60_000);
         }
     }
 
