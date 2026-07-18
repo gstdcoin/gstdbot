@@ -988,14 +988,20 @@ export class SwarmAgent {
     private async checkTrainingCapable(): Promise<boolean> {
         const scriptPath = join(this.config.installDir, 'scripts', 'finetune.py');
         try {
-            // Importing torch+transformers+peft alone takes ~17s on this Pi
-            // (measured live during verification) -- 10s was too tight and made
-            // this check silently fail every time, permanently blocking the
-            // 'finetune' capability despite the environment being genuinely ready.
-            const stdout = await this.runPythonScript([scriptPath, '--check'], 30_000);
+            // Importing torch+transformers+peft alone takes 17-21s standalone on
+            // this Pi, and measurably longer during actual node startup (P2P mesh,
+            // wallet init, etc. competing for CPU concurrently) -- 30s was still
+            // observed to fail intermittently during real startup even though it
+            // comfortably passes in isolation. 60s gives real margin under
+            // startup-time contention instead of chasing this again per-restart.
+            const stdout = await this.runPythonScript([scriptPath, '--check'], 60_000);
             const result = JSON.parse(stdout.trim().split('\n').pop() || '{}');
             return result.capable === true;
-        } catch (_e) {
+        } catch (e: any) {
+            // Log why -- this check failing silently (as it did twice before this
+            // comment was added) is exactly what makes a too-short timeout hard to
+            // diagnose from the outside.
+            console.log(`    ⚠ Fine-tuning capability check failed: ${e.message || e}`);
             return false;
         }
     }
