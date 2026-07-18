@@ -10,10 +10,11 @@
  * - Sovereign Protocol integration (staking, P2P, governance, mesh)
  */
 
-import { cpus, totalmem, freemem, platform, arch, loadavg } from 'os';
+import { cpus, totalmem, freemem, platform, arch, loadavg, tmpdir } from 'os';
 import { createHash } from 'crypto';
-import { execSync } from 'child_process';
-import { readFileSync } from 'fs';
+import { execSync, spawn } from 'child_process';
+import { readFileSync, writeFileSync, unlinkSync } from 'fs';
+import { join } from 'path';
 import { logActivity } from '../gateway/server.js';
 import type { NodeConfig } from '../index.js';
 import type { NodeWallet } from '../wallet/manager.js';
@@ -88,6 +89,7 @@ export class SwarmAgent {
     public sovereign: SovereignSuite;
     private p2pNode: any = null;
     private avgLatencyMs = 0;
+    private trainingCapable = false;
 
     constructor(config: NodeConfig, wallet: NodeWallet, memory: CollectiveMemory) {
         this.config = config;
@@ -147,6 +149,16 @@ export class SwarmAgent {
         if (!this.config.swarm.enabled) {
             console.log('    Swarm disabled');
             return;
+        }
+
+        // Gate the 'finetune' capability on a real, verified Python training
+        // environment -- a node must not advertise it can train unless it
+        // actually can. This is what tasks/poll.ts's nodeCanHandle() checks
+        // against (it requires 'finetune' literally present in this array).
+        this.trainingCapable = await this.checkTrainingCapable();
+        if (this.trainingCapable && !this.config.models.available.includes('finetune')) {
+            this.config.models.available.push('finetune');
+            console.log('    🎓 Fine-tuning capability verified — advertising "finetune"');
         }
 
         // Register with platform
@@ -781,73 +793,58 @@ export class SwarmAgent {
 
     private async processFinetune(task: SwarmTask): Promise<any> {
         const p = (task as any).payload || {};
-        const model      = p.base_model || 'llama3.2:3b';
-        const domain     = p.domain     || 'general';
-        const steps      = Number(p.steps) || 100;
-        const jobId      = p.job_id     || '';
-        const shardId    = p.shard_id   || ((task as any).task_id || task.id);
+        const jobId   = p.job_id   || '';
+        const shardId = p.shard_id || ((task as any).task_id || task.id);
 
-        const ollamaUrl = (process.env.OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '');
-
-        // Verify model available locally
-        let available = false;
-        try {
-            const tags: any = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(3000) }).then(r => r.json());
-            available = (tags.models || []).some((m: any) =>
-                m.name === model || m.name.startsWith(model.split(':')[0])
-            );
-        } catch (_e) {}
-
-        if (!available) {
-            // Pull model — may take a while; timeout 5 min
-            await fetch(`${ollamaUrl}/api/pull`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: model, stream: false }),
-                signal: AbortSignal.timeout(300_000),
-            }).catch(() => {});
+        if (!this.trainingCapable) {
+            throw new Error('finetune capability not verified on this node');
         }
 
-        // Simulate training via domain-grounding inference pass
-        // (Real LoRA training requires Python/PEFT; this is Ollama-native approximation)
-        const startMs = Date.now();
-        let evalCount = 0;
+        const taskFile = join(tmpdir(), `gstd_finetune_task_${shardId}.json`);
+        writeFileSync(taskFile, JSON.stringify({
+            job_id:     jobId,
+            shard_id:   shardId,
+            base_model: p.base_model || 'qwen2.5:0.5b',
+            domain:     p.domain     || 'general',
+            shard_url:  p.shard_url  || '',
+            steps:      p.steps      || 100,
+        }));
+
+        const scriptPath = join(this.config.installDir, 'scripts', 'finetune.py');
+        const budgetSecs = parseInt(process.env.GSTD_FINETUNE_MAX_SECONDS || '180', 10);
+        const timeoutMs  = (budgetSecs + 30) * 1000; // training budget + subprocess/model-load overhead
+
+        let stdout: string;
         try {
-            const resp = await fetch(`${ollamaUrl}/api/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model,
-                    prompt: `Domain specialization training pass for "${domain}". Steps: ${steps}. Confirm model quality.`,
-                    stream: false,
-                    options: { temperature: 0.1, num_predict: Math.min(steps, 200) },
-                }),
-                signal: AbortSignal.timeout(120_000),
-            });
-            if (resp.ok) {
-                const data: any = await resp.json();
-                evalCount = data.eval_count || 0;
-            }
-        } catch (_e) {}
+            stdout = await this.runPythonScript([scriptPath, taskFile], timeoutMs);
+        } finally {
+            try { unlinkSync(taskFile); } catch (_e) { /* best effort cleanup */ }
+        }
 
-        const durationMs  = Date.now() - startMs;
-        const metaScore   = Math.min(0.99, 0.5 + (evalCount / 500));
-        const gradNorm    = 0.8 + Math.random() * 0.4;
-        const lossImprove = 0.02 + (metaScore - 0.5) * 0.1;
+        const result = JSON.parse(stdout.trim().split('\n').pop() || '{}');
+        if (!result.success) {
+            throw new Error(result.error || 'finetune subprocess failed');
+        }
+        if (result.metacognitive_score < 0.3) {
+            // Honest reporting: a low-quality shard should not count as done or
+            // earn a reward. Throwing routes to /tasks/fail via processTask()'s
+            // catch block instead of /tasks/complete.
+            throw new Error(`metacognitive_score ${result.metacognitive_score} below 0.3 threshold`);
+        }
 
-        logActivity(`Finetune shard ${shardId.slice(0, 10)} complete — model: ${model}, domain: ${domain}, score: ${metaScore.toFixed(2)}`, 'success');
+        logActivity(`Finetune shard ${shardId.slice(0, 10)} complete — model: ${result.model}, score: ${result.metacognitive_score.toFixed(2)}`, 'success');
 
         return {
             job_id:               jobId,
             shard_id:             shardId,
-            base_model:           model,
-            domain,
-            metacognitive_score:  parseFloat(metaScore.toFixed(3)),
-            gradient_norm:        parseFloat(gradNorm.toFixed(3)),
-            val_loss_improvement: parseFloat(lossImprove.toFixed(4)),
-            lora_path:            `gstd://lora/${jobId}/${shardId}`,
-            duration_ms:          durationMs,
-            steps_run:            evalCount || steps,
+            base_model:           result.model,
+            domain:               p.domain || 'general',
+            metacognitive_score:  result.metacognitive_score,
+            gradient_norm:        result.gradient_norm,
+            val_loss_improvement: result.val_loss_improvement,
+            lora_path:            `ipfs://${result.lora_cid}`,
+            duration_ms:          Math.round(result.training_seconds * 1000),
+            steps_run:            result.steps_run,
         };
     }
 
@@ -950,6 +947,42 @@ export class SwarmAgent {
             mode: this.config.mode,
             version: this.config.version,
         };
+    }
+
+    // ─── Python training subprocess bridge ────────────────────────
+    private runPythonScript(args: string[], timeoutMs: number): Promise<string> {
+        const pythonBin = join(this.config.installDir, 'venv-training', 'bin', 'python3');
+        return new Promise((resolve, reject) => {
+            const proc = spawn(pythonBin, args, { cwd: this.config.installDir });
+            let stdout = '';
+            let stderr = '';
+            const timer = setTimeout(() => {
+                proc.kill('SIGKILL');
+                reject(new Error(`python subprocess timed out after ${timeoutMs}ms`));
+            }, timeoutMs);
+            proc.stdout.on('data', (d) => { stdout += d.toString(); });
+            proc.stderr.on('data', (d) => { stderr += d.toString(); });
+            proc.on('close', (code) => {
+                clearTimeout(timer);
+                if (code === 0) resolve(stdout);
+                else reject(new Error(`python exited ${code}: ${stderr.slice(0, 500)}`));
+            });
+            proc.on('error', (err) => {
+                clearTimeout(timer);
+                reject(err);
+            });
+        });
+    }
+
+    private async checkTrainingCapable(): Promise<boolean> {
+        const scriptPath = join(this.config.installDir, 'scripts', 'finetune.py');
+        try {
+            const stdout = await this.runPythonScript([scriptPath, '--check'], 10_000);
+            const result = JSON.parse(stdout.trim().split('\n').pop() || '{}');
+            return result.capable === true;
+        } catch (_e) {
+            return false;
+        }
     }
 
     private async apiCall(endpoint: string, data: any, method?: string, query?: string): Promise<any> {

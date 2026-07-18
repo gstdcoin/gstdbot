@@ -75,18 +75,6 @@ export interface TrainingStats {
     gpuHoursContributed: number;
 }
 
-// Supported base models for V1
-export const SUPPORTED_MODELS: Record<string, { minVramGb: number; ollamaId: string }> = {
-    'llama3.1:8b':  { minVramGb: 6, ollamaId: 'llama3.1:8b' },
-    'llama3.2:3b':  { minVramGb: 3, ollamaId: 'llama3.2:3b' },
-    'llama3.2:1b':  { minVramGb: 2, ollamaId: 'llama3.2:1b' },
-    'qwen2.5:7b':   { minVramGb: 6, ollamaId: 'qwen2.5:7b' },
-    'qwen2.5:3b':   { minVramGb: 3, ollamaId: 'qwen2.5:3b' },
-    'mistral:7b':   { minVramGb: 6, ollamaId: 'mistral:7b' },
-    'phi3:mini':    { minVramGb: 3, ollamaId: 'phi3:mini' },
-    'gemma2:2b':    { minVramGb: 2, ollamaId: 'gemma2:2b' },
-};
-
 // ─── Swarm Training Manager ─────────────────────────────────────
 export class SwarmTrainer {
     private config: NodeConfig;
@@ -121,8 +109,6 @@ export class SwarmTrainer {
 
         const hasOllama = await this.checkOllama();
         if (hasOllama) logActivity('Ollama detected — local model management enabled', 'success');
-
-        this.pollTimer = setInterval(() => this.pollTrainingJobs(), 30_000);
 
         // Initialize health monitor
         this.health = new NodeHealth(this.config.nodeId, this.config.swarm.apiUrl);
@@ -239,173 +225,6 @@ export class SwarmTrainer {
             }
         } catch (_e) {}
         return null;
-    }
-
-    private async pollTrainingJobs(): Promise<void> {
-        if (!this.config.swarm.enabled) return;
-        try {
-            const hasOllama = await this.checkOllama();
-            const caps: string[] = hasOllama ? ['finetune', 'inference'] : ['inference'];
-            const resp = await fetch(`${this.config.swarm.apiUrl}/tasks/poll`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    node_id:      this.config.nodeId,
-                    capabilities: caps,
-                }),
-                signal: AbortSignal.timeout(5000),
-            });
-            if (resp.ok) {
-                const data: any = await resp.json();
-                if (data.task && data.task.type === 'finetune') {
-                    await this.processTrainingJob(data.task);
-                }
-            }
-        } catch (_e) {}
-    }
-
-    private async processTrainingJob(job: TrainingJob): Promise<void> {
-        job.shards = job.shards || [];
-        job.checkpoints = job.checkpoints || [];
-        this.activeJobs.set(job.id, job);
-        this.stats.activeJobs++;
-        logActivity(`Training job started: ${job.type} (${job.baseModel})`, 'info');
-
-        try {
-            switch (job.type) {
-                case 'finetune':   await this.processFinetune(job); break;
-                case 'federated':  await this.processFederated(job); break;
-                case 'distillation': await this.processDistillation(job); break;
-                case 'embedding':  await this.processEmbeddingTraining(job); break;
-            }
-            job.status = 'complete';
-            job.progress = 100;
-            this.stats.completedJobs++;
-            this.stats.gstdEarnedTraining += job.rewardGstd;
-
-            await fetch(`${this.config.swarm.apiUrl}/tasks/complete`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ node_id: this.config.nodeId, task_id: job.id, job_id: job.id, status: 'complete' }),
-                signal: AbortSignal.timeout(10000),
-            }).catch(() => {});
-
-            logActivity(`Training complete: ${job.type} → +${job.rewardGstd} GSTD`, 'success');
-        } catch (e: any) {
-            job.status = 'failed';
-            logActivity(`Training failed: ${e.message}`, 'error');
-            await fetch(`${this.config.swarm.apiUrl}/tasks/fail`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ node_id: this.config.nodeId, task_id: job.id, error: e.message }),
-                signal: AbortSignal.timeout(5000),
-            }).catch(() => {});
-        } finally {
-            this.activeJobs.delete(job.id);
-            this.completedJobs.unshift(job);
-            if (this.completedJobs.length > 100) this.completedJobs.length = 100;
-            this.stats.activeJobs--;
-        }
-    }
-
-    // ─── Training Strategies ─────────────────────────────────────
-    private async processFinetune(job: TrainingJob): Promise<void> {
-        const hasOllama = await this.checkOllama();
-        if (!hasOllama) throw new Error('Ollama not available for fine-tuning');
-
-        const modelSpec = SUPPORTED_MODELS[job.baseModel];
-        if (!modelSpec) throw new Error(`Unsupported model: ${job.baseModel}`);
-
-        await this.pullModel(modelSpec.ollamaId);
-
-        for (let epoch = 0; epoch < job.totalEpochs; epoch++) {
-            job.epoch = epoch + 1;
-            job.updatedAt = new Date().toISOString();
-            this.stats.totalEpochsTrained++;
-
-            if (job.config.dataset) {
-                await this.trainEpochOllama(job, modelSpec.ollamaId, epoch);
-            }
-
-            job.progress = Math.round(((epoch + 1) / job.totalEpochs) * 100);
-            logActivity(`Fine-tune epoch ${epoch + 1}/${job.totalEpochs}: ${job.baseModel}`, 'info');
-        }
-
-        this.stats.gpuHoursContributed += (job.totalEpochs * 0.5);
-    }
-
-    private async processFederated(job: TrainingJob): Promise<void> {
-        for (let epoch = 0; epoch < job.totalEpochs; epoch++) {
-            job.epoch = epoch + 1;
-            job.progress = Math.round(((epoch + 1) / job.totalEpochs) * 80);
-            job.updatedAt = new Date().toISOString();
-            this.stats.totalEpochsTrained++;
-
-            if (job.config.dataset) {
-                await this.trainEpochOllama(job, job.baseModel, epoch);
-            }
-        }
-        job.status = 'aggregating';
-        job.progress = 90;
-        await new Promise(r => setTimeout(r, 1000));
-        job.progress = 100;
-    }
-
-    private async processDistillation(job: TrainingJob): Promise<void> {
-        job.progress = 0;
-        for (let step = 0; step < 10; step++) {
-            job.progress = Math.round(((step + 1) / 10) * 100);
-            job.updatedAt = new Date().toISOString();
-            await new Promise(r => setTimeout(r, 500));
-        }
-    }
-
-    private async processEmbeddingTraining(job: TrainingJob): Promise<void> {
-        for (let step = 0; step < job.totalEpochs; step++) {
-            job.epoch = step + 1;
-            job.progress = Math.round(((step + 1) / job.totalEpochs) * 100);
-            job.updatedAt = new Date().toISOString();
-            this.stats.totalEpochsTrained++;
-            await new Promise(r => setTimeout(r, 300));
-        }
-    }
-
-    // ─── Ollama Integration ──────────────────────────────────────
-    private async pullModel(modelId: string): Promise<void> {
-        try {
-            const resp = await fetch('http://localhost:11434/api/pull', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: modelId, stream: false }),
-                signal: AbortSignal.timeout(300_000),
-            });
-            if (!resp.ok) throw new Error(`Pull failed: ${resp.status}`);
-            logActivity(`Model pulled: ${modelId}`, 'success');
-        } catch (e: any) {
-            logActivity(`Model pull warning: ${e.message}`, 'warn');
-        }
-    }
-
-    private async trainEpochOllama(job: TrainingJob, modelId: string, epoch: number): Promise<void> {
-        try {
-            const resp = await fetch('http://localhost:11434/api/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: modelId,
-                    prompt: `Training epoch ${epoch + 1} for domain: ${job.domain}. Verify model response quality.`,
-                    stream: false,
-                    options: { temperature: 0.1, num_predict: 50 },
-                }),
-                signal: AbortSignal.timeout(30_000),
-            });
-            if (resp.ok) {
-                const data: any = await resp.json();
-                if (data.eval_count) {
-                    job.loss = Math.max(0, 1 - (data.eval_count / 1000));
-                }
-            }
-        } catch (_e) {}
     }
 
     // ─── Model Registry ──────────────────────────────────────────
