@@ -6,6 +6,8 @@ coverage/
 !src/coverage/
 .gstdbot/
 dist/
+venv-training/
+.pip-tmp/
 reports/
 tsconfig.tsbuildinfo
 .superpowers/
