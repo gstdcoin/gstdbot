@@ -14,14 +14,24 @@ import os
 import json
 import math
 import time
+import re
+import shutil
 import hashlib
 import tarfile
 import tempfile
 import subprocess
 import urllib.request
+import urllib.parse
 from pathlib import Path
 
 IPFS_API = os.environ.get("GSTD_IPFS_API", "http://127.0.0.1:5001")
+
+# Last line of defense against SSRF: the platform's job-submission API
+# (frontend/src/pages/api/v1/training/jobs.ts) blocks these same host classes
+# before a job is queued, but tasks can also reach this node via the
+# unauthenticated generic task-submission endpoint, which doesn't run that
+# validation -- so we replicate the check here too.
+BLOCKED_HOSTS = re.compile(r'^(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|::1|fd|fc)', re.IGNORECASE)
 
 # Ollama-style model id -> real, ungated (Apache-2.0) HF equivalent + hardware floor.
 # All Qwen2.5-Instruct on purpose: same license family across every size, so the
@@ -72,6 +82,9 @@ def check_capacity(base_model, free_gb, has_gpu, vram_gb):
 def download_shard(url: str, job_id: str, work_dir: Path) -> Path:
     if not url.startswith("https://"):
         raise ValueError("shard_url must be https")
+    hostname = urllib.parse.urlparse(url).hostname or ""
+    if BLOCKED_HOSTS.match(hostname):
+        raise ValueError(f"shard_url host not allowed: {hostname}")
     dest = work_dir / f"{job_id}_{hashlib.md5(url.encode()).hexdigest()[:8]}.jsonl"
     urllib.request.urlretrieve(url, str(dest))
     return dest
@@ -292,6 +305,8 @@ def main():
     except Exception as e:
         print(json.dumps({"success": False, "job_id": task.get("job_id", "unknown"), "error": str(e)}))
         sys.exit(1)
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":

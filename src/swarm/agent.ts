@@ -817,8 +817,13 @@ export class SwarmAgent {
         }));
 
         const scriptPath = join(this.config.installDir, 'scripts', 'finetune.py');
-        const budgetSecs = parseInt(process.env.GSTD_FINETUNE_MAX_SECONDS || '180', 10);
-        const timeoutMs  = (budgetSecs + 30) * 1000; // training budget + subprocess/model-load overhead
+        const budgetSecs   = parseInt(process.env.GSTD_FINETUNE_MAX_SECONDS || '180', 10);
+        const downloadSecs = parseInt(process.env.GSTD_FINETUNE_DOWNLOAD_BUDGET_SECONDS || '300', 10); // cold HF model download (~1GB) on a slow link
+        const uploadSecs    = parseInt(process.env.GSTD_FINETUNE_UPLOAD_BUDGET_SECONDS || '60', 10);    // save_pretrained + tar + IPFS upload
+        // training budget + cold-download allowance (first run, HF cache cold) + post-training
+        // save/tar/IPFS-upload allowance -- budgetSecs alone only bounds the training loop inside
+        // finetune.py and leaves everything else unaccounted for.
+        const timeoutMs = (budgetSecs + downloadSecs + uploadSecs) * 1000;
 
         let stdout: string;
         try {
