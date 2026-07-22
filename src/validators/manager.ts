@@ -27,6 +27,10 @@ const CONFIG_DIR = process.env.GSTD_CONFIG_DIR || '/home/bot/.config/gstdbot';
 const VALIDATORS_FILE = join(CONFIG_DIR, 'validators.json');
 const VALIDATORS_DIR  = join(CONFIG_DIR, 'validators');
 
+const LITE_CLIENT_DIR = process.env.GSTD_LITE_CLIENT_DIR || '/home/bot/ton-bin';
+const HELIOS_DIR       = process.env.GSTD_HELIOS_DIR      || '/home/bot/helios-bin';
+const BITCOIN_DIR      = process.env.GSTD_BITCOIN_DIR     || '/home/bot/bitcoin-bin';
+
 export type ChainId = 'ton' | 'eth' | 'btc' | 'sol' | 'xrp';
 
 export interface ChainSpec {
@@ -189,7 +193,7 @@ export class ValidatorManager extends EventEmitter {
 
     private async startTon(state: ValidatorState): Promise<boolean> {
         // TON lite-client: lightweight, connects to public validators
-        const binPath = '/home/bot/ton-bin/lite-client';
+        const binPath = `${LITE_CLIENT_DIR}/lite-client`;
         if (!existsSync(binPath)) return false;
 
         const configPath = join(VALIDATORS_DIR, 'ton-global.config.json');
@@ -228,7 +232,7 @@ export class ValidatorManager extends EventEmitter {
 
     private async startEth(state: ValidatorState): Promise<boolean> {
         // Helios ETH light client (Rust binary)
-        const binPath = '/home/bot/helios-bin/helios';
+        const binPath = `${HELIOS_DIR}/helios`;
         if (!existsSync(binPath)) return false;
 
         const proc = spawn(binPath, [
@@ -259,7 +263,7 @@ export class ValidatorManager extends EventEmitter {
 
     private async startBtc(state: ValidatorState): Promise<boolean> {
         // Bitcoin Core with pruning (only need 5GB not 700GB)
-        const binPath = '/home/bot/bitcoin-bin/bitcoind';
+        const binPath = `${BITCOIN_DIR}/bitcoind`;
         if (!existsSync(binPath)) return false;
 
         const dataDir = join(VALIDATORS_DIR, 'bitcoin');
@@ -336,24 +340,24 @@ export class ValidatorManager extends EventEmitter {
     private async installTon(): Promise<void> {
         const arch = process.arch === 'arm64' ? 'arm64' : 'x86_64';
         const url  = `https://github.com/ton-blockchain/ton/releases/latest/download/lite-client-linux-${arch}`;
-        mkdirSync('/home/bot/ton-bin', { recursive: true });
-        execSync(`curl -fsSL "${url}" -o /home/bot/ton-bin/lite-client && chmod +x /home/bot/ton-bin/lite-client`, { timeout: 120000 });
+        mkdirSync(LITE_CLIENT_DIR, { recursive: true });
+        execSync(`curl -fsSL "${url}" -o ${LITE_CLIENT_DIR}/lite-client && chmod +x ${LITE_CLIENT_DIR}/lite-client`, { timeout: 120000 });
     }
 
     private async installEth(): Promise<void> {
         const arch = process.arch === 'arm64' ? 'aarch64' : 'x86_64';
         // Helios is a Rust light client — grab latest release
         const url = `https://github.com/a16z/helios/releases/latest/download/helios-${arch}-unknown-linux-gnu.tar.gz`;
-        mkdirSync('/home/bot/helios-bin', { recursive: true });
-        execSync(`curl -fsSL "${url}" | tar -xz -C /home/bot/helios-bin/ && chmod +x /home/bot/helios-bin/helios`, { timeout: 120000 });
+        mkdirSync(HELIOS_DIR, { recursive: true });
+        execSync(`curl -fsSL "${url}" | tar -xz -C ${HELIOS_DIR}/ && chmod +x ${HELIOS_DIR}/helios`, { timeout: 120000 });
     }
 
     private async installBtc(): Promise<void> {
         const arch = process.arch === 'arm64' ? 'aarch64-linux-gnu' : 'x86_64-linux-gnu';
         const ver  = '28.0';
         const url  = `https://bitcoincore.org/bin/bitcoin-core-${ver}/bitcoin-${ver}-${arch}.tar.gz`;
-        mkdirSync('/home/bot/bitcoin-bin', { recursive: true });
-        execSync(`curl -fsSL "${url}" | tar -xz -C /tmp/btc-tmp --strip-components=2 "bitcoin-${ver}/bin/bitcoind" && mv /tmp/btc-tmp/bitcoind /home/bot/bitcoin-bin/ && chmod +x /home/bot/bitcoin-bin/bitcoind`, { timeout: 300000 });
+        mkdirSync(BITCOIN_DIR, { recursive: true });
+        execSync(`curl -fsSL "${url}" | tar -xz -C /tmp/btc-tmp --strip-components=2 "bitcoin-${ver}/bin/bitcoind" && mv /tmp/btc-tmp/bitcoind ${BITCOIN_DIR}/ && chmod +x ${BITCOIN_DIR}/bitcoind`, { timeout: 300000 });
     }
 
     // ─── Poll status ──────────────────────────────────────────────
