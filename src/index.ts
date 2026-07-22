@@ -39,7 +39,7 @@ import { CollectiveMemory } from './memory/collective.js';
 import { NodeWallet } from './wallet/manager.js';
 import { TonConnectManager } from './wallet/tonconnect.js';
 import { MobileNodeManager } from './channels/miniapp.js';
-import { BlockchainManager } from './blockchain/token.js';
+import { BlockchainManager, CONTRACTS } from './blockchain/token.js';
 import { RemoteAccessManager } from './network/remote.js';
 import { ResourceSharing } from './network/resources.js';
 import { SwarmTrainer } from './training/federated.js';
@@ -319,7 +319,7 @@ async function main(): Promise<void> {
     const tonConnect = new TonConnectManager({
         network: config.tonconnect.network,
         bridgeUrl: config.tonconnect.bridgeUrl,
-        gstdJettonAddress: process.env.GSTD_JETTON_ADDRESS || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
+        gstdJettonAddress: CONTRACTS.GSTD_TOKEN,
     });
     if (config.tonconnect.enabled) {
         const mnemonic = process.env.GSTD_WALLET_MNEMONIC?.split(' ');
@@ -335,7 +335,7 @@ async function main(): Promise<void> {
         mobileNode = new MobileNodeManager({
             botToken: telegramToken,
             apiUrl: apiUrl.replace(/\/api\/v1$/, '') + '/api/v1',
-            gstdJettonAddress: process.env.GSTD_JETTON_ADDRESS || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
+            gstdJettonAddress: CONTRACTS.GSTD_TOKEN,
         });
         mobileNode.registerRoutes(gateway.getExpressApp());
     } else {

@@ -13,6 +13,7 @@
  */
 
 import { logActivity } from '../gateway/server.js';
+import { CONTRACTS } from '../blockchain/token.js';
 
 // ─── Interfaces ──────────────────────────────────────────────────
 
@@ -52,7 +53,7 @@ const DEFAULT_CONFIG: TonConnectConfig = {
     toncenterUrl: 'https://toncenter.com',
     bridgeUrl: 'https://connect.ton.org/bridge',
     network: 'mainnet',
-    gstdJettonAddress: process.env.GSTD_JETTON_ADDRESS || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
+    gstdJettonAddress: CONTRACTS.GSTD_TOKEN,
 };
 
 // ─── TON Connect Manager ─────────────────────────────────────────

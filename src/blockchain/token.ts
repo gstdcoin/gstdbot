@@ -61,7 +61,7 @@ export interface GSTDPrice {
 // ─── GSTD Smart Contract Addresses (TON Mainnet) ────────────────
 // GSTD Jetton Contract — deployed & verified on TON mainnet
 // https://tonviewer.com/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO
-const CONTRACTS = {
+export const CONTRACTS = {
     GSTD_TOKEN:    process.env.GSTD_CONTRACT_TOKEN    || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
     STAKING:       process.env.GSTD_CONTRACT_STAKING  || 'EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi',
     SWARM_REWARDS: process.env.GSTD_CONTRACT_REWARDS  || 'EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi',

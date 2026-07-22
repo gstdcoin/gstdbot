@@ -8,6 +8,7 @@
 
 import { createHash } from 'crypto';
 import { logActivity } from '../gateway/server.js';
+import { CONTRACTS } from './token.js';
 
 export interface BridgeTransaction {
     txId: string;
@@ -49,7 +50,7 @@ const CHAIN_APIS = {
 
 export class CrossChainBridge {
     private static CONTRACTS = {
-        TON: 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
+        TON: CONTRACTS.GSTD_TOKEN,
         Solana: 'AzN7uPhQZgThxsRvhNGHPUPRjdEjScTbqQdf5gt6Fqby',
         XRPL_Issuer: 'ryHSvxUqpcTjoESHbCkMJoqzenjFgPQSf',
     };
