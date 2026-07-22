@@ -13,3 +13,4 @@ __pycache__/
 reports/
 tsconfig.tsbuildinfo
 .superpowers/
+/cloudflared

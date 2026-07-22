@@ -11,6 +11,18 @@ CF_BIN="$(dirname "$0")/cloudflared"
 
 log() { echo "[$(date -u +%H:%M:%S)] $*" | tee -a "$LOG"; }
 
+if [ ! -f "$CF_BIN" ]; then
+    log "Downloading cloudflared..."
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        x86_64) CF_ARCH="amd64" ;;
+        aarch64|arm64) CF_ARCH="arm64" ;;
+        *) log "Unsupported architecture: $ARCH"; exit 1 ;;
+    esac
+    curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${CF_ARCH}" -o "$CF_BIN"
+    chmod +x "$CF_BIN"
+fi
+
 GSTDAI_DIR="/home/bot/gstdai"
 
 update_github_node_url() {
