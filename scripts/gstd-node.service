@@ -1,3 +1,7 @@
+# Template assumes a user named "ubuntu" -- adjust all /home/ubuntu paths
+# (and User=/Group=) below to match your actual deployment user before
+# installing. This is a separate, generic template from the repo-root
+# gstdbot.service, which reflects one specific deployment's actual user.
 [Unit]
 Description=GSTD Node OS — Sovereign AI Node
 After=network.target docker.service
