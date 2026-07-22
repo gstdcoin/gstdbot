@@ -513,6 +513,20 @@ async function main(): Promise<void> {
             
             if (localHash === remoteHash) return; // Already up to date
 
+            // Only ever fast-forward. If origin/main is NOT a descendant of local HEAD
+            // (e.g. local has commits origin doesn't have yet -- a real scenario if a
+            // developer is working directly in this install directory, as happened live:
+            // this exact check-and-update loop once reset a locally-ahead HEAD back to an
+            // older origin/main, silently discarding in-progress local commits, and was
+            // only saved by an unrelated build failure triggering the rollback path below),
+            // do not touch the working tree at all.
+            try {
+                execSync(`git merge-base --is-ancestor ${localHash} ${remoteHash}`, { cwd: installDir, timeout: 5000 });
+            } catch {
+                logActivity(`Skipping update: origin/main (${remoteHash.slice(0,8)}) is not a descendant of local HEAD (${localHash.slice(0,8)}) -- local commits would be lost`, 'warn');
+                return;
+            }
+
             // ── STEP 1: Snapshot current state for rollback ────────────
             const snapshotRef = localHash;
             logActivity(`Update available: ${localHash.slice(0,8)} → ${remoteHash.slice(0,8)}`, 'info');

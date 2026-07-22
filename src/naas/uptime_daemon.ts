@@ -59,6 +59,7 @@ export class UptimeDaemon {
     private cachedIOPS: number = 0;
     private cachedPing: number = 0;
     private heartbeatCount: number = 0;
+    private heartbeatInFlight: boolean = false;
 
     constructor(nodeId: string, walletAddress: string = '') {
         this.nodeId = nodeId;
@@ -109,6 +110,20 @@ export class UptimeDaemon {
     // ─── Heartbeat ───────────────────────────────────────────
 
     private async sendHeartbeat(): Promise<void> {
+        // Guard against overlapping requests: the platform's heartbeat endpoint has been
+        // observed taking up to ~18s to respond (a slow full-keyspace KEYS scan server-side),
+        // close to the 30s firing interval -- without this guard, a slow response could still
+        // be in flight when the next interval tick fires a second concurrent request.
+        if (this.heartbeatInFlight) return;
+        this.heartbeatInFlight = true;
+        try {
+            await this.doSendHeartbeat();
+        } finally {
+            this.heartbeatInFlight = false;
+        }
+    }
+
+    private async doSendHeartbeat(): Promise<void> {
         this.heartbeatCount++;
         const containers = this.getContainerStatuses();
         const runningChains = containers
@@ -157,7 +172,12 @@ export class UptimeDaemon {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(heartbeat),
-                signal: AbortSignal.timeout(10000),
+                // Observed live: the platform's heartbeat endpoint took ~18s to respond
+                // (a slow full-keyspace KEYS scan server-side, see kv.ts's kvKeys()) --
+                // the old 10s timeout meant every single heartbeat from this daemon had been
+                // timing out for 3+ days straight (confirmed via live logs: heartbeatCount in
+                // the high thousands, error logged every 10th attempt, i.e. every one failed).
+                signal: AbortSignal.timeout(25000),
             });
 
             if (resp.ok) {
