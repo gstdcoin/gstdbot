@@ -436,6 +436,16 @@ export class SwarmAgent {
                 return;
             }
 
+            // Only reset if local HEAD is genuinely behind origin/main (an ancestor of
+            // it) -- otherwise local has commits origin doesn't have, and resetting
+            // --hard would silently discard them.
+            try {
+                execSync(`git merge-base --is-ancestor ${snapshot} ${remote}`, { cwd: installDir, timeout: 5000 });
+            } catch {
+                logActivity(`Skipping update: origin/main (${remote.slice(0, 8)}) is not a descendant of local HEAD (${snapshot.slice(0, 8)}) -- local commits would be lost`, 'warn');
+                return;
+            }
+
             execSync('git reset --hard origin/main', { cwd: installDir, timeout: 30000 });
 
             // 3. VERIFY — build check before restart
@@ -1010,6 +1020,11 @@ export class SwarmAgent {
         const url = this.config.swarm.apiUrl + endpoint + (query || '');
         const walletAddr = this.wallet.getAddress() || '';
         const isGet = method === 'GET' || endpoint.startsWith('/nodes/public');
+        // /nodes/heartbeat and /nodes/register have been observed taking ~18-22s in
+        // production (same root cause already fixed in uptime_daemon.ts) -- give them
+        // more headroom than the fast, frequently-polled endpoints like /tasks/poll,
+        // which should keep failing fast to avoid piling up calls on a 5s interval.
+        const timeoutMs = (endpoint === '/nodes/heartbeat' || endpoint === '/nodes/register') ? 25_000 : 10_000;
         try {
             const resp = await fetch(url, {
                 method: isGet ? 'GET' : 'POST',
@@ -1019,7 +1034,7 @@ export class SwarmAgent {
                     'X-Node-Id': this.config.nodeId,
                 },
                 body: isGet ? undefined : JSON.stringify(data),
-                signal: AbortSignal.timeout(10_000),
+                signal: AbortSignal.timeout(timeoutMs),
             });
             if (resp.ok) return await resp.json().catch(() => ({ ok: true }));
             return null;

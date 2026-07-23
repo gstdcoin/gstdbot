@@ -161,6 +161,20 @@ function isValidToken(token: string): boolean {
     if (Date.now() > exp) { authSessions.delete(token); return false; }
     return true;
 }
+// Gate for destructive/state-changing endpoints (wallet wipe, restart, self-update).
+// Deliberately does NOT accept isLocalRequest()'s bypass: this node is reachable
+// through a public Cloudflare tunnel that proxies to localhost, so every tunneled
+// request already looks "local" to Express -- isLocalRequest() cannot distinguish
+// the operator from a stranger who found the tunnel URL. A valid PIN-derived
+// session token is the only signal actually tied to the operator.
+function requireNodeAuth(req: any, res: any): boolean {
+    const token = (req.headers?.authorization?.replace('Bearer ', '') || req.query?.token || req.body?.token || '') as string;
+    if (!isValidToken(token)) {
+        res.status(401).json({ error: 'Authentication required — log in via the dashboard PIN first' });
+        return false;
+    }
+    return true;
+}
 
 // ─── Auth Rate Limiting ──────────────────────────────────────────
 const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
@@ -455,7 +469,8 @@ export class OmegaGateway {
             }
         });
 
-        this.app.post('/api/update', async (_req, res) => {
+        this.app.post('/api/update', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             try {
                 const installDir = process.env.GSTD_INSTALL_DIR || require('os').homedir() + '/gstdbot';
                 const branch = getDefaultBranch(installDir);
@@ -485,8 +500,16 @@ export class OmegaGateway {
                         cwd: installDir, encoding: 'utf-8', timeout: 30000,
                     });
                 } catch (_e) {
-                    // If ff-only fails (diverged), force reset to remote
+                    // ff-only failed -- history has diverged. Only force-reset if local
+                    // HEAD is genuinely behind origin (an ancestor of it); if local has
+                    // its own commits origin doesn't have, resetting --hard would
+                    // silently discard them.
                     execSync(`git fetch origin ${branch}`, { cwd: installDir, encoding: 'utf-8', timeout: 15000 });
+                    try {
+                        execSync(`git merge-base --is-ancestor HEAD origin/${branch}`, { cwd: installDir, timeout: 5000 });
+                    } catch {
+                        throw new Error(`Local HEAD has diverged from origin/${branch} -- refusing to reset --hard (would discard local commits)`);
+                    }
                     pullOutput = execSync(`git reset --hard origin/${branch}`, {
                         cwd: installDir, encoding: 'utf-8', timeout: 10000,
                     });
@@ -1739,6 +1762,7 @@ export class OmegaGateway {
 
         // ─── Node Control ────────────────────────────────────────
         this.app.post('/api/node/control', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const { action } = req.body || {};
             logActivity(`Control command: ${action}`, 'warn');
             switch (action) {
@@ -1768,19 +1792,22 @@ export class OmegaGateway {
         });
 
         // Convenience aliases so dashboard can call predictable URLs
-        this.app.post('/api/node/restart', (_req, res) => {
+        this.app.post('/api/node/restart', (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             logActivity('Node restart initiated...', 'warn');
             res.json({ ok: true, message: 'Restarting node...' });
             setTimeout(() => process.exit(0), 1000);
         });
 
-        this.app.post('/api/node/stop', (_req, res) => {
+        this.app.post('/api/node/stop', (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             logActivity('Node stop initiated...', 'warn');
             res.json({ ok: true, message: 'Node stopping. Use pm2 start gstdbot to restart.' });
             setTimeout(() => process.exit(1), 1000);
         });
 
-        this.app.post('/api/node/update', async (_req, res) => {
+        this.app.post('/api/node/update', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             try {
                 const cwd = join(__dirname, '../..');
                 const branch = getDefaultBranch(cwd);
@@ -2626,6 +2653,7 @@ export class OmegaGateway {
         // ─── REINSTALL & RESET ───────────────────────────────────
         // ═══════════════════════════════════════════════════════════
         this.app.post('/api/system/reinstall', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const { preserveData = true } = req.body || {};
             logActivity(`System reinstall requested (preserveData=${preserveData})`, 'warn');
             try {
@@ -2659,6 +2687,7 @@ export class OmegaGateway {
         });
 
         this.app.post('/api/system/reset', (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const { confirm } = req.body || {};
             if (confirm !== 'RESET_ALL_DATA') {
                 res.status(400).json({ error: 'Send { confirm: "RESET_ALL_DATA" } to confirm full reset' });

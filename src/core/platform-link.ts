@@ -159,7 +159,10 @@ export class PlatformLink extends EventEmitter {
                     mode:            'node',
                     ...(tunnelUrl && { node_url: tunnelUrl }),
                 }),
-                signal: AbortSignal.timeout(10000),
+                // Platform's /nodes/heartbeat has been observed taking ~18-22s in
+                // production (same root cause already fixed in uptime_daemon.ts) --
+                // 10s was too tight and caused a continuous fail/re-register loop.
+                signal: AbortSignal.timeout(25000),
             });
 
             if (!resp.ok) throw new Error(`Heartbeat ${resp.status}`);
