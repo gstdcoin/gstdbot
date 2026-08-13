@@ -130,7 +130,18 @@ export class SwarmAgent {
                 requester: p2pTask.senderNodeId,
                 priority: 1,
             };
-            this.processTask(task).catch(() => {});
+
+            // If this task carries co-executors, it's a redundant-execution
+            // quorum request (see docs/P2P_SETTLEMENT_RFC.md §3) — compute
+            // and cross-sign, but don't report it to the platform as our own
+            // completed task (it isn't; the sender owns that task's actual
+            // platform assignment and reward). Plain relayed tasks (no
+            // coExecutors) keep the original behavior unchanged.
+            if (Array.isArray(p2pTask.coExecutors) && p2pTask.coExecutors.length > 0) {
+                this.participateInQuorumVerification(task, p2pTask.coExecutors, p2pTask.quorumThreshold || 2).catch(() => {});
+            } else {
+                this.processTask(task).catch(() => {});
+            }
         });
 
         // Use P2P heartbeats to dial new peers for WAN mesh formation
@@ -608,6 +619,174 @@ export class SwarmAgent {
         } catch (_e) { }
     }
 
+    /** The actual compute dispatch, shared by processTask() and the P2P
+     *  quorum co-execution path (which computes but never reports to the
+     *  platform — see participateInQuorumVerification()). */
+    private async computeTaskResult(task: SwarmTask): Promise<any> {
+        switch (task.type) {
+            case 'inference':
+                return this.processInference(task);
+            case 'finetune':
+                return this.processFinetune(task);
+            case 'embedding':
+                return this.processEmbedding(task);
+            case 'verification':
+                return this.processVerification(task);
+            case 'storage':
+                return this.processStorage(task);
+            case 'bridge_verify':
+                return this.processBridgeVerify(task);
+            case 'render':
+                return this.processRender(task);
+            default:
+                if (task.type.startsWith('render_')) {
+                    return this.processRender(task);
+                }
+                throw new Error(`Unknown task type: ${task.type}`);
+        }
+    }
+
+    /** Originator side: fan this task out to 2 live peers for redundant
+     *  execution, then race to collect a 2-of-3 cross-signed quorum for our
+     *  own result. On success, queue the attestation package for the admin
+     *  relay to settle on-chain (SettlementMaster.SettleTaskWithProof) —
+     *  this node's own wallet cannot sign a real TON transaction itself,
+     *  see src/wallet/wallet.ts's known key-derivation issue.
+     *
+     *  Silently no-ops (existing /tasks/complete reporting is unaffected
+     *  either way) when: no P2P node, fewer than 2 live peers, quorum
+     *  isn't reached within the timeout, or the platform call fails. */
+    private async attemptQuorumSettlement(task: SwarmTask, taskId: string, result: any): Promise<void> {
+        if (!this.p2pNode) return;
+        const workerAddr = this.wallet.getAddress();
+        if (!workerAddr) return;
+
+        const peers = (this.p2pNode.getPeers() as any[])
+            .map((p) => p.nodeId)
+            .filter((id: string) => id && id !== this.config.nodeId);
+        if (peers.length < 2) return; // need 2 co-executors for K=3 total
+
+        const coExecutors = peers.slice(0, 2);
+
+        const { loadOrCreateAttestorIdentity } = await import('../p2p/identity.js');
+        const { hashResult, signAttestation, taskIdToUint64 } = await import('../p2p/attestation.js');
+        const { awaitQuorum } = await import('../p2p/quorum-coordinator.js');
+        const { Address } = await import('@ton/core');
+
+        const identity = loadOrCreateAttestorIdentity();
+        const resultHashBig = hashResult(JSON.stringify(result));
+        const resultHashHex = resultHashBig.toString(16).padStart(64, '0');
+        const taskIdU64 = taskIdToUint64(taskId);
+        const workerAddrParsed = Address.parse(workerAddr);
+        const ownSig = signAttestation(identity, taskIdU64, workerAddrParsed, resultHashBig);
+
+        // Dispatch to co-executors so they independently compute the same
+        // task and can cross-sign (fire-and-forget — awaitQuorum below
+        // times out on its own if they never respond).
+        for (const peerId of coExecutors) {
+            this.p2pNode.sendTask(peerId, {
+                taskId,
+                model: task.model || 'unknown',
+                prompt: task.prompt || '',
+                maxTokens: (task.payload as any)?.max_tokens || 512,
+                senderNodeId: this.config.nodeId,
+                rewardGstd: task.reward_gstd || 0,
+                coExecutors: [this.config.nodeId, ...coExecutors],
+                quorumThreshold: 2,
+            }).catch(() => {});
+        }
+
+        const quorumResult = await awaitQuorum(this.p2pNode, {
+            taskId,
+            identity,
+            workerAddr,
+            ownResultHash: resultHashHex,
+            ownAttestation: {
+                type: 'attestation',
+                taskId,
+                nodeId: this.config.nodeId,
+                workerAddr,
+                resultHash: resultHashHex,
+                pubkeyHex: ownSig.pubkeyHex,
+                signatureHex: ownSig.signatureHex,
+            },
+            coExecutorPeerIds: coExecutors,
+            quorumThreshold: 2,
+            timeoutMs: 8_000,
+        });
+
+        if (!quorumResult.accepted) {
+            if (process.env.GSTD_P2P_DEBUG) {
+                logActivity(`Quorum not reached for task ${taskId.slice(0, 8)}: ${quorumResult.reason}`, 'info');
+            }
+            return;
+        }
+
+        await this.apiCall('/settlement/quorum-proof', {
+            taskId,
+            workerAddr,
+            resultHash: resultHashHex,
+            attestations: quorumResult.attestations,
+            computeUnits: 1,
+        });
+        logActivity(`🔐 Quorum reached (${quorumResult.attestations.length} attestations) for task ${taskId.slice(0, 8)} — queued for on-chain settlement`, 'success');
+    }
+
+    /** Co-executor side: a peer asked us to independently compute the same
+     *  task for quorum verification. Compute and cross-sign via the same
+     *  awaitQuorum() protocol, but do NOT report this to the platform —
+     *  we don't own this task's platform assignment or reward, the
+     *  originator does. */
+    private async participateInQuorumVerification(task: SwarmTask, coExecutors: string[], quorumThreshold: number): Promise<void> {
+        if (!this.p2pNode) return;
+        const workerAddr = this.wallet.getAddress();
+        if (!workerAddr) return;
+
+        try {
+            const result = await this.computeTaskResult(task);
+
+            const { loadOrCreateAttestorIdentity } = await import('../p2p/identity.js');
+            const { hashResult, signAttestation, taskIdToUint64 } = await import('../p2p/attestation.js');
+            const { awaitQuorum } = await import('../p2p/quorum-coordinator.js');
+            const { Address } = await import('@ton/core');
+
+            const identity = loadOrCreateAttestorIdentity();
+            const resultHashBig = hashResult(JSON.stringify(result));
+            const resultHashHex = resultHashBig.toString(16).padStart(64, '0');
+            const taskIdU64 = taskIdToUint64(task.id);
+            const workerAddrParsed = Address.parse(workerAddr);
+            const ownSig = signAttestation(identity, taskIdU64, workerAddrParsed, resultHashBig);
+
+            const otherCoExecutors = coExecutors.filter((id) => id !== this.config.nodeId);
+
+            // We don't settle anything ourselves here — just participate so
+            // the originator (and any other co-executor) can reach quorum
+            // for their own result via cross-signed endorsements. Result is
+            // intentionally unused; awaitQuorum's side effect (broadcasting
+            // our reveal + endorsing matching peers) is what matters.
+            await awaitQuorum(this.p2pNode, {
+                taskId: task.id,
+                identity,
+                workerAddr,
+                ownResultHash: resultHashHex,
+                ownAttestation: {
+                    type: 'attestation',
+                    taskId: task.id,
+                    nodeId: this.config.nodeId,
+                    workerAddr,
+                    resultHash: resultHashHex,
+                    pubkeyHex: ownSig.pubkeyHex,
+                    signatureHex: ownSig.signatureHex,
+                },
+                coExecutorPeerIds: otherCoExecutors,
+                quorumThreshold,
+                timeoutMs: 8_000,
+            });
+        } catch (_e) {
+            // Best-effort verification helper — never throw into the P2P event handler.
+        }
+    }
+
     private async processTask(task: SwarmTask): Promise<void> {
         // Normalize: completions.ts uses task_id, internal tasks use id
         if (!(task as any).id && (task as any).task_id) {
@@ -618,36 +797,14 @@ export class SwarmAgent {
         logActivity(`Processing task: ${task.type} (${taskId.slice(0, 8)}...) reward: ${task.reward_gstd} GSTD`, 'info');
 
         try {
-            let result: any = null;
+            const result = await this.computeTaskResult(task);
 
-            switch (task.type) {
-                case 'inference':
-                    result = await this.processInference(task);
-                    break;
-                case 'finetune':
-                    result = await this.processFinetune(task);
-                    break;
-                case 'embedding':
-                    result = await this.processEmbedding(task);
-                    break;
-                case 'verification':
-                    result = await this.processVerification(task);
-                    break;
-                case 'storage':
-                    result = await this.processStorage(task);
-                    break;
-                case 'bridge_verify':
-                    result = await this.processBridgeVerify(task);
-                    break;
-                case 'render':
-                    result = await this.processRender(task);
-                    break;
-                default:
-                    if (task.type.startsWith('render_')) {
-                        result = await this.processRender(task);
-                    } else {
-                        throw new Error(`Unknown task type: ${task.type}`);
-                    }
+            // Best-effort: if 2+ peers are connected, try to get this
+            // result quorum-attested and queued for on-chain settlement.
+            // Never blocks or affects the existing report-to-platform path
+            // below regardless of outcome. See docs/P2P_SETTLEMENT_RFC.md.
+            if (task.type === 'inference') {
+                this.attemptQuorumSettlement(task, taskId, result).catch(() => {});
             }
 
             // Report completion — include campaign_id and reward so treasury accounting works
