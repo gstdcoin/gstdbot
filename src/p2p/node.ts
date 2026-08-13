@@ -25,10 +25,12 @@ const GSTD_DEFAULT_BOOTSTRAP: string[] = (
 ).split(',').map(s => s.trim()).filter(Boolean);
 
 // ─── Protocol IDs ─────────────────────────────────────────────────
-const PROTOCOL_HEARTBEAT = '/gstd/heartbeat/1.0.0';
-const PROTOCOL_TASK      = '/gstd/task/1.0.0';
-const PROTOCOL_MESH_INFO = '/gstd/mesh/1.0.0';
-const PROTOCOL_PEER_SYNC = '/gstd/peers/1.0.0';
+const PROTOCOL_HEARTBEAT      = '/gstd/heartbeat/1.0.0';
+const PROTOCOL_TASK           = '/gstd/task/1.0.0';
+const PROTOCOL_MESH_INFO      = '/gstd/mesh/1.0.0';
+const PROTOCOL_PEER_SYNC      = '/gstd/peers/1.0.0';
+const PROTOCOL_TASK_RESPONSE  = '/gstd/task-response/1.0.0';
+const PROTOCOL_ATTESTATION    = '/gstd/attestation/1.0.0';
 
 // ═══════════════════════════════════════════════════════════════════
 // ZOD SCHEMAS — Runtime validation for all P2P messages
@@ -56,6 +58,11 @@ const TaskRequestSchema = z.object({
     maxTokens: z.number().int().min(1).max(65536),
     senderNodeId: z.string().min(1).max(128),
     rewardGstd: z.number().nonnegative().max(1_000_000),
+    // Peer IDs of the other nodes this SAME task was also dispatched to, for
+    // redundant-execution quorum verification (see docs/P2P_SETTLEMENT_RFC.md
+    // §3). Empty/absent = single-node "best-effort" tier, no quorum expected.
+    coExecutors: z.array(z.string().max(128)).max(8).optional(),
+    quorumThreshold: z.number().int().min(1).max(8).optional(),
 });
 
 const TaskResponseSchema = z.object({
@@ -66,6 +73,21 @@ const TaskResponseSchema = z.object({
     model: z.string().max(128),
     tokens: z.number().int().nonnegative(),
     latencyMs: z.number().nonnegative(),
+});
+
+// One node's signed commitment to a task result — exchanged directly between
+// co-executors, not through a central coordinator. `resultHash`/`signature`
+// use the exact same encoding SettlementMaster.tact's verifyQuorum() expects
+// (see src/p2p/attestation.ts) so a collected set of these can be submitted
+// on-chain without any reformatting.
+const AttestationSchema = z.object({
+    type: z.literal('attestation'),
+    taskId: z.string().uuid(),
+    nodeId: z.string().min(1).max(128),
+    workerAddr: z.string().min(1).max(128), // TON address (friendly form) this attestor would be paid at
+    resultHash: z.string().regex(/^[0-9a-fA-F]{1,64}$/), // hex-encoded uint256
+    pubkeyHex: z.string().length(64),
+    signatureHex: z.string().length(128),
 });
 
 export const MeshInfoSchema = z.object({
@@ -93,6 +115,7 @@ export type P2PTaskRequest  = z.infer<typeof TaskRequestSchema>;
 export type P2PTaskResponse = z.infer<typeof TaskResponseSchema>;
 export type P2PMeshInfo     = z.infer<typeof MeshInfoSchema>;
 export type P2PPeerSync     = z.infer<typeof PeerSyncSchema>;
+export type P2PAttestation  = z.infer<typeof AttestationSchema>;
 
 export interface P2PNodeConfig {
     nodeId: string;
@@ -263,7 +286,7 @@ export class GstdP2PNode extends EventEmitter {
         if (!this.node) return;
 
         // Heartbeat
-        await this.node.handle(PROTOCOL_HEARTBEAT, async ({ stream }: any) => {
+        await this.node.handle(PROTOCOL_HEARTBEAT, async (stream: any, _connection: any) => {
             try {
                 const data = await this.readStream(stream);
                 const raw = JSON.parse(data);
@@ -277,7 +300,7 @@ export class GstdP2PNode extends EventEmitter {
         });
 
         // Task delegation
-        await this.node.handle(PROTOCOL_TASK, async ({ stream }: any) => {
+        await this.node.handle(PROTOCOL_TASK, async (stream: any, _connection: any) => {
             try {
                 const data = await this.readStream(stream);
                 const raw = JSON.parse(data);
@@ -292,17 +315,55 @@ export class GstdP2PNode extends EventEmitter {
             } catch { /* malformed */ }
         });
 
+        // Task response — completes the previously-declared-but-unused
+        // TaskResponseSchema path: lets an executor send its result back to
+        // whoever dispatched the task.
+        await this.node.handle(PROTOCOL_TASK_RESPONSE, async (stream: any, _connection: any) => {
+            try {
+                const data = await this.readStream(stream);
+                const raw = JSON.parse(data);
+                const r = TaskResponseSchema.safeParse(raw);
+                if (r.success) {
+                    this.stats.messagesReceived++;
+                    this.emit('task:result', r.data);
+                } else {
+                    this.stats.messagesRejected++;
+                }
+            } catch { /* malformed */ }
+        });
+
+        // Attestation — co-executors exchange signed result commitments
+        // directly with each other for quorum verification.
+        await this.node.handle(PROTOCOL_ATTESTATION, async (stream: any, _connection: any) => {
+            try {
+                const data = await this.readStream(stream);
+                if (process.env.GSTD_P2P_DEBUG) console.log('[p2p-debug] attestation handler raw data:', data.slice(0, 200));
+                const raw = JSON.parse(data);
+                const r = AttestationSchema.safeParse(raw);
+                if (r.success) {
+                    this.stats.messagesReceived++;
+                    this.emit('attestation:received', r.data);
+                } else {
+                    if (process.env.GSTD_P2P_DEBUG) console.log('[p2p-debug] attestation schema REJECTED:', r.error?.message);
+                    this.stats.messagesRejected++;
+                }
+            } catch (e) {
+                if (process.env.GSTD_P2P_DEBUG) console.log('[p2p-debug] attestation handler EXCEPTION:', e);
+            }
+        });
+
         // Mesh info (request/response)
-        await this.node.handle(PROTOCOL_MESH_INFO, async ({ stream }: any) => {
+        await this.node.handle(PROTOCOL_MESH_INFO, async (stream: any, _connection: any) => {
             const info = this.getMeshInfo();
             try {
                 const enc = new TextEncoder().encode(JSON.stringify(info));
-                await stream.sink([enc]);
+                stream.send(enc);
+                await stream.close();
             } catch { /* peer disconnected */ }
         });
 
         // Peer sync — exchange known peer multiaddrs
-        await this.node.handle(PROTOCOL_PEER_SYNC, async ({ stream }: any) => {
+        await this.node.handle(PROTOCOL_PEER_SYNC, async (stream: any, _connection: any) => {
             try {
                 const data = await this.readStream(stream);
                 const raw = JSON.parse(data);
@@ -312,12 +373,24 @@ export class GstdP2PNode extends EventEmitter {
                     for (const peer of r.data.peers) {
                         if (peer.nodeId === this.config.nodeId) continue;
                         for (const ma of peer.multiaddrs) {
-                            this.node.dial(ma).catch(() => {});
+                            this.connectToPeer(ma).catch(() => {});
                         }
                     }
                 }
             } catch { /* malformed */ }
         });
+    }
+
+    // ─── String peerId -> real PeerId object ─────────────────────────
+    // getConnections() takes a typed PeerId, not a string — see the
+    // connectToPeer() note above for the sibling bug on the dial side.
+    private async toPeerId(peerIdStr: string): Promise<any | null> {
+        try {
+            const { peerIdFromString } = await import('@libp2p/peer-id');
+            return peerIdFromString(peerIdStr);
+        } catch {
+            return null;
+        }
     }
 
     // ─── Heartbeat handlers ─────────────────────────────────────────
@@ -357,7 +430,8 @@ export class GstdP2PNode extends EventEmitter {
             try {
                 const stream = await conn.newStream(PROTOCOL_HEARTBEAT);
                 const enc = new TextEncoder().encode(JSON.stringify(hb));
-                await stream.sink([enc]);
+                stream.send(enc);
+                await stream.close();
                 this.stats.messagesSent++;
             } catch { /* peer may have disconnected */ }
         }
@@ -380,11 +454,14 @@ export class GstdP2PNode extends EventEmitter {
             multiaddrs: this.node.getMultiaddrs().map((a: any) => a.toString()),
         };
         try {
-            const conn = this.node.getConnections(peerId as any)?.[0];
+            const pid = await this.toPeerId(peerId);
+            if (!pid) return;
+            const conn = this.node.getConnections(pid)?.[0];
             if (!conn) return;
             const stream = await conn.newStream(PROTOCOL_HEARTBEAT);
             const enc = new TextEncoder().encode(JSON.stringify(hb));
-            await stream.sink([enc]);
+            stream.send(enc);
+            await stream.close();
             this.stats.messagesSent++;
         } catch { /* silent */ }
     }
@@ -409,16 +486,25 @@ export class GstdP2PNode extends EventEmitter {
         for (const conn of this.node.getConnections()) {
             try {
                 const stream = await conn.newStream(PROTOCOL_PEER_SYNC);
-                await stream.sink([enc]);
+                stream.send(enc);
+                await stream.close();
             } catch { /* silent */ }
         }
     }
 
     // ─── Direct connect to a multiaddr ──────────────────────────────
-    async connectToPeer(multiaddr: string): Promise<boolean> {
+    // NOTE: this previously passed the raw string straight to node.dial(),
+    // which this libp2p version rejects (`multiaddrs[0].getComponents is
+    // not a function`) — it needs an actual Multiaddr object. That means
+    // this method has likely never successfully connected to anything; it
+    // just silently returned false. Manual/bootstrap dialing was probably
+    // masked by mDNS discovery's auto-dial (which passes a proper PeerInfo,
+    // not a string) working on LAN. Fixed here by parsing the string first.
+    async connectToPeer(multiaddrStr: string): Promise<boolean> {
         if (!this.node) return false;
         try {
-            await this.node.dial(multiaddr);
+            const { multiaddr } = await import('@multiformats/multiaddr');
+            await this.node.dial(multiaddr(multiaddrStr));
             return true;
         } catch {
             return false;
@@ -430,16 +516,67 @@ export class GstdP2PNode extends EventEmitter {
         if (!this.node) return false;
         const msg: P2PTaskRequest = { type: 'task_request', ...task };
         try {
-            const conn = this.node.getConnections(peerId as any)?.[0];
+            const pid = await this.toPeerId(peerId);
+            if (!pid) return false;
+            const conn = this.node.getConnections(pid)?.[0];
             if (!conn) return false;
             const stream = await conn.newStream(PROTOCOL_TASK);
             const enc = new TextEncoder().encode(JSON.stringify(msg));
-            await stream.sink([enc]);
+            stream.send(enc);
+            await stream.close();
             this.stats.messagesSent++;
             return true;
         } catch {
             return false;
         }
+    }
+
+    // ─── Send a task result back to whoever dispatched it ───────────
+    async sendTaskResult(peerId: string, response: Omit<P2PTaskResponse, 'type'>): Promise<boolean> {
+        if (!this.node) return false;
+        const msg: P2PTaskResponse = { type: 'task_response', ...response };
+        try {
+            const pid = await this.toPeerId(peerId);
+            if (!pid) return false;
+            const conn = this.node.getConnections(pid)?.[0];
+            if (!conn) return false;
+            const stream = await conn.newStream(PROTOCOL_TASK_RESPONSE);
+            const enc = new TextEncoder().encode(JSON.stringify(msg));
+            stream.send(enc);
+            await stream.close();
+            this.stats.messagesSent++;
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    // ─── Send a signed attestation to one co-executor ────────────────
+    async sendAttestation(peerId: string, attestation: Omit<P2PAttestation, 'type'>): Promise<boolean> {
+        if (!this.node) return false;
+        const msg: P2PAttestation = { type: 'attestation', ...attestation };
+        try {
+            const pid = await this.toPeerId(peerId);
+            if (!pid) { if (process.env.GSTD_P2P_DEBUG) console.log('[p2p-debug] sendAttestation: toPeerId failed for', peerId); return false; }
+            const conn = this.node.getConnections(pid)?.[0];
+            if (!conn) { if (process.env.GSTD_P2P_DEBUG) console.log('[p2p-debug] sendAttestation: no connection to', peerId.slice(0, 20)); return false; }
+            const stream = await conn.newStream(PROTOCOL_ATTESTATION);
+            const enc = new TextEncoder().encode(JSON.stringify(msg));
+            stream.send(enc);
+            await stream.close();
+            this.stats.messagesSent++;
+            if (process.env.GSTD_P2P_DEBUG) console.log('[p2p-debug] sendAttestation: sent to', peerId.slice(0, 20));
+            return true;
+        } catch (e) {
+            if (process.env.GSTD_P2P_DEBUG) console.log('[p2p-debug] sendAttestation EXCEPTION:', e);
+            return false;
+        }
+    }
+
+    // ─── Broadcast a signed attestation to all co-executors for a task ─
+    async broadcastAttestation(peerIds: string[], attestation: Omit<P2PAttestation, 'type'>): Promise<number> {
+        const results = await Promise.all(peerIds.map(id => this.sendAttestation(id, attestation)));
+        return results.filter(Boolean).length;
     }
 
     // ─── Capability detection ────────────────────────────────────────
@@ -481,7 +618,7 @@ export class GstdP2PNode extends EventEmitter {
             peerIdShort: this.node?.peerId?.toString().slice(0, 16) || 'not_started',
             addresses: this.node?.getMultiaddrs()?.map((a: any) => a.toString()) || [],
             bootstrapConfigured: this.config.bootstrapPeers.length,
-            protocols: [PROTOCOL_HEARTBEAT, PROTOCOL_TASK, PROTOCOL_MESH_INFO, PROTOCOL_PEER_SYNC],
+            protocols: [PROTOCOL_HEARTBEAT, PROTOCOL_TASK, PROTOCOL_MESH_INFO, PROTOCOL_PEER_SYNC, PROTOCOL_TASK_RESPONSE, PROTOCOL_ATTESTATION],
         };
     }
 
@@ -498,6 +635,13 @@ export class GstdP2PNode extends EventEmitter {
         return this.node?.getMultiaddrs()?.map((a: any) => a.toString()) || [];
     }
 
+    /** Raw libp2p transport connection count — distinct from getStats().connectedPeers,
+     *  which reflects heartbeat-confirmed application-layer peers. Useful for
+     *  diagnosing connectivity before the first heartbeat has round-tripped. */
+    getConnectionCount(): number {
+        return this.node?.getConnections()?.length || 0;
+    }
+
     private getLivePeers(): PeerRecord[] {
         const cutoff = Date.now() - 2 * 60_000; // 2 min TTL
         return Array.from(this.peers.values()).filter(p => p.lastSeen > cutoff);
@@ -505,8 +649,13 @@ export class GstdP2PNode extends EventEmitter {
 
     // ─── Stream utility ──────────────────────────────────────────────
     private async readStream(stream: any): Promise<string> {
+        // libp2p v3's Stream is itself the AsyncIterable (MessageStream
+        // interface) — there is no `.source`/`.sink` duplex pair anymore
+        // (that was the pre-v3 it-stream API). Chunks may be a plain
+        // Uint8Array or a Uint8ArrayList depending on the muxer; normalize
+        // via subarray() either way.
         const chunks: Uint8Array[] = [];
-        for await (const chunk of stream.source) {
+        for await (const chunk of stream) {
             chunks.push(chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk.subarray?.() || chunk));
             if (chunks.reduce((s, c) => s + c.length, 0) > 65536) break; // 64KB max
         }
@@ -516,7 +665,7 @@ export class GstdP2PNode extends EventEmitter {
         const text = new TextDecoder().decode(merged);
         // Strip any leading control-byte framing (protocol garbage, not user input)
         // eslint-disable-next-line no-control-regex
-        return text.replace(/^[ -]+/, '');
+        return text.replace(/^[-]+/, '');
     }
 
     // ─── Graceful stop ───────────────────────────────────────────────

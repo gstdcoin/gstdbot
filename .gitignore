@@ -14,3 +14,6 @@ reports/
 tsconfig.tsbuildinfo
 .superpowers/
 /cloudflared
+
+# Temp output from tests/p2p-quorum-live.ts (not committed, regenerate locally)
+.p2p-test-tmp/
