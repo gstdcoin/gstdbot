@@ -79,64 +79,28 @@ export function initWallet(seed?: string): WalletConfig {
         mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
     }
 
-    let address: string;
-    let publicKeyHex: string;
-    let walletSeed: string;
+    // Real Ed25519 keypair derived from the seed — @ton/crypto's
+    // keyPairFromSeed(), the same primitive TON's own wallet contracts and
+    // this codebase's P2P attestor identity (src/p2p/identity.ts) use.
+    // Previously this used SHA256(seed || "ton-pubkey") as a stand-in
+    // "public key" fed straight into WalletContractV4.create() — that
+    // produces a valid-looking address, but since it was never derived
+    // from a real keypair, no private key exists that could ever sign a
+    // transaction from it. Any funds sent there would be permanently
+    // unspendable. Existing nodes are unaffected: initWallet() only runs
+    // on first setup (see manager.ts's init()) — an already-created
+    // wallet.json is loaded as-is on every later run, so this only
+    // changes address generation for new node installs going forward.
+    const { keyPairFromSeed } = require('@ton/crypto');
+    const { WalletContractV4 } = require('@ton/ton');
 
-    try {
-        // Generate real TON wallet address using @ton/ton SDK
-        const { mnemonicNew, mnemonicToPrivateKey: _mnemonicToPrivateKey } = require('@ton/crypto');
-        const { WalletContractV4 } = require('@ton/ton');
+    const walletSeed = seed || randomBytes(32).toString('hex');
+    const seedBuf = createHash('sha256').update(walletSeed).digest(); // exactly 32 bytes
+    const keyPair = keyPairFromSeed(seedBuf);
+    const publicKeyHex = keyPair.publicKey.toString('hex');
 
-        // Use seed as mnemonic source or generate new mnemonic
-        const _mnemonicPromise = (async () => {
-            if (seed) {
-                // Derive deterministic mnemonic from seed
-                const _hash = createHash('sha256').update(seed).digest();
-                const { mnemonicNew: mn } = require('@ton/crypto');
-                return await mn(24);
-            }
-            return await mnemonicNew(24);
-        })();
-
-        // Synchronous fallback using crypto for address generation
-        walletSeed = seed || randomBytes(32).toString('hex');
-        const seedBuf = createHash('sha256').update(walletSeed).digest();
-        
-        // Generate Ed25519-like keypair from seed (deterministic)
-        const publicKey = createHash('sha256').update(Buffer.concat([seedBuf, Buffer.from('ton-pubkey')])).digest();
-        publicKeyHex = publicKey.toString('hex');
-        
-        // Create WalletV4 contract to derive address
-        try {
-            const wallet = WalletContractV4.create({
-                workchain: 0,
-                publicKey: publicKey,
-            });
-            address = wallet.address.toString({ bounceable: false, testOnly: false });
-        } catch (_e) {
-            // Fallback: create raw TON-compatible address format using base64url
-            const workchain = Buffer.from([0x51]); // 0x51 = non-bounceable + mainnet + workchain 0
-            const addrHash = createHash('sha256').update(publicKey).digest();
-            const payload = Buffer.concat([workchain, addrHash]);
-            const crc = crc16(payload);
-            const fullAddr = Buffer.concat([payload, crc]);
-            address = 'UQ' + fullAddr.toString('base64url').replace(/=+$/, '');
-        }
-    } catch (_e) {
-        // Pure fallback without @ton/ton
-        walletSeed = seed || randomBytes(32).toString('hex');
-        const publicKey = createHash('sha256').update(walletSeed).digest();
-        publicKeyHex = publicKey.toString('hex');
-        
-        // Generate CRC16-based TON address
-        const workchain = Buffer.from([0x51]);
-        const addrHash = createHash('sha256').update(publicKey).digest();
-        const payload = Buffer.concat([workchain, addrHash]);
-        const crc = crc16(payload);
-        const fullAddr = Buffer.concat([payload, crc]);
-        address = 'UQ' + fullAddr.toString('base64url').replace(/=+$/, '');
-    }
+    const wallet = WalletContractV4.create({ workchain: 0, publicKey: keyPair.publicKey });
+    const address = wallet.address.toString({ bounceable: false, testOnly: false });
 
     // Store public info in wallet.json (safe to expose)
     const config: WalletConfig = {
@@ -151,27 +115,6 @@ export function initWallet(seed?: string): WalletConfig {
     try { chmodSync(SEED_FILE, 0o600); } catch (_e) { /* Windows compat */ }
 
     return config;
-}
-
-/**
- * CRC16-CCITT for TON address checksum
- */
-function crc16(data: Buffer): Buffer {
-    let crc = 0;
-    for (const byte of data) {
-        crc ^= byte << 8;
-        for (let i = 0; i < 8; i++) {
-            if (crc & 0x8000) {
-                crc = (crc << 1) ^ 0x1021;
-            } else {
-                crc <<= 1;
-            }
-            crc &= 0xffff;
-        }
-    }
-    const buf = Buffer.alloc(2);
-    buf.writeUInt16BE(crc);
-    return buf;
 }
 
 /**
