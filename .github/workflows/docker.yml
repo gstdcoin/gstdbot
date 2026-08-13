@@ -13,7 +13,7 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    if: github.repository == 'gstdcoin/gstd-node'
+    if: github.repository == 'gstdcoin/gstdbot'
     permissions:
       contents: read
       packages: write

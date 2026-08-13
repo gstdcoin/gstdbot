@@ -4,7 +4,7 @@
 - **Language**: TypeScript (Node.js 20)
 - **P2P**: libp2p
 - **Platform**: Registers/heartbeats to `https://app.gstdtoken.com/api/v1/`
-- **Docker**: Multi-arch (amd64 + arm64), published to Docker Hub as `goldenbit/gstd-node`
+- **Docker**: Multi-arch (amd64 + arm64), published to GHCR as `ghcr.io/gstdcoin/gstd-node` (see CI/CD below — this contradicted itself with a stale Docker Hub claim until 2026-08-13; `goldenbit/gstd-node` on Docker Hub exists but was a one-off manual push from 2026-03, not kept current)
 
 ## Local Dev
 ```bash
