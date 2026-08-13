@@ -1370,10 +1370,9 @@ async function toggleValidator(id,enabled){
 // ── Wallet ─────────────────────────────────────────────────────────────
 async function loadWallet(){
   try {
-    const [wal,earn,econ]=await Promise.allSettled([
+    const [wal,earn]=await Promise.allSettled([
       api('/api/wallet/live').then(r=>r.json()),
       api('/api/node/earnings').then(r=>r.json()),
-      api('/api/sovereign/economics').then(r=>r.json()),
     ]);
     if(wal.status==='fulfilled'){
       const d=wal.value;const addr=d.address||'';
@@ -1396,10 +1395,6 @@ async function loadWallet(){
           <td><span class="badge badge-accent">${esc(e.type||e.source||'inference')}</span></td>
           <td class="muted sm">${esc(e.detail||e.model||'')}</td>
         </tr>`).join('')+'</tbody></table>';
-    }
-    if(econ.status==='fulfilled'){
-      const d=econ.value;
-      set('w-rate',d.earnings_per_day?d.earnings_per_day.toFixed(4):'—');
     }
   } catch(e){console.error('loadWallet',e);}
 }

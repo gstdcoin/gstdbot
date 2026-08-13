@@ -1494,9 +1494,6 @@ export class OmegaGateway {
                         uptimeSeconds: stats?.uptimeSeconds || 0,
                         lastHeartbeat: stats?.lastHeartbeat || null,
                         rank: stats?.rank || 0,
-                        // Sovereign Protocol data
-                        sovereign: (stats as any)?.sovereign || null,
-                        economics: (stats as any)?.economics || null,
                     };
                 })(),
                 gateway: { port: this.config.port, api_port: this.config.apiPort },
@@ -2262,14 +2259,6 @@ export class OmegaGateway {
                 models: orch?.getAvailableModels() || [],
                 federatedTasks: orch?.getFederatedTasks() || [],
             });
-        });
-
-        this.app.post('/api/swarm/route-task', (req, res) => {
-            const { taskType, requirements } = req.body || {};
-            const orch = this.orchestrator;
-            if (!orch) { res.json({ error: 'Orchestrator not initialized' }); return; }
-            const route = orch.routeTask(taskType || 'inference', requirements || {});
-            res.json(route);
         });
 
         // ─── Premium Status API ─────────────────────────────────
@@ -3273,123 +3262,7 @@ export class OmegaGateway {
             });
         });
 
-        // ─── SOVEREIGN PROTOCOL: Local Financial Instruments ─────
-        // All financial tools built directly into the node dashboard
-        this.app.get('/api/sovereign/economics', async (_req, res) => {
-            const agent = this.subsystems?.swarm;
-            if (agent?.sovereign) {
-                res.json(agent.sovereign.getNodeEconomics());
-            } else {
-                res.json({ error: 'Sovereign suite not initialized' });
-            }
-        });
-
-        this.app.get('/api/sovereign/state', async (_req, res) => {
-            const agent = this.subsystems?.swarm;
-            if (agent?.sovereign) {
-                res.json(agent.sovereign.getState());
-            } else {
-                res.json({ error: 'Sovereign suite not initialized' });
-            }
-        });
-
-        this.app.get('/api/sovereign/profit', async (_req, res) => {
-            const agent = this.subsystems?.swarm;
-            if (agent?.sovereign) {
-                res.json(agent.sovereign.getProfitReport());
-            } else {
-                res.json({ error: 'Sovereign suite not initialized' });
-            }
-        });
-
-        // Proxy sovereign protocol calls to platform API
-        this.app.get('/api/sovereign/tokenomics', async (_req, res) => {
-            try {
-                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/tokenomics`, { signal: AbortSignal.timeout(10000) });
-                res.json(await resp.json());
-            } catch (_e) { res.json({ error: 'Platform unreachable' }); }
-        });
-
-        this.app.get('/api/sovereign/protocol', async (_req, res) => {
-            try {
-                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/protocol`, { signal: AbortSignal.timeout(10000) });
-                res.json(await resp.json());
-            } catch (_e) { res.json({ error: 'Platform unreachable' }); }
-        });
-
-        this.app.get('/api/sovereign/staking', (_req, res) => {
-            res.status(410).json({
-                status: 'discontinued',
-                note: 'On-chain staking contract has not been deployed. Earn GSTD by running a node — see /nodes.',
-                alternative: 'Node operators earn 90% of every AI inference fee automatically.',
-            });
-        });
-
-        this.app.post('/api/sovereign/pay', async (req, res) => {
-            const agent = this.subsystems?.swarm;
-            const { receiver_wallet, amount, memo } = req.body || {};
-            if (!receiver_wallet || !amount) { res.status(400).json({ error: 'receiver_wallet and amount required' }); return; }
-            try {
-                const result = await agent?.sovereign?.sendPayment(receiver_wallet, amount, memo);
-                res.json(result || { error: 'Sovereign suite not initialized' });
-            } catch (e: any) { res.status(400).json({ error: e.message }); }
-        });
-
-        this.app.get('/api/sovereign/payments', async (_req, res) => {
-            const wallet = this.wallet?.getAddress() || '';
-            try {
-                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/payments?wallet=${wallet}`, { signal: AbortSignal.timeout(10000) });
-                res.json(await resp.json());
-            } catch (_e) { res.json({ payments: [], count: 0 }); }
-        });
-
-        this.app.get('/api/sovereign/governance', async (_req, res) => {
-            try {
-                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/governance/proposals`, { signal: AbortSignal.timeout(10000) });
-                res.json(await resp.json());
-            } catch (_e) { res.json({ proposals: [], count: 0 }); }
-        });
-
-        this.app.post('/api/sovereign/vote', async (req, res) => {
-            const agent = this.subsystems?.swarm;
-            const { proposal_id, vote } = req.body || {};
-            if (!proposal_id || !vote) { res.status(400).json({ error: 'proposal_id and vote required' }); return; }
-            try {
-                const result = await agent?.sovereign?.voteOnProposal(proposal_id, vote);
-                res.json(result || { error: 'Sovereign suite not initialized' });
-            } catch (e: any) { res.status(400).json({ error: e.message }); }
-        });
-
-        this.app.post('/api/sovereign/governance', async (req, res) => {
-            const agent = this.subsystems?.swarm;
-            const { action, title, description } = req.body || {};
-            if (action === 'propose') {
-                if (!title || !description) { res.status(400).json({ error: 'title and description required' }); return; }
-                try {
-                    const result = await agent?.sovereign?.createProposal(title, description);
-                    res.json(result || { proposal_id: `prop-${Date.now().toString(36)}`, status: 'submitted' });
-                } catch (e: any) { res.status(400).json({ error: e.message }); }
-            } else {
-                res.status(400).json({ error: 'Unknown action. Use: propose' });
-            }
-        });
-
-        this.app.get('/api/sovereign/mesh', async (_req, res) => {
-            try {
-                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/mesh/peers?node_id=${process.env.GSTD_NODE_ID || ''}`, { signal: AbortSignal.timeout(10000) });
-                res.json(await resp.json());
-            } catch (_e) { res.json({ total_mesh_connections: 0, active_connections: 0 }); }
-        });
-
-        this.app.get('/api/sovereign/revenue', async (_req, res) => {
-            try {
-                const resp = await fetch(`${this.config.swarmUrl}/api/v1/sovereign/revenue`, { signal: AbortSignal.timeout(10000) });
-                res.json(await resp.json());
-            } catch (_e) { res.json({ error: 'Platform unreachable' }); }
-        });
-
         logActivity('Node OS mounted on gateway — all-in-one on :' + this.config.apiPort);
-        logActivity('🏛️ Sovereign Protocol endpoints: /api/sovereign/* (12 endpoints)', 'success');
     }
 
     private getFallbackHTML(): string {

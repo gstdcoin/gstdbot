@@ -1,11 +1,10 @@
 /**
  * GSTD Node OS — Swarm Orchestrator
  *
- * Manages decentralized node coordination:
- * - Load balancing across swarm nodes
+ * Tracks decentralized peer state (this node's actual task assignment comes
+ * from the platform's `/tasks/poll`, not from this class):
  * - P2P relay for network resilience (bypass ISP blocks)
- * - Model distribution & federated learning coordination
- * - Resource-aware task routing
+ * - Model distribution & federated learning bookkeeping
  * - Automatic peer discovery & mesh networking
  */
 
@@ -103,74 +102,6 @@ export class SwarmOrchestrator {
     async stop(): Promise<void> {
         if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
         if (this.peerDiscoveryInterval) clearInterval(this.peerDiscoveryInterval);
-    }
-
-    // ─── Load Balancer ───────────────────────────────────────
-    /**
-     * Route a task to the best available node based on:
-     * - Required resources (CPU, GPU, RAM, model availability)
-     * - Current load on each node
-     * - Network latency
-     * - Trust score
-     */
-    routeTask(taskType: string, requirements: any): TaskRoute {
-        const candidates = Array.from(this.peers.values())
-            .filter(p => Date.now() - p.lastSeen < 60000) // Active peers only
-            .filter(p => p.trustScore > 0.3) // Minimum trust
-            .sort((a, b) => {
-                // Score: lower is better
-                const scoreA = this.calculateNodeScore(a, taskType, requirements);
-                const scoreB = this.calculateNodeScore(b, taskType, requirements);
-                return scoreA - scoreB;
-            });
-
-        if (candidates.length === 0) {
-            return {
-                taskId: requirements.taskId || 'local',
-                targetNodeId: this.config.nodeId,
-                reason: 'No suitable peers, processing locally',
-                estimatedMs: 5000,
-                fallbackNodes: [],
-            };
-        }
-
-        const best = candidates[0];
-        return {
-            taskId: requirements.taskId || `task-${Date.now()}`,
-            targetNodeId: best.nodeId,
-            reason: `Best score: latency=${best.latencyMs}ms, trust=${best.trustScore.toFixed(2)}, load=${this.estimateLoad(best)}`,
-            estimatedMs: best.latencyMs + 2000,
-            fallbackNodes: candidates.slice(1, 4).map(c => c.nodeId),
-        };
-    }
-
-    private calculateNodeScore(peer: PeerNode, taskType: string, requirements: any): number {
-        let score = 0;
-
-        // Latency penalty
-        score += peer.latencyMs * 0.1;
-
-        // Trust bonus (higher trust = lower score = better)
-        score -= peer.trustScore * 100;
-
-        // Resource match
-        const caps = peer.capabilities;
-        if (taskType === 'inference' && requirements.model) {
-            if (!peer.models.includes(requirements.model)) score += 500; // No model = big penalty
-        }
-        if (taskType === 'inference' && caps.gpuAvailable) score -= 200; // GPU bonus
-        if (caps.ramGb < (requirements.minRamGb || 2)) score += 300; // Insufficient RAM penalty
-
-        // Load estimate
-        score += this.estimateLoad(peer) * 50;
-
-        return score;
-    }
-
-    private estimateLoad(peer: PeerNode): number {
-        // Estimate based on capabilities vs known tasks
-        const tasksOnPeer = this.taskQueue.filter(t => t.targetNodeId === peer.nodeId).length;
-        return tasksOnPeer / Math.max(peer.capabilities.maxConcurrentTasks, 1);
     }
 
     // ─── Peer Discovery ──────────────────────────────────────
