@@ -20,6 +20,8 @@ import type { NodeWallet } from '../wallet/manager.js';
 import type { CollectiveMemory } from '../memory/collective.js';
 import { CrossChainBridge } from '../blockchain/bridge.js';
 
+const PENDING_SETTLEMENTS_FILE = join(process.env.GSTD_CONFIG_DIR || '/home/bot/.config/gstdbot', 'pending-settlements.json');
+
 // ─── Types ───────────────────────────────────────────────────────
 export interface SwarmTask {
     id: string;
@@ -193,6 +195,10 @@ export class SwarmAgent {
 
         // Scan and join new campaigns every 10 minutes
         setInterval(() => this.joinActiveCampaigns().catch(() => {}), 10 * 60_000);
+
+        // Retry quorum settlements that couldn't reach the platform when
+        // first computed (e.g. during an outage) — every 2 minutes
+        setInterval(() => this.retryPendingSettlements().catch(() => {}), 2 * 60_000);
         setTimeout(() => this.joinActiveCampaigns().catch(() => {}), 15_000); // initial check after 15s
 
         // Initial heartbeat
@@ -722,14 +728,63 @@ export class SwarmAgent {
             return;
         }
 
-        await this.apiCall('/settlement/quorum-proof', {
+        const settlementPayload = {
             taskId,
             workerAddr,
             resultHash: resultHashHex,
             attestations: quorumResult.attestations,
             computeUnits: 1,
-        });
-        logActivity(`🔐 Quorum reached (${quorumResult.attestations.length} attestations) for task ${taskId.slice(0, 8)} — queued for on-chain settlement`, 'success');
+        };
+        // apiCall() swallows failures and returns null rather than throwing —
+        // don't log a false "settled" success in that case; queue it locally
+        // and retry instead of losing a real, cross-signed quorum result.
+        const submitted = await this.apiCall('/settlement/quorum-proof', settlementPayload);
+        if (submitted) {
+            logActivity(`🔐 Quorum reached (${quorumResult.attestations.length} attestations) for task ${taskId.slice(0, 8)} — queued for on-chain settlement`, 'success');
+        } else {
+            this.queuePendingSettlement(settlementPayload);
+            logActivity(`🔐 Quorum reached for task ${taskId.slice(0, 8)} but platform unreachable — saved locally, will retry`, 'info');
+        }
+    }
+
+    // ─── Pending settlement retry queue ─────────────────────────────
+    // Cross-signed quorum results are expensive to produce (require 2+ peers
+    // to independently compute and attest); don't drop them just because the
+    // platform happened to be down at submission time.
+
+    private loadPendingSettlements(): any[] {
+        try {
+            return JSON.parse(readFileSync(PENDING_SETTLEMENTS_FILE, 'utf-8'));
+        } catch {
+            return [];
+        }
+    }
+
+    private queuePendingSettlement(payload: any): void {
+        const pending = this.loadPendingSettlements();
+        pending.push({ ...payload, queuedAt: Date.now() });
+        try {
+            writeFileSync(PENDING_SETTLEMENTS_FILE, JSON.stringify(pending, null, 2), 'utf-8');
+        } catch { /* best-effort persistence */ }
+    }
+
+    private async retryPendingSettlements(): Promise<void> {
+        const pending = this.loadPendingSettlements();
+        if (!pending.length) return;
+
+        const stillPending: any[] = [];
+        for (const entry of pending) {
+            const { queuedAt, ...payload } = entry;
+            const submitted = await this.apiCall('/settlement/quorum-proof', payload);
+            if (!submitted) stillPending.push(entry);
+        }
+
+        if (stillPending.length !== pending.length) {
+            logActivity(`🔐 Retried pending settlements: ${pending.length - stillPending.length} succeeded, ${stillPending.length} still pending`, 'success');
+        }
+        try {
+            writeFileSync(PENDING_SETTLEMENTS_FILE, JSON.stringify(stillPending, null, 2), 'utf-8');
+        } catch { /* best-effort persistence */ }
     }
 
     /** Co-executor side: a peer asked us to independently compute the same

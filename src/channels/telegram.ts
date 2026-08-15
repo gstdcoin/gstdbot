@@ -150,10 +150,20 @@ export class TelegramChannel {
             buyAlertChatId: config.communityChat,
         });
 
-        // Global error handler — catches ALL errors
+        // Global error handler — catches ALL errors.
+        // Most command handlers call apiCall() with no local try/catch, so when
+        // app.gstdtoken.com is unreachable this is the only place the user finds
+        // out — without a reply here, the bot just goes silent on every command.
         this.bot.catch((err) => {
             console.error('[Bot] Unhandled error:', err.error);
             console.error('[Bot] Update that caused error:', JSON.stringify(err.ctx?.update).substring(0, 200));
+
+            const isBackendDown = err.error instanceof Error && /^API \d|fetch failed|ECONNREFUSED|ETIMEDOUT/.test(err.error.message);
+            const message = isBackendDown
+                ? '⚠️ The GSTD platform is temporarily unreachable. Chat still works — other commands (balance, rewards, wallet) need it and will resume shortly.'
+                : '⚠️ Something went wrong. Please try again in a moment.';
+
+            err.ctx?.reply(message).catch(() => { /* best-effort — don't let the reply itself throw */ });
         });
 
         this.bot.use(session({

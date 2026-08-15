@@ -1673,7 +1673,9 @@ export class OmegaGateway {
                 const data: any = await resp.json();
                 res.json(data);
             } catch (_e) {
-                res.json({ nodes: [], total_nodes: 0, total_pending: 0 });
+                // Platform unreachable is not the same as "you have zero nodes" —
+                // flag it so the dashboard can say so instead of showing a false zero.
+                res.json({ nodes: [], total_nodes: 0, total_pending: 0, platform_unreachable: true });
             }
         });
 
