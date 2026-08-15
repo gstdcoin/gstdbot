@@ -294,7 +294,7 @@ export class TelegramChannel {
         this.bot.command('node', async (ctx) => {
             if (ctx.chat?.type !== 'private') return;
             const lang = this.lang(ctx);
-            const tmaUrl = process.env.GSTD_TMA_URL || 'https://gstdtoken.com/tma';
+            const tmaUrl = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.com/tma';
 
             const msg = `📱 <b>GSTD Mobile Node</b>\n\n` +
                   `Share your phone's resources — earn GSTD automatically.\n\n` +
@@ -558,7 +558,7 @@ export class TelegramChannel {
                 // 📱 Node
                 if (text === '📱 Node') {
                     // Trigger /node command
-                    const tmaUrl = process.env.GSTD_TMA_URL || 'https://gstdtoken.com/tma';
+                    const tmaUrl = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.com/tma';
                     const msg = `📱 <b>Run a node on your phone!</b>\n\n🐝 Tap the button below:`;
                     return ctx.reply(msg, {
                         parse_mode: 'HTML',
@@ -1506,7 +1506,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
     }
 
     private async handleEarn(ctx: any, lang: string) {
-        const tmaUrl    = process.env.GSTD_TMA_URL || 'https://gstdtoken.com/tma';
+        const tmaUrl    = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.com/tma';
         const nodeOsUrl = 'https://github.com/gstdcoin/gstdbot';
 
         // Fetch wallet + balance + network stats in parallel
