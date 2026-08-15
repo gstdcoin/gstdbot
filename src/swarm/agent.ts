@@ -21,6 +21,7 @@ import type { CollectiveMemory } from '../memory/collective.js';
 import { CrossChainBridge } from '../blockchain/bridge.js';
 
 const PENDING_SETTLEMENTS_FILE = join(process.env.GSTD_CONFIG_DIR || '/home/bot/.config/gstdbot', 'pending-settlements.json');
+const PENDING_TASK_REPORTS_FILE = join(process.env.GSTD_CONFIG_DIR || '/home/bot/.config/gstdbot', 'pending-task-reports.json');
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface SwarmTask {
@@ -199,6 +200,11 @@ export class SwarmAgent {
         // Retry quorum settlements that couldn't reach the platform when
         // first computed (e.g. during an outage) — every 2 minutes
         setInterval(() => this.retryPendingSettlements().catch(() => {}), 2 * 60_000);
+
+        // Retry task-completion reports that couldn't reach the platform —
+        // this is what makes a real reward actually get counted after an
+        // outage, instead of the work being done for nothing
+        setInterval(() => this.retryPendingTaskReports().catch(() => {}), 2 * 60_000);
         setTimeout(() => this.joinActiveCampaigns().catch(() => {}), 15_000); // initial check after 15s
 
         // Initial heartbeat
@@ -787,6 +793,65 @@ export class SwarmAgent {
         } catch { /* best-effort persistence */ }
     }
 
+    // ─── Pending task-completion report retry queue ─────────────────
+    // Same failure mode as pending settlements above, but for the core
+    // /tasks/complete report: apiCall() swallows failures silently, so
+    // without this a node could burn real compute during an outage and
+    // never actually get paid, with no local trace that anything went wrong.
+
+    private loadPendingTaskReports(): any[] {
+        try {
+            return JSON.parse(readFileSync(PENDING_TASK_REPORTS_FILE, 'utf-8'));
+        } catch {
+            return [];
+        }
+    }
+
+    private queuePendingTaskReport(endpoint: string, payload: any, taskType: string, taskId: string): void {
+        const pending = this.loadPendingTaskReports();
+        pending.push({ endpoint, payload, taskType, taskId, queuedAt: Date.now() });
+        try {
+            writeFileSync(PENDING_TASK_REPORTS_FILE, JSON.stringify(pending, null, 2), 'utf-8');
+        } catch { /* best-effort persistence */ }
+    }
+
+    private async retryPendingTaskReports(): Promise<void> {
+        const pending = this.loadPendingTaskReports();
+        if (!pending.length) return;
+
+        const stillPending: any[] = [];
+        for (const entry of pending) {
+            const submitted = await this.apiCall(entry.endpoint, entry.payload);
+            if (submitted) {
+                this.recordTaskEarning({ reward_gstd: entry.payload.reward_gstd, type: entry.taskType } as SwarmTask, entry.taskId);
+            } else {
+                stillPending.push(entry);
+            }
+        }
+
+        if (stillPending.length !== pending.length) {
+            logActivity(`Retried pending task reports: ${pending.length - stillPending.length} succeeded (reward now counted), ${stillPending.length} still pending`, 'success');
+        }
+        try {
+            writeFileSync(PENDING_TASK_REPORTS_FILE, JSON.stringify(stillPending, null, 2), 'utf-8');
+        } catch { /* best-effort persistence */ }
+    }
+
+    /** Records a task's reward as verified-earned. Only ever called once the
+     *  platform has actually confirmed the /tasks/complete report, whether
+     *  immediately or via the retry queue above. */
+    private recordTaskEarning(task: SwarmTask, taskId: string): void {
+        // Tasks submitted without an explicit reward_gstd (e.g. via the
+        // generic /api/v1/tasks/submit endpoint) arrive as undefined --
+        // `+= undefined` would silently poison totalEarnedGstd to NaN for
+        // the rest of the process's lifetime. Treat as zero instead.
+        const rewardGstd = typeof task.reward_gstd === 'number' && !isNaN(task.reward_gstd) ? task.reward_gstd : 0;
+
+        this.stats.totalEarnedGstd += rewardGstd;
+        logActivity(`${this.stats.tierIcon} Task ${taskId.slice(0, 8)} confirmed by platform → +${rewardGstd} GSTD (${task.type}) [total: ${this.stats.tasksCompleted}]`, 'success');
+        this.wallet.recordVerifiedEarning(rewardGstd, task.type as any, `Task ${task.type}: ${taskId.slice(0, 8)}`, taskId);
+    }
+
     /** Co-executor side: a peer asked us to independently compute the same
      *  task for quorum verification. Compute and cross-sign via the same
      *  awaitQuorum() protocol, but do NOT report this to the platform —
@@ -862,8 +927,12 @@ export class SwarmAgent {
                 this.attemptQuorumSettlement(task, taskId, result).catch(() => {});
             }
 
-            // Report completion — include campaign_id and reward so treasury accounting works
-            await this.apiCall('/tasks/complete', {
+            // Report completion — include campaign_id and reward so treasury accounting works.
+            // apiCall() swallows failures and returns null rather than throwing —
+            // if the platform is unreachable, queue the report and retry rather
+            // than falsely recording locally-earned stats the platform never saw
+            // (identical failure mode already fixed for quorum settlement above).
+            const completionPayload = {
                 task_id:      taskId,
                 job_id:       (task as any).payload?.job_id || undefined,
                 node_id:      this.config.nodeId,
@@ -872,21 +941,22 @@ export class SwarmAgent {
                 reward_gstd:  task.reward_gstd,
                 protocol_fee: (task as any).protocol_fee || 0,
                 campaign_id:  (task as any).campaign_id || null,
-            });
+            };
+            const reported = await this.apiCall('/tasks/complete', completionPayload);
 
-            // Tasks submitted without an explicit reward_gstd (e.g. via the
-            // generic /api/v1/tasks/submit endpoint) arrive as undefined --
-            // `+= undefined` would silently poison totalEarnedGstd to NaN for
-            // the rest of the process's lifetime. Treat as zero instead.
-            const rewardGstd = typeof task.reward_gstd === 'number' && !isNaN(task.reward_gstd) ? task.reward_gstd : 0;
-
+            // Local processing stats reflect real work done regardless of
+            // reporting outcome, but the reward is only ever recorded as
+            // *verified* once the platform actually confirms it -- either
+            // now, or later via the retry queue (see recordTaskEarning()).
             this.stats.tasksCompleted++;
-            this.stats.totalEarnedGstd += rewardGstd;
             this.stats.tasksByType[task.type] = (this.stats.tasksByType[task.type] || 0) + 1;
-            logActivity(`${this.stats.tierIcon} Task ${taskId.slice(0, 8)} completed → +${rewardGstd} GSTD (${task.type}) [total: ${this.stats.tasksCompleted}]`, 'success');
 
-            // Record in wallet
-            this.wallet.recordVerifiedEarning(rewardGstd, task.type as any, `Task ${task.type}: ${taskId.slice(0, 8)}`, taskId);
+            if (reported) {
+                this.recordTaskEarning(task, taskId);
+            } else {
+                this.queuePendingTaskReport('/tasks/complete', completionPayload, task.type, taskId);
+                logActivity(`Task ${taskId.slice(0, 8)} completed but platform unreachable — queued for retry, reward not yet counted`, 'info');
+            }
 
             // Save to collective memory if inference
             if (task.type === 'inference' && task.prompt && result?.response) {
