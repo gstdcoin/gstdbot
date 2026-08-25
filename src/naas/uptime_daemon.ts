@@ -13,6 +13,7 @@ import { execSync } from 'child_process';
 import { cpus, totalmem, freemem, loadavg } from 'os';
 import { readFileSync, existsSync } from 'fs';
 import { logActivity } from '../gateway/server.js';
+import { platformHealth } from '../lib/platform-health.js';
 
 const HEARTBEAT_INTERVAL_MS = 30_000; // Every 30 seconds
 const PLATFORM_URL = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
@@ -110,6 +111,8 @@ export class UptimeDaemon {
     // ─── Heartbeat ───────────────────────────────────────────
 
     private async sendHeartbeat(): Promise<void> {
+        // Skip the whole cycle (including hardware benchmarks below) while backing off.
+        if (!platformHealth.shouldAttempt()) return;
         // Guard against overlapping requests: the platform's heartbeat endpoint has been
         // observed taking up to ~18s to respond (a slow full-keyspace KEYS scan server-side),
         // close to the 30s firing interval -- without this guard, a slow response could still
@@ -181,6 +184,7 @@ export class UptimeDaemon {
             });
 
             if (resp.ok) {
+                platformHealth.recordSuccess();
                 const data = await resp.json() as any;
                 // Server may return updated multiplier and commands
                 if (data.age_multiplier !== undefined) {
@@ -195,8 +199,11 @@ export class UptimeDaemon {
                 if (data.pull_queue && Array.isArray(data.pull_queue) && data.pull_queue.length > 0) {
                     this.processPullQueue(data.pull_queue);
                 }
+            } else {
+                platformHealth.recordFailure();
             }
         } catch (err) {
+            platformHealth.recordFailure();
             if (this.heartbeatCount % 10 === 0) {
                 console.warn(`[NaaS] Heartbeat error (attempt ${this.heartbeatCount}):`, err instanceof Error ? err.message : err);
             }
