@@ -1275,7 +1275,11 @@ export class SwarmAgent {
     }
 
     private async apiCall(endpoint: string, data: any, method?: string, query?: string): Promise<any> {
-        if (!platformHealth.shouldAttempt()) return null;
+        // Heartbeat and register are exempt from the circuit breaker: skipping either
+        // risks the platform's 10-min node TTL expiring with no re-registration path,
+        // silently dropping the node from the network until a manual restart.
+        const isCriticalEndpoint = endpoint === '/nodes/heartbeat' || endpoint === '/nodes/register';
+        if (!isCriticalEndpoint && !platformHealth.shouldAttempt()) return null;
         const url = this.config.swarm.apiUrl + endpoint + (query || '');
         const walletAddr = this.wallet.getAddress() || '';
         const isGet = method === 'GET' || endpoint.startsWith('/nodes/public');
@@ -1283,7 +1287,7 @@ export class SwarmAgent {
         // production (same root cause already fixed in uptime_daemon.ts) -- give them
         // more headroom than the fast, frequently-polled endpoints like /tasks/poll,
         // which should keep failing fast to avoid piling up calls on a 5s interval.
-        const timeoutMs = (endpoint === '/nodes/heartbeat' || endpoint === '/nodes/register') ? 25_000 : 10_000;
+        const timeoutMs = isCriticalEndpoint ? 25_000 : 10_000;
         try {
             const resp = await fetch(url, {
                 method: isGet ? 'GET' : 'POST',

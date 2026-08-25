@@ -18,6 +18,7 @@ import { join } from 'path';
 import { homedir } from 'os';
 import { logActivity } from '../gateway/server.js';
 import type { RevenueEngine } from '../revenue/engine.js';
+import { platformHealth } from '../lib/platform-health.js';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface StorageShard {
@@ -320,6 +321,7 @@ export class StorageVault {
 
     // ─── Poll for incoming storage requests ─────────────────────
     private async pollStorageRequests(): Promise<void> {
+        if (!platformHealth.shouldAttempt()) return;
         if (this.stats.availableGB <= 0.1) return;
 
         try {

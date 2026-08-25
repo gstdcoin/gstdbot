@@ -201,6 +201,9 @@ export class UptimeDaemon {
                 }
             } else {
                 platformHealth.recordFailure();
+                if (this.heartbeatCount % 10 === 0) {
+                    console.warn(`[NaaS] Heartbeat error (attempt ${this.heartbeatCount}): HTTP ${resp.status}`);
+                }
             }
         } catch (err) {
             platformHealth.recordFailure();

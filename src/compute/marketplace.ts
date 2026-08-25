@@ -16,6 +16,7 @@
 import { execSync, exec } from 'child_process';
 import { logActivity } from '../gateway/server.js';
 import type { RevenueEngine } from '../revenue/engine.js';
+import { platformHealth } from '../lib/platform-health.js';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface GPUInfo {
@@ -233,6 +234,7 @@ export class ComputeMarketplace {
 
     // ─── Job Processing ─────────────────────────────────────────
     private async pollJobs(): Promise<void> {
+        if (!platformHealth.shouldAttempt()) return;
         if (this.activeJobs.size >= 3) return; // Max 3 concurrent jobs
 
         try {
