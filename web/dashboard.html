@@ -743,7 +743,8 @@
         <div class="row jb mb8"><span class="muted sm">Node ID</span><span class="sm tc mono" id="s-nid">—</span></div>
         <div class="row jb mb8"><span class="muted sm">Version</span><span class="sm fw6" id="s-ver">—</span></div>
         <div class="row jb mb8"><span class="muted sm">Platform</span><span class="sm" id="s-plat">—</span></div>
-        <div class="row jb"><span class="muted sm">Architecture</span><span class="sm" id="s-arch">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">Architecture</span><span class="sm" id="s-arch">—</span></div>
+        <div class="row jb"><span class="muted sm">Central Server</span><span class="badge badge-muted" id="s-central-badge">Loading...</span></div>
       </div>
       <div class="card">
         <div class="card-title">Hardware</div>
@@ -1480,6 +1481,11 @@ async function loadSettings(){
       set('s-plat',d.platform||'—');
       set('s-arch',d.arch||'—');
       set('s-curver','v'+(d.version||'—'));
+      const cb=document.getElementById('s-central-badge');
+      if(d.platform_health&&cb){
+        if(d.platform_health.connected){cb.className='badge badge-green';cb.textContent='Connected';}
+        else{cb.className='badge badge-yellow';cb.textContent='Unreachable — retrying in '+Math.round(d.platform_health.nextAttemptInMs/1000)+'s';}
+      }
     }
     if(hw.status==='fulfilled'){
       const d=hw.value;

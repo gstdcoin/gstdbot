@@ -21,6 +21,7 @@ import { NodeWallet } from '../wallet/manager.js';
 import { execSync } from 'child_process';
 import { NodeEventBus } from '../core/event-bus.js';
 import { PlatformLink } from '../core/platform-link.js';
+import { platformHealth } from '../lib/platform-health.js';
 import { ModelFailover } from '../core/model-failover.js';
 import { Diagnostics } from '../core/diagnostics.js';
 import { UsageTracker } from '../core/usage-tracker.js';
@@ -1496,6 +1497,7 @@ export class OmegaGateway {
                         rank: stats?.rank || 0,
                     };
                 })(),
+                platform_health: platformHealth.getStatus(),
                 gateway: { port: this.config.port, api_port: this.config.apiPort },
                 p2p: {
                     enabled: !!this.peerManager,
