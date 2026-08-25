@@ -1117,7 +1117,7 @@ async function loadModels(){
     set('m-score',rat.score||0);
     set('m-tier','Tier: '+(rat.tier||'—'));
     set('m-mult',(rat.multiplier||1)+'×');
-    const inst=mods.models||[];
+    const inst=mods.installed||[];
     set('m-cnt',inst.length);
     const bd=rat.breakdown||{};
     const ms=bd.models?.score||0,mm=bd.models?.max||48;
@@ -1130,47 +1130,30 @@ async function loadModels(){
     set('m-cpu',(hw.cpu?.model||'Unknown').slice(0,30));
     set('m-ram',(hw.ram?.total_gb||0)+' GB');
     set('m-disk',(hw.disk?.free_gb||0)+' GB free');
-    const names=inst.map(m=>m.name||m.model||m);
     const listEl=document.getElementById('m-list');
     if(!inst.length){listEl.innerHTML='<div class="empty"><div class="ei">&#x1F916;</div><h4>No models installed</h4><p>Pull a model below to get started</p></div>';}
     else {
       listEl.innerHTML='<table class="tbl"><thead><tr><th>Model</th><th>Size</th><th>Modified</th><th></th></tr></thead><tbody>'+
-        inst.map(m=>`<tr><td class="mono tc sm">${esc(m.name||m.model||m)}</td><td>${m.size?(m.size/1e9).toFixed(2)+' GB':'—'}</td><td>${m.modified_at?new Date(m.modified_at).toLocaleDateString():'—'}</td><td><button class="btn btn-danger btn-sm" onclick="removeModel('${esc(m.name||m.model||m)}')">Remove</button></td></tr>`).join('')+
+        inst.map(m=>`<tr><td class="mono tc sm">${esc(m.id)}</td><td>${m.size?(m.size/1e9).toFixed(2)+' GB':'—'}</td><td>${m.modified_at?new Date(m.modified_at).toLocaleDateString():'—'}</td><td><button class="btn btn-danger btn-sm" onclick="removeModel('${esc(m.id)}')">Remove</button></td></tr>`).join('')+
         '</tbody></table>';
     }
-    renderCatalog(names,nodeHwRam);
+    renderCatalog(mods.catalog||[],nodeHwRam);
   } catch(e){console.error('loadModels',e);}
 }
 
-const CATALOG=[
-  {id:'llama3.2:3b',name:'Llama 3.2 3B',desc:"Meta's compact multilingual model",size:'2.0 GB',ram:3},
-  {id:'llama3.2:1b',name:'Llama 3.2 1B',desc:'Ultra-lightweight for Pi devices',size:'1.3 GB',ram:2},
-  {id:'llama3.1:8b',name:'Llama 3.1 8B',desc:'Balanced performance and quality',size:'4.7 GB',ram:6},
-  {id:'mistral:7b',name:'Mistral 7B',desc:'Fast European open-source model',size:'4.1 GB',ram:5},
-  {id:'phi3:3.8b',name:'Phi-3 3.8B',desc:"Microsoft's compact reasoning model",size:'2.3 GB',ram:3},
-  {id:'phi3:14b',name:'Phi-3 14B',desc:'Larger Phi-3 for complex tasks',size:'8.0 GB',ram:10},
-  {id:'gemma2:2b',name:'Gemma 2 2B',desc:"Google's efficient small model",size:'1.6 GB',ram:2},
-  {id:'gemma2:9b',name:'Gemma 2 9B',desc:"Google's mid-size instruction model",size:'5.5 GB',ram:7},
-  {id:'qwen2.5:3b',name:'Qwen 2.5 3B',desc:"Alibaba's multilingual compact model",size:'1.9 GB',ram:3},
-  {id:'qwen2.5:7b',name:'Qwen 2.5 7B',desc:"Alibaba's multilingual capable model",size:'4.4 GB',ram:5},
-  {id:'codellama:7b',name:'CodeLlama 7B',desc:"Meta's code-specialized model",size:'3.8 GB',ram:5},
-  {id:'deepseek-coder:6.7b',name:'DeepSeek Coder 6.7B',desc:'Top coding assistant model',size:'3.8 GB',ram:5},
-];
-
-function renderCatalog(inst,ram){
-  document.getElementById('m-catalog').innerHTML=CATALOG.map(m=>{
-    const isInst=inst.some(n=>n===m.id||n.startsWith(m.id.split(':')[0]+':'));
-    const fits=ram>=m.ram;
+function renderCatalog(catalog,ram){
+  document.getElementById('m-catalog').innerHTML=catalog.map(m=>{
+    const fits=ram>=m.size_gb;
     return `<div class="mc">
-      <div class="row jb mb8"><h4>${esc(m.name)}</h4>${isInst?'<span class="badge badge-green">Installed</span>':fits?'<span class="badge badge-accent">Fits</span>':'<span class="badge badge-yellow">Low RAM</span>'}</div>
+      <div class="row jb mb8"><h4>${esc(m.name)}</h4>${m.installed?'<span class="badge badge-green">Installed</span>':fits?'<span class="badge badge-accent">Fits</span>':'<span class="badge badge-yellow">Low RAM</span>'}</div>
       <p>${esc(m.desc)}</p>
       <div class="row gap8 mb8">
-        <span class="badge badge-muted">&#x1F4BE; ${m.size}</span>
-        <span class="badge badge-muted">&#x1F9E0; ${m.ram}GB RAM</span>
+        <span class="badge badge-muted">&#x1F4BE; ${m.size_gb} GB</span>
+        <span class="badge badge-muted">&#x1F9E0; ~${m.size_gb} GB RAM</span>
       </div>
-      ${isInst
-        ?`<button class="btn btn-danger btn-sm" onclick="removeModel('${m.id}')">Remove</button>`
-        :`<button class="btn btn-primary btn-sm" onclick="startPull('${m.id}')" ${fits?'':'style="opacity:0.6"'}>&#x2B07; Install</button>`
+      ${m.installed
+        ?`<button class="btn btn-danger btn-sm" onclick="removeModel('${esc(m.id)}')">Remove</button>`
+        :`<button class="btn btn-primary btn-sm" onclick="startPull('${esc(m.id)}')" ${fits?'':'style="opacity:0.6"'}>&#x2B07; Install</button>`
       }
     </div>`;
   }).join('');
@@ -1193,15 +1176,16 @@ async function executePull(name){
   const logEl=document.getElementById('pull-log');
   pullCtrl=new AbortController();
   try {
-    const r=await fetch(API+'/api/ollama/pull',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({model:name}),signal:pullCtrl.signal});
+    const r=await fetch(API+'/api/ollama/models/pull',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({model:name}),signal:pullCtrl.signal});
     if(!r.ok){const e=await r.json();logEl.textContent+='Error: '+(e.error||r.status)+'\n';return;}
     const reader=r.body.getReader(),dec=new TextDecoder();
     while(true){
       const {done,value}=await reader.read();
       if(done) break;
       const txt=dec.decode(value);
-      for(const line of txt.split('\n').filter(Boolean)){
-        try{const j=JSON.parse(line);if(j.status) logEl.textContent+=j.status+'\n';if(j.completed&&j.total) logEl.textContent+='  '+Math.round(j.completed/j.total*100)+'%\n';}
+      for(const rawLine of txt.split('\n').filter(Boolean)){
+        const line=rawLine.startsWith('data: ')?rawLine.slice(6):rawLine;
+        try{const j=JSON.parse(line);if(j.error){logEl.textContent+='Error: '+j.error+'\n';continue;}if(j.status) logEl.textContent+=j.status+'\n';if(j.completed&&j.total) logEl.textContent+='  '+Math.round(j.completed/j.total*100)+'%\n';}
         catch(_){logEl.textContent+=line+'\n';}
       }
       logEl.scrollTop=logEl.scrollHeight;
@@ -1216,7 +1200,7 @@ function cancelPull(){if(pullCtrl){pullCtrl.abort();pullCtrl=null;}document.getE
 async function removeModel(name){
   if(!confirm('Remove model "'+name+'"?')) return;
   try {
-    const r=await api('/api/ollama/delete',{method:'DELETE',body:JSON.stringify({model:name})});
+    const r=await api('/api/ollama/models/'+encodeURIComponent(name),{method:'DELETE'});
     if(r.ok){toast('Model removed');loadModels();}
     else{const e=await r.json();toast('Error: '+(e.error||r.status));}
   } catch(e){toast('Error: '+e.message);}
