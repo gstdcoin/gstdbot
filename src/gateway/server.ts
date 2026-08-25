@@ -1197,6 +1197,36 @@ export class OmegaGateway {
             res.json({ success: true, message: 'Logged out successfully' });
         });
 
+        // POST /api/auth/change-pin — change PIN while already authenticated (requires current PIN)
+        this.app.post('/api/auth/change-pin', (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
+            if (!pinConfigured) {
+                res.status(400).json({ success: false, error: 'PIN not configured. Use /api/auth/setup first.' });
+                return;
+            }
+            const { current_pin, new_pin } = req.body || {};
+            if (!current_pin || !new_pin) {
+                res.status(400).json({ success: false, error: 'current_pin and new_pin required' });
+                return;
+            }
+            if (hashPin(current_pin) !== pinHash) {
+                logActivity('Failed PIN change attempt (wrong current PIN)', 'warn');
+                res.status(401).json({ success: false, error: 'Current PIN is incorrect' });
+                return;
+            }
+            if (new_pin.length < 4 || new_pin.length > 8) {
+                res.status(400).json({ success: false, error: 'New PIN must be 4-8 digits' });
+                return;
+            }
+            pinHash = hashPin(new_pin);
+            try {
+                writeFileSync(pinFile, pinHash);
+                logActivity('Dashboard PIN changed', 'success');
+            } catch (_e) {}
+            const token = createAuthToken();
+            res.json({ success: true, token });
+        });
+
         // ─── Telegram Node Management ────────────────────────────
         const telegramLinkFile = join(configDir, 'telegram_link.json');
         let linkedTelegram: { chatId: number; username: string; linkedAt: string } | null = null;

@@ -784,8 +784,6 @@
       <div class="card">
         <div class="card-title">Telegram</div>
         <div class="row jb mb16"><span class="muted sm">Status</span><span class="badge badge-muted" id="s-tg-badge">Loading...</span></div>
-        <div class="form-group"><label class="form-label">Bot Token</label><input class="input" id="s-tg-tok" placeholder="123456789:AABBcc..."></div>
-        <button class="btn btn-secondary" onclick="saveTelegram()">Save Token</button>
       </div>
     </div>
 
@@ -1468,11 +1466,11 @@ async function loadSettings(){
     ]);
     if(st.status==='fulfilled'){
       const d=st.value;
-      set('s-nid',trunc(d.nodeId||'',16,8));
-      set('s-ver',d.version||'—');
-      set('s-plat',d.platform||'—');
-      set('s-arch',d.arch||'—');
-      set('s-curver','v'+(d.version||'—'));
+      set('s-nid',trunc(d.node?.nodeId||'',16,8));
+      set('s-ver',d.node?.version||'—');
+      set('s-plat',d.node?.platform||'—');
+      set('s-arch',d.node?.arch||'—');
+      set('s-curver','v'+(d.node?.version||'—'));
       const cb=document.getElementById('s-central-badge');
       if(d.platform_health&&cb){
         if(d.platform_health.connected){cb.className='badge badge-green';cb.textContent='Connected';}
@@ -1489,15 +1487,14 @@ async function loadSettings(){
     if(upd.status==='fulfilled'){
       const d=upd.value;
       const bg=document.getElementById('s-upd-badge'),ub=document.getElementById('s-upd-btn');
-      if(d.updateAvailable){bg.className='badge badge-yellow';bg.textContent='Update Available';set('s-upd-status','v'+d.latest+' available');ub.style.display='inline-flex';}
-      else{bg.className='badge badge-green';bg.textContent='Up to date';set('s-upd-status','Already on latest version');ub.style.display='none';}
+      if(d.update_available){bg.className='badge badge-yellow';bg.textContent='Update Available';set('s-upd-status',d.commits_behind+' commit'+(d.commits_behind!==1?'s':'')+' behind (current v'+d.current_version+')');ub.style.display='inline-flex';}
+      else{bg.className='badge badge-green';bg.textContent='Up to date';set('s-upd-status','Already on latest: v'+(d.current_version||''));ub.style.display='none';}
     }
     if(tg.status==='fulfilled'){
       const d=tg.value;
       const tgb=document.getElementById('s-tg-badge');
-      if(d.connected||d.enabled){tgb.className='badge badge-green';tgb.textContent='Connected';}
+      if(d.linked){tgb.className='badge badge-green';tgb.textContent='Connected';}
       else{tgb.className='badge badge-muted';tgb.textContent='Not configured';}
-      if(d.username||d.botUsername) document.getElementById('s-tg-tok').placeholder='Current: @'+(d.username||d.botUsername);
     }
     if(ssl.status==='fulfilled'){
       const d=ssl.value;
@@ -1525,8 +1522,8 @@ async function checkUpdate(){
   try {
     const d=await api('/api/check-update').then(r=>r.json());
     const bg=document.getElementById('s-upd-badge'),ub=document.getElementById('s-upd-btn');
-    if(d.updateAvailable){bg.className='badge badge-yellow';bg.textContent='Update Available';set('s-upd-status','v'+d.latest+' available (current v'+d.current+')');ub.style.display='inline-flex';}
-    else{bg.className='badge badge-green';bg.textContent='Up to date';set('s-upd-status','Already on latest: v'+(d.current||''));ub.style.display='none';}
+    if(d.update_available){bg.className='badge badge-yellow';bg.textContent='Update Available';set('s-upd-status',d.commits_behind+' commit'+(d.commits_behind!==1?'s':'')+' behind (current v'+d.current_version+')');ub.style.display='inline-flex';}
+    else{bg.className='badge badge-green';bg.textContent='Up to date';set('s-upd-status','Already on latest: v'+(d.current_version||''));ub.style.display='none';}
   } catch(e){toast('Check failed: '+e.message);}
   finally{btn.disabled=false;btn.textContent='&#x1F50D; Check';}
 }
@@ -1558,17 +1555,6 @@ async function changePin(){
     if(r.ok){if(d.token){tok=d.token;localStorage.setItem('gstd_tok',tok);}res.innerHTML='<span class="tg sm">PIN changed!</span>';document.getElementById('s-cur-pin').value='';document.getElementById('s-new-pin').value='';}
     else{res.innerHTML=`<span class="tr sm">Error: ${esc(d.error||'Unknown')}</span>`;}
   } catch(e){res.innerHTML=`<span class="tr sm">Error: ${esc(e.message)}</span>`;}
-}
-
-async function saveTelegram(){
-  const t=(document.getElementById('s-tg-tok')?.value||'').trim();
-  if(!t){toast('Enter a bot token');return;}
-  try {
-    const r=await api('/api/telegram/configure',{method:'POST',body:JSON.stringify({token:t})});
-    const d=await r.json();
-    if(r.ok){toast('Telegram saved!');loadSettings();}
-    else{toast('Error: '+(d.error||r.status));}
-  } catch(e){toast('Error: '+e.message);}
 }
 
 async function restartNode(){
