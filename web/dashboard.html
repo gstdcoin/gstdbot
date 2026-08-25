@@ -585,7 +585,7 @@
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-label">Earned Today</div><div class="stat-val tg" id="w-today">—</div><div class="stat-sub">GSTD</div></div>
         <div class="stat-card"><div class="stat-label">Total Earnings</div><div class="stat-val ta" id="w-total">—</div><div class="stat-sub">all time</div></div>
-        <div class="stat-card"><div class="stat-label">Reward Rate</div><div class="stat-val tc" id="w-rate">—</div><div class="stat-sub">GSTD/day</div></div>
+        <div class="stat-card"><div class="stat-label">Reward Rate</div><div class="stat-val tc" id="w-rate">—</div><div class="stat-sub">GSTD/hour</div></div>
       </div>
     </div>
 
@@ -1096,9 +1096,9 @@ async function refreshHome(){
 async function checkUpdBanner(){
   try {
     const d=await api('/api/check-update').then(r=>r.json());
-    if(d.updateAvailable){
+    if(d.update_available){
       document.getElementById('update-bar').classList.add('show');
-      set('upd-txt','v'+d.latest+' available (current: v'+d.current+')');
+      set('upd-txt',d.commits_behind+' commit'+(d.commits_behind!==1?'s':'')+' behind (current: v'+d.current_version+')');
     }
   } catch(e){}
 }
@@ -1346,8 +1346,9 @@ function renderValidators(data){
 async function toggleValidator(id,enabled){
   try {
     const r=await api('/api/validators/'+id+'/toggle',{method:'POST'});
-    if(!r.ok){toast('Failed to toggle');loadValidators();}
-    else{toast(enabled?'Starting...':'Stopped');setTimeout(loadValidators,2000);}
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||d.ok===false){toast('Failed: '+(d.message||d.error||r.status));loadValidators();}
+    else{toast(d.message||(enabled?'Starting...':'Stopped'));setTimeout(loadValidators,2000);}
   } catch(e){toast('Error: '+e.message);loadValidators();}
 }
 
@@ -1369,7 +1370,7 @@ async function loadWallet(){
     }
     if(st.status==='fulfilled'){
       const d=st.value;
-      set('w-rate',(d.swarm?.effectiveRate||0).toFixed(2));
+      set('w-rate',d.platform_health?.connected||d.swarm?.effectiveRate?(d.swarm?.effectiveRate||0).toFixed(2):'—');
       const connected=d.platform_health?.connected;
       set('w-claim-info',connected?'Connected to platform -- claim will process immediately.':'Platform unreachable -- claim may fail until connectivity is restored.');
     }

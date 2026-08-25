@@ -1211,7 +1211,7 @@ export class OmegaGateway {
             }
             if (hashPin(current_pin) !== pinHash) {
                 logActivity('Failed PIN change attempt (wrong current PIN)', 'warn');
-                res.status(401).json({ success: false, error: 'Current PIN is incorrect' });
+                res.status(403).json({ success: false, error: 'Current PIN is incorrect' });
                 return;
             }
             if (new_pin.length < 4 || new_pin.length > 8) {
@@ -1223,6 +1223,7 @@ export class OmegaGateway {
                 writeFileSync(pinFile, pinHash);
                 logActivity('Dashboard PIN changed', 'success');
             } catch (_e) {}
+            authSessions.clear();
             const token = createAuthToken();
             res.json({ success: true, token });
         });
