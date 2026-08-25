@@ -1369,6 +1369,12 @@ async function loadWallet(){
       const lnk=document.getElementById('w-exp');
       if(lnk&&addr) lnk.href='https://tonscan.org/address/'+addr;
     }
+    if(st.status==='fulfilled'){
+      const d=st.value;
+      set('w-rate',(d.swarm?.effectiveRate||0).toFixed(2));
+      const connected=d.platform_health?.connected;
+      set('w-claim-info',connected?'Connected to platform -- claim will process immediately.':'Platform unreachable -- claim may fail until connectivity is restored.');
+    }
     if(earn.status==='fulfilled'){
       const d=earn.value;
       set('w-total',fmt4(d.total||d.today||0));
@@ -1382,12 +1388,6 @@ async function loadWallet(){
           <td><span class="badge badge-accent">${esc(e.type||e.source||'inference')}</span></td>
           <td class="muted sm">${esc(e.description||'')}</td>
         </tr>`).join('')+'</tbody></table>';
-    }
-    if(st.status==='fulfilled'){
-      const d=st.value;
-      set('w-rate',(d.swarm?.effectiveRate||0).toFixed(2));
-      const connected=d.platform_health?.connected;
-      set('w-claim-info',connected?'Connected to platform -- claim will process immediately.':'Platform unreachable -- claim may fail until connectivity is restored.');
     }
   } catch(e){console.error('loadWallet',e);}
 }
