@@ -1493,6 +1493,7 @@ export class OmegaGateway {
                         tasksCompleted: stats?.tasksCompleted || 0,
                         tasksProcessing: stats?.tasksProcessing || 0,
                         totalEarnedGstd: stats?.totalEarnedGstd || 0,
+                        effectiveRate: stats?.effectiveRate || 0,
                         uptimeSeconds: stats?.uptimeSeconds || 0,
                         lastHeartbeat: stats?.lastHeartbeat || null,
                         rank: stats?.rank || 0,

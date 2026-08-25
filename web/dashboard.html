@@ -1356,9 +1356,10 @@ async function toggleValidator(id,enabled){
 // ── Wallet ─────────────────────────────────────────────────────────────
 async function loadWallet(){
   try {
-    const [wal,earn]=await Promise.allSettled([
+    const [wal,earn,st]=await Promise.allSettled([
       api('/api/wallet/live').then(r=>r.json()),
       api('/api/node/earnings').then(r=>r.json()),
+      api('/api/node/status').then(r=>r.json()),
     ]);
     if(wal.status==='fulfilled'){
       const d=wal.value;const addr=d.address||'';
@@ -1379,8 +1380,14 @@ async function loadWallet(){
           <td class="muted sm">${e.timestamp?new Date(e.timestamp).toLocaleString():'—'}</td>
           <td class="tg fw6">${fmt4(e.amount||0)} GSTD</td>
           <td><span class="badge badge-accent">${esc(e.type||e.source||'inference')}</span></td>
-          <td class="muted sm">${esc(e.detail||e.model||'')}</td>
+          <td class="muted sm">${esc(e.description||'')}</td>
         </tr>`).join('')+'</tbody></table>';
+    }
+    if(st.status==='fulfilled'){
+      const d=st.value;
+      set('w-rate',(d.swarm?.effectiveRate||0).toFixed(2));
+      const connected=d.platform_health?.connected;
+      set('w-claim-info',connected?'Connected to platform -- claim will process immediately.':'Platform unreachable -- claim may fail until connectivity is restored.');
     }
   } catch(e){console.error('loadWallet',e);}
 }
@@ -1406,7 +1413,7 @@ async function claimRewards(){
   try {
     const r=await api('/api/wallet/claim',{method:'POST',body:JSON.stringify({})});
     const d=await r.json();
-    if(r.ok){res.innerHTML=`<span class="tg sm">${esc(d.message||'Claim submitted!')}</span>`;toast('Claim submitted!');loadWallet();}
+    if(r.ok&&d.success){res.innerHTML=`<span class="tg sm">${esc(d.message||'Claim submitted!')}</span>`;toast('Claim submitted!');loadWallet();}
     else{res.innerHTML=`<span class="tr sm">Error: ${esc(d.error||'Unknown')}</span>`;}
   } catch(e){res.innerHTML=`<span class="tr sm">Error: ${esc(e.message)}</span>`;}
   finally{btn.disabled=false;}
