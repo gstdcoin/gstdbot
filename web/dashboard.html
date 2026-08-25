@@ -1247,14 +1247,14 @@ async function loadIPFS(){
   try {
     const d=await api('/api/storage').then(r=>r.json());
     set('ip-id',trunc(d.peer_id||'',12,8));
-    set('ip-pins',d.pins?.length||0);
+    set('ip-pins',d.pins||0);
     set('ip-size',d.repo_size_mb?d.repo_size_mb.toFixed(1):'—');
-    set('ip-peers',d.peers||0);
-    const pins=d.pins||[];
+    set('ip-peers',d.ipfs_peers||0);
+    const pins=d.pin_list||[];
     const el=document.getElementById('ip-list');
     if(!pins.length){el.innerHTML='<div class="empty"><div class="ei">&#x1F4CC;</div><h4>No pins yet</h4><p>Upload content above to pin it</p></div>';return;}
-    el.innerHTML='<table class="tbl"><thead><tr><th>CID</th><th>Type</th><th>Actions</th></tr></thead><tbody>'+
-      pins.map(p=>{const cid=p.cid||p.hash||p;return `<tr><td class="mono tc sm">${esc(cid)}</td><td><span class="badge badge-accent">${esc(p.type||'recursive')}</span></td><td class="row gap8"><button class="copy-btn" onclick="copyText('${esc(cid)}')" title="Copy">&#x1F4CB;</button><button class="btn btn-danger btn-sm" onclick="ipfsUnpin('${esc(cid)}')">Unpin</button></td></tr>`;}).join('')+
+    el.innerHTML='<table class="tbl"><thead><tr><th>CID</th><th>Name</th><th>Actions</th></tr></thead><tbody>'+
+      pins.map(p=>`<tr><td class="mono tc sm">${esc(p.cid)}</td><td class="muted sm">${esc(p.name||'—')}</td><td class="row gap8"><button class="copy-btn" onclick="copyText('${esc(p.cid)}')" title="Copy">&#x1F4CB;</button><button class="btn btn-danger btn-sm" onclick="ipfsUnpin('${esc(p.cid)}')">Unpin</button></td></tr>`).join('')+
       '</tbody></table>';
   } catch(e){console.error('loadIPFS',e);}
 }
@@ -1264,10 +1264,10 @@ async function ipfsUpload(){
   if(!txt){toast('Enter content');return;}
   const btn=document.getElementById('ip-up-btn');btn.disabled=true;btn.textContent='Uploading...';
   try {
-    const r=await api('/api/storage/pin',{method:'POST',body:JSON.stringify({content:txt})});
+    const r=await api('/api/storage/add',{method:'POST',body:JSON.stringify({content:txt,name:'dashboard-upload'})});
     const d=await r.json();
-    if(d.cid||d.hash){
-      set('ip-up-cid',d.cid||d.hash);
+    if(d.cid){
+      set('ip-up-cid',d.cid);
       show('ip-up-result',true);toast('Pinned!');loadIPFS();
     } else {toast('Error: '+(d.error||'Unknown'));}
   } catch(e){toast('Error: '+e.message);}
@@ -1279,7 +1279,8 @@ async function ipfsFetch(){
   if(!cid){toast('Enter a CID');return;}
   const btn=document.getElementById('ip-fetch-btn');btn.disabled=true;btn.textContent='Fetching...';
   try {
-    const r=await api('/api/storage/fetch?cid='+encodeURIComponent(cid));
+    const r=await api('/api/storage/get/'+encodeURIComponent(cid));
+    if(!r.ok){const d=await r.json().catch(()=>({}));toast('Error: '+(d.error||r.status));return;}
     const txt=await r.text();
     document.getElementById('ip-fetch-content').textContent=txt;
     show('ip-fetch-result',true);
@@ -1290,7 +1291,7 @@ async function ipfsFetch(){
 async function ipfsUnpin(cid){
   if(!confirm('Unpin '+cid+'?')) return;
   try {
-    const r=await api('/api/storage/unpin',{method:'DELETE',body:JSON.stringify({cid})});
+    const r=await api('/api/storage/pin/'+encodeURIComponent(cid),{method:'DELETE'});
     if(r.ok){toast('Unpinned');loadIPFS();}
     else{const d=await r.json();toast('Error: '+(d.error||r.status));}
   } catch(e){toast('Error: '+e.message);}
