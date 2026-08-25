@@ -30,7 +30,7 @@ class PlatformHealth {
     /** Call after a call to the platform fails (network error OR non-2xx response). */
     recordFailure(): void {
         this.consecutiveFailures++;
-        const backoff = Math.min(BASE_BACKOFF_MS * 2 ** this.consecutiveFailures, MAX_BACKOFF_MS);
+        const backoff = Math.min(BASE_BACKOFF_MS * 2 ** (this.consecutiveFailures - 1), MAX_BACKOFF_MS);
         this.nextAttemptAt = Date.now() + backoff;
     }
 
