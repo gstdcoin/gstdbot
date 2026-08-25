@@ -15,6 +15,7 @@ import { execSync, spawn } from 'child_process';
 import { readFileSync, writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { logActivity } from '../gateway/server.js';
+import { platformHealth } from '../lib/platform-health.js';
 import type { NodeConfig } from '../index.js';
 import type { NodeWallet } from '../wallet/manager.js';
 import type { CollectiveMemory } from '../memory/collective.js';
@@ -1274,6 +1275,7 @@ export class SwarmAgent {
     }
 
     private async apiCall(endpoint: string, data: any, method?: string, query?: string): Promise<any> {
+        if (!platformHealth.shouldAttempt()) return null;
         const url = this.config.swarm.apiUrl + endpoint + (query || '');
         const walletAddr = this.wallet.getAddress() || '';
         const isGet = method === 'GET' || endpoint.startsWith('/nodes/public');
@@ -1293,9 +1295,14 @@ export class SwarmAgent {
                 body: isGet ? undefined : JSON.stringify(data),
                 signal: AbortSignal.timeout(timeoutMs),
             });
-            if (resp.ok) return await resp.json().catch(() => ({ ok: true }));
+            if (resp.ok) {
+                platformHealth.recordSuccess();
+                return await resp.json().catch(() => ({ ok: true }));
+            }
+            platformHealth.recordFailure();
             return null;
         } catch (_e) {
+            platformHealth.recordFailure();
             return null;
         }
     }
