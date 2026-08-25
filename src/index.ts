@@ -183,7 +183,7 @@ function retryMeshInBackground(node: GstdP2PNode, swarm: SwarmAgent | null): voi
             setTimeout(tryStart, backoff);
         }
     };
-    setTimeout(tryStart, Math.min(MESH_RETRY_BASE_MS * 2, MESH_RETRY_MAX_MS));
+    setTimeout(tryStart, MESH_RETRY_BASE_MS);
 }
 
 // ─── Main ────────────────────────────────────────────────────────
