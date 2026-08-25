@@ -1453,6 +1453,7 @@ export class OmegaGateway {
             res.json({
                 node: {
                     name: process.env.NODE_NAME || hostname(),
+                    nodeId: this.nodeId,
                     platform: platform(), arch: arch(),
                     uptime: process.uptime(), os_uptime: osUptime(),
                     version: require('../../package.json').version,

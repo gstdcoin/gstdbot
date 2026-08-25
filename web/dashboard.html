@@ -1063,8 +1063,8 @@ async function refreshHome(){
   }
   if(ipfs.status==='fulfilled'){
     const d=ipfs.value;
-    set('h-pins',d.pins?.length||0);
-    set('h-peers',d.peers||0);
+    set('h-pins',d.pin_list?.length||0);
+    set('h-peers',d.ipfs_peers||0);
     set('h-ipfs-id',trunc(d.peer_id||'',8,4));
   }
   if(rat.status==='fulfilled'){
@@ -1078,9 +1078,9 @@ async function refreshHome(){
   drawSparkline('spark-earn', _hist.earn, '#22c55e');
   try {
     const s=await api('/api/node/status').then(r=>r.json());
-    set('h-name',s.name||'GSTD Node');
-    set('h-sub','v'+(s.version||'—')+' · '+(s.platform||''));
-    set('sb-node-id',trunc(s.nodeId||'',10,6));
+    set('h-name',s.node?.name||'GSTD Node');
+    set('h-sub','v'+(s.node?.version||'—')+' · '+(s.node?.platform||''));
+    set('sb-node-id',trunc(s.node?.nodeId||'',10,6));
   } catch(e){}
   try {
     const lg=await api('/api/node/log?limit=20').then(r=>r.json());
@@ -1088,9 +1088,9 @@ async function refreshHome(){
     const el=document.getElementById('h-log');
     if(!ents.length){el.innerHTML='<div class="log-row"><span class="log-m muted">No activity yet</span></div>';return;}
     el.innerHTML=ents.slice(0,20).map(e=>{
-      const t=e.timestamp?new Date(e.timestamp).toLocaleTimeString():'';
-      const lv=e.level||'info';
-      return `<div class="log-row"><span class="log-t">${t}</span><span class="log-l ${lv}">${lv[0].toUpperCase()}</span><span class="log-m">${esc(e.message||e.msg||'')}</span></div>`;
+      const t=e.ts?new Date(e.ts).toLocaleTimeString():'';
+      const lv=e.type||'info';
+      return `<div class="log-row"><span class="log-t">${t}</span><span class="log-l ${lv}">${lv[0].toUpperCase()}</span><span class="log-m">${esc(e.msg||'')}</span></div>`;
     }).join('');
   } catch(e){}
 }
