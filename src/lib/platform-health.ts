@@ -12,7 +12,7 @@
 const BASE_BACKOFF_MS = 5_000;
 const MAX_BACKOFF_MS = 5 * 60_000;
 
-class PlatformHealth {
+export class PlatformHealth {
     private consecutiveFailures = 0;
     private nextAttemptAt = 0;
 
