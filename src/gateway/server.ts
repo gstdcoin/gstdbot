@@ -1248,6 +1248,7 @@ export class OmegaGateway {
 
         // POST /api/telegram/link — link Telegram account to node
         this.app.post('/api/telegram/link', (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const { chatId, username } = req.body || {};
             if (!chatId) { res.status(400).json({ error: 'chatId required' }); return; }
             linkedTelegram = { chatId: Number(chatId), username: username || '', linkedAt: new Date().toISOString() };
