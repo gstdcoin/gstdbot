@@ -215,6 +215,10 @@ export class OmegaGateway {
     private clients = new Map<string, WebSocket>();
     private appManager: AppManager;
     private peerManager: PeerManager | null = null;
+
+    getPeerManager(): PeerManager | null {
+        return this.peerManager;
+    }
     private ipfs: IpfsClient | null = null;
     private feeLedger: FeeLedger = new FeeLedger();
     private validatorManager: ValidatorManager | null = null;
@@ -4420,6 +4424,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             ramGb:        Math.round(os.totalmem() / (1024 ** 3)),
             uptime:       process.uptime(),
             tasksHandled: this.metrics.totalRequests,
+            source:       'http-gossip', // self-info placeholder; not a discovered peer, field unused for self
         });
         this.router.setPeerManager(this.peerManager);
         await this.peerManager.start();

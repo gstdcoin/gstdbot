@@ -182,13 +182,20 @@ const MESH_RETRY_MAX_MS = 5 * 60_000;
  * (capped at 5 minutes), without blocking node boot. Runs until it succeeds
  * or the process exits -- there is no permanent give-up.
  */
-function retryMeshInBackground(node: GstdP2PNode, swarm: SwarmAgent | null): void {
+function retryMeshInBackground(node: GstdP2PNode, swarm: SwarmAgent | null, gateway: OmegaGateway | null): void {
     let attempt = 0;
     const tryStart = async () => {
         attempt++;
         try {
             const peerId = await node.start();
             if (swarm) swarm.setP2PNode(node);
+            // Bridge libp2p-discovered peers (with a real httpUrl) into the
+            // gateway's HTTP PeerManager so they become routable via forwardToPeer().
+            node.on('heartbeat:received', (data: any) => {
+                if (!data.httpUrl) return; // no HTTP address to route to -- nothing to bridge
+                const pm = gateway?.getPeerManager?.() ?? null;
+                pm?.registerPeer(data.nodeId, data.httpUrl, data.capabilities || [], 'p2p-mesh');
+            });
             console.log(`    ✓ P2P mesh started after ${attempt} retr${attempt === 1 ? 'y' : 'ies'} (peer ${peerId.slice(0, 16)}...)`);
         } catch (e: any) {
             const backoff = Math.min(MESH_RETRY_BASE_MS * 2 ** attempt, MESH_RETRY_MAX_MS);
@@ -442,13 +449,20 @@ async function main(): Promise<void> {
             // Wire P2P into SwarmAgent: P2P tasks routed through processTask(),
             // P2P heartbeats used to dial new WAN peers for mesh formation
             if (swarm) swarm.setP2PNode(p2pNode);
+            // Bridge libp2p-discovered peers (with a real httpUrl) into the
+            // gateway's HTTP PeerManager so they become routable via forwardToPeer().
+            p2pNode.on('heartbeat:received', (data: any) => {
+                if (!data.httpUrl) return; // no HTTP address to route to -- nothing to bridge
+                const pm = gateway?.getPeerManager?.() ?? null;
+                pm?.registerPeer(data.nodeId, data.httpUrl, data.capabilities || [], 'p2p-mesh');
+            });
         } catch (e: any) {
             // Previously this gave up for the entire process lifetime. Instead,
             // keep boot moving (this doesn't block startup) and retry with
             // backoff in the background -- a transient failure like EADDRINUSE
             // should not permanently disable the mesh.
             console.log(`    ⚠ P2P mesh: ${e.message} — retrying in background`);
-            retryMeshInBackground(p2pNode, swarm);
+            retryMeshInBackground(p2pNode, swarm, gateway);
         }
     }
 

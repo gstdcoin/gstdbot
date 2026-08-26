@@ -33,6 +33,8 @@ function resolvePublicUrl(configured: string): string {
     return configured;
 }
 
+export type PeerSource = 'p2p-mesh' | 'http-gossip' | 'kv-fallback';
+
 export interface PeerInfo {
     nodeId:       string;
     url:          string;   // public HTTP URL, e.g. https://abc123.lhr.life
@@ -44,6 +46,7 @@ export interface PeerInfo {
     tasksHandled: number;
     lastSeen:     number;   // Date.now()
     latencyMs:    number;   // measured round-trip
+    source:       PeerSource; // which discovery layer found this peer -- honest visibility, not routing logic
 }
 
 export interface HeartbeatPayload {
@@ -126,6 +129,7 @@ export class PeerManager extends EventEmitter {
             tasksHandled: payload.tasksHandled,
             lastSeen:     Date.now(),
             latencyMs:    measuredLatency || existing?.latencyMs || 999,
+            source:       existing?.source === 'p2p-mesh' ? 'p2p-mesh' : 'http-gossip',
         };
         this.peers.set(payload.nodeId, peer);
         this.saveToDisk();
@@ -137,7 +141,7 @@ export class PeerManager extends EventEmitter {
 
     // ─── Register peer via GET /api/peers (simple registration) ─────
 
-    registerPeer(nodeId: string, url: string, capabilities: string[]): void {
+    registerPeer(nodeId: string, url: string, capabilities: string[], source: PeerSource = 'http-gossip'): void {
         if (nodeId === this.selfInfo.nodeId) return;
         const existing = this.peers.get(nodeId);
         this.peers.set(nodeId, {
@@ -146,6 +150,7 @@ export class PeerManager extends EventEmitter {
             uptime: 0, tasksHandled: 0,
             lastSeen: Date.now(),
             latencyMs: existing?.latencyMs || 999,
+            source,
         });
         this.saveToDisk();
     }
@@ -293,7 +298,7 @@ export class PeerManager extends EventEmitter {
             const raw = JSON.parse(readFileSync(PEERS_FILE, 'utf-8'));
             if (Array.isArray(raw)) {
                 for (const p of raw) {
-                    if (p.nodeId && p.url) this.peers.set(p.nodeId, p);
+                    if (p.nodeId && p.url) this.peers.set(p.nodeId, { ...p, source: p.source || 'http-gossip' });
                 }
             }
         } catch { /* ignore corrupt file */ }
@@ -318,6 +323,7 @@ export class PeerManager extends EventEmitter {
             tasksHandled: 0,
             lastSeen:     0, // will be updated on first successful ping
             latencyMs:    9999,
+            source:       'http-gossip',
         };
     }
 }
