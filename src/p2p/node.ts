@@ -62,6 +62,11 @@ const HeartbeatSchema = z.object({
     ramGb: z.number().nonnegative().max(16384),
     gpuAvailable: z.boolean(),
     multiaddrs: z.array(z.string().max(256)).max(10).optional(),
+    // Public HTTP URL (the same tunnel URL PeerManager already tracks) --
+    // lets a peer discovered purely via libp2p/DHT become routable over
+    // PeerManager's HTTP-based forwardToPeer(). Absent for nodes with no
+    // public HTTP endpoint.
+    httpUrl: z.string().max(256).optional(),
 });
 
 const TaskRequestSchema = z.object({
@@ -159,6 +164,7 @@ interface PeerRecord {
     capabilities: string[];
     multiaddrs: string[];
     latencyMs: number;
+    httpUrl?: string;
 }
 
 // ─── P2P Mesh Node ─────────────────────────────────────────────────
@@ -417,6 +423,15 @@ export class GstdP2PNode extends EventEmitter {
     }
 
     // ─── Heartbeat handlers ─────────────────────────────────────────
+    private getPublicHttpUrl(): string | undefined {
+        try {
+            const { readFileSync } = require('fs');
+            const fromFile = readFileSync('/tmp/gstd_tunnel_url.txt', 'utf-8').trim();
+            if (fromFile.startsWith('http')) return fromFile;
+        } catch { /* file may not exist yet */ }
+        return process.env.GSTD_PUBLIC_URL || undefined;
+    }
+
     private handleHeartbeat(data: P2PHeartbeat): void {
         this.stats.heartbeatsExchanged++;
         this.stats.messagesReceived++;
@@ -427,6 +442,7 @@ export class GstdP2PNode extends EventEmitter {
             capabilities: data.capabilities,
             multiaddrs: data.multiaddrs || [],
             latencyMs: 0,
+            httpUrl: data.httpUrl,
         });
         this.emit('heartbeat:received', data);
     }
@@ -446,6 +462,7 @@ export class GstdP2PNode extends EventEmitter {
             ramGb: Math.round(os.totalmem() / (1024 ** 3)),
             gpuAvailable: false,
             multiaddrs: this.node.getMultiaddrs().map((a: any) => a.toString()),
+            httpUrl: this.getPublicHttpUrl(),
         };
 
         const connections = this.node.getConnections();
@@ -475,6 +492,7 @@ export class GstdP2PNode extends EventEmitter {
             ramGb: Math.round(os.totalmem() / (1024 ** 3)),
             gpuAvailable: false,
             multiaddrs: this.node.getMultiaddrs().map((a: any) => a.toString()),
+            httpUrl: this.getPublicHttpUrl(),
         };
         try {
             const pid = await this.toPeerId(peerId);
