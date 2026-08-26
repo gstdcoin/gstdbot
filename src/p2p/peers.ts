@@ -21,6 +21,19 @@ import { EventEmitter } from 'events';
 
 const PEER_TTL_MS    = 5 * 60_000;   // peer considered dead after 5 min no heartbeat
 const HEARTBEAT_INTERVAL = 30_000;    // broadcast to all peers every 30s
+
+// Sentinel for "this node has never itself successfully round-tripped a
+// heartbeat to this peer" -- distinct from a real measured latency. Used by
+// getBestPeer() as a minimal, mechanical trust gate: /api/peers/register and
+// /api/peers/heartbeat are intentionally unauthenticated (P2P discovery must
+// stay open to callers we don't share a token with), so anyone can inject a
+// PeerInfo with a matching `capabilities` array and win getBestPeer()'s
+// scoring on metadata alone. Full peer trust/reputation is out of scope here
+// (reserved for a future decentralized-inference-routing sub-project), but
+// forwardToPeer() sends real user chat content to peer.url, so at minimum we
+// require this node to have actually pinged the peer and gotten a response
+// before it's eligible to receive inference traffic -- see getBestPeer().
+const UNVERIFIED_LATENCY_MS = 9999;
 const PEERS_FILE   = join(process.env.GSTD_CONFIG_DIR || '/home/bot/.config/gstdbot', 'peers.json');
 const TUNNEL_URL_FILE = '/tmp/gstd_tunnel_url.txt';
 
@@ -62,6 +75,14 @@ export interface HeartbeatPayload {
 }
 
 export class PeerManager extends EventEmitter {
+    // KNOWN LIMITATION (flagged, not fixed, in full-functional-audit task 7,
+    // 2026-08-26): no upper bound on this Map's size, and every single
+    // incoming POST /api/peers/register or /api/peers/heartbeat call --
+    // both unauthenticated by design -- triggers a synchronous full-table
+    // saveToDisk() rewrite of peers.json. An unauthenticated caller can grow
+    // this unboundedly and force repeated synchronous disk writes. Low
+    // severity today (P2P mesh is small), but worth a real rate-limit/cap
+    // if the network grows or this becomes a target.
     private peers = new Map<string, PeerInfo>();
     private selfInfo: Omit<PeerInfo, 'lastSeen' | 'latencyMs'>;
     private heartbeatTimer: NodeJS.Timeout | null = null;
@@ -155,7 +176,11 @@ export class PeerManager extends EventEmitter {
             uptime:       payload.uptime,
             tasksHandled: payload.tasksHandled,
             lastSeen:     Date.now(),
-            latencyMs:    measuredLatency || existing?.latencyMs || 999,
+            // measuredLatency from the HTTP route handler is effectively always ~0
+            // (it times request-body destructuring, not a real round trip) so this
+            // falls through to the existing value, or UNVERIFIED_LATENCY_MS for a
+            // peer this node has never itself pinged. See UNVERIFIED_LATENCY_MS.
+            latencyMs:    measuredLatency || existing?.latencyMs || UNVERIFIED_LATENCY_MS,
             source:       existing?.source === 'p2p-mesh' ? 'p2p-mesh' : 'http-gossip',
         };
         this.peers.set(payload.nodeId, peer);
@@ -166,7 +191,15 @@ export class PeerManager extends EventEmitter {
         this.sendHeartbeatTo(payload.url).catch(() => {});
     }
 
-    // ─── Register peer via GET /api/peers (simple registration) ─────
+    // ─── Register peer via POST /api/peers/register (simple registration) ───
+    // NOTE: server.ts's handler for that route destructures `node_id` (snake_case)
+    // from the request body and passes it as this `nodeId` (camelCase) param --
+    // an intentional-looking but undocumented casing mismatch vs. HeartbeatPayload
+    // (camelCase throughout) and GET /api/peers's response (snake_case `node_id`).
+    // No in-repo caller depends on either casing today (audited 2026-08-26,
+    // full-functional-audit task 7); flagging here so it isn't rediscovered as a
+    // "new" bug later. Left as-is rather than unified, since changing either
+    // casing is a speculative change against an unknown external caller.
 
     registerPeer(nodeId: string, url: string, capabilities: string[], source: PeerSource = 'http-gossip', touch: boolean = true): void {
         if (nodeId === this.selfInfo.nodeId) return;
@@ -179,7 +212,10 @@ export class PeerManager extends EventEmitter {
             uptime:       existing?.uptime ?? 0,
             tasksHandled: existing?.tasksHandled ?? 0,
             lastSeen:     touch ? Date.now() : (existing?.lastSeen ?? 0),
-            latencyMs:    existing?.latencyMs || 999,
+            // See UNVERIFIED_LATENCY_MS -- a freshly-registered peer (esp. via the
+            // unauthenticated POST /api/peers/register route) has not yet been
+            // pinged by this node and must not look "fast" to getBestPeer().
+            latencyMs:    existing?.latencyMs || UNVERIFIED_LATENCY_MS,
             source,
         });
         this.saveToDisk();
@@ -190,7 +226,18 @@ export class PeerManager extends EventEmitter {
     getBestPeer(model: string): PeerInfo | null {
         const now = Date.now();
         const live = Array.from(this.peers.values())
-            .filter(p => now - p.lastSeen < PEER_TTL_MS && p.url !== this.selfInfo.url);
+            .filter(p => now - p.lastSeen < PEER_TTL_MS && p.url !== this.selfInfo.url)
+            // Security gate: only forward real user inference requests (via
+            // forwardToPeer -> peer.url) to peers this node has itself
+            // successfully pinged and measured a real round-trip to. Without
+            // this, an unauthenticated POST /api/peers/register or
+            // /api/peers/heartbeat claiming a matching `capabilities` array
+            // could win selection below on metadata alone and receive real
+            // chat content. This does not verify peer identity or content
+            // safety -- only that this node has confirmed the URL is a live,
+            // responding HTTP server, which raises the cost of the attack
+            // above a single unauthenticated POST. See UNVERIFIED_LATENCY_MS.
+            .filter(p => p.latencyMs < UNVERIFIED_LATENCY_MS);
 
         if (!live.length) return null;
 
