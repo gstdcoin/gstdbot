@@ -551,12 +551,13 @@
   <div class="page" id="page-ipfs">
     <div class="page-title">IPFS Storage</div>
     <div class="page-subtitle">Decentralized file storage via IPFS protocol</div>
+    <div class="alert" id="ip-alert" style="display:none"></div>
 
     <div class="stats-grid mb20">
-      <div class="stat-card"><div class="stat-label">Peer ID</div><div class="stat-val tc mono" id="ip-id" style="font-size:12px;word-break:break-all">—</div></div>
-      <div class="stat-card"><div class="stat-label">Pinned Objects</div><div class="stat-val tg" id="ip-pins">—</div></div>
-      <div class="stat-card"><div class="stat-label">Repo Size</div><div class="stat-val ta" id="ip-size">—</div><div class="stat-sub">MB used</div></div>
-      <div class="stat-card"><div class="stat-label">Network Peers</div><div class="stat-val tc" id="ip-peers">—</div></div>
+      <div class="stat-card"><div class="stat-label">Peer ID</div><span class="skeleton skeleton-text" data-skel-for="ip-id" style="height:16px;width:80%;margin-bottom:0"></span><div class="stat-val tc mono" id="ip-id" style="font-size:12px;word-break:break-all;display:none">—</div></div>
+      <div class="stat-card"><div class="stat-label">Pinned Objects</div><span class="skeleton skeleton-text" data-skel-for="ip-pins" style="height:26px;width:50%;margin-bottom:0"></span><div class="stat-val tg" id="ip-pins" style="display:none">—</div></div>
+      <div class="stat-card"><div class="stat-label">Repo Size</div><span class="skeleton skeleton-text" data-skel-for="ip-size" style="height:26px;width:50%;margin-bottom:0"></span><div class="stat-val ta" id="ip-size" style="display:none">—</div><div class="stat-sub">MB used</div></div>
+      <div class="stat-card"><div class="stat-label">Network Peers</div><span class="skeleton skeleton-text" data-skel-for="ip-peers" style="height:26px;width:50%;margin-bottom:0"></span><div class="stat-val tc" id="ip-peers" style="display:none">—</div></div>
     </div>
 
     <div class="grid-2 mb20">
@@ -590,7 +591,7 @@
         <div class="card-title" style="margin-bottom:0">Pinned Objects</div>
         <button class="btn btn-secondary btn-sm" onclick="loadIPFS()">&#x21BB; Refresh</button>
       </div>
-      <div id="ip-list"><div class="empty"><div class="ei">&#x1F4E6;</div><h4>Loading pins...</h4></div></div>
+      <div id="ip-list"><div class="skeleton skeleton-card" style="margin-bottom:8px"></div><div class="skeleton skeleton-card"></div></div>
     </div>
   </div>
 
@@ -1308,9 +1309,22 @@ async function sendChat(){
 function clearChat(){chatHistory=[];document.getElementById('chat-msgs').innerHTML='<div class="muted sm" style="text-align:center;padding:20px">Chat cleared.</div>';}
 
 // ── IPFS ───────────────────────────────────────────────────────────────
+function ipfsAlert(msg,type){
+  const el=document.getElementById('ip-alert');
+  if(!el) return;
+  el.className='alert alert-'+type;
+  el.textContent=msg;
+  el.style.display='flex';
+  clearTimeout(ipfsAlert._t);
+  ipfsAlert._t=setTimeout(()=>{el.style.display='none';},6000);
+}
 async function loadIPFS(){
   try {
     const d=await api('/api/storage').then(r=>r.json());
+    if(d.enabled===false){
+      document.getElementById('ip-list').innerHTML='<div class="empty"><div class="ei">&#x26A0;&#xFE0F;</div><h4>IPFS not available</h4><p>'+esc(d.reason||'IPFS daemon not running')+'</p></div>';
+      return;
+    }
     set('ip-id',trunc(d.peer_id||'',12,8));
     set('ip-pins',d.pins||0);
     set('ip-size',d.repo_size_mb?d.repo_size_mb.toFixed(1):'—');
@@ -1333,9 +1347,9 @@ async function ipfsUpload(){
     const d=await r.json();
     if(d.cid){
       set('ip-up-cid',d.cid);
-      show('ip-up-result',true);toast('Pinned!');loadIPFS();
-    } else {toast('Error: '+(d.error||'Unknown'));}
-  } catch(e){toast('Error: '+e.message);}
+      show('ip-up-result',true);toast('Pinned!');ipfsAlert('Content pinned to IPFS.','success');loadIPFS();
+    } else {toast('Error: '+(d.error||'Unknown'));ipfsAlert('Upload failed: '+(d.error||'Unknown'),'error');}
+  } catch(e){toast('Error: '+e.message);ipfsAlert('Upload failed: '+e.message,'error');}
   finally{btn.disabled=false;btn.textContent='&#x1F4E4; Pin to IPFS';}
 }
 
@@ -1345,11 +1359,11 @@ async function ipfsFetch(){
   const btn=document.getElementById('ip-fetch-btn');btn.disabled=true;btn.textContent='Fetching...';
   try {
     const r=await api('/api/storage/get/'+encodeURIComponent(cid));
-    if(!r.ok){const d=await r.json().catch(()=>({}));toast('Error: '+(d.error||r.status));return;}
+    if(!r.ok){const d=await r.json().catch(()=>({}));toast('Error: '+(d.error||r.status));ipfsAlert('Fetch failed: '+(d.error||r.status),'error');return;}
     const txt=await r.text();
     document.getElementById('ip-fetch-content').textContent=txt;
     show('ip-fetch-result',true);
-  } catch(e){toast('Error: '+e.message);}
+  } catch(e){toast('Error: '+e.message);ipfsAlert('Fetch failed: '+e.message,'error');}
   finally{btn.disabled=false;btn.textContent='&#x1F50D; Fetch';}
 }
 
@@ -1358,9 +1372,9 @@ async function ipfsUnpin(cid){
   try {
     const r=await api('/api/storage/pin/'+encodeURIComponent(cid),{method:'DELETE'});
     const d=await r.json();
-    if(d.ok){toast('Unpinned');loadIPFS();}
-    else{toast('Error: '+(d.error||r.status));}
-  } catch(e){toast('Error: '+e.message);}
+    if(d.ok){toast('Unpinned');ipfsAlert('Unpinned '+trunc(cid,10,6)+'.','success');loadIPFS();}
+    else{toast('Error: '+(d.error||r.status));ipfsAlert('Unpin failed: '+(d.error||r.status),'error');}
+  } catch(e){toast('Error: '+e.message);ipfsAlert('Unpin failed: '+e.message,'error');}
 }
 
 // ── Validators ─────────────────────────────────────────────────────────
