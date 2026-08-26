@@ -4141,6 +4141,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
 
         // POST /api/ollama/models/pull — SSE stream of download progress
         this.app.post('/api/ollama/models/pull', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const { model } = req.body || {};
             if (!model || typeof model !== 'string' || !/^[a-z0-9:._/-]+$/i.test(model)) {
                 return res.status(400).json({ error: 'Invalid model name' });
@@ -4188,6 +4189,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
 
         // DELETE /api/ollama/models/:name — remove a model
         this.app.delete('/api/ollama/models/:name', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const model = decodeURIComponent(req.params.name);
             if (!/^[a-z0-9:._/-]+$/i.test(model)) {
                 return res.status(400).json({ error: 'Invalid model name' });
