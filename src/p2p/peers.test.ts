@@ -14,6 +14,7 @@ describe('PeerManager source tracking', () => {
             ramGb: 8,
             uptime: 0,
             tasksHandled: 0,
+            source: 'http-gossip',
         });
     });
 
