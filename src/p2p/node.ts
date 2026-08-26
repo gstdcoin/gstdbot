@@ -16,6 +16,7 @@
 
 import { EventEmitter } from 'events';
 import { z } from 'zod';
+import { resolvePublicUrl } from './peers.js';
 
 // ─── Well-known GSTD bootstrap nodes ─────────────────────────────
 // Add your node's multiaddr to GSTD_BOOTSTRAP_PEERS env var to
@@ -46,6 +47,22 @@ const PROTOCOL_PEER_SYNC      = '/gstd/peers/1.0.0';
 const PROTOCOL_TASK_RESPONSE  = '/gstd/task-response/1.0.0';
 const PROTOCOL_ATTESTATION    = '/gstd/attestation/1.0.0';
 
+// A peer's self-reported httpUrl becomes a fetch() target (PeerManager.forwardToPeer,
+// carrying real chat messages) and a peer-table key -- reject anything that isn't a
+// plausible public http(s) endpoint so an unauthenticated LAN/mesh peer can't point
+// this node's outbound requests at localhost/internal infrastructure.
+function isPrivateOrLoopbackHost(host: string): boolean {
+    const h = host.toLowerCase().replace(/^\[|\]$/g, '');
+    if (h === 'localhost' || h === '0.0.0.0' || h === '::1') return true;
+    if (/^127\./.test(h)) return true;
+    if (/^10\./.test(h)) return true;
+    if (/^192\.168\./.test(h)) return true;
+    if (/^169\.254\./.test(h)) return true;
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
+    if (/^fc00:|^fd00:|^fe80:/.test(h)) return true;
+    return false;
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // ZOD SCHEMAS — Runtime validation for all P2P messages
 // ═══════════════════════════════════════════════════════════════════
@@ -66,7 +83,13 @@ const HeartbeatSchema = z.object({
     // lets a peer discovered purely via libp2p/DHT become routable over
     // PeerManager's HTTP-based forwardToPeer(). Absent for nodes with no
     // public HTTP endpoint.
-    httpUrl: z.string().max(256).optional(),
+    httpUrl: z.string().max(256).url().refine(u => {
+        try {
+            const parsed = new URL(u);
+            return (parsed.protocol === 'http:' || parsed.protocol === 'https:')
+                && !isPrivateOrLoopbackHost(parsed.hostname);
+        } catch { return false; }
+    }, { message: 'httpUrl must be a public http(s) URL' }).optional(),
 });
 
 const TaskRequestSchema = z.object({
@@ -253,13 +276,17 @@ export class GstdP2PNode extends EventEmitter {
             connectionEncrypters:[noise()],
             streamMuxers:        [yamux()],
             peerDiscovery:       peerDiscovery.length > 0 ? peerDiscovery : undefined,
+            connectionManager: {
+                maxConnections: parseInt(process.env.GSTD_P2P_MAX_CONNECTIONS || '25'),
+            },
             services:            {
                 identify: identify(),
                 ping: ping(),
-                dht: kadDHT({ clientMode: false }),
+                dht: kadDHT({ protocol: '/gstd/kad/1.0.0' }),
             },
         });
-        console.log('    🕸️  DHT: enabled (Kademlia, server mode)');
+        const dhtMode = (this.node.services as any)?.dht?.getMode?.() || 'auto';
+        console.log(`    🕸️  DHT: enabled (Kademlia, mode: ${dhtMode}, protocol: /gstd/kad/1.0.0)`);
 
         await this.registerProtocols();
         this.bindEvents();
@@ -424,12 +451,8 @@ export class GstdP2PNode extends EventEmitter {
 
     // ─── Heartbeat handlers ─────────────────────────────────────────
     private getPublicHttpUrl(): string | undefined {
-        try {
-            const { readFileSync } = require('fs');
-            const fromFile = readFileSync('/tmp/gstd_tunnel_url.txt', 'utf-8').trim();
-            if (fromFile.startsWith('http')) return fromFile;
-        } catch { /* file may not exist yet */ }
-        return process.env.GSTD_PUBLIC_URL || undefined;
+        const url = resolvePublicUrl(process.env.GSTD_PUBLIC_URL || '');
+        return url || undefined;
     }
 
     private handleHeartbeat(data: P2PHeartbeat): void {

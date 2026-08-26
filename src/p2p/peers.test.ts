@@ -1,10 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { rmSync } from 'fs';
+import { join } from 'path';
 import { PeerManager } from './peers.js';
+
+// PeerManager persists its table to $GSTD_CONFIG_DIR/peers.json and reloads it in
+// its constructor, so without this each test would inherit the previous test's peers.
+const PEERS_FILE = join(process.env.GSTD_CONFIG_DIR || '/home/bot/.config/gstdbot', 'peers.json');
 
 describe('PeerManager source tracking', () => {
     let pm: PeerManager;
 
     beforeEach(() => {
+        rmSync(PEERS_FILE, { force: true });
         pm = new PeerManager({
             nodeId: 'self-node',
             url: 'https://self.example.com',

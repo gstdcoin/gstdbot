@@ -24,7 +24,7 @@ const HEARTBEAT_INTERVAL = 30_000;    // broadcast to all peers every 30s
 const PEERS_FILE   = join(process.env.GSTD_CONFIG_DIR || '/home/bot/.config/gstdbot', 'peers.json');
 const TUNNEL_URL_FILE = '/tmp/gstd_tunnel_url.txt';
 
-function resolvePublicUrl(configured: string): string {
+export function resolvePublicUrl(configured: string): string {
     // Prefer tunnel file (updated live by tunnel.sh) over static config
     try {
         const fromFile = readFileSync(TUNNEL_URL_FILE, 'utf-8').trim();
@@ -102,7 +102,7 @@ export class PeerManager extends EventEmitter {
         // 2.5. Last resort: central registry, ONLY if env + GitHub seeding found nothing.
         // This is deliberately the bottom of the fallback chain, not a routine source --
         // logged clearly so an operator can see the network degraded to it.
-        if (allSeeds.length === 0) {
+        if (allSeeds.length === 0 && this.peers.size === 0) {
             console.log('[Peers] No env/GitHub seeds found — falling back to central registry (app.gstdtoken.com)');
             try {
                 const apiBase = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
@@ -114,7 +114,7 @@ export class PeerManager extends EventEmitter {
                     for (const n of nodes) {
                         const url = n.node_url || n.url;
                         const nodeId = n.node_id || n.id;
-                        if (url && nodeId && url !== this.selfInfo.url && !this.peers.has(nodeId)) {
+                        if (url && nodeId && url !== this.selfInfo.url && nodeId !== this.selfInfo.nodeId && !this.peers.has(nodeId)) {
                             this.peers.set(nodeId, { ...this.placeholder(url, nodeId, n.capabilities || []), source: 'kv-fallback' });
                             added++;
                         }
@@ -168,15 +168,18 @@ export class PeerManager extends EventEmitter {
 
     // ─── Register peer via GET /api/peers (simple registration) ─────
 
-    registerPeer(nodeId: string, url: string, capabilities: string[], source: PeerSource = 'http-gossip'): void {
+    registerPeer(nodeId: string, url: string, capabilities: string[], source: PeerSource = 'http-gossip', touch: boolean = true): void {
         if (nodeId === this.selfInfo.nodeId) return;
         const existing = this.peers.get(nodeId);
         this.peers.set(nodeId, {
             nodeId, url, capabilities,
-            version: '?', cpuCores: 0, ramGb: 0,
-            uptime: 0, tasksHandled: 0,
-            lastSeen: Date.now(),
-            latencyMs: existing?.latencyMs || 999,
+            version:      existing?.version ?? '?',
+            cpuCores:     existing?.cpuCores ?? 0,
+            ramGb:        existing?.ramGb ?? 0,
+            uptime:       existing?.uptime ?? 0,
+            tasksHandled: existing?.tasksHandled ?? 0,
+            lastSeen:     touch ? Date.now() : (existing?.lastSeen ?? 0),
+            latencyMs:    existing?.latencyMs || 999,
             source,
         });
         this.saveToDisk();
@@ -253,8 +256,9 @@ export class PeerManager extends EventEmitter {
 
     getSelfPayload(): HeartbeatPayload {
         const livePeers = this.getLivePeers().slice(0, 20);
+        const { source: _source, ...selfWithoutSource } = this.selfInfo;
         return {
-            ...this.selfInfo,
+            ...selfWithoutSource,
             url: resolvePublicUrl(this.selfInfo.url), // always fresh from tunnel file
             peers: livePeers.map(p => ({
                 nodeId: p.nodeId,

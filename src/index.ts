@@ -121,7 +121,7 @@ async function loadConfig(): Promise<NodeConfig> {
     const defaults: NodeConfig = {
         version: '3.4.0',
         mode: (process.env.GSTD_MODE as any) || 'cloud',
-        nodeId: process.env.GSTD_NODE_ID || `node-${Date.now()}`,
+        nodeId: process.env.GSTD_NODE_ID || `node-${hostname()}`,
         nodeName: process.env.NODE_NAME || `${hostname()}-node`,
         installDir: process.env.GSTD_INSTALL_DIR || join(homedir(), 'gstdbot'),
         swarm: {
@@ -194,7 +194,7 @@ function retryMeshInBackground(node: GstdP2PNode, swarm: SwarmAgent | null, gate
             node.on('heartbeat:received', (data: any) => {
                 if (!data.httpUrl) return; // no HTTP address to route to -- nothing to bridge
                 const pm = gateway?.getPeerManager?.() ?? null;
-                pm?.registerPeer(data.nodeId, data.httpUrl, data.capabilities || [], 'p2p-mesh');
+                pm?.registerPeer(data.nodeId, data.httpUrl, data.capabilities || [], 'p2p-mesh', false);
             });
             console.log(`    ✓ P2P mesh started after ${attempt} retr${attempt === 1 ? 'y' : 'ies'} (peer ${peerId.slice(0, 16)}...)`);
         } catch (e: any) {
@@ -454,7 +454,7 @@ async function main(): Promise<void> {
             p2pNode.on('heartbeat:received', (data: any) => {
                 if (!data.httpUrl) return; // no HTTP address to route to -- nothing to bridge
                 const pm = gateway?.getPeerManager?.() ?? null;
-                pm?.registerPeer(data.nodeId, data.httpUrl, data.capabilities || [], 'p2p-mesh');
+                pm?.registerPeer(data.nodeId, data.httpUrl, data.capabilities || [], 'p2p-mesh', false);
             });
         } catch (e: any) {
             // Previously this gave up for the entire process lifetime. Instead,

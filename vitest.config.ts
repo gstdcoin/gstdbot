@@ -1,13 +1,14 @@
 import { defineConfig } from 'vitest/config';
+import { mkdtempSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 
-// Set env var BEFORE modules are imported
-process.env.GSTD_CONFIG_DIR = '/tmp/gstd-vitest-config-dir';
+const testConfigDir = mkdtempSync(join(tmpdir(), 'gstd-vitest-config-dir-'));
 
 export default defineConfig({
     test: {
         env: {
-            GSTD_CONFIG_DIR: '/tmp/gstd-vitest-config-dir',
+            GSTD_CONFIG_DIR: testConfigDir,
         },
-        setupFiles: ['./vitest.setup.ts'],
     },
 });

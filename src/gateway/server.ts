@@ -622,6 +622,7 @@ export class OmegaGateway {
                 peers: peers.map(p => ({
                     node_id: p.nodeId, url: p.url,
                     capabilities: p.capabilities, latency_ms: p.latencyMs,
+                    source: p.source,
                 })),
                 peer_count: peers.length,
             });
