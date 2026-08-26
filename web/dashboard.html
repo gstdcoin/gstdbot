@@ -20,6 +20,22 @@
     --text:#e2e8f0;
     --muted:#64748b;
     --sidebar-w:240px;
+    /* Spacing scale — use these instead of raw px in new/changed rules */
+    --space-1:4px;
+    --space-2:8px;
+    --space-3:12px;
+    --space-4:16px;
+    --space-5:24px;
+    --space-6:32px;
+    --space-7:48px;
+    /* Type scale — use these instead of raw font-size px in new/changed rules */
+    --text-xs:11px;
+    --text-sm:12px;
+    --text-base:13px;
+    --text-md:14px;
+    --text-lg:18px;
+    --text-xl:22px;
+    --text-2xl:26px;
   }
   body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
 
@@ -181,6 +197,18 @@
   .empty .ei{font-size:32px;margin-bottom:10px}
   .empty h4{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
   .empty p{font-size:12px}
+
+  .skeleton{position:relative;overflow:hidden;background:rgba(255,255,255,0.05);border-radius:6px}
+  .skeleton::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(139,92,246,0.12),transparent);animation:skeleton-shimmer 1.4s infinite}
+  @keyframes skeleton-shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+  .skeleton-text{height:14px;width:60%;margin-bottom:6px}
+  .skeleton-text:last-child{margin-bottom:0;width:40%}
+  .skeleton-card{height:80px;border-radius:14px}
+
+  .alert{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-4);border-radius:10px;font-size:var(--text-base);margin-bottom:var(--space-4)}
+  .alert-success{background:rgba(34,197,94,0.12);color:var(--green);border:1px solid rgba(34,197,94,0.3)}
+  .alert-error{background:rgba(239,68,68,0.12);color:var(--red);border:1px solid rgba(239,68,68,0.3)}
+  .alert-info{background:rgba(6,182,212,0.12);color:var(--cyan);border:1px solid rgba(6,182,212,0.3)}
 
   .row{display:flex;align-items:center}
   .jb{justify-content:space-between}
@@ -367,38 +395,44 @@
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-label">CPU Usage</div>
-        <div class="stat-val ta" id="h-cpu">—</div>
+        <span class="skeleton skeleton-text" data-skel-for="h-cpu" style="height:26px;width:50%;margin-bottom:0"></span>
+        <div class="stat-val ta" id="h-cpu" style="display:none">—</div>
         <div class="bar-wrap"><div class="bar bar-purple" id="h-cpu-bar" style="width:0"></div></div>
         <div class="stat-sub" id="h-cpu-sub">—</div>
         <canvas class="stat-spark" id="spark-cpu"></canvas>
       </div>
       <div class="stat-card">
         <div class="stat-label">RAM Usage</div>
-        <div class="stat-val tc" id="h-ram">—</div>
+        <span class="skeleton skeleton-text" data-skel-for="h-ram" style="height:26px;width:50%;margin-bottom:0"></span>
+        <div class="stat-val tc" id="h-ram" style="display:none">—</div>
         <div class="bar-wrap"><div class="bar bar-cyan" id="h-ram-bar" style="width:0"></div></div>
         <div class="stat-sub" id="h-ram-sub">—</div>
         <canvas class="stat-spark" id="spark-ram"></canvas>
       </div>
       <div class="stat-card">
         <div class="stat-label">Disk Free</div>
-        <div class="stat-val tg" id="h-disk">—</div>
+        <span class="skeleton skeleton-text" data-skel-for="h-disk" style="height:26px;width:50%;margin-bottom:0"></span>
+        <div class="stat-val tg" id="h-disk" style="display:none">—</div>
         <div class="bar-wrap"><div class="bar bar-green" id="h-disk-bar" style="width:0"></div></div>
         <div class="stat-sub" id="h-disk-sub">—</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Uptime</div>
-        <div class="stat-val tc" id="h-uptime">—</div>
+        <span class="skeleton skeleton-text" data-skel-for="h-uptime" style="height:26px;width:50%;margin-bottom:0"></span>
+        <div class="stat-val tc" id="h-uptime" style="display:none">—</div>
         <div class="stat-sub">hours running</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">GSTD Earned Today</div>
-        <div class="stat-val ta" id="h-gstd">—</div>
+        <span class="skeleton skeleton-text" data-skel-for="h-gstd" style="height:26px;width:50%;margin-bottom:0"></span>
+        <div class="stat-val ta" id="h-gstd" style="display:none">—</div>
         <div class="stat-sub">TON rewards</div>
         <canvas class="stat-spark" id="spark-earn"></canvas>
       </div>
       <div class="stat-card">
         <div class="stat-label">AI Models</div>
-        <div class="stat-val" id="h-models">—</div>
+        <span class="skeleton skeleton-text" data-skel-for="h-models" style="height:26px;width:50%;margin-bottom:0"></span>
+        <div class="stat-val" id="h-models" style="display:none">—</div>
         <div class="stat-sub" id="h-rating">Rating: —</div>
       </div>
     </div>
@@ -409,8 +443,8 @@
           <div class="card-title">IPFS Storage</div>
           <button class="btn btn-secondary btn-sm" onclick="showPage('ipfs')">View</button>
         </div>
-        <div class="row jb mb8"><span class="muted sm">Pins</span><span class="fw6" id="h-pins">—</span></div>
-        <div class="row jb mb8"><span class="muted sm">Peers</span><span class="fw6" id="h-peers">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">Pins</span><span class="skeleton skeleton-text" data-skel-for="h-pins" style="display:inline-block;height:12px;width:28px;margin:0"></span><span class="fw6" id="h-pins" style="display:none">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">Peers</span><span class="skeleton skeleton-text" data-skel-for="h-peers" style="display:inline-block;height:12px;width:28px;margin:0"></span><span class="fw6" id="h-peers" style="display:none">—</span></div>
         <div class="row jb"><span class="muted sm">Peer ID</span><span class="sm tc mono" id="h-ipfs-id">—</span></div>
       </div>
       <div class="card">
@@ -418,8 +452,8 @@
           <div class="card-title">Wallet</div>
           <button class="btn btn-secondary btn-sm" onclick="showPage('wallet')">View</button>
         </div>
-        <div class="row jb mb8"><span class="muted sm">Address</span><span class="sm tc mono" id="h-addr">—</span></div>
-        <div class="row jb"><span class="muted sm">Earned Today</span><span class="tg fw6" id="h-earn">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">Address</span><span class="skeleton skeleton-text" data-skel-for="h-addr" style="display:inline-block;height:12px;width:110px;margin:0"></span><span class="sm tc mono" id="h-addr" style="display:none">—</span></div>
+        <div class="row jb"><span class="muted sm">Earned Today</span><span class="skeleton skeleton-text" data-skel-for="h-earn" style="display:inline-block;height:12px;width:80px;margin:0"></span><span class="tg fw6" id="h-earn" style="display:none">—</span></div>
       </div>
     </div>
 
@@ -428,7 +462,7 @@
         <div class="card-title">Activity Log</div>
         <button class="btn btn-secondary btn-sm" onclick="refreshHome()">&#x21BB; Refresh</button>
       </div>
-      <div class="log-wrap" id="h-log"><div class="log-row"><span class="log-m muted">Loading...</span></div></div>
+      <div class="log-wrap" id="h-log"><div class="skeleton skeleton-card"></div></div>
     </div>
   </div>
 
@@ -954,7 +988,8 @@ function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 function trunc(a,h=8,t=6){ if(!a) return '—'; return a.length>h+t+3?a.slice(0,h)+'...'+a.slice(-t):a; }
 function fmt4(n){ return typeof n==='number'?n.toFixed(4):'—'; }
 function fmtMB(mb){ if(mb==null) return '—'; return mb>=1024?`${(mb/1024).toFixed(1)} GB`:`${mb} MB`; }
-function set(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
+function hideSkeleton(id){ const sk=document.querySelector(`[data-skel-for="${id}"]`); if(sk) sk.style.display='none'; const e=document.getElementById(id); if(e) e.style.display=''; }
+function set(id,v){ hideSkeleton(id); const e=document.getElementById(id); if(e) e.textContent=v; }
 function show(id,v=true){ const e=document.getElementById(id); if(e) e.style.display=v?'':'none'; }
 function copyText(t){ if(!t) return; navigator.clipboard.writeText(t).then(()=>toast('Copied!')).catch(()=>{}); }
 function toast(m){ const d=document.createElement('div'); d.textContent=m; d.style.cssText='position:fixed;bottom:24px;right:24px;background:rgba(139,92,246,0.9);color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;z-index:9999;transition:opacity 0.3s'; document.body.appendChild(d); setTimeout(()=>{d.style.opacity='0';setTimeout(()=>d.remove(),300)},1800); }
