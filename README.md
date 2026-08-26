@@ -67,7 +67,7 @@ Based on your hardware, the node auto-deploys blockchain infrastructure via Dock
 | Bitcoin node | 8 GB | BTC RPC fees |
 
 ### P2P Mesh
-Nodes discover each other via mDNS (LAN) and bootstrap peers (WAN). Once connected, tasks can route directly between nodes — no platform roundtrip. The mesh self-heals: if a node goes offline, tasks reroute automatically.
+Nodes discover each other directly via libp2p — mDNS (LAN) and a Kademlia DHT (WAN), with the platform's node registry as an explicit last-resort fallback only used when P2P discovery finds nothing. Once connected, tasks can route directly between nodes — no platform roundtrip. The mesh self-heals: if a node goes offline, tasks reroute automatically. WAN-wide DHT bootstrap needs a stable seed address — see `src/p2p/node.ts` for the current status of that rollout.
 
 ---
 
@@ -186,14 +186,22 @@ src/
 
 ## How Nodes Work Together
 
+Peer discovery (how a node finds other nodes to route tasks to directly) and
+the task queue (how the platform assigns priority inference jobs to a node)
+are two separate systems. Peer discovery is P2P-first as of the
+decentralized-discovery work — DHT/mDNS between nodes, with the platform's
+node registry only consulted as a last resort. The priority task queue below
+is unrelated to peer discovery and still runs through the platform as
+described.
+
 ```
                     app.gstdtoken.com  (Vercel + Upstash Redis)
-                    ┌──────────────────────────────────────────┐
-                    │  Node Registry (KV)                      │
-                    │  Priority Task Queue (KV per node)       │
-                    │  Task Results (KV with TTL)              │
-                    │  Stats + Network Info                    │
-                    └──────────────┬───────────────────────────┘
+                    ┌───────────────────────────────────────┐
+                    │ Node Registry (KV) -- P2P last resort │
+                    │ Priority Task Queue (KV per node)     │
+                    │ Task Results (KV with TTL)            │
+                    │ Stats + Network Info                  │
+                    └──────────────┬────────────────────────┘
                                    │  HTTPS REST API
           ┌────────────────────────┼────────────────────────┐
           │                        │                        │
@@ -201,7 +209,7 @@ src/
       AI Inference           NaaS Docker             GPU Compute
       ┌──────────┐           ┌──────────┐            ┌──────────┐
       │   P2P    │◄─────────►│   P2P    │◄──────────►│   P2P    │
-      └──────────┘           └──────────┘            └──────────┘
+      └──────────┘  DHT/mDNS └──────────┘  DHT/mDNS   └──────────┘
            ▲                      ▲                       ▲
            │                      │                       │
          Users  ─────────────────────────────────────►  DApps
