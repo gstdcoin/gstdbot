@@ -973,7 +973,7 @@ function renderApps(apps, filter) {
         <div class="app-card-foot">
           ${inst
             ? '<span class="app-card-status"><span style="color:var(--green)">●</span> Installed</span><button class="btn btn-danger btn-sm" onclick="uninstallApp(\''+id+'\')">Remove</button>'
-            : '<span class="app-card-status muted">Available</span><button class="btn btn-primary btn-sm" onclick="installApp(\''+id+'\')">Install</button>'
+            : '<span class="app-card-status muted">Available</span><button class="btn btn-primary btn-sm" onclick="installApp(\''+id+'\', this)">Install</button>'
           }
         </div>
       </div>`;
@@ -1566,43 +1566,70 @@ async function loadAPIPage(){
   } catch(e){console.error('loadAPIPage',e);}
 }
 
-async function installApp(id){
+// Tracks in-flight installs by appId (truthy while a poll loop is active for that id).
+// Lets a second click on the same still-installing app be a safe no-op instead of
+// spawning a duplicate poll loop -- POST /api/apps/install always answers {ok:true}
+// immediately, before the backend's own already-installing check can reject a repeat,
+// so the frontend has to de-dupe this itself.
+let _installPolls = {};
+
+function resetInstallBtn(btn){
+  if(btn){ btn.disabled=false; btn.textContent='Install'; }
+}
+
+async function installApp(id, btn){
+  // Guards a real race, not just a UI nicety: POST /api/apps/install always answers
+  // {ok:true} immediately (the backend's own already-installing check runs later,
+  // inside the fire-and-forget install() call), so two near-simultaneous invocations
+  // for the same id -- whether from a literal double-click or any other duplicate
+  // call -- must be de-duped on the frontend. _installPolls[id] catches it once a
+  // poll loop is running; btn.disabled catches it in the window before that (set
+  // synchronously below, before the first await).
+  if(_installPolls[id] || (btn && btn.disabled)) return;
+  if(btn){ btn.disabled=true; btn.textContent='Installing...'; }
   try {
     const r=await api('/api/apps/install',{method:'POST',body:JSON.stringify({app_id:id})});
     const d=await r.json();
     if(d.ok){
       toast('Installation started!');
       appAlert(d.message||('Installing '+id+'...'),'info');
-      pollInstallProgress(id);
+      pollInstallProgress(id, btn);
     } else {
       toast('Error: '+(d.message||r.status));
       appAlert('Error: '+(d.message||r.status),'error');
+      resetInstallBtn(btn);
     }
-  } catch(e){toast('Error: '+e.message); appAlert('Error: '+e.message,'error');}
+  } catch(e){toast('Error: '+e.message); appAlert('Error: '+e.message,'error'); resetInstallBtn(btn);}
 }
 
 // Installs run in the background on the node (real Docker pulls can take a while);
 // poll the existing /api/apps/progress endpoint and surface live status via the alert
-// banner instead of leaving the user with just a fire-and-forget toast.
-function pollInstallProgress(id){
+// banner instead of leaving the user with just a fire-and-forget toast. Self-reschedules
+// via setTimeout (rather than a bare setInterval) so a slow round-trip can never overlap
+// with the next tick, and is tracked in _installPolls for the de-dupe described above.
+function pollInstallProgress(id, btn){
   let tries=0, sawProgress=false;
   const maxTries=40; // ~60s ceiling, then hand off to background silently
-  const iv=setInterval(async ()=>{
+  _installPolls[id]=true;
+  function finish(){ delete _installPolls[id]; resetInstallBtn(btn); }
+  function tick(){
     tries++;
-    try {
-      const r=await api('/api/apps/progress/'+encodeURIComponent(id));
-      const p=await r.json();
+    api('/api/apps/progress/'+encodeURIComponent(id)).then(r=>r.json()).then(p=>{
       const phase=p&&p.phase;
       if(phase && phase!=='none'){
         sawProgress=true;
         if(phase==='ready'){
-          clearInterval(iv);
+          // Defensive/belt-and-suspenders: in practice appManager.install() deletes the
+          // progress entry in the same tick it reaches 'ready' (see the phase:'none'
+          // branch below), so an external poller almost never observes 'ready' directly.
+          // Kept in case that timing ever changes.
+          finish();
           appAlert('"'+id+'" installed successfully.','success');
           loadAPIPage();
           return;
         }
         if(phase==='error'){
-          clearInterval(iv);
+          finish();
           appAlert('Install failed: '+(p.error||'unknown error'),'error');
           loadAPIPage();
           return;
@@ -1613,17 +1640,23 @@ function pollInstallProgress(id){
         // (it only leaves it in place on the error path) - if we tracked real
         // progress and it just disappeared, that means it finished, not that it
         // was never started.
-        clearInterval(iv);
+        finish();
         appAlert('"'+id+'" installed successfully.','success');
         loadAPIPage();
         return;
       }
-    } catch(_e) { /* transient poll error, keep trying */ }
+      scheduleNext();
+    }).catch(()=>{ scheduleNext(); /* transient poll error, keep trying */ });
+  }
+  function scheduleNext(){
     if(tries>=maxTries){
-      clearInterval(iv);
+      finish();
       appAlert('"'+id+'" is still installing in the background — refresh to check status.','info');
+      return;
     }
-  },1500);
+    _installPolls[id]=setTimeout(tick,1500);
+  }
+  tick();
 }
 
 // ── Settings ───────────────────────────────────────────────────────────
