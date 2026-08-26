@@ -1,3 +1,16 @@
+// Promise.withResolvers ponyfill (Node 21+ API; DHT/ping libp2p services need it
+// transitively, but this codebase supports Node >=20 per package.json's engines
+// field and install.sh's existing-install check -- polyfill rather than forcing
+// a Node upgrade on existing node operators).
+if (typeof (Promise as any).withResolvers !== 'function') {
+    (Promise as any).withResolvers = function <T>() {
+        let resolve!: (value: T | PromiseLike<T>) => void;
+        let reject!: (reason?: any) => void;
+        const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
+        return { promise, resolve, reject };
+    };
+}
+
 /**
  * GSTD Node OS — Main Orchestrator (gstdd)
  *

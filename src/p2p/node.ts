@@ -20,9 +20,23 @@ import { z } from 'zod';
 // ─── Well-known GSTD bootstrap nodes ─────────────────────────────
 // Add your node's multiaddr to GSTD_BOOTSTRAP_PEERS env var to
 // contribute to bootstrap infrastructure.
-const GSTD_DEFAULT_BOOTSTRAP: string[] = (
-    process.env.GSTD_BOOTSTRAP_PEERS || ''
-).split(',').map(s => s.trim()).filter(Boolean);
+//
+// DEFAULT_BOOTSTRAP_PEERS ships hardcoded (compiled into the software,
+// never fetched from a live service) so a brand-new node can join the
+// DHT with zero configuration. It is EMPTY today: populating it requires
+// a stable DNS record pointing at a project-run node's current address
+// (the current bootstrap candidate uses a Cloudflare tunnel URL that
+// changes on every restart -- a hardcoded multiaddr needs something
+// stable to point at first). See docs/superpowers/specs/2026-08-25-decentralized-discovery-design.md
+// section 2 and this plan's Task 6. DO NOT populate this with a
+// tunnel URL or any other non-stable address -- an empty list here is
+// honest; a stale one silently breaks bootstrap for every new node.
+export const DEFAULT_BOOTSTRAP_PEERS: string[] = [];
+
+const GSTD_DEFAULT_BOOTSTRAP: string[] = [
+    ...DEFAULT_BOOTSTRAP_PEERS,
+    ...(process.env.GSTD_BOOTSTRAP_PEERS || '').split(',').map(s => s.trim()).filter(Boolean),
+];
 
 // ─── Protocol IDs ─────────────────────────────────────────────────
 const PROTOCOL_HEARTBEAT      = '/gstd/heartbeat/1.0.0';
@@ -182,6 +196,8 @@ export class GstdP2PNode extends EventEmitter {
         const { noise }        = await import('@chainsafe/libp2p-noise');
         const { yamux }        = await import('@chainsafe/libp2p-yamux');
         const { identify }     = await import('@libp2p/identify');
+        const { kadDHT }       = await import('@libp2p/kad-dht');
+        const { ping }         = await import('@libp2p/ping');
 
         const peerDiscovery: any[] = [];
 
@@ -211,6 +227,8 @@ export class GstdP2PNode extends EventEmitter {
             } catch {
                 console.log('    ⚠ Bootstrap unavailable');
             }
+        } else {
+            console.log('    ⚠ Bootstrap: 0 known peers (DEFAULT_BOOTSTRAP_PEERS is empty -- see src/p2p/node.ts)');
         }
 
         // Announce addresses: include external IP if configured
@@ -229,8 +247,13 @@ export class GstdP2PNode extends EventEmitter {
             connectionEncrypters:[noise()],
             streamMuxers:        [yamux()],
             peerDiscovery:       peerDiscovery.length > 0 ? peerDiscovery : undefined,
-            services:            { identify: identify() },
+            services:            {
+                identify: identify(),
+                ping: ping(),
+                dht: kadDHT({ clientMode: false }),
+            },
         });
+        console.log('    🕸️  DHT: enabled (Kademlia, server mode)');
 
         await this.registerProtocols();
         this.bindEvents();
