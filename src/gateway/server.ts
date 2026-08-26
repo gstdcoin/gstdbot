@@ -1623,6 +1623,7 @@ export class OmegaGateway {
 
         // ─── Wallet Binding: Bind owner wallet to this node ──────
         this.app.post('/api/node/bind-wallet', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const ownerWallet = this.normalizeWalletAddress(req.body?.owner_wallet);
             if (!ownerWallet || !this.isTonAddress(ownerWallet)) {
                 res.status(400).json({ error: 'Valid TON owner_wallet address required' });
@@ -1672,6 +1673,7 @@ export class OmegaGateway {
 
         // POST /api/node/unbind-wallet — unbind wallet from this node
         this.app.post('/api/node/unbind-wallet', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             let { owner_wallet } = req.body || {};
             // Auto-resolve from local linked wallet if not provided
             if (!owner_wallet) {
@@ -1768,6 +1770,7 @@ export class OmegaGateway {
 
         // POST /api/node/claim-rewards — claim all pending rewards
         this.app.post('/api/node/claim-rewards', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             let { owner_wallet } = req.body || {};
             // Auto-resolve: first try linked external, then node wallet address
             if (!owner_wallet) {
@@ -2319,6 +2322,7 @@ export class OmegaGateway {
 
         // ─── Link External Wallet (dashboard UI) ────────────────
         this.app.post('/api/wallet/link-external', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const address = this.normalizeWalletAddress(req.body?.address);
             if (!address || !this.isTonAddress(address)) {
                 res.status(400).json({ error: 'Valid TON wallet address required' });
@@ -2347,6 +2351,7 @@ export class OmegaGateway {
 
         // ─── Claim Balance (withdraw to wallet) ─────────────────
         this.app.post('/api/wallet/claim', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             if (!this.wallet) {
                 res.status(400).json({ error: 'No wallet configured' });
                 return;
