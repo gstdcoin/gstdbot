@@ -99,6 +99,33 @@ export class PeerManager extends EventEmitter {
             }
         }
 
+        // 2.5. Last resort: central registry, ONLY if env + GitHub seeding found nothing.
+        // This is deliberately the bottom of the fallback chain, not a routine source --
+        // logged clearly so an operator can see the network degraded to it.
+        if (allSeeds.length === 0) {
+            console.log('[Peers] No env/GitHub seeds found — falling back to central registry (app.gstdtoken.com)');
+            try {
+                const apiBase = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
+                const resp = await fetch(`${apiBase}/api/v1/nodes/list`, { signal: AbortSignal.timeout(8000) });
+                if (resp.ok) {
+                    const data: any = await resp.json();
+                    const nodes: any[] = Array.isArray(data) ? data : (data.nodes || []);
+                    let added = 0;
+                    for (const n of nodes) {
+                        const url = n.node_url || n.url;
+                        const nodeId = n.node_id || n.id;
+                        if (url && nodeId && url !== this.selfInfo.url && !this.peers.has(nodeId)) {
+                            this.peers.set(nodeId, { ...this.placeholder(url, nodeId, n.capabilities || []), source: 'kv-fallback' });
+                            added++;
+                        }
+                    }
+                    console.log(`[Peers] Central registry fallback added ${added} peer(s)`);
+                }
+            } catch (e: any) {
+                console.log(`[Peers] Central registry fallback failed: ${e.message} — starting with 0 peers, relying on P2P discovery`);
+            }
+        }
+
         // 3. Ping all known peers immediately
         await this.pingAll();
 
