@@ -599,10 +599,11 @@
   <div class="page" id="page-validators">
     <div class="page-title">Validators</div>
     <div class="page-subtitle">Earn rewards by participating in blockchain consensus</div>
+    <div class="alert" id="v-alert" style="display:none"></div>
     <div class="card mb16" style="background:rgba(245,158,11,0.06);border-color:rgba(245,158,11,0.2);padding:12px 16px">
       <span class="sm ty">&#x26A0; Heavy validators (SOL, full ETH) require a dedicated server with 16-32 GB RAM. This node: <span id="v-tier">loading...</span></span>
     </div>
-    <div id="v-list"><div class="empty"><div class="ei">&#x26D3;</div><h4>Loading validators...</h4></div></div>
+    <div id="v-list"><div class="skeleton skeleton-card" style="margin-bottom:14px"></div><div class="skeleton skeleton-card" style="margin-bottom:14px"></div><div class="skeleton skeleton-card"></div></div>
   </div>
 
   <!-- WALLET -->
@@ -1394,8 +1395,8 @@ function renderValidators(data){
   const vals=data.validators||data||[];
   const el=document.getElementById('v-list');
   if(!vals.length){el.innerHTML='<div class="empty"><div class="ei">&#x26D3;</div><h4>No validators configured</h4><p>Validators let you earn extra rewards by validating transactions</p></div>';return;}
-  const icons={TON:'&#x1F48E;',ETH:'&#x1F537;',BTC:'&#x1F7E0;',SOL:'&#x1F308;',BNB:'&#x1F7E1;'};
-  const cols={TON:'rgba(6,182,212,0.15)',ETH:'rgba(98,126,234,0.15)',BTC:'rgba(245,158,11,0.15)',SOL:'rgba(153,69,255,0.15)',BNB:'rgba(240,185,11,0.15)'};
+  const icons={TON:'&#x1F48E;',ETH:'&#x1F537;',BTC:'&#x1F7E0;',SOL:'&#x1F308;',XRP:'&#x2715;'};
+  const cols={TON:'rgba(6,182,212,0.15)',ETH:'rgba(98,126,234,0.15)',BTC:'rgba(245,158,11,0.15)',SOL:'rgba(153,69,255,0.15)',XRP:'rgba(0,164,240,0.15)'};
   el.innerHTML=vals.map(v=>{
     const st=v.state||{};
     const ck=(v.id||'').toUpperCase().replace(/[^A-Z]/g,'');
@@ -1425,13 +1426,23 @@ function renderValidators(data){
   }).join('');
 }
 
+function validatorAlert(msg,type){
+  const el=document.getElementById('v-alert');
+  if(!el) return;
+  el.className='alert alert-'+type;
+  el.textContent=msg;
+  el.style.display='flex';
+  clearTimeout(validatorAlert._t);
+  validatorAlert._t=setTimeout(()=>{el.style.display='none';},6000);
+}
+
 async function toggleValidator(id,enabled){
   try {
     const r=await api('/api/validators/'+id+'/toggle',{method:'POST'});
     const d=await r.json().catch(()=>({}));
-    if(!r.ok||d.ok===false){toast('Failed: '+(d.message||d.error||r.status));loadValidators();}
-    else{toast(d.message||(enabled?'Starting...':'Stopped'));setTimeout(loadValidators,2000);}
-  } catch(e){toast('Error: '+e.message);loadValidators();}
+    if(!r.ok||d.ok===false){toast('Failed: '+(d.message||d.error||r.status));validatorAlert('Failed to toggle validator: '+(d.message||d.error||r.status),'error');loadValidators();}
+    else{toast(d.message||(enabled?'Starting...':'Stopped'));validatorAlert(d.message||(enabled?'Starting validator...':'Validator stopped.'),'success');setTimeout(loadValidators,2000);}
+  } catch(e){toast('Error: '+e.message);validatorAlert('Error: '+e.message,'error');loadValidators();}
 }
 
 // ── Wallet ─────────────────────────────────────────────────────────────
