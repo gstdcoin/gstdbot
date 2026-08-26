@@ -2412,29 +2412,18 @@ export class OmegaGateway {
         // ─── WALLET AUTH (TON Connect style) ─────────────────────
         // ═══════════════════════════════════════════════════════════
         this.app.post('/api/auth/wallet', (req, res) => {
-            const { address, signature, timestamp } = req.body || {};
-            if (!address || !signature) {
-                res.status(400).json({ error: 'address and signature required' });
-                return;
-            }
-            // Verify signature is recent (within 5 minutes)
-            const ts = parseInt(timestamp) || 0;
-            if (Math.abs(Date.now() - ts) > 5 * 60 * 1000) {
-                res.status(400).json({ error: 'Signature expired' });
-                return;
-            }
-            // Verify the signature matches the wallet address
-            const expectedSig = createHash('sha256').update(address + ':' + timestamp + ':gstd-node-auth').digest('hex');
-            if (signature !== expectedSig) {
-                res.status(401).json({ error: 'Invalid wallet signature' });
-                return;
-            }
-            // If node wallet matches — full access; otherwise read-only
-            const nodeWalletAddr = this.wallet?.getAddress?.() || '';
-            const isOwner = address === nodeWalletAddr || !nodeWalletAddr;
-            const token = createAuthToken();
-            logActivity(`Wallet auth: ${address.slice(0, 12)}... (${isOwner ? 'owner' : 'viewer'})`, 'success');
-            res.json({ success: true, token, role: isOwner ? 'owner' : 'viewer', address });
+            // Disabled: this endpoint's "signature" check was a hash of public data
+            // (wallet address + timestamp + a hardcoded salt visible in this open-source
+            // repo), not real cryptographic verification -- anyone who knew the node's
+            // own wallet address (shown on its own dashboard) could forge a valid
+            // signature and receive a real, fully-privileged requireNodeAuth session
+            // token with role:'owner'. No legitimate caller of this route exists
+            // anywhere in this repo or its sibling repos (confirmed via exhaustive
+            // audit). Disabled rather than patched with a rushed crypto fix; real TON
+            // Connect wallet-signature verification (actual ed25519 signature
+            // verification against the wallet's public key) would need to be built
+            // properly as its own feature if this capability is ever wanted.
+            res.status(501).json({ error: 'This authentication method is disabled. Use the dashboard PIN.' });
         });
 
         // ═══════════════════════════════════════════════════════════
