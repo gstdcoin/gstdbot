@@ -4096,6 +4096,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
 
         // POST /api/validators/:chain/toggle — enable/disable a chain
         this.app.post('/api/validators/:chain/toggle', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             if (!this.validatorManager) {
                 return res.status(503).json({ error: 'Validator manager not ready' });
             }
@@ -4105,6 +4106,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
 
         // POST /api/validators/:chain/install — download native binary for chain
         this.app.post('/api/validators/:chain/install', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             if (!this.validatorManager) {
                 return res.status(503).json({ error: 'Validator manager not ready' });
             }
