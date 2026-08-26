@@ -663,6 +663,7 @@
   <div class="page" id="page-api">
     <div class="page-title">API &amp; Apps</div>
     <div class="page-subtitle">Connect your tools to this GSTD node's AI engine</div>
+    <div class="alert" id="app-alert" style="display:none"></div>
 
     <div class="card mb20">
       <div class="card-header">
@@ -713,7 +714,12 @@
         <button class="app-cat-btn" onclick="filterApps('training',this)">🧠 Training</button>
         <button class="app-cat-btn" onclick="filterApps('tools',this)">🔧 Tools</button>
       </div>
-      <div id="api-apps"><div class="empty"><div class="ei">&#x1F6CD;</div><h4>Loading apps...</h4></div></div>
+      <div id="api-apps"><div class="app-store-grid">
+        <div class="skeleton skeleton-card" style="height:196px"></div>
+        <div class="skeleton skeleton-card" style="height:196px"></div>
+        <div class="skeleton skeleton-card" style="height:196px"></div>
+        <div class="skeleton skeleton-card" style="height:196px"></div>
+      </div></div>
     </div>
   </div>
 
@@ -986,8 +992,9 @@ async function uninstallApp(id) {
     const r = await api('/api/apps/uninstall', {method:'POST', body:JSON.stringify({app_id:id})});
     const d = await r.json();
     toast(d.ok ? 'App removed' : 'Error: '+(d.message||r.status));
+    appAlert(d.ok ? (d.message||'App removed') : 'Error: '+(d.message||r.status), d.ok?'success':'error');
     if(d.ok) loadAPIPage();
-  } catch(e) { toast('Error: '+e.message); }
+  } catch(e) { toast('Error: '+e.message); appAlert('Error: '+e.message,'error'); }
 }
 
 // ── Utilities ──────────────────────────────────────────────────────────
@@ -1448,6 +1455,15 @@ async function toggleValidator(id,enabled){
 }
 
 // ── Wallet ─────────────────────────────────────────────────────────────
+function appAlert(msg,type){
+  const el=document.getElementById('app-alert');
+  if(!el) return;
+  el.className='alert alert-'+type;
+  el.textContent=msg;
+  el.style.display='flex';
+  clearTimeout(appAlert._t);
+  appAlert._t=setTimeout(()=>{el.style.display='none';},6000);
+}
 function walletAlert(msg,type){
   const el=document.getElementById('w-alert');
   if(!el) return;
@@ -1554,9 +1570,60 @@ async function installApp(id){
   try {
     const r=await api('/api/apps/install',{method:'POST',body:JSON.stringify({app_id:id})});
     const d=await r.json();
-    if(d.ok) toast('Installation started!');
-    else toast('Error: '+(d.message||r.status));
-  } catch(e){toast('Error: '+e.message);}
+    if(d.ok){
+      toast('Installation started!');
+      appAlert(d.message||('Installing '+id+'...'),'info');
+      pollInstallProgress(id);
+    } else {
+      toast('Error: '+(d.message||r.status));
+      appAlert('Error: '+(d.message||r.status),'error');
+    }
+  } catch(e){toast('Error: '+e.message); appAlert('Error: '+e.message,'error');}
+}
+
+// Installs run in the background on the node (real Docker pulls can take a while);
+// poll the existing /api/apps/progress endpoint and surface live status via the alert
+// banner instead of leaving the user with just a fire-and-forget toast.
+function pollInstallProgress(id){
+  let tries=0, sawProgress=false;
+  const maxTries=40; // ~60s ceiling, then hand off to background silently
+  const iv=setInterval(async ()=>{
+    tries++;
+    try {
+      const r=await api('/api/apps/progress/'+encodeURIComponent(id));
+      const p=await r.json();
+      const phase=p&&p.phase;
+      if(phase && phase!=='none'){
+        sawProgress=true;
+        if(phase==='ready'){
+          clearInterval(iv);
+          appAlert('"'+id+'" installed successfully.','success');
+          loadAPIPage();
+          return;
+        }
+        if(phase==='error'){
+          clearInterval(iv);
+          appAlert('Install failed: '+(p.error||'unknown error'),'error');
+          loadAPIPage();
+          return;
+        }
+        appAlert('Installing "'+id+'"... '+(p.currentStep||phase)+' ('+(p.percent||0)+'%)','info');
+      } else if(sawProgress){
+        // Backend clears the progress entry once install() resolves successfully
+        // (it only leaves it in place on the error path) - if we tracked real
+        // progress and it just disappeared, that means it finished, not that it
+        // was never started.
+        clearInterval(iv);
+        appAlert('"'+id+'" installed successfully.','success');
+        loadAPIPage();
+        return;
+      }
+    } catch(_e) { /* transient poll error, keep trying */ }
+    if(tries>=maxTries){
+      clearInterval(iv);
+      appAlert('"'+id+'" is still installing in the background — refresh to check status.','info');
+    }
+  },1500);
 }
 
 // ── Settings ───────────────────────────────────────────────────────────
