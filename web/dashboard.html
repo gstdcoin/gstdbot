@@ -161,7 +161,8 @@
   .msg{max-width:78%;padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.5}
   .msg-user{background:rgba(139,92,246,0.25);border:1px solid rgba(139,92,246,0.3);align-self:flex-end;border-radius:14px 14px 4px 14px}
   .msg-bot{background:rgba(255,255,255,0.06);border:1px solid var(--border);align-self:flex-start;border-radius:14px 14px 14px 4px}
-  .msg-bot.typing{opacity:0.6;font-style:italic}
+  .msg-bot.typing{opacity:0.75;font-style:italic;position:relative;overflow:hidden}
+  .msg-bot.typing::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(139,92,246,0.16),transparent);animation:skeleton-shimmer 1.4s infinite}
   .chat-in{display:flex;gap:10px;padding:14px;border-top:1px solid var(--border);background:var(--card-bg)}
   .chat-in .input{flex:1}
 
@@ -534,6 +535,7 @@
         <button class="btn btn-danger btn-sm" onclick="clearChat()">Clear</button>
       </div>
     </div>
+    <div class="alert" id="chat-alert" style="display:none"></div>
     <div class="chat-box">
       <div class="chat-msgs" id="chat-msgs">
         <div class="muted sm" style="text-align:center;padding:20px">Select a model above and start chatting</div>
@@ -1253,6 +1255,15 @@ async function removeModel(name){
 }
 
 // ── Chat ───────────────────────────────────────────────────────────────
+function chatAlert(msg,type){
+  const el=document.getElementById('chat-alert');
+  if(!el) return;
+  el.className='alert alert-'+type;
+  el.textContent=msg;
+  el.style.display='flex';
+  clearTimeout(chatAlert._t);
+  chatAlert._t=setTimeout(()=>{el.style.display='none';},6000);
+}
 async function loadChatModels(){
   try {
     const d=await api('/v1/models').then(r=>r.json());
@@ -1278,11 +1289,19 @@ async function sendChat(){
   msgsEl.appendChild(think);msgsEl.scrollTop=msgsEl.scrollHeight;
   try {
     const r=await api('/api/v1/chat',{method:'POST',body:JSON.stringify({model,messages:chatHistory,stream:false})});
+    if(!r.ok){
+      let em;
+      try{const ej=await r.json();em=ej.error||ej.message||r.status;}catch{em=r.status;}
+      throw new Error(typeof em==='string'?em:JSON.stringify(em));
+    }
     const d=await r.json();
     const reply=d.choices?.[0]?.message?.content||d.response||d.content||JSON.stringify(d);
     chatHistory.push({role:'assistant',content:reply});
     think.className='msg msg-bot';think.textContent=reply;
-  } catch(e){think.className='msg msg-bot';think.style.color='var(--red)';think.textContent='Error: '+e.message;}
+  } catch(e){
+    think.className='msg msg-bot';think.style.color='var(--red)';think.textContent='Error: '+e.message;
+    chatAlert('Failed to send message: '+e.message,'error');
+  }
   btn.disabled=false;msgsEl.scrollTop=msgsEl.scrollHeight;
 }
 
