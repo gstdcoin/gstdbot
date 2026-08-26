@@ -160,7 +160,13 @@ export class NeuralRouter {
 
     async route(requestedModel: string, messages: ChatMessage[]): Promise<RouteResult> {
         const result = await this.routeInternal(requestedModel, messages);
-        return result.model !== requestedModel ? { ...result, requestedModel } : result;
+        // 'auto' (the default on most call sites) always resolves to some
+        // concrete model, so it would always "differ" here without ever
+        // representing a real substitution -- exclude it so the field only
+        // fires when the caller asked for a SPECIFIC model and got a
+        // different one back.
+        const isRealSubstitution = requestedModel !== 'auto' && result.model !== requestedModel;
+        return isRealSubstitution ? { ...result, requestedModel } : result;
     }
 
     private async routeInternal(requestedModel: string, messages: ChatMessage[]): Promise<RouteResult> {
