@@ -470,34 +470,35 @@
   <div class="page" id="page-models">
     <div class="page-title">AI Models</div>
     <div class="page-subtitle">Manage Ollama models and track your node rating</div>
+    <div class="alert" id="m-alert" style="display:none"></div>
 
     <div class="grid-3 mb20">
-      <div class="stat-card"><div class="stat-label">Rating Score</div><div class="stat-val ta" id="m-score">—</div><div class="stat-sub" id="m-tier">Tier: —</div></div>
-      <div class="stat-card"><div class="stat-label">Rewards Multiplier</div><div class="stat-val tc" id="m-mult">—</div><div class="stat-sub">x base earnings</div></div>
-      <div class="stat-card"><div class="stat-label">Installed Models</div><div class="stat-val tg" id="m-cnt">—</div><div class="stat-sub">Ollama models</div></div>
+      <div class="stat-card"><div class="stat-label">Rating Score</div><span class="skeleton skeleton-text" data-skel-for="m-score" style="height:26px;width:50%;margin-bottom:0"></span><div class="stat-val ta" id="m-score" style="display:none">—</div><div class="stat-sub" id="m-tier">Tier: —</div></div>
+      <div class="stat-card"><div class="stat-label">Rewards Multiplier</div><span class="skeleton skeleton-text" data-skel-for="m-mult" style="height:26px;width:50%;margin-bottom:0"></span><div class="stat-val tc" id="m-mult" style="display:none">—</div><div class="stat-sub">x base earnings</div></div>
+      <div class="stat-card"><div class="stat-label">Installed Models</div><span class="skeleton skeleton-text" data-skel-for="m-cnt" style="height:26px;width:50%;margin-bottom:0"></span><div class="stat-val tg" id="m-cnt" style="display:none">—</div><div class="stat-sub">Ollama models</div></div>
     </div>
 
     <div class="grid-2 mb20">
       <div class="card">
         <div class="card-title">Rating Breakdown</div>
         <div style="margin-bottom:12px">
-          <div class="row jb mb8"><span class="muted sm">Models</span><span class="sm fw6" id="rb-mv">—</span></div>
+          <div class="row jb mb8"><span class="muted sm">Models</span><span class="skeleton skeleton-text" data-skel-for="rb-mv" style="display:inline-block;height:12px;width:36px;margin:0"></span><span class="sm fw6" id="rb-mv" style="display:none">—</span></div>
           <div class="bar-wrap"><div class="bar bar-purple" id="rb-mb" style="width:0"></div></div>
         </div>
         <div style="margin-bottom:12px">
-          <div class="row jb mb8"><span class="muted sm">Activity</span><span class="sm fw6" id="rb-av">—</span></div>
+          <div class="row jb mb8"><span class="muted sm">Activity</span><span class="skeleton skeleton-text" data-skel-for="rb-av" style="display:inline-block;height:12px;width:36px;margin:0"></span><span class="sm fw6" id="rb-av" style="display:none">—</span></div>
           <div class="bar-wrap"><div class="bar bar-cyan" id="rb-ab" style="width:0"></div></div>
         </div>
         <div>
-          <div class="row jb mb8"><span class="muted sm">Uptime</span><span class="sm fw6" id="rb-uv">—</span></div>
+          <div class="row jb mb8"><span class="muted sm">Uptime</span><span class="skeleton skeleton-text" data-skel-for="rb-uv" style="display:inline-block;height:12px;width:36px;margin:0"></span><span class="sm fw6" id="rb-uv" style="display:none">—</span></div>
           <div class="bar-wrap"><div class="bar bar-green" id="rb-ub" style="width:0"></div></div>
         </div>
       </div>
       <div class="card">
         <div class="card-title">Hardware</div>
-        <div class="row jb mb8"><span class="muted sm">CPU</span><span class="sm fw6" id="m-cpu">—</span></div>
-        <div class="row jb mb8"><span class="muted sm">RAM Total</span><span class="sm fw6" id="m-ram">—</span></div>
-        <div class="row jb"><span class="muted sm">Disk Free</span><span class="sm fw6" id="m-disk">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">CPU</span><span class="skeleton skeleton-text" data-skel-for="m-cpu" style="display:inline-block;height:12px;width:110px;margin:0"></span><span class="sm fw6" id="m-cpu" style="display:none">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">RAM Total</span><span class="skeleton skeleton-text" data-skel-for="m-ram" style="display:inline-block;height:12px;width:50px;margin:0"></span><span class="sm fw6" id="m-ram" style="display:none">—</span></div>
+        <div class="row jb"><span class="muted sm">Disk Free</span><span class="skeleton skeleton-text" data-skel-for="m-disk" style="display:inline-block;height:12px;width:60px;margin:0"></span><span class="sm fw6" id="m-disk" style="display:none">—</span></div>
       </div>
     </div>
 
@@ -509,7 +510,7 @@
           <button class="btn btn-primary" onclick="doPullInput()">&#x2B07; Pull</button>
         </div>
       </div>
-      <div id="m-list"><div class="empty"><div class="ei">&#x1F916;</div><h4>Loading models...</h4></div></div>
+      <div id="m-list"><div class="skeleton skeleton-card" style="margin-bottom:8px"></div><div class="skeleton skeleton-card"></div></div>
     </div>
 
     <div class="card">
@@ -517,7 +518,7 @@
         <div class="card-title" style="margin-bottom:0">Model Catalog</div>
         <span class="muted sm">Green = fits your hardware</span>
       </div>
-      <div class="model-grid" id="m-catalog"></div>
+      <div class="model-grid" id="m-catalog"><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div></div>
     </div>
   </div>
 
@@ -1139,6 +1140,15 @@ async function checkUpdBanner(){
 }
 
 // ── Models ─────────────────────────────────────────────────────────────
+function modelAlert(msg,type){
+  const el=document.getElementById('m-alert');
+  if(!el) return;
+  el.className='alert alert-'+type;
+  el.textContent=msg;
+  el.style.display='flex';
+  clearTimeout(modelAlert._t);
+  modelAlert._t=setTimeout(()=>{el.style.display='none';},6000);
+}
 async function loadModels(){
   try {
     const [mods,rat,hw]=await Promise.all([
@@ -1210,22 +1220,25 @@ async function executePull(name){
   pullCtrl=new AbortController();
   try {
     const r=await fetch(API+'/api/ollama/models/pull',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({model:name}),signal:pullCtrl.signal});
-    if(!r.ok){const e=await r.json();logEl.textContent+='Error: '+(e.error||r.status)+'\n';return;}
+    if(!r.ok){const e=await r.json();logEl.textContent+='Error: '+(e.error||r.status)+'\n';modelAlert('Failed to pull "'+name+'": '+(e.error||r.status),'error');return;}
     const reader=r.body.getReader(),dec=new TextDecoder();
+    let pullErr=null;
     while(true){
       const {done,value}=await reader.read();
       if(done) break;
       const txt=dec.decode(value);
       for(const rawLine of txt.split('\n').filter(Boolean)){
         const line=rawLine.startsWith('data: ')?rawLine.slice(6):rawLine;
-        try{const j=JSON.parse(line);if(j.error){logEl.textContent+='Error: '+j.error+'\n';continue;}if(j.status) logEl.textContent+=j.status+'\n';if(j.completed&&j.total) logEl.textContent+='  '+Math.round(j.completed/j.total*100)+'%\n';}
+        try{const j=JSON.parse(line);if(j.error){logEl.textContent+='Error: '+j.error+'\n';pullErr=j.error;continue;}if(j.status) logEl.textContent+=j.status+'\n';if(j.completed&&j.total) logEl.textContent+='  '+Math.round(j.completed/j.total*100)+'%\n';}
         catch(_){logEl.textContent+=line+'\n';}
       }
       logEl.scrollTop=logEl.scrollHeight;
     }
     logEl.textContent+='Done!\n';
+    if(pullErr) modelAlert('Failed to pull "'+name+'": '+pullErr,'error');
+    else modelAlert('Model "'+name+'" installed successfully.','success');
     setTimeout(()=>{cancelPull();loadModels();},1500);
-  } catch(e){if(e.name!=='AbortError') logEl.textContent+='Error: '+e.message+'\n';}
+  } catch(e){if(e.name!=='AbortError'){logEl.textContent+='Error: '+e.message+'\n';modelAlert('Failed to pull "'+name+'": '+e.message,'error');}}
 }
 
 function cancelPull(){if(pullCtrl){pullCtrl.abort();pullCtrl=null;}document.getElementById('pull-overlay').classList.remove('show');}
@@ -1234,9 +1247,9 @@ async function removeModel(name){
   if(!confirm('Remove model "'+name+'"?')) return;
   try {
     const r=await api('/api/ollama/models/'+encodeURIComponent(name),{method:'DELETE'});
-    if(r.ok){toast('Model removed');loadModels();}
-    else{const e=await r.json();toast('Error: '+(e.error||r.status));}
-  } catch(e){toast('Error: '+e.message);}
+    if(r.ok){toast('Model removed');modelAlert('Model "'+name+'" removed.','success');loadModels();}
+    else{const e=await r.json();toast('Error: '+(e.error||r.status));modelAlert('Failed to remove "'+name+'": '+(e.error||r.status),'error');}
+  } catch(e){toast('Error: '+e.message);modelAlert('Failed to remove "'+name+'": '+e.message,'error');}
 }
 
 // ── Chat ───────────────────────────────────────────────────────────────
