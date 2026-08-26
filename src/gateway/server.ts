@@ -2426,6 +2426,7 @@ export class OmegaGateway {
         });
 
         this.app.post('/api/ssl/setup', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const { domain, email } = req.body || {};
             if (!domain || !email) {
                 res.status(400).json({ error: 'domain and email required' });
@@ -2471,6 +2472,7 @@ export class OmegaGateway {
         });
 
         this.app.post('/api/dns/setup', (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const { provider, domain, token: dnsToken, username, password } = req.body || {};
             if (!provider || !domain) {
                 res.status(400).json({ error: 'provider and domain required' });
@@ -2755,7 +2757,8 @@ export class OmegaGateway {
             }
         });
 
-        this.app.post('/api/system/ssh/harden', async (_req, res) => {
+        this.app.post('/api/system/ssh/harden', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             try {
                 const cmds = [
                     "sudo sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config",
@@ -2772,7 +2775,8 @@ export class OmegaGateway {
             }
         });
 
-        this.app.post('/api/system/update-os', async (_req, res) => {
+        this.app.post('/api/system/update-os', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             logActivity('System update started from dashboard', 'info');
             try {
                 execSync('sudo apt-get update -qq', { timeout: 120000, stdio: 'pipe' });
