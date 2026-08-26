@@ -1988,7 +1988,8 @@ export class OmegaGateway {
         });
 
         this.app.post('/api/apps/install', async (req, res) => {
-            const { appId } = req.body;
+            if (!requireNodeAuth(req, res)) return;
+            const { app_id: appId } = req.body;
             if (!appId) { res.json({ ok: false, message: 'Missing appId' }); return; }
             // Look up the app first to check if it needs Docker
             const registry = await this.appManager.getRegistry();
@@ -2026,25 +2027,29 @@ export class OmegaGateway {
         });
 
         this.app.post('/api/apps/uninstall', async (req, res) => {
-            const { appId } = req.body;
+            if (!requireNodeAuth(req, res)) return;
+            const { app_id: appId } = req.body;
             const ok = await this.appManager.uninstall(appId);
             res.json({ ok, message: ok ? `${appId} uninstalled` : `Failed to uninstall ${appId}` });
         });
 
         this.app.post('/api/apps/start', async (req, res) => {
-            const { appId } = req.body;
+            if (!requireNodeAuth(req, res)) return;
+            const { app_id: appId } = req.body;
             const ok = await this.appManager.start(appId);
             res.json({ ok });
         });
 
         this.app.post('/api/apps/stop', async (req, res) => {
-            const { appId } = req.body;
+            if (!requireNodeAuth(req, res)) return;
+            const { app_id: appId } = req.body;
             const ok = await this.appManager.stop(appId);
             res.json({ ok });
         });
 
         this.app.post('/api/apps/update', async (req, res) => {
-            const { appId } = req.body;
+            if (!requireNodeAuth(req, res)) return;
+            const { app_id: appId } = req.body;
             if (!appId) { res.json({ ok: false, message: 'Missing appId' }); return; }
             logActivity(`Updating app: ${appId}...`, 'info');
             // Stop → Uninstall → Reinstall (preserves data via volumes)
@@ -2079,6 +2084,7 @@ export class OmegaGateway {
 
         // ─── Bulk Install (one-click install all) ────────────────
         this.app.post('/api/apps/install-all', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const { includePremium } = req.body || {};
             logActivity(`Bulk install started (premium: ${!!includePremium})...`, 'info');
             try {
@@ -2093,7 +2099,8 @@ export class OmegaGateway {
             }
         });
 
-        this.app.post('/api/apps/install-all-free', async (_req, res) => {
+        this.app.post('/api/apps/install-all-free', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             logActivity('Bulk install (free apps only)...', 'info');
             try {
                 const results = await this.appManager.installAllFree();

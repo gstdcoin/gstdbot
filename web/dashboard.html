@@ -944,8 +944,8 @@ async function uninstallApp(id) {
   try {
     const r = await api('/api/apps/uninstall', {method:'POST', body:JSON.stringify({app_id:id})});
     const d = await r.json();
-    toast(r.ok ? 'App removed' : 'Error: '+(d.error||r.status));
-    if(r.ok) loadAPIPage();
+    toast(d.ok ? 'App removed' : 'Error: '+(d.message||r.status));
+    if(d.ok) loadAPIPage();
   } catch(e) { toast('Error: '+e.message); }
 }
 
@@ -1450,8 +1450,8 @@ async function installApp(id){
   try {
     const r=await api('/api/apps/install',{method:'POST',body:JSON.stringify({app_id:id})});
     const d=await r.json();
-    if(r.ok) toast('Installation started!');
-    else toast('Error: '+(d.error||r.status));
+    if(d.ok) toast('Installation started!');
+    else toast('Error: '+(d.message||r.status));
   } catch(e){toast('Error: '+e.message);}
 }
 
