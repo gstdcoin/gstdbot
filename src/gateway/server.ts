@@ -1400,6 +1400,7 @@ export class OmegaGateway {
 
         // POST /api/update/component — update individual components
         this.app.post('/api/update/component', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const { component } = req.body || {};
             const installDir = process.env.GSTD_INSTALL_DIR || join(require('os').homedir(), 'gstdbot');
             const branch = getDefaultBranch(installDir);
@@ -1871,6 +1872,7 @@ export class OmegaGateway {
         });
 
         this.app.post('/api/node/dln', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const { enabled, stake, fee } = req.body || {};
             try {
                 const envPath = join(process.env.GSTD_INSTALL_DIR || join(require('os').homedir(), 'gstdbot'), '.env');
@@ -3926,6 +3928,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
 
         // POST /api/node/scheduler/:id/run — run a task now
         this.app.post('/api/node/scheduler/:id/run', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const ok = await this.scheduler.runNow(req.params.id);
             res.json({ ok, message: ok ? `Task ${req.params.id} executed` : 'Task not found' });
         });
