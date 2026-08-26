@@ -2239,6 +2239,7 @@ export class OmegaGateway {
         });
 
         this.app.post('/api/resources/request', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const rs = this.subsystems?.resources;
             if (!rs) { res.json({ ok: false, error: 'Resource sharing not available' }); return; }
             try {
@@ -2614,6 +2615,7 @@ export class OmegaGateway {
         });
 
         this.app.post('/api/resources/config', (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             const { maxCPU, maxRAM, maxGPU, maxDisk, sharingEnabled } = req.body || {};
             const configFile = join(require('os').homedir(), '.config', 'gstdbot', 'resources.json');
             const config = {
