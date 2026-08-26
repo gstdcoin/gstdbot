@@ -291,7 +291,7 @@ export class GstdP2PNode extends EventEmitter {
             this.stats.peersDiscovered++;
             this.emit('peer:discovered', peerId);
             // Attempt connection immediately
-            this.node.dial(evt.detail).catch(() => {});
+            this.node.dial(evt.detail.id).catch(() => {});
         });
 
         this.node.addEventListener('peer:connect', (evt: any) => {
