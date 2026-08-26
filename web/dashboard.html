@@ -610,6 +610,7 @@
   <div class="page" id="page-wallet">
     <div class="page-title">Node Wallet</div>
     <div class="page-subtitle">TON-based rewards and earnings</div>
+    <div class="alert" id="w-alert" style="display:none"></div>
 
     <div class="card mb20">
       <div class="card-header">
@@ -617,14 +618,15 @@
         <a id="w-exp" href="#" target="_blank" class="btn btn-secondary btn-sm">&#x1F517; Explorer</a>
       </div>
       <div class="addr-box">
-        <span class="mono" id="w-addr">Loading...</span>
+        <span class="skeleton skeleton-text" data-skel-for="w-addr" style="display:inline-block;height:12px;width:140px;margin:0"></span>
+        <span class="mono" id="w-addr" style="display:none">—</span>
         <button class="copy-btn" onclick="copyText(document.getElementById('w-full').value)">&#x1F4CB;</button>
       </div>
       <input type="hidden" id="w-full">
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">Earned Today</div><div class="stat-val tg" id="w-today">—</div><div class="stat-sub">GSTD</div></div>
-        <div class="stat-card"><div class="stat-label">Total Earnings</div><div class="stat-val ta" id="w-total">—</div><div class="stat-sub">all time</div></div>
-        <div class="stat-card"><div class="stat-label">Reward Rate</div><div class="stat-val tc" id="w-rate">—</div><div class="stat-sub">GSTD/hour</div></div>
+        <div class="stat-card"><div class="stat-label">Earned Today</div><span class="skeleton skeleton-text" data-skel-for="w-today" style="height:26px;width:50%;margin-bottom:0"></span><div class="stat-val tg" id="w-today" style="display:none">—</div><div class="stat-sub">GSTD</div></div>
+        <div class="stat-card"><div class="stat-label">Total Earnings</div><span class="skeleton skeleton-text" data-skel-for="w-total" style="height:26px;width:50%;margin-bottom:0"></span><div class="stat-val ta" id="w-total" style="display:none">—</div><div class="stat-sub">all time</div></div>
+        <div class="stat-card"><div class="stat-label">Reward Rate</div><span class="skeleton skeleton-text" data-skel-for="w-rate" style="height:26px;width:50%;margin-bottom:0"></span><div class="stat-val tc" id="w-rate" style="display:none">—</div><div class="stat-sub">GSTD/hour</div></div>
       </div>
     </div>
 
@@ -653,7 +655,7 @@
         <div class="card-title" style="margin-bottom:0">Earnings History</div>
         <button class="btn btn-secondary btn-sm" onclick="loadWallet()">&#x21BB; Refresh</button>
       </div>
-      <div id="w-hist"><div class="empty"><div class="ei">&#x1F4B0;</div><h4>Loading earnings...</h4></div></div>
+      <div id="w-hist"><div class="skeleton skeleton-card" style="margin-bottom:8px"></div><div class="skeleton skeleton-card"></div></div>
     </div>
   </div>
 
@@ -1446,6 +1448,15 @@ async function toggleValidator(id,enabled){
 }
 
 // ── Wallet ─────────────────────────────────────────────────────────────
+function walletAlert(msg,type){
+  const el=document.getElementById('w-alert');
+  if(!el) return;
+  el.className='alert alert-'+type;
+  el.textContent=msg;
+  el.style.display='flex';
+  clearTimeout(walletAlert._t);
+  walletAlert._t=setTimeout(()=>{el.style.display='none';},6000);
+}
 async function loadWallet(){
   try {
     const [wal,earn,st]=await Promise.allSettled([
@@ -1505,9 +1516,9 @@ async function claimRewards(){
   try {
     const r=await api('/api/wallet/claim',{method:'POST',body:JSON.stringify({})});
     const d=await r.json();
-    if(r.ok&&d.success){res.innerHTML=`<span class="tg sm">${esc(d.message||'Claim submitted!')}</span>`;toast('Claim submitted!');loadWallet();}
-    else{res.innerHTML=`<span class="tr sm">Error: ${esc(d.error||'Unknown')}</span>`;}
-  } catch(e){res.innerHTML=`<span class="tr sm">Error: ${esc(e.message)}</span>`;}
+    if(r.ok&&d.success){res.innerHTML=`<span class="tg sm">${esc(d.message||'Claim submitted!')}</span>`;toast('Claim submitted!');walletAlert(d.message||'Claim submitted!','success');loadWallet();}
+    else{res.innerHTML=`<span class="tr sm">Error: ${esc(d.error||'Unknown')}</span>`;walletAlert('Claim failed: '+(d.error||'Unknown'),'error');}
+  } catch(e){res.innerHTML=`<span class="tr sm">Error: ${esc(e.message)}</span>`;walletAlert('Claim failed: '+e.message,'error');}
   finally{btn.disabled=false;}
 }
 
