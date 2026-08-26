@@ -816,6 +816,7 @@ export class OmegaGateway {
                             delta: {},
                             finish_reason: 'stop',
                         }],
+                        _gstd: { tier: result.tier, requested_model: result.requestedModel },
                     };
                     res.write(`data: ${JSON.stringify(final)}\n\n`);
                     res.write('data: [DONE]\n\n');
@@ -840,6 +841,7 @@ export class OmegaGateway {
                             tier: result.tier,
                             sovereignty: result.tier !== 'fallback',
                             latency_ms: result.latencyMs,
+                            requested_model: result.requestedModel,
                         },
                     });
                 }
@@ -1006,7 +1008,7 @@ export class OmegaGateway {
                 res.json({
                     choices: [{ message: { role: 'assistant', content: result.content } }],
                     model: result.model,
-                    _gstd: { tier: result.tier, latency_ms: result.latencyMs },
+                    _gstd: { tier: result.tier, latency_ms: result.latencyMs, requested_model: result.requestedModel },
                 });
             } catch (err: any) {
                 res.status(500).json({ error: err.message });
@@ -1094,7 +1096,7 @@ export class OmegaGateway {
                     model: result.model,
                     choices: [{ index: 0, message: { role: 'assistant', content: result.content }, finish_reason: 'stop' }],
                     usage: result.usage,
-                    _gstd: { tier: result.tier, latency_ms: result.latencyMs, wallet: entry.wallet },
+                    _gstd: { tier: result.tier, latency_ms: result.latencyMs, wallet: entry.wallet, requested_model: result.requestedModel },
                 });
             } catch (err: any) {
                 res.status(500).json({ error: err?.message || 'Free API chat failed' });

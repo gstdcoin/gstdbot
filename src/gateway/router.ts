@@ -15,6 +15,12 @@ export type RouteTier = 'cache' | 'gstd' | 'fallback';
 export interface RouteResult {
     content: string;
     model: string;
+    /** The model string the caller actually requested, before any local
+     *  substitution (e.g. toOllamaModel mapping a paid-provider model name
+     *  to a locally-hosted equivalent). Present whenever it differs from
+     *  `model`, so a caller can tell a substitution happened rather than
+     *  silently receiving a different model than they asked for. */
+    requestedModel?: string;
     tier: RouteTier;
     latencyMs: number;
     nodeId?: string;
@@ -153,6 +159,11 @@ export class NeuralRouter {
     }
 
     async route(requestedModel: string, messages: ChatMessage[]): Promise<RouteResult> {
+        const result = await this.routeInternal(requestedModel, messages);
+        return result.model !== requestedModel ? { ...result, requestedModel } : result;
+    }
+
+    private async routeInternal(requestedModel: string, messages: ChatMessage[]): Promise<RouteResult> {
         const start = Date.now();
 
         // ─── L1: Cache ─────────────────────────────────────────────

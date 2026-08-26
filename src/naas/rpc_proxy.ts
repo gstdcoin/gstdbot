@@ -47,7 +47,9 @@ function getPriceNano(method: string): number {
 }
 
 // ─── Auth & Balance Check (calls GSTD Platform API) ─────────────
-async function checkAndDeductBalance(apiKey: string, priceNano: number): Promise<boolean> {
+type BalanceCheckResult = { paid: true } | { paid: false; reason: 'insufficient_balance' | 'payment_api_unreachable' };
+
+async function checkAndDeductBalance(apiKey: string, priceNano: number): Promise<BalanceCheckResult> {
     try {
         const resp = await fetch('https://app.gstdtoken.com/api/v1/rpc/charge', {
             method: 'POST',
@@ -60,13 +62,18 @@ async function checkAndDeductBalance(apiKey: string, priceNano: number): Promise
         });
         if (resp.ok) {
             const data: any = await resp.json();
-            return data.success === true;
+            if (data.success === true) return { paid: true };
         }
-        return false;
+        return { paid: false, reason: 'insufficient_balance' };
     } catch {
-        // If payment API is unreachable, allow request but log it
-        logActivity(`RPC Proxy: payment API unreachable — allowing free request`, 'warn');
-        return true;
+        // Fail closed: an unreachable payment API must never be read as
+        // "payment succeeded". Allowing the request here would let anyone
+        // get RPC service for free for as long as the platform API is down.
+        // Distinguished from a genuine insufficient-balance rejection so the
+        // caller gets an honest "try again shortly", not a misleading
+        // "your balance is too low".
+        logActivity(`RPC Proxy: payment API unreachable — rejecting request (fail closed)`, 'warn');
+        return { paid: false, reason: 'payment_api_unreachable' };
     }
 }
 
@@ -179,10 +186,15 @@ export class GSTDRPCProxy {
         const price  = getPriceNano(method);
 
         // Deduct GSTD
-        const paid = await checkAndDeductBalance(apiKey, price);
-        if (!paid) {
-            res.writeHead(402);
-            res.end(JSON.stringify({ error: 'Insufficient GSTD balance. Top up at gstdtoken.com' }));
+        const balanceCheck = await checkAndDeductBalance(apiKey, price);
+        if (!balanceCheck.paid) {
+            if (balanceCheck.reason === 'payment_api_unreachable') {
+                res.writeHead(503);
+                res.end(JSON.stringify({ error: 'Payment verification temporarily unavailable. Please try again shortly.' }));
+            } else {
+                res.writeHead(402);
+                res.end(JSON.stringify({ error: 'Insufficient GSTD balance. Top up at gstdtoken.com' }));
+            }
             return;
         }
 
