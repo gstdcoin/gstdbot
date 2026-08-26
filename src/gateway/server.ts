@@ -682,6 +682,7 @@ export class OmegaGateway {
 
         // POST /api/storage/add — upload content, returns CID
         this.app.post('/api/storage/add', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             if (!this.ipfs?.isEnabled) {
                 return res.status(503).json({ error: 'IPFS not available' });
             }
@@ -715,6 +716,7 @@ export class OmegaGateway {
 
         // POST /api/storage/pin — pin an existing CID from the network
         this.app.post('/api/storage/pin', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             if (!this.ipfs?.isEnabled) {
                 return res.status(503).json({ error: 'IPFS not available' });
             }
@@ -730,6 +732,7 @@ export class OmegaGateway {
 
         // DELETE /api/storage/pin/:cid — unpin a CID
         this.app.delete('/api/storage/pin/:cid', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             if (!this.ipfs?.isEnabled) {
                 return res.status(503).json({ error: 'IPFS not available' });
             }

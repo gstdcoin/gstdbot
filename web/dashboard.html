@@ -1290,8 +1290,9 @@ async function ipfsUnpin(cid){
   if(!confirm('Unpin '+cid+'?')) return;
   try {
     const r=await api('/api/storage/pin/'+encodeURIComponent(cid),{method:'DELETE'});
-    if(r.ok){toast('Unpinned');loadIPFS();}
-    else{const d=await r.json();toast('Error: '+(d.error||r.status));}
+    const d=await r.json();
+    if(d.ok){toast('Unpinned');loadIPFS();}
+    else{toast('Error: '+(d.error||r.status));}
   } catch(e){toast('Error: '+e.message);}
 }
 
