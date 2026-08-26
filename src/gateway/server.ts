@@ -2118,26 +2118,36 @@ export class OmegaGateway {
         });
 
         // ─── Memory APIs ─────────────────────────────────────────
-        this.app.post('/api/memory/store', (req, res) => {
+        // CollectiveMemory's real signatures (src/memory/collective.ts):
+        //   store(question, answer, model, confidence, sources = []): Promise<void>
+        //   recall(question): Promise<MemoryEntry | null>
+        // Both are async and were previously called without `await`, so `store()`
+        // silently dropped its `model`/`confidence` args (passing `tags` as `model`,
+        // leaving `confidence` as `NaN`) and `recall()`'s un-awaited Promise was
+        // JSON-serialized as `{}` instead of its resolved value -- confirmed live via
+        // curl: POST /api/memory/recall always returned {"results":{},"count":0,...}
+        // regardless of what had actually been stored.
+        this.app.post('/api/memory/store', async (req, res) => {
             const memory = this.subsystems?.memory;
             if (!memory) { res.json({ ok: false, error: 'Memory module not available' }); return; }
             const { key, value, tags } = req.body || {};
             if (!key || !value) { res.status(400).json({ error: 'key and value required' }); return; }
             try {
-                memory.store(key, value, tags || []);
+                await memory.store(key, value, 'api', 1, tags || []);
                 res.json({ ok: true, key, stored_at: new Date().toISOString() });
             } catch (e: any) {
                 res.json({ ok: false, error: e.message });
             }
         });
 
-        this.app.post('/api/memory/recall', (req, res) => {
+        this.app.post('/api/memory/recall', async (req, res) => {
             const memory = this.subsystems?.memory;
             if (!memory) { res.json({ results: [], error: 'Memory module not available' }); return; }
-            const { query, limit } = req.body || {};
+            const { query } = req.body || {};
             try {
-                const results = memory.recall(query || '', limit || 10);
-                res.json({ results, count: results?.length || 0, query });
+                const entry = await memory.recall(query || '');
+                const results = entry ? [entry] : [];
+                res.json({ results, count: results.length, query });
             } catch (e: any) {
                 res.json({ results: [], error: e.message });
             }
@@ -4329,11 +4339,6 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                 },
                 uptime_hours: Math.round(process.uptime() / 3600 * 10) / 10,
             });
-        });
-
-        // POST /api/memory/recall — graceful stub (Memory requires Redis)
-        this.app.post('/api/memory/recall', (_req, res) => {
-            res.json({ results: [], total: 0, connected: false, message: 'Memory requires Redis configuration' });
         });
 
         // GET /api/vaults — liquidity vaults stub
