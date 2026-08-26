@@ -1510,9 +1510,9 @@ async function loadSettings(){
       const el=document.getElementById('s-log');
       if(!ents.length){el.innerHTML='<div class="log-row"><span class="log-m muted">No activity</span></div>';return;}
       el.innerHTML=ents.slice(0,30).map(e=>{
-        const t=e.timestamp?new Date(e.timestamp).toLocaleTimeString():'';
-        const lv=e.level||'info';
-        return `<div class="log-row"><span class="log-t">${t}</span><span class="log-l ${lv}">${lv[0].toUpperCase()}</span><span class="log-m">${esc(e.message||e.msg||'')}</span></div>`;
+        const t=e.ts?new Date(e.ts).toLocaleTimeString():'';
+        const lv=e.type||'info';
+        return `<div class="log-row"><span class="log-t">${t}</span><span class="log-l ${lv}">${lv[0].toUpperCase()}</span><span class="log-m">${esc(e.msg||'')}</span></div>`;
       }).join('');
     } catch(e){}
   } catch(e){console.error('loadSettings',e);}
