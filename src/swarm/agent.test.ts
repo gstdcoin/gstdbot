@@ -236,4 +236,72 @@ describe('SwarmAgent quorum attestation gaps', () => {
         });
     });
 
+    describe('processTask() quorum gate', () => {
+        let agent: SwarmAgent;
+
+        beforeEach(() => {
+            vi.clearAllMocks();
+            agent = new SwarmAgent(mockConfig, mockWallet, mockMemory);
+        });
+
+        it('calls /tasks/complete in degraded mode (no peers)', async () => {
+            // No p2pNode → canAttemptQuorum() = false → degraded mode
+            vi.spyOn(agent as any, 'computeTaskResult').mockResolvedValue({ response: 'ok' });
+            vi.spyOn(agent as any, 'apiCall').mockResolvedValue({ ok: true });
+            vi.spyOn(agent as any, 'recordTaskEarning').mockImplementation(() => {});
+
+            await (agent as any).processTask(baseTask);
+
+            const apiCalls = (agent as any).apiCall.mock.calls.map((c: any[]) => c[0]);
+            expect(apiCalls).toContain('/tasks/complete');
+            expect(agent.getStats().quorumGateFailed).toBe(0);
+        });
+
+        it('does NOT call /tasks/complete when quorum gate fails (peers available, quorum not reached)', async () => {
+            const { awaitQuorum } = await import('../p2p/quorum-coordinator.js');
+            vi.mocked(awaitQuorum).mockResolvedValueOnce({
+                accepted: false, attestations: [], reason: 'timeout', resultHash: '',
+            });
+            agent.setIdentity(mockIdentity);
+            (agent as any).p2pNode = {
+                getPeers: () => [{ nodeId: 'peer1' }, { nodeId: 'peer2' }],
+                sendTask: vi.fn().mockResolvedValue(undefined),
+            };
+            vi.spyOn(agent as any, 'computeTaskResult').mockResolvedValue({ response: 'ok' });
+            vi.spyOn(agent as any, 'apiCall').mockResolvedValue(null);
+
+            await (agent as any).processTask(baseTask);
+
+            const apiCalls = (agent as any).apiCall.mock.calls.map((c: any[]) => c[0]);
+            expect(apiCalls).not.toContain('/tasks/complete');
+            expect(agent.getStats().quorumGateFailed).toBe(1);
+            expect(agent.getStats().tasksCompleted).toBe(1); // work was done
+        });
+
+        it('calls /tasks/complete when quorum gate passes', async () => {
+            const { awaitQuorum } = await import('../p2p/quorum-coordinator.js');
+            const fakeAtts = [
+                { pubkeyHex: 'a'.repeat(64), signatureHex: 'b'.repeat(128) },
+                { pubkeyHex: 'c'.repeat(64), signatureHex: 'd'.repeat(128) },
+            ];
+            vi.mocked(awaitQuorum).mockResolvedValueOnce({
+                accepted: true, attestations: fakeAtts, reason: '', resultHash: 'deadbeef',
+            });
+            agent.setIdentity(mockIdentity);
+            (agent as any).p2pNode = {
+                getPeers: () => [{ nodeId: 'peer1' }, { nodeId: 'peer2' }],
+                sendTask: vi.fn().mockResolvedValue(undefined),
+            };
+            vi.spyOn(agent as any, 'computeTaskResult').mockResolvedValue({ response: 'ok' });
+            vi.spyOn(agent as any, 'apiCall').mockResolvedValue({ ok: true });
+            vi.spyOn(agent as any, 'recordTaskEarning').mockImplementation(() => {});
+
+            await (agent as any).processTask(baseTask);
+
+            const apiCalls = (agent as any).apiCall.mock.calls.map((c: any[]) => c[0]);
+            expect(apiCalls).toContain('/tasks/complete');
+            expect(agent.getStats().quorumGateFailed).toBe(0);
+        });
+    });
+
 });

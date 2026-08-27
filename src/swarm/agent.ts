@@ -950,12 +950,30 @@ export class SwarmAgent {
         try {
             const result = await this.computeTaskResult(task);
 
-            // Best-effort: if 2+ peers are connected, try to get this
-            // result quorum-attested and queued for on-chain settlement.
-            // Never blocks or affects the existing report-to-platform path
-            // below regardless of outcome. See docs/P2P_SETTLEMENT_RFC.md.
+            // Quorum gate: for inference tasks, require quorum when the network
+            // can support it (≥2 peers + identity loaded). Nodes without peers
+            // operate in degraded mode and report without quorum.
+            // See docs/superpowers/specs/2026-08-27-quorum-real-gate-design.md
             if (task.type === 'inference') {
-                this.attemptQuorumSettlement(task, taskId, result).catch(() => {});
+                if (this.canAttemptQuorum()) {
+                    const quorumReached = await this.attemptQuorumSettlement(task, taskId, result).catch(() => false);
+                    if (!quorumReached) {
+                        this.stats.tasksCompleted++;
+                        this.stats.tasksByType[task.type] = (this.stats.tasksByType[task.type] || 0) + 1;
+                        this.stats.quorumGateFailed++;
+                        logActivity(`Task ${taskId.slice(0, 8)} computed — quorum not reached, reward forfeited`, 'warn');
+                        return;
+                    }
+                    // quorum reached — fall through to /tasks/complete
+                } else {
+                    logActivity(
+                        `Task ${taskId.slice(0, 8)} — no-quorum mode ` +
+                        `(peers: ${this.p2pNode ? (this.p2pNode.getPeers() as any[]).length : 0}, ` +
+                        `identity: ${!!this.identity})`,
+                        'info'
+                    );
+                    // fall through to /tasks/complete without quorum gate
+                }
             }
 
             // Report completion — include campaign_id and reward so treasury accounting works.
