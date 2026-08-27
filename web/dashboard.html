@@ -808,7 +808,8 @@
         <div class="row jb mb8"><span class="muted sm">Central Server</span><span class="badge badge-muted" id="s-central-badge">Loading...</span></div>
         <div class="row jb mb8"><span class="muted sm">Quorum Proofs</span><span class="fw6" id="s-qp-submitted">—</span></div>
         <div class="row jb mb8"><span class="muted sm">Pending Settlement</span><span class="fw6" id="s-qp-pending">—</span></div>
-        <div class="row jb"><span class="muted sm">Attestations</span><span class="fw6" id="s-qp-attest">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">Attestations</span><span class="fw6" id="s-qp-attest">—</span></div>
+        <div class="row jb"><span class="muted sm">Gate Failed</span><span class="fw6 tr" id="s-qp-failed">—</span></div>
       </div>
       <div class="card">
         <div class="card-title">Hardware</div>
@@ -1731,6 +1732,7 @@ async function loadSettings(){
       set('s-qp-submitted', d.swarm?.quorumSettlement?.submitted ?? '—');
       set('s-qp-pending',   d.swarm?.quorumSettlement?.pending   ?? '—');
       set('s-qp-attest',    d.swarm?.quorumSettlement?.attestations ?? '—');
+      set('s-qp-failed',    d.swarm?.quorumSettlement?.gateFailed   ?? '—');
       const cb=document.getElementById('s-central-badge');
       if(cb){
         if(d.platform_health){

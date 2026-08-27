@@ -1581,9 +1581,10 @@ export class OmegaGateway {
                         lastHeartbeat: stats?.lastHeartbeat || null,
                         rank: stats?.rank || 0,
                         quorumSettlement: {
-                            submitted:    stats?.quorumProofsSubmitted || 0,
-                            pending:      stats?.quorumProofsPending || 0,
+                            submitted:    stats?.quorumProofsSubmitted  || 0,
+                            pending:      stats?.quorumProofsPending    || 0,
                             attestations: stats?.quorumAttestationsTotal || 0,
+                            gateFailed:   stats?.quorumGateFailed       || 0,
                         },
                     };
                 })(),
