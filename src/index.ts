@@ -43,6 +43,7 @@ if (typeof (Promise as any).withResolvers !== 'function') {
  */
 
 import { OmegaGateway, logActivity } from './gateway/server.js';
+import { isRegistered, getEntry } from './lib/model-registry.js';
 import { detectOdysseus } from './odysseus/detector.js';
 import { SecurityHardening } from './security/hardening.js';
 import { SwarmOrchestrator } from './swarm/orchestrator.js';
@@ -210,6 +211,17 @@ function retryMeshInBackground(node: GstdP2PNode, swarm: SwarmAgent | null, gate
 // ─── Main ────────────────────────────────────────────────────────
 async function main(): Promise<void> {
     const config = await loadConfig();
+    // Registry audit — informational only, no models are blocked
+    for (const m of config.models.available) {
+        if (!isRegistered(m)) {
+            console.warn(`  WARN [registry] unverified model loaded: ${m}`);
+        } else {
+            const entry = getEntry(m)!;
+            if (!entry.commercial) {
+                console.warn(`  WARN [registry] non-commercial model loaded: ${m} (${entry.license})`);
+            }
+        }
+    }
     const identity = loadOrCreateAttestorIdentity();
     console.log(`    ✓ Attestor identity loaded (pubkey: ${identity.pubkeyHex.slice(0, 16)}...)`);
     const startTime = Date.now();

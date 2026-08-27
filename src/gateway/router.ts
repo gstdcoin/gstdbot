@@ -10,6 +10,8 @@
  *  L3  Fallback msg — tell user to retry (network starting up)
  */
 
+import { demandTracker } from '../lib/demand-tracker.js';
+
 export type RouteTier = 'cache' | 'gstd' | 'fallback';
 
 export interface RouteResult {
@@ -189,6 +191,7 @@ export class NeuralRouter {
         try {
             const result = await this.callOllamaLocal(ollamaUrl, ollamaModel, messages, 512);
             this.cache.set(cacheKey, result.content, result.model);
+            demandTracker.record(ollamaModel);
             return { ...result, latencyMs: Date.now() - start };
         } catch (err: any) {
             console.warn('[Router] Local Ollama unavailable:', err?.message?.substring(0, 80));
@@ -201,6 +204,7 @@ export class NeuralRouter {
                 try {
                     const r = await this.peerManager.forwardToPeer(peer, ollamaModel, messages, 2048, 0.7);
                     this.cache.set(cacheKey, r.content, r.model);
+                    demandTracker.record(ollamaModel);
                     return {
                         content: r.content, model: r.model, tier: 'gstd',
                         nodeId: peer.nodeId,

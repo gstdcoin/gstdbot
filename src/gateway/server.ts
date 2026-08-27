@@ -33,6 +33,8 @@ import { ValidatorManager, ChainId } from '../validators/manager.js';
 import { signVerify } from '@ton/crypto';
 import { peerRequestMessage, isStaleTimestamp } from '../p2p/identity.js';
 import { verifyUpdateManifest, isStaleCommand, type UpdateManifest } from '../lib/platform-auth.js';
+import { isRegistered, MODEL_REGISTRY } from '../lib/model-registry.js';
+import { demandTracker } from '../lib/demand-tracker.js';
 
 // Rewards are calculated server-side via /api/v1/nodes/heartbeat
 // Node does NOT self-award tokens
@@ -1643,6 +1645,19 @@ export class OmegaGateway {
                 fees: this.feeLedger.getStats(),
                 validators: this.validatorManager?.getAll() || [],
                 relay: (this.subsystems as any)?.trafficRelay?.getStats?.() || { enabled: false },
+                model_registry: (() => {
+                    const installed = this._availableModels;
+                    const verified   = installed.filter(m => isRegistered(m));
+                    const unverified = installed.filter(m => !isRegistered(m));
+                    const allRanking = demandTracker.getDemandRanking();
+                    const installedSet = new Set(installed);
+                    return {
+                        verified,
+                        unverified,
+                        demand_ranking: allRanking.filter(e => installedSet.has(e.modelId)),
+                        top_recommended: demandTracker.getTopRecommended(installed, 3),
+                    };
+                })(),
             });
         });
 

@@ -16,6 +16,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { verifyPlatformCommand, isStaleCommand, type PlatformCommand } from '../lib/platform-auth.js';
+import { isRegistered } from '../lib/model-registry.js';
 
 function readOracleTaskCount(): number {
     try {
@@ -156,7 +157,7 @@ export class PlatformLink extends EventEmitter {
                     tasks_completed: readOracleTaskCount(),
                     gstd_earned:     readOracleTaskCount() * 0.00095,
                     capabilities:    models,
-                    models_loaded:   models,
+                    models_loaded:   models.filter(m => isRegistered(m)),
                     mode:            'node',
                     ...(tunnelUrl && { node_url: tunnelUrl }),
                 }),
