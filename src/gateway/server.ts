@@ -569,8 +569,8 @@ export class OmegaGateway {
                         cwd: installDir, encoding: 'utf-8', timeout: 120000,
                     });
                     
-                    execSync('npx tsc', {
-                        cwd: installDir, encoding: 'utf-8', timeout: 60000,
+                    execSync('node_modules/.bin/tsc --skipLibCheck', {
+                        cwd: installDir, encoding: 'utf-8', timeout: 120000,
                     });
                 } catch (buildError: any) {
                     // Update failed! Rollback to prevent node crash/fail

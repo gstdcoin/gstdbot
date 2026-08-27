@@ -1778,16 +1778,19 @@ async function checkUpdate(){
 }
 
 async function runUpdate(){
-  if(!confirm('Start update? The node will pull latest code and restart automatically.')) return;
+  if(!confirm('Start update? The node will pull latest code from GitHub and restart automatically.')) return;
   const logDiv=document.getElementById('s-upd-log'),logEl=document.getElementById('s-upd-out'),btn=document.getElementById('s-upd-btn');
-  logDiv.style.display='block';btn.disabled=true;logEl.textContent='Pulling latest code and compiling...\n';
+  logDiv.style.display='block';btn.disabled=true;logEl.textContent='Pulling latest code from GitHub and compiling...\n';
   try {
-    const d=await api('/api/node/update',{method:'POST',body:JSON.stringify({})}).then(r=>r.json());
-    logEl.textContent+=(d.message||JSON.stringify(d))+'\n';
-    if(d.ok){
-      logEl.textContent+='Reloading dashboard in 8s...\n';
+    const d=await api('/api/update',{method:'POST',body:JSON.stringify({})}).then(r=>r.json());
+    logEl.textContent+=(d.message||d.error||JSON.stringify(d))+'\n';
+    if(d.pull_output) logEl.textContent+=d.pull_output+'\n';
+    if(d.success||d.ok){
+      logEl.textContent+='Reloading dashboard in 10s...\n';
       settingsAlert('Update applied — node is restarting.','success');
-      setTimeout(()=>window.location.reload(),8000);
+      setTimeout(()=>window.location.reload(),10000);
+    } else {
+      btn.disabled=false;
     }
   } catch(e){logEl.textContent+='Error: '+e.message+'\n';btn.disabled=false;}
 }
