@@ -57,6 +57,10 @@ export function peerRequestMessage(nodeId: string, timestamp: number): Buffer {
     return createHash('sha256').update(`${nodeId}:${timestamp}`).digest();
 }
 
+export function isStaleTimestamp(timestamp: number, maxSkewMs = 60_000): boolean {
+    return Math.abs(Date.now() - timestamp) > maxSkewMs;
+}
+
 export function signPeerRequest(
     identity: AttestorIdentity,
     nodeId: string,

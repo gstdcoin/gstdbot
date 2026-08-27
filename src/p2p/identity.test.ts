@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { signVerify } from '@ton/crypto';
-import { loadOrCreateAttestorIdentity, signPeerRequest, peerRequestMessage } from './identity.js';
+import { loadOrCreateAttestorIdentity, signPeerRequest, peerRequestMessage, isStaleTimestamp } from './identity.js';
 
 describe('signPeerRequest', () => {
     const identity = loadOrCreateAttestorIdentity();
@@ -23,10 +23,10 @@ describe('signPeerRequest', () => {
         expect(valid).toBe(true);
     });
 
-    it('stale timestamp (>60s old) should be detected as out-of-range', () => {
-        const staleTs = Date.now() - 70_000; // 70 seconds ago
-        const drift = Math.abs(Date.now() - staleTs);
-        expect(drift).toBeGreaterThan(60_000);
+    it('isStaleTimestamp rejects timestamps older than 60s', () => {
+        expect(isStaleTimestamp(Date.now() - 70_000)).toBe(true);  // 70s ago — stale
+        expect(isStaleTimestamp(Date.now())).toBe(false);           // now — fresh
+        expect(isStaleTimestamp(Date.now() + 70_000)).toBe(true);  // 70s in future — also stale
     });
 
     it('wrong nodeId in message produces an invalid signature', () => {

@@ -32,7 +32,7 @@ import { FeeLedger } from '../fees/ledger.js';
 import { ValidatorManager, ChainId } from '../validators/manager.js';
 import { signVerify } from '@ton/crypto';
 import type { AttestorIdentity } from '../p2p/identity.js';
-import { peerRequestMessage } from '../p2p/identity.js';
+import { peerRequestMessage, isStaleTimestamp } from '../p2p/identity.js';
 
 // Rewards are calculated server-side via /api/v1/nodes/heartbeat
 // Node does NOT self-award tokens
@@ -191,7 +191,7 @@ async function requirePeerAuth(req: any, res: any, peerManager: PeerManager | nu
     }
 
     const timestamp = parseInt(tsStr, 10);
-    if (isNaN(timestamp) || Math.abs(Date.now() - timestamp) > 60_000) {
+    if (isNaN(timestamp) || isStaleTimestamp(timestamp)) {
         res.status(401).json({ error: 'Timestamp out of range (replay protection, ±60s)' });
         return false;
     }
