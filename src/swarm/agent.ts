@@ -62,6 +62,10 @@ export interface SwarmStats {
     nextTier: string | null;
     nextTierHours: number;
     tasksByType: Record<string, number>;
+    // Quorum attestation
+    quorumProofsSubmitted: number;
+    quorumProofsPending: number;
+    quorumAttestationsTotal: number;
 }
 
 interface NodeCapabilities {
@@ -122,6 +126,9 @@ export class SwarmAgent {
             nextTier: 'silver',
             nextTierHours: 100,
             tasksByType: {},
+            quorumProofsSubmitted: 0,
+            quorumProofsPending: 0,
+            quorumAttestationsTotal: 0,
         };
     }
 
@@ -250,6 +257,7 @@ export class SwarmAgent {
 
     getStats(): SwarmStats {
         this.stats.uptimeSeconds = Math.round((Date.now() - this.startedAt) / 1000);
+        this.stats.quorumProofsPending = this.loadPendingSettlements().length;
         return { ...this.stats };
     }
 
@@ -752,6 +760,8 @@ export class SwarmAgent {
             attestations: quorumResult.attestations,
             computeUnits: 1,
         };
+        this.stats.quorumProofsSubmitted++;
+        this.stats.quorumAttestationsTotal += quorumResult.attestations.length;
         // apiCall() swallows failures and returns null rather than throwing —
         // don't log a false "settled" success in that case; queue it locally
         // and retry instead of losing a real, cross-signed quorum result.
