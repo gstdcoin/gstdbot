@@ -1821,7 +1821,6 @@ async function changePin(){
 async function restartNode(){
   if(!confirm('Restart the GSTD node?')) return;
   const btn=document.getElementById('s-rst-btn');btn.disabled=true;
-  settingsAlert('Restarting node — page will reload in 5 seconds...','info');
   try {
     await api('/api/node/restart',{method:'POST',body:JSON.stringify({})});
   } catch(e){/* restart kills the connection — treat any response or error the same */}
