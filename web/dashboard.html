@@ -1075,7 +1075,7 @@ const PAGE_MIN_MODE = {
   validators:'developer',
 };
 let _curPage = 'home';
-function getMode(){ return localStorage.getItem('gstd_ui_mode') || 'simple'; }
+function getMode(){ const m=localStorage.getItem('gstd_ui_mode'); return MODES.includes(m)?m:'simple'; }
 function setMode(m){ localStorage.setItem('gstd_ui_mode', m); applyMode(m); }
 function applyMode(m){
   document.body.dataset.mode = m;
