@@ -1580,6 +1580,11 @@ export class OmegaGateway {
                         uptimeSeconds: stats?.uptimeSeconds || 0,
                         lastHeartbeat: stats?.lastHeartbeat || null,
                         rank: stats?.rank || 0,
+                        quorumSettlement: {
+                            submitted:    stats?.quorumProofsSubmitted || 0,
+                            pending:      stats?.quorumProofsPending || 0,
+                            attestations: stats?.quorumAttestationsTotal || 0,
+                        },
                     };
                 })(),
                 platform_health: platformHealth.getStatus(),

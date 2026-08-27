@@ -789,7 +789,10 @@
         <div class="row jb mb8"><span class="muted sm">Version</span><span class="skeleton skeleton-text" data-skel-for="s-ver" style="display:inline-block;height:12px;width:50px;margin:0"></span><span class="sm fw6" id="s-ver" style="display:none">—</span></div>
         <div class="row jb mb8"><span class="muted sm">Platform</span><span class="skeleton skeleton-text" data-skel-for="s-plat" style="display:inline-block;height:12px;width:70px;margin:0"></span><span class="sm" id="s-plat" style="display:none">—</span></div>
         <div class="row jb mb8"><span class="muted sm">Architecture</span><span class="skeleton skeleton-text" data-skel-for="s-arch" style="display:inline-block;height:12px;width:60px;margin:0"></span><span class="sm" id="s-arch" style="display:none">—</span></div>
-        <div class="row jb"><span class="muted sm">Central Server</span><span class="badge badge-muted" id="s-central-badge">Loading...</span></div>
+        <div class="row jb mb8"><span class="muted sm">Central Server</span><span class="badge badge-muted" id="s-central-badge">Loading...</span></div>
+        <div class="row jb mb8"><span class="muted sm">Quorum Proofs</span><span class="fw6" id="s-qp-submitted">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">Pending Settlement</span><span class="fw6" id="s-qp-pending">—</span></div>
+        <div class="row jb"><span class="muted sm">Attestations</span><span class="fw6" id="s-qp-attest">—</span></div>
       </div>
       <div class="card">
         <div class="card-title">Hardware</div>
@@ -1689,6 +1692,9 @@ async function loadSettings(){
       set('s-plat',d.node?.platform||'—');
       set('s-arch',d.node?.arch||'—');
       set('s-curver','v'+(d.node?.version||'—'));
+      set('s-qp-submitted', d.swarm?.quorumSettlement?.submitted ?? '—');
+      set('s-qp-pending',   d.swarm?.quorumSettlement?.pending   ?? '—');
+      set('s-qp-attest',    d.swarm?.quorumSettlement?.attestations ?? '—');
       const cb=document.getElementById('s-central-badge');
       if(cb){
         if(d.platform_health){
