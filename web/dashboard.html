@@ -345,17 +345,22 @@
     <div class="nav-section-label">AI</div>
     <div class="nav-item" onclick="showPage('models')"><span class="nav-icon">&#x1F916;</span><span>Models</span></div>
     <div class="nav-item" onclick="showPage('chat')"><span class="nav-icon">&#x1F4AC;</span><span>Chat</span></div>
-    <div class="nav-section-label">Storage &amp; Network</div>
-    <div class="nav-item" onclick="showPage('ipfs')"><span class="nav-icon">&#x1F4E6;</span><span>IPFS</span></div>
-    <div class="nav-item" onclick="showPage('validators')"><span class="nav-icon">&#x26D3;</span><span>Validators</span></div>
+    <div class="nav-section-label" data-min-mode="advanced">Storage &amp; Network</div>
+    <div class="nav-item" data-min-mode="advanced" onclick="showPage('ipfs')"><span class="nav-icon">&#x1F4E6;</span><span>IPFS</span></div>
+    <div class="nav-item" data-min-mode="developer" onclick="showPage('validators')"><span class="nav-icon">&#x26D3;</span><span>Validators</span></div>
     <div class="nav-section-label">Economy</div>
     <div class="nav-item" onclick="showPage('wallet')"><span class="nav-icon">&#x1F4B0;</span><span>Wallet</span></div>
-    <div class="nav-item" onclick="showPage('blockchain')"><span class="nav-icon">&#x26D3;&#xFE0F;</span><span>Blockchain</span></div>
-    <div class="nav-section-label">Developer</div>
-    <div class="nav-item" onclick="showPage('api')"><span class="nav-icon">&#x1F50C;</span><span>API &amp; Apps</span></div>
+    <div class="nav-item" data-min-mode="advanced" onclick="showPage('blockchain')"><span class="nav-icon">&#x26D3;&#xFE0F;</span><span>Blockchain</span></div>
+    <div class="nav-section-label" data-min-mode="advanced">Developer</div>
+    <div class="nav-item" data-min-mode="advanced" onclick="showPage('api')"><span class="nav-icon">&#x1F50C;</span><span>API &amp; Apps</span></div>
     <div class="nav-section-label">System</div>
     <div class="nav-item" onclick="showPage('settings')"><span class="nav-icon">&#x2699;&#xFE0F;</span><span>Settings</span></div>
   </nav>
+  <div class="mode-switcher" id="mode-switcher">
+    <button class="mode-btn" data-mode="simple"    onclick="setMode('simple')">Simple</button>
+    <button class="mode-btn" data-mode="advanced"  onclick="setMode('advanced')">Advanced</button>
+    <button class="mode-btn" data-mode="developer" onclick="setMode('developer')">Dev</button>
+  </div>
   <div class="sidebar-footer">
     <div class="node-id-badge" id="sb-node-id">Loading...</div>
   </div>
@@ -397,7 +402,7 @@
         <div class="ql">My Wallet</div>
         <div class="qs" id="qa-earn">— GSTD today</div>
       </div>
-      <div class="quick-btn" onclick="showPage('api')">
+      <div class="quick-btn" data-min-mode="advanced" onclick="showPage('api')">
         <span class="qi">🛒</span>
         <div class="ql">App Store</div>
         <div class="qs" id="qa-apps">Browse apps</div>
