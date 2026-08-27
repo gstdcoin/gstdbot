@@ -734,6 +734,10 @@ export class SwarmAgent {
             timeoutMs: 8_000,
         });
 
+        for (const coExecutorId of coExecutors) {
+            this.peerManager?.recordOutcome(coExecutorId, quorumResult.accepted);
+        }
+
         if (!quorumResult.accepted) {
             if (process.env.GSTD_P2P_DEBUG) {
                 logActivity(`Quorum not reached for task ${taskId.slice(0, 8)}: ${quorumResult.reason}`, 'info');
@@ -865,6 +869,9 @@ export class SwarmAgent {
      *  we don't own this task's platform assignment or reward, the
      *  originator does. */
     private async participateInQuorumVerification(task: SwarmTask, coExecutors: string[], quorumThreshold: number): Promise<void> {
+        if (!(task as any).id && (task as any).task_id) {
+            (task as any).id = (task as any).task_id;
+        }
         if (!this.p2pNode) return;
         const workerAddr = this.wallet.getAddress();
         if (!workerAddr) return;
