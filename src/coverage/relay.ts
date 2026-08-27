@@ -13,6 +13,7 @@
  */
 
 import type { Application, Request, Response } from 'express';
+import { lookup as dnsLookup } from 'dns/promises';
 import { logActivity } from '../gateway/server.js';
 
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
@@ -27,12 +28,31 @@ const DANGEROUS_RPC = new Set([
     'eth_sendTransaction', 'miner_start', 'debug_setHead', 'admin_addPeer',
 ]);
 
-function isPrivateIp(host: string): boolean {
+function isPrivateIpString(host: string): boolean {
+    if (BLOCKED_HOSTS.has(host)) return true;
     if (host.startsWith('10.')) return true;
     if (host.startsWith('192.168.')) return true;
     if (host.startsWith('172.')) {
         const n = parseInt(host.split('.')[1]);
         if (n >= 16 && n <= 31) return true;
+    }
+    // Block decimal/hex/octal loopback representations and link-local
+    if (host.startsWith('127.')) return true;
+    if (host.startsWith('169.254.')) return true;
+    if (host.startsWith('fc') || host.startsWith('fd')) return true; // IPv6 ULA
+    return false;
+}
+
+// Resolves hostname via DNS before checking — prevents DNS rebinding attacks
+// where a hostname passes string checks but resolves to a private IP.
+// Fails closed: DNS resolution failures are treated as blocked.
+async function isSsrfTarget(hostname: string): Promise<boolean> {
+    if (isPrivateIpString(hostname)) return true;
+    try {
+        const { address } = await dnsLookup(hostname, { family: 4 });
+        if (isPrivateIpString(address)) return true;
+    } catch {
+        return true; // DNS failed — block rather than allow
     }
     return false;
 }
@@ -94,7 +114,7 @@ export class TrafficRelay {
 
             if (!ALLOWED_PROTOCOLS.has(parsed.protocol))
                 return res.status(400).json({ error: 'Only http/https allowed' });
-            if (BLOCKED_HOSTS.has(parsed.hostname) || isPrivateIp(parsed.hostname))
+            if (await isSsrfTarget(parsed.hostname))
                 return res.status(403).json({ error: 'Target host not allowed' });
 
             try {
