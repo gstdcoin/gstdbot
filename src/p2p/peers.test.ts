@@ -74,3 +74,78 @@ describe('PeerManager source tracking', () => {
         expect(peers[0].source).toBe('http-gossip');
     });
 });
+
+describe('PeerManager quality scoring', () => {
+    let pm: PeerManager;
+
+    beforeEach(() => {
+        rmSync(PEERS_FILE, { force: true });
+        pm = new PeerManager({
+            nodeId: 'self-node',
+            url: 'https://self.example.com',
+            capabilities: ['llama3.2:3b'],
+            version: '3.5.0',
+            cpuCores: 4,
+            ramGb: 8,
+            uptime: 0,
+            tasksHandled: 0,
+            source: 'http-gossip',
+        });
+        // Seed a peer with a verified latency so getBestPeer() considers it
+        pm.registerPeer('peer-q', 'https://peer-q.example.com', ['llama3.2:3b']);
+        // Simulate a successful ping to get latencyMs below UNVERIFIED_LATENCY_MS
+        const peer = pm.getAllPeers().find(p => p.nodeId === 'peer-q')!;
+        peer.latencyMs = 100;
+    });
+
+    it('fresh peer (< 5 attempts) is not penalized regardless of failures', () => {
+        pm.recordOutcome('peer-q', false);
+        pm.recordOutcome('peer-q', false);
+        const best = pm.getBestPeer('llama3.2:3b');
+        expect(best?.nodeId).toBe('peer-q'); // still selected — too few attempts to penalize
+    });
+
+    it('peer with 5+ attempts and >30% failure rate gets quality penalty but stays selectable', () => {
+        // 3 failures + 2 successes = 60% failure rate → -500 penalty
+        pm.recordOutcome('peer-q', false);
+        pm.recordOutcome('peer-q', false);
+        pm.recordOutcome('peer-q', false);
+        pm.recordOutcome('peer-q', true);
+        pm.recordOutcome('peer-q', true);
+        // Add a second peer with no quality history to confirm penalized peer loses in head-to-head
+        pm.registerPeer('peer-r', 'https://peer-r.example.com', ['llama3.2:3b']);
+        const peerR = pm.getAllPeers().find(p => p.nodeId === 'peer-r')!;
+        peerR.latencyMs = 100; // same latency, so quality penalty is the deciding factor
+        const best = pm.getBestPeer('llama3.2:3b');
+        expect(best?.nodeId).toBe('peer-r'); // unpenalized peer wins
+    });
+
+    it('peer with 3 consecutive failures is excluded from getBestPeer results', () => {
+        pm.recordOutcome('peer-q', false);
+        pm.recordOutcome('peer-q', false);
+        pm.recordOutcome('peer-q', false);
+        const best = pm.getBestPeer('llama3.2:3b');
+        expect(best).toBeNull();
+    });
+
+    it('successful response resets consecutiveFails to 0 and allows re-selection', () => {
+        pm.recordOutcome('peer-q', false);
+        pm.recordOutcome('peer-q', false);
+        pm.recordOutcome('peer-q', false);
+        expect(pm.getBestPeer('llama3.2:3b')).toBeNull();
+        pm.recordOutcome('peer-q', true); // recovers
+        expect(pm.getBestPeer('llama3.2:3b')?.nodeId).toBe('peer-q');
+    });
+
+    it('quality state is per-nodeId and does not affect other peers', () => {
+        pm.registerPeer('peer-s', 'https://peer-s.example.com', ['llama3.2:3b']);
+        const peerS = pm.getAllPeers().find(p => p.nodeId === 'peer-s')!;
+        peerS.latencyMs = 100;
+        // Poison peer-q, peer-s should be unaffected
+        pm.recordOutcome('peer-q', false);
+        pm.recordOutcome('peer-q', false);
+        pm.recordOutcome('peer-q', false);
+        const best = pm.getBestPeer('llama3.2:3b');
+        expect(best?.nodeId).toBe('peer-s');
+    });
+});
