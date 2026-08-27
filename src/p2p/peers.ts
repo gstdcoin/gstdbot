@@ -209,7 +209,7 @@ export class PeerManager extends EventEmitter {
     // "new" bug later. Left as-is rather than unified, since changing either
     // casing is a speculative change against an unknown external caller.
 
-    registerPeer(nodeId: string, url: string, capabilities: string[], source: PeerSource = 'http-gossip', touch: boolean = true): void {
+    registerPeer(nodeId: string, url: string, capabilities: string[], source: PeerSource = 'http-gossip', touch: boolean = true, pubkeyHex?: string): void {
         if (nodeId === this.selfInfo.nodeId) return;
         const existing = this.peers.get(nodeId);
         this.peers.set(nodeId, {
@@ -225,6 +225,7 @@ export class PeerManager extends EventEmitter {
             // pinged by this node and must not look "fast" to getBestPeer().
             latencyMs:    existing?.latencyMs || UNVERIFIED_LATENCY_MS,
             source,
+            pubkeyHex:    pubkeyHex ?? existing?.pubkeyHex,
         });
         this.saveToDisk();
     }

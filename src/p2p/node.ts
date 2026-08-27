@@ -17,6 +17,7 @@
 import { EventEmitter } from 'events';
 import { z } from 'zod';
 import { resolvePublicUrl } from './peers.js';
+import type { AttestorIdentity } from './identity.js';
 
 // ─── Well-known GSTD bootstrap nodes ─────────────────────────────
 // Add your node's multiaddr to GSTD_BOOTSTRAP_PEERS env var to
@@ -90,6 +91,7 @@ const HeartbeatSchema = z.object({
                 && !isPrivateOrLoopbackHost(parsed.hostname);
         } catch { return false; }
     }, { message: 'httpUrl must be a public http(s) URL' }).optional(),
+    pubkeyHex: z.string().length(64).optional(), // 32-byte Ed25519 public key, hex
 });
 
 const TaskRequestSchema = z.object({
@@ -193,6 +195,7 @@ interface PeerRecord {
 // ─── P2P Mesh Node ─────────────────────────────────────────────────
 export class GstdP2PNode extends EventEmitter {
     private node: any = null;
+    private identity: AttestorIdentity | null = null;
     private config: P2PNodeConfig;
     private peers = new Map<string, PeerRecord>();
     private stats = {
@@ -216,6 +219,10 @@ export class GstdP2PNode extends EventEmitter {
             ...(config.bootstrapPeers || []),
         ]);
         this.config.bootstrapPeers = Array.from(merged).filter(Boolean);
+    }
+
+    setIdentity(identity: AttestorIdentity): void {
+        this.identity = identity;
     }
 
     // ─── Start ──────────────────────────────────────────────────────
@@ -486,6 +493,7 @@ export class GstdP2PNode extends EventEmitter {
             gpuAvailable: false,
             multiaddrs: this.node.getMultiaddrs().map((a: any) => a.toString()),
             httpUrl: this.getPublicHttpUrl(),
+            pubkeyHex: this.identity?.pubkeyHex,
         };
 
         const connections = this.node.getConnections();
@@ -516,6 +524,7 @@ export class GstdP2PNode extends EventEmitter {
             gpuAvailable: false,
             multiaddrs: this.node.getMultiaddrs().map((a: any) => a.toString()),
             httpUrl: this.getPublicHttpUrl(),
+            pubkeyHex: this.identity?.pubkeyHex,
         };
         try {
             const pid = await this.toPeerId(peerId);

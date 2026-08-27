@@ -194,7 +194,7 @@ function retryMeshInBackground(node: GstdP2PNode, swarm: SwarmAgent | null, gate
             node.on('heartbeat:received', (data: any) => {
                 if (!data.httpUrl) return; // no HTTP address to route to -- nothing to bridge
                 const pm = gateway?.getPeerManager?.() ?? null;
-                pm?.registerPeer(data.nodeId, data.httpUrl, data.capabilities || [], 'p2p-mesh', false);
+                pm?.registerPeer(data.nodeId, data.httpUrl, data.capabilities || [], 'p2p-mesh', false, data.pubkeyHex);
             });
             console.log(`    ✓ P2P mesh started after ${attempt} retr${attempt === 1 ? 'y' : 'ies'} (peer ${peerId.slice(0, 16)}...)`);
         } catch (e: any) {
@@ -454,7 +454,7 @@ async function main(): Promise<void> {
             p2pNode.on('heartbeat:received', (data: any) => {
                 if (!data.httpUrl) return; // no HTTP address to route to -- nothing to bridge
                 const pm = gateway?.getPeerManager?.() ?? null;
-                pm?.registerPeer(data.nodeId, data.httpUrl, data.capabilities || [], 'p2p-mesh', false);
+                pm?.registerPeer(data.nodeId, data.httpUrl, data.capabilities || [], 'p2p-mesh', false, data.pubkeyHex);
             });
         } catch (e: any) {
             // Previously this gave up for the entire process lifetime. Instead,
