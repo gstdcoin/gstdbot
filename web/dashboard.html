@@ -1136,7 +1136,7 @@ async function refreshHome(){
     const mCnt=(d.ollama?.models||[]).length;
     set('h-models',mCnt);
     set('qa-models',mCnt+' model'+(mCnt!==1?'s':'')+' installed');
-  }
+  } else { set('h-cpu','—'); set('h-ram','—'); set('h-uptime','—'); set('h-models','—'); }
   if(hw.status==='fulfilled'){
     const d=hw.value;nodeHwRam=d.ram?.total_gb||0;
     const fg=d.disk?.free_gb||0,tg=d.disk?.total_gb||fg*2||1;
@@ -1144,7 +1144,7 @@ async function refreshHome(){
     set('h-disk',(fg||0).toFixed(0)+' GB');
     const db=document.getElementById('h-disk-bar');if(db)db.style.width=dp+'%';
     set('h-disk-sub',fg.toFixed(1)+' GB free');
-  }
+  } else { set('h-disk','—'); }
   if(wal.status==='fulfilled'){
     const d=wal.value;
     try{document.getElementById('w-full').value=d.address||'';}catch(e){}
@@ -1153,17 +1153,17 @@ async function refreshHome(){
     set('h-earn',fmt4(_earnVal)+' GSTD');
     set('h-gstd',fmt4(_earnVal));
     set('qa-earn',fmt4(_earnVal)+' GSTD today');
-  }
+  } else { set('h-addr','—'); set('h-earn','—'); set('h-gstd','—'); }
   if(ipfs.status==='fulfilled'){
     const d=ipfs.value;
     set('h-pins',d.pin_list?.length||0);
     set('h-peers',d.ipfs_peers||0);
     set('h-ipfs-id',trunc(d.peer_id||'',8,4));
-  }
+  } else { set('h-pins','—'); set('h-peers','—'); }
   if(rat.status==='fulfilled'){
     const d=rat.value;
     set('h-rating','Rating: '+d.score+'/'+d.max_score+' · '+d.tier);
-  }
+  } else { set('h-rating','—'); }
   // Update sparkline history and redraw
   pushHist(_cpu, _ram, _earnVal);
   drawSparkline('spark-cpu',  _hist.cpu,  '#8b5cf6');
@@ -1185,7 +1185,7 @@ async function refreshHome(){
       const lv=e.type||'info';
       return `<div class="log-row"><span class="log-t">${t}</span><span class="log-l ${lv}">${lv[0].toUpperCase()}</span><span class="log-m">${esc(e.msg||'')}</span></div>`;
     }).join('');
-  } catch(e){}
+  } catch(e){document.getElementById('h-log').innerHTML='<div class="empty"><p>Could not load activity</p></div>';}
 }
 
 async function checkUpdBanner(){
@@ -1240,7 +1240,14 @@ async function loadModels(){
         '</tbody></table>';
     }
     renderCatalog(mods.catalog||[],nodeHwRam);
-  } catch(e){console.error('loadModels',e);}
+  } catch(e){
+    console.error('loadModels',e);
+    set('m-score','—'); set('m-tier','—'); set('m-mult','—'); set('m-cnt','—');
+    set('rb-mv','—'); set('rb-av','—'); set('rb-uv','—');
+    set('m-cpu','—'); set('m-ram','—'); set('m-disk','—');
+    document.getElementById('m-list').innerHTML='<div class="empty"><p>Could not load models</p></div>';
+    document.getElementById('m-catalog').innerHTML='<div class="empty"><p>Could not load catalog</p></div>';
+  }
 }
 
 function renderCatalog(catalog,ram){
@@ -1378,6 +1385,7 @@ async function loadIPFS(){
   try {
     const d=await api('/api/storage').then(r=>r.json());
     if(d.enabled===false){
+      set('ip-id','—'); set('ip-pins','—'); set('ip-size','—'); set('ip-peers','—');
       document.getElementById('ip-list').innerHTML='<div class="empty"><div class="ei">&#x26A0;&#xFE0F;</div><h4>IPFS not available</h4><p>'+esc(d.reason||'IPFS daemon not running')+'</p></div>';
       return;
     }
@@ -1391,7 +1399,11 @@ async function loadIPFS(){
     el.innerHTML='<table class="tbl"><thead><tr><th>CID</th><th>Name</th><th>Actions</th></tr></thead><tbody>'+
       pins.map(p=>`<tr><td class="mono tc sm">${esc(p.cid)}</td><td class="muted sm">${esc(p.name||'—')}</td><td class="row gap8"><button class="copy-btn" onclick="copyText('${esc(p.cid)}')" title="Copy">&#x1F4CB;</button><button class="btn btn-danger btn-sm" onclick="ipfsUnpin('${esc(p.cid)}')">Unpin</button></td></tr>`).join('')+
       '</tbody></table>';
-  } catch(e){console.error('loadIPFS',e);}
+  } catch(e){
+    console.error('loadIPFS',e);
+    set('ip-id','—'); set('ip-pins','—'); set('ip-size','—'); set('ip-peers','—');
+    document.getElementById('ip-list').innerHTML='<div class="empty"><p>Could not load IPFS</p></div>';
+  }
 }
 
 async function ipfsUpload(){
@@ -1443,7 +1455,10 @@ async function loadValidators(){
     ]);
     set('v-tier',(naas.tier||'unknown')+' tier, '+(hw.ram?.total_gb||0)+' GB RAM');
     renderValidators(vd);
-  } catch(e){console.error('loadValidators',e);}
+  } catch(e){
+    console.error('loadValidators',e);
+    document.getElementById('v-list').innerHTML='<div class="empty"><p>Could not load validators</p></div>';
+  }
 }
 
 function renderValidators(data){
@@ -1533,13 +1548,13 @@ async function loadWallet(){
       set('w-today',fmt4(d.earningsToday));
       const lnk=document.getElementById('w-exp');
       if(lnk&&addr) lnk.href='https://tonscan.org/address/'+addr;
-    }
+    } else { set('w-addr','—'); set('w-today','—'); }
     if(st.status==='fulfilled'){
       const d=st.value;
       set('w-rate',d.platform_health?.connected||d.swarm?.effectiveRate?(d.swarm?.effectiveRate||0).toFixed(2):'—');
       const connected=d.platform_health?.connected;
       set('w-claim-info',connected?'Connected to platform -- claim will process immediately.':'Platform unreachable -- claim may fail until connectivity is restored.');
-    }
+    } else { set('w-rate','—'); }
     if(earn.status==='fulfilled'){
       const d=earn.value;
       set('w-total',fmt4(d.total||d.today||0));
@@ -1553,8 +1568,12 @@ async function loadWallet(){
           <td><span class="badge badge-accent">${esc(e.type||e.source||'inference')}</span></td>
           <td class="muted sm">${esc(e.description||'')}</td>
         </tr>`).join('')+'</tbody></table>';
-    }
-  } catch(e){console.error('loadWallet',e);}
+    } else { set('w-total','—'); document.getElementById('w-hist').innerHTML='<div class="empty"><p>Could not load history</p></div>'; }
+  } catch(e){
+    console.error('loadWallet',e);
+    set('w-addr','—'); set('w-today','—'); set('w-total','—'); set('w-rate','—');
+    document.getElementById('w-hist').innerHTML='<div class="empty"><p>Could not load wallet</p></div>';
+  }
 }
 
 async function linkWallet(){
