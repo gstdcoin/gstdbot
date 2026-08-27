@@ -15,6 +15,7 @@ import { EventEmitter } from 'events';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import { verifyPlatformCommand, isStaleCommand, type PlatformCommand } from '../lib/platform-auth.js';
 
 function readOracleTaskCount(): number {
     try {
@@ -171,11 +172,8 @@ export class PlatformLink extends EventEmitter {
             this.failCount = 0;
             this.emit('heartbeat', { ...data, sentAt: this.lastHeartbeat });
 
-            // Handle platform commands
             if (data.commands?.length > 0) {
-                for (const cmd of data.commands) {
-                    this.emit('command', cmd);
-                }
+                this._processCommands(data.commands as unknown[]);
             }
         } catch (e: any) {
             this.failCount++;
@@ -186,6 +184,28 @@ export class PlatformLink extends EventEmitter {
                 this.registered = false;
                 await this.register();
             }
+        }
+    }
+
+    _processCommands(
+        commands: unknown[],
+        verifyFn: (cmd: PlatformCommand) => boolean = verifyPlatformCommand,
+    ): void {
+        for (const raw of commands) {
+            const cmd = raw as Partial<PlatformCommand>;
+            if (!cmd.sig) {
+                console.warn(`[platform-auth] command '${cmd.type ?? '?'}' rejected — unsigned`);
+                continue;
+            }
+            if (isStaleCommand(cmd.timestamp ?? 0)) {
+                console.warn(`[platform-auth] command '${cmd.type ?? '?'}' rejected — stale timestamp`);
+                continue;
+            }
+            if (!verifyFn(cmd as PlatformCommand)) {
+                console.warn(`[platform-auth] command '${cmd.type ?? '?'}' rejected — invalid signature`);
+                continue;
+            }
+            this.emit('command', raw);
         }
     }
 
