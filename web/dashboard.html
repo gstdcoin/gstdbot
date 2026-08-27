@@ -235,14 +235,25 @@
   @media(max-width:768px){
     .grid-2,.grid-3,.grid-4{grid-template-columns:1fr 1fr}
     .sidebar{width:56px}
-    .sidebar .nav-section-label,.sidebar .nav-item span:not(.nav-icon),.logo-name,.logo-status,.node-id-badge{display:none}
+    .sidebar .nav-section-label,.sidebar .nav-item span:not(.nav-icon),.logo-name,.logo-status,.node-id-badge,.sidebar .mode-switcher{display:none}
     .main{margin-left:56px;padding:16px}
     .quick-grid{grid-template-columns:1fr 1fr}
     .app-store-grid{grid-template-columns:1fr}
   }
 
+  /* ── Mode Visibility ─────────────────────────────────────────────────── */
+  body[data-mode="simple"] [data-min-mode="advanced"],
+  body[data-mode="simple"] [data-min-mode="developer"],
+  body[data-mode="advanced"] [data-min-mode="developer"] { display:none }
+
+  /* ── Mode Switcher ───────────────────────────────────────────────────── */
+  .mode-switcher{display:flex;margin:12px 16px 4px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:3px;gap:2px}
+  .mode-btn{flex:1;padding:5px 4px;border:none;background:none;color:var(--muted);font-size:10px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;transition:all 0.15s;text-transform:uppercase;letter-spacing:0.04em}
+  .mode-btn:hover{color:var(--text)}
+  .mode-btn.active{background:rgba(139,92,246,0.25);color:var(--accent)}
+
   /* ── Quick Actions ──────────────────────────────────────────────────── */
-  .quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+  .quick-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:24px}
   .quick-btn{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:14px;padding:18px 14px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden}
   .quick-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--accent),var(--cyan));opacity:0;transition:opacity 0.2s}
   .quick-btn:hover{border-color:rgba(139,92,246,0.5);transform:translateY(-2px);box-shadow:0 8px 24px rgba(139,92,246,0.15)}
@@ -1049,10 +1060,30 @@ async function submitPin(pin){
   } catch(e){set('auth-err','Connection error');pinBuf='';updDots();}
 }
 
-function onAuth(){ showPage('home'); checkUpdBanner(); }
+function onAuth(){ applyMode(getMode()); showPage('home'); checkUpdBanner(); }
+
+// ── Mode system ────────────────────────────────────────────────────────
+const MODES = ['simple', 'advanced', 'developer'];
+const PAGE_MIN_MODE = {
+  home:'simple', chat:'simple', models:'simple', wallet:'simple', settings:'simple',
+  ipfs:'advanced', blockchain:'advanced', api:'advanced',
+  validators:'developer',
+};
+let _curPage = 'home';
+function getMode(){ return localStorage.getItem('gstd_ui_mode') || 'simple'; }
+function setMode(m){ localStorage.setItem('gstd_ui_mode', m); applyMode(m); }
+function applyMode(m){
+  document.body.dataset.mode = m;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+  const minMode = PAGE_MIN_MODE[_curPage] || 'simple';
+  if (MODES.indexOf(minMode) > MODES.indexOf(m)) showPage('home');
+}
 
 // ── Navigation ─────────────────────────────────────────────────────────
 function showPage(name){
+  const _minMode = PAGE_MIN_MODE[name] || 'simple';
+  if (MODES.indexOf(_minMode) > MODES.indexOf(getMode())) { showPage('home'); return; }
+  _curPage = name;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const pg=document.getElementById('page-'+name);
