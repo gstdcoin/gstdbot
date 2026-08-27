@@ -284,6 +284,8 @@ async function main(): Promise<void> {
         console.log(`  [6/${TOTAL_STEPS}] Joining swarm network...`);
         swarm = new SwarmAgent(config, wallet, memory);
         await swarm.start();
+        if (swarm) swarm.setIdentity(identity);
+        if (swarm) swarm.setPeerManager(gateway.getPeerManager());
     } else {
         console.log('  [6/7] Swarm: SKIPPED (platform mode)');
     }

@@ -20,6 +20,11 @@ import type { NodeConfig } from '../index.js';
 import type { NodeWallet } from '../wallet/manager.js';
 import type { CollectiveMemory } from '../memory/collective.js';
 import { CrossChainBridge } from '../blockchain/bridge.js';
+import type { AttestorIdentity } from '../p2p/identity.js';
+import type { PeerManager } from '../p2p/peers.js';
+import { hashResult, signAttestation, taskIdToUint64 } from '../p2p/attestation.js';
+import { awaitQuorum } from '../p2p/quorum-coordinator.js';
+import { Address } from '@ton/core';
 
 const PENDING_SETTLEMENTS_FILE = join(process.env.GSTD_CONFIG_DIR || '/home/bot/.config/gstdbot', 'pending-settlements.json');
 const PENDING_TASK_REPORTS_FILE = join(process.env.GSTD_CONFIG_DIR || '/home/bot/.config/gstdbot', 'pending-task-reports.json');
@@ -91,6 +96,8 @@ export class SwarmAgent {
     private p2pNode: any = null;
     private avgLatencyMs = 0;
     private trainingCapable = false;
+    private identity: AttestorIdentity | null = null;
+    private peerManager: PeerManager | null = null;
 
     constructor(config: NodeConfig, wallet: NodeWallet, memory: CollectiveMemory) {
         this.config = config;
@@ -119,6 +126,9 @@ export class SwarmAgent {
     }
 
     // ─── P2P Integration ─────────────────────────────────────────
+    setIdentity(identity: AttestorIdentity): void { this.identity = identity; }
+    setPeerManager(pm: PeerManager | null): void { this.peerManager = pm; }
+
     setP2PNode(node: any): void {
         this.p2pNode = node;
 
@@ -681,12 +691,8 @@ export class SwarmAgent {
 
         const coExecutors = peers.slice(0, 2);
 
-        const { loadOrCreateAttestorIdentity } = await import('../p2p/identity.js');
-        const { hashResult, signAttestation, taskIdToUint64 } = await import('../p2p/attestation.js');
-        const { awaitQuorum } = await import('../p2p/quorum-coordinator.js');
-        const { Address } = await import('@ton/core');
-
-        const identity = loadOrCreateAttestorIdentity();
+        if (!this.identity) return;
+        const identity = this.identity;
         const resultHashBig = hashResult(JSON.stringify(result));
         const resultHashHex = resultHashBig.toString(16).padStart(64, '0');
         const taskIdU64 = taskIdToUint64(taskId);
@@ -866,12 +872,8 @@ export class SwarmAgent {
         try {
             const result = await this.computeTaskResult(task);
 
-            const { loadOrCreateAttestorIdentity } = await import('../p2p/identity.js');
-            const { hashResult, signAttestation, taskIdToUint64 } = await import('../p2p/attestation.js');
-            const { awaitQuorum } = await import('../p2p/quorum-coordinator.js');
-            const { Address } = await import('@ton/core');
-
-            const identity = loadOrCreateAttestorIdentity();
+            if (!this.identity) return;
+            const identity = this.identity;
             const resultHashBig = hashResult(JSON.stringify(result));
             const resultHashHex = resultHashBig.toString(16).padStart(64, '0');
             const taskIdU64 = taskIdToUint64(task.id);
