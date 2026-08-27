@@ -244,7 +244,6 @@ async function main(): Promise<void> {
         sovereigntyMode: (process.env.GSTD_SOVEREIGNTY_MODE as any) || 'full',
     });
     await gateway.start();
-    gateway.setAttestorIdentity(identity);
     const actualPort = gateway.getPort();
 
     // ── 2. Blockchain Manager (GSTD Wallet + Staking) ───────────

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { signVerify } from '@ton/crypto';
-import { loadOrCreateAttestorIdentity, signPeerRequest, peerRequestMessage, isStaleTimestamp } from './identity.js';
+import { loadOrCreateAttestorIdentity, signPeerRequest, peerRequestMessage, isStaleTimestamp, verifyPeerRequest } from './identity.js';
 
 describe('signPeerRequest', () => {
     const identity = loadOrCreateAttestorIdentity();
@@ -53,5 +53,36 @@ describe('signPeerRequest', () => {
         const sig    = Buffer.from(headers['X-GSTD-Node-Sig'], 'hex');
         const valid  = signVerify(msg, sig, pubkey);
         expect(valid).toBe(true);
+    });
+});
+
+describe('verifyPeerRequest (end-to-end requirePeerAuth verification path)', () => {
+    const identity = loadOrCreateAttestorIdentity();
+    const nodeId = 'test-node-e2e';
+
+    it('accepts a valid signed request', async () => {
+        const timestamp = Date.now();
+        const headers = signPeerRequest(identity, nodeId, timestamp);
+        const result = await verifyPeerRequest(
+            headers['X-GSTD-Node-Id'],
+            parseInt(headers['X-GSTD-Node-Ts'], 10),
+            headers['X-GSTD-Node-Sig'],
+            identity.pubkeyHex
+        );
+        expect(result).toBe(true);
+    });
+
+    it('rejects a request with a tampered signature', async () => {
+        const timestamp = Date.now();
+        const headers = signPeerRequest(identity, nodeId, timestamp);
+        // Flip one byte in the hex signature
+        const tamperedSig = 'ff' + headers['X-GSTD-Node-Sig'].slice(2);
+        const result = await verifyPeerRequest(
+            headers['X-GSTD-Node-Id'],
+            parseInt(headers['X-GSTD-Node-Ts'], 10),
+            tamperedSig,
+            identity.pubkeyHex
+        );
+        expect(result).toBe(false);
     });
 });

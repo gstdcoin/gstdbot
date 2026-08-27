@@ -15,7 +15,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
-import { keyPairFromSeed, sign, type KeyPair } from '@ton/crypto';
+import { keyPairFromSeed, sign, signVerify, type KeyPair } from '@ton/crypto';
 import { randomBytes, createHash } from 'crypto';
 
 const CONFIG_DIR = join(homedir(), '.config', 'gstdbot');
@@ -59,6 +59,18 @@ export function peerRequestMessage(nodeId: string, timestamp: number): Buffer {
 
 export function isStaleTimestamp(timestamp: number, maxSkewMs = 60_000): boolean {
     return Math.abs(Date.now() - timestamp) > maxSkewMs;
+}
+
+export async function verifyPeerRequest(
+    nodeId: string,
+    timestamp: number,
+    sigHex: string,
+    pubkeyHex: string
+): Promise<boolean> {
+    const msg    = peerRequestMessage(nodeId, timestamp);
+    const pubkey = Buffer.from(pubkeyHex, 'hex');
+    const sig    = Buffer.from(sigHex, 'hex');
+    return signVerify(msg, sig, pubkey);
 }
 
 export function signPeerRequest(
