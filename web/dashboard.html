@@ -780,22 +780,23 @@
   <div class="page" id="page-settings">
     <div class="page-title">Settings</div>
     <div class="page-subtitle">Node configuration and system management</div>
+    <div class="alert" id="s-alert" style="display:none"></div>
 
     <div class="grid-2 mb20">
       <div class="card">
         <div class="card-title">Node Information</div>
-        <div class="row jb mb8"><span class="muted sm">Node ID</span><span class="sm tc mono" id="s-nid">—</span></div>
-        <div class="row jb mb8"><span class="muted sm">Version</span><span class="sm fw6" id="s-ver">—</span></div>
-        <div class="row jb mb8"><span class="muted sm">Platform</span><span class="sm" id="s-plat">—</span></div>
-        <div class="row jb mb8"><span class="muted sm">Architecture</span><span class="sm" id="s-arch">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">Node ID</span><span class="skeleton skeleton-text" data-skel-for="s-nid" style="display:inline-block;height:12px;width:150px;margin:0"></span><span class="sm tc mono" id="s-nid" style="display:none">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">Version</span><span class="skeleton skeleton-text" data-skel-for="s-ver" style="display:inline-block;height:12px;width:50px;margin:0"></span><span class="sm fw6" id="s-ver" style="display:none">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">Platform</span><span class="skeleton skeleton-text" data-skel-for="s-plat" style="display:inline-block;height:12px;width:70px;margin:0"></span><span class="sm" id="s-plat" style="display:none">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">Architecture</span><span class="skeleton skeleton-text" data-skel-for="s-arch" style="display:inline-block;height:12px;width:60px;margin:0"></span><span class="sm" id="s-arch" style="display:none">—</span></div>
         <div class="row jb"><span class="muted sm">Central Server</span><span class="badge badge-muted" id="s-central-badge">Loading...</span></div>
       </div>
       <div class="card">
         <div class="card-title">Hardware</div>
-        <div class="row jb mb8"><span class="muted sm">CPU</span><span class="sm fw6" id="s-cpu">—</span></div>
-        <div class="row jb mb8"><span class="muted sm">Cores</span><span class="sm fw6" id="s-cores">—</span></div>
-        <div class="row jb mb8"><span class="muted sm">RAM Total</span><span class="sm fw6" id="s-ram">—</span></div>
-        <div class="row jb"><span class="muted sm">Disk Free</span><span class="sm fw6" id="s-disk">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">CPU</span><span class="skeleton skeleton-text" data-skel-for="s-cpu" style="display:inline-block;height:12px;width:150px;margin:0"></span><span class="sm fw6" id="s-cpu" style="display:none">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">Cores</span><span class="skeleton skeleton-text" data-skel-for="s-cores" style="display:inline-block;height:12px;width:24px;margin:0"></span><span class="sm fw6" id="s-cores" style="display:none">—</span></div>
+        <div class="row jb mb8"><span class="muted sm">RAM Total</span><span class="skeleton skeleton-text" data-skel-for="s-ram" style="display:inline-block;height:12px;width:50px;margin:0"></span><span class="sm fw6" id="s-ram" style="display:none">—</span></div>
+        <div class="row jb"><span class="muted sm">Disk Free</span><span class="skeleton skeleton-text" data-skel-for="s-disk" style="display:inline-block;height:12px;width:80px;margin:0"></span><span class="sm fw6" id="s-disk" style="display:none">—</span></div>
       </div>
     </div>
 
@@ -806,8 +807,10 @@
       </div>
       <div class="row jb mb12">
         <div>
-          <div class="fw6" id="s-curver">v—</div>
-          <div class="muted sm" id="s-upd-status">Checking...</div>
+          <span class="skeleton skeleton-text" data-skel-for="s-curver" style="height:18px;width:70px;margin-bottom:4px"></span>
+          <div class="fw6" id="s-curver" style="display:none">v—</div>
+          <span class="skeleton skeleton-text" data-skel-for="s-upd-status" style="height:12px;width:200px;margin-bottom:0"></span>
+          <div class="muted sm" id="s-upd-status" style="display:none">Checking...</div>
         </div>
         <div class="row gap8">
           <button class="btn btn-secondary" id="s-chk-btn" onclick="checkUpdate()">&#x1F50D; Check</button>
@@ -817,33 +820,37 @@
       <div id="s-upd-log" style="display:none"><div class="code-blk" id="s-upd-out">Waiting...</div></div>
     </div>
 
-    <div class="grid-2 mb20">
-      <div class="card">
-        <div class="card-title">Change PIN</div>
-        <div class="form-group"><label class="form-label">Current PIN</label><input class="input" type="password" id="s-cur-pin" placeholder="Current PIN" maxlength="4"></div>
-        <div class="form-group"><label class="form-label">New PIN (4 digits)</label><input class="input" type="password" id="s-new-pin" placeholder="New PIN" maxlength="4"></div>
-        <button class="btn btn-primary" onclick="changePin()">&#x1F510; Change PIN</button>
-        <div id="s-pin-res" style="display:none;margin-top:8px"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Telegram</div>
-        <div class="row jb mb16"><span class="muted sm">Status</span><span class="badge badge-muted" id="s-tg-badge">Loading...</span></div>
+    <div class="card mb20">
+      <div class="card-title">Security</div>
+      <div class="grid-2">
+        <div>
+          <div class="fw6 sm mb12">Change PIN</div>
+          <div class="form-group"><label class="form-label">Current PIN</label><input class="input" type="password" id="s-cur-pin" placeholder="Current PIN" maxlength="4"></div>
+          <div class="form-group"><label class="form-label">New PIN (4 digits)</label><input class="input" type="password" id="s-new-pin" placeholder="New PIN" maxlength="4"></div>
+          <div class="alert" id="s-pin-alert" style="display:none;margin-bottom:var(--space-3)"></div>
+          <button class="btn btn-primary" onclick="changePin()">&#x1F510; Change PIN</button>
+        </div>
+        <div>
+          <div class="fw6 sm mb12">SSL / HTTPS</div>
+          <div class="row jb mb8"><span class="muted sm">SSL Status</span><span class="badge badge-muted" id="s-ssl-badge">Loading...</span></div>
+          <span class="skeleton skeleton-text" data-skel-for="s-ssl-info" style="height:12px;width:80%;margin-bottom:0"></span>
+          <div class="muted sm" id="s-ssl-info" style="display:none">Loading...</div>
+        </div>
       </div>
     </div>
 
     <div class="card mb20">
-      <div class="card-title">SSL / HTTPS</div>
-      <div class="row jb mb8"><span class="muted sm">SSL Status</span><span class="badge badge-muted" id="s-ssl-badge">Loading...</span></div>
-      <div class="muted sm" id="s-ssl-info">Loading...</div>
+      <div class="card-title">Telegram</div>
+      <div class="row jb mb8"><span class="muted sm">Status</span><span class="badge badge-muted" id="s-tg-badge">Loading...</span></div>
+      <div class="muted sm" id="s-tg-info" style="display:none"></div>
     </div>
 
     <div class="card mb20">
       <div class="card-title">Node Control</div>
-      <div class="row gap12 mb12">
+      <div class="row gap12">
         <button class="btn btn-secondary" id="s-rst-btn" onclick="restartNode()">&#x1F504; Restart Node</button>
         <button class="btn btn-danger" id="s-stp-btn" onclick="stopNode()">&#x1F6D1; Stop Node</button>
       </div>
-      <div id="s-ctrl-res" style="display:none"></div>
     </div>
 
     <div class="card">
@@ -1657,6 +1664,15 @@ function pollInstallProgress(id, btn){
 }
 
 // ── Settings ───────────────────────────────────────────────────────────
+function settingsAlert(msg,type){
+  const el=document.getElementById('s-alert');
+  if(!el) return;
+  el.className='alert alert-'+type;
+  el.textContent=msg;
+  el.style.display='flex';
+  clearTimeout(settingsAlert._t);
+  settingsAlert._t=setTimeout(()=>{el.style.display='none';},6000);
+}
 async function loadSettings(){
   try {
     const [st,hw,upd,tg,ssl]=await Promise.allSettled([
@@ -1674,10 +1690,16 @@ async function loadSettings(){
       set('s-arch',d.node?.arch||'—');
       set('s-curver','v'+(d.node?.version||'—'));
       const cb=document.getElementById('s-central-badge');
-      if(d.platform_health&&cb){
-        if(d.platform_health.connected){cb.className='badge badge-green';cb.textContent='Connected';}
-        else{cb.className='badge badge-yellow';cb.textContent='Unreachable — retrying in '+Math.round(d.platform_health.nextAttemptInMs/1000)+'s';}
+      if(cb){
+        if(d.platform_health){
+          if(d.platform_health.connected){cb.className='badge badge-green';cb.textContent='Connected';}
+          else{cb.className='badge badge-yellow';cb.textContent='Unreachable — retrying in '+Math.round(d.platform_health.nextAttemptInMs/1000)+'s';}
+        } else {cb.className='badge badge-muted';cb.textContent='Unknown';}
       }
+    } else {
+      set('s-nid','—'); set('s-ver','—'); set('s-plat','—'); set('s-arch','—'); set('s-curver','v—');
+      const cb=document.getElementById('s-central-badge');
+      if(cb){cb.className='badge badge-muted';cb.textContent='Unknown';}
     }
     if(hw.status==='fulfilled'){
       const d=hw.value;
@@ -1685,18 +1707,33 @@ async function loadSettings(){
       set('s-cores',d.cpu?.cores||'—');
       set('s-ram',(d.ram?.total_gb||0)+' GB');
       set('s-disk',(d.disk?.free_gb||0)+' GB free');
+    } else {
+      set('s-cpu','—'); set('s-cores','—'); set('s-ram','—'); set('s-disk','—');
     }
     if(upd.status==='fulfilled'){
       const d=upd.value;
       const bg=document.getElementById('s-upd-badge'),ub=document.getElementById('s-upd-btn');
       if(d.update_available){bg.className='badge badge-yellow';bg.textContent='Update Available';set('s-upd-status',d.commits_behind+' commit'+(d.commits_behind!==1?'s':'')+' behind (current v'+d.current_version+')');ub.style.display='inline-flex';}
       else{bg.className='badge badge-green';bg.textContent='Up to date';set('s-upd-status','Already on latest: v'+(d.current_version||''));ub.style.display='none';}
+    } else {
+      const bg=document.getElementById('s-upd-badge');
+      if(bg){bg.className='badge badge-muted';bg.textContent='Unknown';}
+      set('s-upd-status','Unable to check for updates');
     }
     if(tg.status==='fulfilled'){
       const d=tg.value;
       const tgb=document.getElementById('s-tg-badge');
-      if(d.linked){tgb.className='badge badge-green';tgb.textContent='Connected';}
-      else{tgb.className='badge badge-muted';tgb.textContent='Not configured';}
+      const tgi=document.getElementById('s-tg-info');
+      if(d.linked){
+        tgb.className='badge badge-green';tgb.textContent='Connected';
+        if(tgi){tgi.textContent=(d.username?'@'+d.username+' · ':'')+'Alerts and notifications are active.';tgi.style.display='';}
+      } else {
+        tgb.className='badge badge-muted';tgb.textContent='Not configured';
+        if(tgi){tgi.textContent='Link your Telegram account via the node CLI to receive alerts.';tgi.style.display='';}
+      }
+    } else {
+      const tgb=document.getElementById('s-tg-badge');
+      if(tgb){tgb.className='badge badge-muted';tgb.textContent='Unknown';}
     }
     if(ssl.status==='fulfilled'){
       const d=ssl.value;
@@ -1704,6 +1741,10 @@ async function loadSettings(){
       if(d.enabled||d.valid){sb.className='badge badge-green';sb.textContent='Enabled';}
       else{sb.className='badge badge-muted';sb.textContent='HTTP Only';}
       set('s-ssl-info',d.domain?'Domain: '+d.domain:d.message||'SSL not configured');
+    } else {
+      const sb=document.getElementById('s-ssl-badge');
+      if(sb){sb.className='badge badge-muted';sb.textContent='Unknown';}
+      set('s-ssl-info','Unable to load SSL status');
     }
     try {
       const lg=await api('/api/node/log?limit=30').then(r=>r.json());
@@ -1745,41 +1786,59 @@ async function runUpdate(){
   finally{btn.disabled=false;}
 }
 
+function pinAlert(msg,type){
+  const el=document.getElementById('s-pin-alert');
+  if(!el) return;
+  el.className='alert alert-'+type;
+  el.textContent=msg;
+  el.style.display='flex';
+  clearTimeout(pinAlert._t);
+  pinAlert._t=setTimeout(()=>{el.style.display='none';},6000);
+}
 async function changePin(){
   const cur=document.getElementById('s-cur-pin')?.value||'';
   const nw=document.getElementById('s-new-pin')?.value||'';
   if(!cur||!nw){toast('Enter both PINs');return;}
   if(nw.length<4){toast('PIN must be 4 digits');return;}
-  const res=document.getElementById('s-pin-res');res.style.display='block';res.innerHTML='<span class="muted sm">Changing...</span>';
+  pinAlert('Changing PIN...','info');
   try {
     const r=await api('/api/auth/change-pin',{method:'POST',body:JSON.stringify({current_pin:cur,new_pin:nw})});
     const d=await r.json();
-    if(r.ok){if(d.token){tok=d.token;localStorage.setItem('gstd_tok',tok);}res.innerHTML='<span class="tg sm">PIN changed!</span>';document.getElementById('s-cur-pin').value='';document.getElementById('s-new-pin').value='';}
-    else{res.innerHTML=`<span class="tr sm">Error: ${esc(d.error||'Unknown')}</span>`;}
-  } catch(e){res.innerHTML=`<span class="tr sm">Error: ${esc(e.message)}</span>`;}
+    if(r.ok){
+      if(d.token){tok=d.token;localStorage.setItem('gstd_tok',tok);}
+      document.getElementById('s-cur-pin').value='';
+      document.getElementById('s-new-pin').value='';
+      pinAlert('PIN changed successfully.','success');
+      settingsAlert('PIN changed successfully.','success');
+    } else {
+      pinAlert('Error: '+(d.error||'Unknown'),'error');
+    }
+  } catch(e){
+    pinAlert('Error: '+e.message,'error');
+  }
 }
 
 async function restartNode(){
   if(!confirm('Restart the GSTD node?')) return;
   const btn=document.getElementById('s-rst-btn');btn.disabled=true;
-  const res=document.getElementById('s-ctrl-res');res.style.display='block';res.innerHTML='<span class="ty sm">Restarting...</span>';
+  settingsAlert('Restarting node — page will reload in 5 seconds...','info');
   try {
     await api('/api/node/restart',{method:'POST',body:JSON.stringify({})});
-    res.innerHTML='<span class="tg sm">Restart initiated. Page will reload in 5s...</span>';
-  } catch(e){res.innerHTML='<span class="tg sm">Restart initiated. Page will reload in 5s...</span>';}
+  } catch(e){/* restart kills the connection — treat any response or error the same */}
   finally{btn.disabled=false;}
+  settingsAlert('Restart initiated. Reloading in 5s...','success');
   setTimeout(()=>window.location.reload(),5000);
 }
 
 async function stopNode(){
   if(!confirm('Stop the GSTD node? You will need to restart it via pm2.')) return;
   const btn=document.getElementById('s-stp-btn');btn.disabled=true;
-  const res=document.getElementById('s-ctrl-res');res.style.display='block';res.innerHTML='<span class="ty sm">Stopping...</span>';
+  settingsAlert('Stopping node...','info');
   try {
     const r=await api('/api/node/stop',{method:'POST',body:JSON.stringify({})});
     const d=await r.json();
-    res.innerHTML='<span class="tr sm">'+(d.message||'Node stopping...')+'</span>';
-  } catch(e){res.innerHTML='<span class="tr sm">Node may have stopped. Use pm2 to restart.</span>';}
+    settingsAlert((d.message||'Node stopping...')+' Use pm2 to restart.','error');
+  } catch(e){settingsAlert('Node may have stopped. Use pm2 to restart.','error');}
   finally{btn.disabled=false;}
 }
 
