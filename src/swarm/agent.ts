@@ -883,13 +883,12 @@ export class SwarmAgent {
             (task as any).id = (task as any).task_id;
         }
         if (!this.p2pNode) return;
+        if (!this.identity) return;
         const workerAddr = this.wallet.getAddress();
         if (!workerAddr) return;
 
         try {
             const result = await this.computeTaskResult(task);
-
-            if (!this.identity) return;
             const identity = this.identity;
             const resultHashBig = hashResult(JSON.stringify(result));
             const resultHashHex = resultHashBig.toString(16).padStart(64, '0');

@@ -87,7 +87,12 @@ describe('SwarmAgent quorum attestation gaps', () => {
     describe('setIdentity guard in attemptQuorumSettlement', () => {
         it('returns without calling hashResult when identity is not set', async () => {
             const agent = new SwarmAgent(mockConfig, mockWallet, mockMemory);
-            // Do NOT call setIdentity
+            // Provide p2pNode with 2 peers so the function passes the p2pNode/peers guards
+            // and actually reaches the identity guard at line 702
+            (agent as any).p2pNode = {
+                getPeers: () => [{ nodeId: 'peer1' }, { nodeId: 'peer2' }],
+            };
+            // Do NOT call setIdentity — identity guard must fire
             const { hashResult } = await import('../p2p/attestation.js');
             await (agent as any).attemptQuorumSettlement(baseTask, 'task-abc', { output: 'test' });
             expect(hashResult).not.toHaveBeenCalled();
