@@ -1958,6 +1958,9 @@ export class OmegaGateway {
                 logActivity('Update requested without a signed manifest — permissive mode', 'warn');
             }
             // ─────────────────────────────────────────────────────
+            // NOTE: manifest.commit is signature-verified but NOT checked against the
+            // pulled HEAD after the pull — this route has no rollback infrastructure.
+            // See /api/update for the full commit-match + rollback path.
             try {
                 const cwd = join(__dirname, '../..');
                 const branch = getDefaultBranch(cwd);
