@@ -30,6 +30,9 @@ import { PeerManager } from '../p2p/peers.js';
 import { IpfsClient } from '../storage/ipfs.js';
 import { FeeLedger } from '../fees/ledger.js';
 import { ValidatorManager, ChainId } from '../validators/manager.js';
+import { signVerify } from '@ton/crypto';
+import type { AttestorIdentity } from '../p2p/identity.js';
+import { peerRequestMessage } from '../p2p/identity.js';
 
 // Rewards are calculated server-side via /api/v1/nodes/heartbeat
 // Node does NOT self-award tokens
@@ -177,6 +180,45 @@ function requireNodeAuth(req: any, res: any): boolean {
     return true;
 }
 
+async function requirePeerAuth(req: any, res: any, peerManager: PeerManager | null, identity: AttestorIdentity | null): Promise<boolean> {
+    const nodeId = req.headers['x-gstd-node-id'] as string | undefined;
+    const tsStr  = req.headers['x-gstd-node-ts']  as string | undefined;
+    const sigHex = req.headers['x-gstd-node-sig'] as string | undefined;
+
+    if (!nodeId || !tsStr || !sigHex) {
+        res.status(401).json({ error: 'Peer auth headers required: X-GSTD-Node-{Id,Ts,Sig}' });
+        return false;
+    }
+
+    const timestamp = parseInt(tsStr, 10);
+    if (isNaN(timestamp) || Math.abs(Date.now() - timestamp) > 60_000) {
+        res.status(401).json({ error: 'Timestamp out of range (replay protection, ±60s)' });
+        return false;
+    }
+
+    const peer = peerManager?.getPeer(nodeId);
+    if (!peer) {
+        res.status(401).json({ error: 'Unknown peer node' });
+        return false;
+    }
+
+    if (!peer.pubkeyHex) {
+        res.status(401).json({ error: 'Peer has not announced its public key yet' });
+        return false;
+    }
+
+    const msg    = peerRequestMessage(nodeId, timestamp);
+    const pubkey = Buffer.from(peer.pubkeyHex, 'hex');
+    const sig    = Buffer.from(sigHex, 'hex');
+    const valid  = await signVerify(sig, msg, pubkey);
+    if (!valid) {
+        res.status(401).json({ error: 'Signature verification failed' });
+        return false;
+    }
+
+    return true;
+}
+
 // ─── Auth Rate Limiting ──────────────────────────────────────────
 const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -215,9 +257,14 @@ export class OmegaGateway {
     private clients = new Map<string, WebSocket>();
     private appManager: AppManager;
     private peerManager: PeerManager | null = null;
+    private attestorIdentity: AttestorIdentity | null = null;
 
     getPeerManager(): PeerManager | null {
         return this.peerManager;
+    }
+
+    setAttestorIdentity(identity: AttestorIdentity): void {
+        this.attestorIdentity = identity;
     }
     private ipfs: IpfsClient | null = null;
     private feeLedger: FeeLedger = new FeeLedger();
@@ -2242,7 +2289,7 @@ export class OmegaGateway {
         });
 
         this.app.post('/api/resources/request', async (req, res) => {
-            if (!requireNodeAuth(req, res)) return;
+            if (!await requirePeerAuth(req, res, this.peerManager, this.attestorIdentity)) return;
             const rs = this.subsystems?.resources;
             if (!rs) { res.json({ ok: false, error: 'Resource sharing not available' }); return; }
             try {

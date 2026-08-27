@@ -64,6 +64,7 @@ import { FastifyGateway } from './gateway/fastify.js';
 import { NaaSManager } from './naas/orchestrator.js';
 import { UptimeDaemon } from './naas/uptime_daemon.js';
 import { GstdP2PNode } from './p2p/node.js';
+import { loadOrCreateAttestorIdentity } from './p2p/identity.js';
 import { hostname } from 'os';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -209,6 +210,8 @@ function retryMeshInBackground(node: GstdP2PNode, swarm: SwarmAgent | null, gate
 // ─── Main ────────────────────────────────────────────────────────
 async function main(): Promise<void> {
     const config = await loadConfig();
+    const identity = loadOrCreateAttestorIdentity();
+    console.log(`    ✓ Attestor identity loaded (pubkey: ${identity.pubkeyHex.slice(0, 16)}...)`);
     const startTime = Date.now();
     const isPlatform = config.mode === 'platform';
     const TOTAL_STEPS = isPlatform ? 7 : 17;
@@ -241,6 +244,7 @@ async function main(): Promise<void> {
         sovereigntyMode: (process.env.GSTD_SOVEREIGNTY_MODE as any) || 'full',
     });
     await gateway.start();
+    gateway.setAttestorIdentity(identity);
     const actualPort = gateway.getPort();
 
     // ── 2. Blockchain Manager (GSTD Wallet + Staking) ───────────
@@ -444,6 +448,7 @@ async function main(): Promise<void> {
             enableMdns: process.env.GSTD_P2P_MDNS !== 'false',
             version: config.version,
         });
+        p2pNode.setIdentity(identity);
         try {
             p2pPeerId = await p2pNode.start();
             // Wire P2P into SwarmAgent: P2P tasks routed through processTask(),

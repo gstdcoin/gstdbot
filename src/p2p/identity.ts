@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 import { keyPairFromSeed, sign, type KeyPair } from '@ton/crypto';
-import { randomBytes } from 'crypto';
+import { randomBytes, createHash } from 'crypto';
 
 const CONFIG_DIR = join(homedir(), '.config', 'gstdbot');
 const IDENTITY_FILE = join(CONFIG_DIR, 'attestor-identity.json');
@@ -51,4 +51,22 @@ export function loadOrCreateAttestorIdentity(): AttestorIdentity {
 /** Raw sign — callers construct the exact message hash themselves (see attestation.ts). */
 export function signWithIdentity(identity: AttestorIdentity, hash: Buffer): Buffer {
     return sign(hash, identity.keyPair.secretKey);
+}
+
+export function peerRequestMessage(nodeId: string, timestamp: number): Buffer {
+    return createHash('sha256').update(`${nodeId}:${timestamp}`).digest();
+}
+
+export function signPeerRequest(
+    identity: AttestorIdentity,
+    nodeId: string,
+    timestamp: number = Date.now()
+): Record<string, string> {
+    const msg = peerRequestMessage(nodeId, timestamp);
+    const sig = signWithIdentity(identity, msg);
+    return {
+        'X-GSTD-Node-Id':  nodeId,
+        'X-GSTD-Node-Ts':  String(timestamp),
+        'X-GSTD-Node-Sig': sig.toString('hex'),
+    };
 }

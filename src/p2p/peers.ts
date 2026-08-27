@@ -340,6 +340,10 @@ export class PeerManager extends EventEmitter {
         return Array.from(this.peers.values());
     }
 
+    getPeer(nodeId: string): PeerInfo | undefined {
+        return this.peers.get(nodeId);
+    }
+
     getSelfPayload(): HeartbeatPayload {
         const livePeers = this.getLivePeers().slice(0, 20);
         const { source: _source, ...selfWithoutSource } = this.selfInfo;
