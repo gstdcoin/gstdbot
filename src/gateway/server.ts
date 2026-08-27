@@ -1908,8 +1908,9 @@ export class OmegaGateway {
                 execSync(`git pull origin ${branch} --ff-only`, { cwd, encoding: 'utf-8', timeout: 30000 });
                 execSync('npm install --legacy-peer-deps 2>&1 | tail -5 || true', { cwd, encoding: 'utf-8', timeout: 120000 });
                 execSync('node_modules/.bin/tsc --skipLibCheck 2>&1 | tail -5 || true', { cwd, encoding: 'utf-8', timeout: 60000 });
-                logActivity('Update complete! Restart to apply.', 'success');
-                res.json({ ok: true, message: 'Updated. Restart to apply changes.' });
+                logActivity('Update complete — restarting to apply.', 'success');
+                res.json({ ok: true, message: 'Update applied. Restarting now…' });
+                setTimeout(() => process.exit(0), 1000);
             } catch (e: any) {
                 logActivity('Update failed: ' + e.message, 'error');
                 res.json({ ok: false, message: 'Update failed: ' + e.message });
