@@ -60,6 +60,13 @@ export interface PeerInfo {
     lastSeen:     number;   // Date.now()
     latencyMs:    number;   // measured round-trip
     source:       PeerSource; // which discovery layer found this peer -- honest visibility, not routing logic
+    pubkeyHex?:   string;
+}
+
+interface PeerQuality {
+    successes:       number;
+    failures:        number;
+    consecutiveFails: number;
 }
 
 export interface HeartbeatPayload {
@@ -84,6 +91,7 @@ export class PeerManager extends EventEmitter {
     // severity today (P2P mesh is small), but worth a real rate-limit/cap
     // if the network grows or this becomes a target.
     private peers = new Map<string, PeerInfo>();
+    private quality = new Map<string, PeerQuality>();
     private selfInfo: Omit<PeerInfo, 'lastSeen' | 'latencyMs'>;
     private heartbeatTimer: NodeJS.Timeout | null = null;
 
@@ -221,6 +229,20 @@ export class PeerManager extends EventEmitter {
         this.saveToDisk();
     }
 
+    // ─── Quality tracking ─────────────────────────────────────────────
+
+    recordOutcome(nodeId: string, success: boolean): void {
+        const q = this.quality.get(nodeId) ?? { successes: 0, failures: 0, consecutiveFails: 0 };
+        if (success) {
+            q.consecutiveFails = 0;
+            q.successes++;
+        } else {
+            q.consecutiveFails++;
+            q.failures++;
+        }
+        this.quality.set(nodeId, q);
+    }
+
     // ─── Routing: find best peer for a given model ────────────────────
 
     getBestPeer(model: string): PeerInfo | null {
@@ -237,20 +259,33 @@ export class PeerManager extends EventEmitter {
             // safety -- only that this node has confirmed the URL is a live,
             // responding HTTP server, which raises the cost of the attack
             // above a single unauthenticated POST. See UNVERIFIED_LATENCY_MS.
-            .filter(p => p.latencyMs < UNVERIFIED_LATENCY_MS);
+            .filter(p => p.latencyMs < UNVERIFIED_LATENCY_MS)
+            .filter(p => {
+                const consec = this.quality.get(p.nodeId)?.consecutiveFails ?? 0;
+                if (consec >= 3) {
+                    console.log(`[Peers] Excluding ${p.nodeId}: ${consec} consecutive failures`);
+                    return false;
+                }
+                return true;
+            });
 
         if (!live.length) return null;
 
-        // Score: capability match + low latency + high uptime
+        // Score: capability match + low latency + high uptime + quality penalty
         const scored = live.map(p => {
             const modelNorm = model.replace(/[^a-z0-9]/gi, '').toLowerCase();
             const hasModel = p.capabilities.some(c =>
                 c.replace(/[^a-z0-9]/gi, '').toLowerCase().includes(modelNorm) ||
                 modelNorm.includes(c.replace(/[^a-z0-9]/gi, '').toLowerCase())
             );
+            const q = this.quality.get(p.nodeId);
+            const total = (q?.successes ?? 0) + (q?.failures ?? 0);
+            const failRate = total >= 5 ? (q!.failures / total) : 0;
+            const qualityPenalty = failRate > 0.3 ? 500 : 0;
             const score = (hasModel ? 1000 : 0)
                 + Math.max(0, 2000 - p.latencyMs)
-                + Math.min(p.uptime / 3600, 100); // uptime bonus, max 100
+                + Math.min(p.uptime / 3600, 100) // uptime bonus, max 100
+                - qualityPenalty;
             return { peer: p, score };
         });
 
@@ -268,26 +303,29 @@ export class PeerManager extends EventEmitter {
         temperature: number
     ): Promise<{ content: string; model: string; tokens: number }> {
         const start = Date.now();
-        const resp = await fetch(`${peer.url.replace(/\/$/, '')}/v1/ollama/completions`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model, messages, stream: false, max_tokens: maxTokens, temperature }),
-            signal: AbortSignal.timeout(90_000),
-        });
-        if (!resp.ok) throw new Error(`Peer ${peer.nodeId} returned ${resp.status}`);
-        const data: any = await resp.json();
-        const content = data.choices?.[0]?.message?.content || '';
-        if (!content) throw new Error('Empty response from peer');
-
-        // Update latency measurement
-        peer.latencyMs = Date.now() - start;
-        peer.lastSeen = Date.now();
-
-        return {
-            content,
-            model: data.model || model,
-            tokens: data.usage?.completion_tokens || 0,
-        };
+        try {
+            const resp = await fetch(`${peer.url.replace(/\/$/, '')}/v1/ollama/completions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model, messages, stream: false, max_tokens: maxTokens, temperature }),
+                signal: AbortSignal.timeout(90_000),
+            });
+            if (!resp.ok) throw new Error(`Peer ${peer.nodeId} returned ${resp.status}`);
+            const data: any = await resp.json();
+            const content = data.choices?.[0]?.message?.content || '';
+            if (!content) throw new Error('Empty response from peer');
+            peer.latencyMs = Date.now() - start;
+            peer.lastSeen = Date.now();
+            this.recordOutcome(peer.nodeId, true);
+            return {
+                content,
+                model: data.model || model,
+                tokens: data.usage?.completion_tokens || 0,
+            };
+        } catch (e) {
+            this.recordOutcome(peer.nodeId, false);
+            throw e;
+        }
     }
 
     // ─── Accessors ────────────────────────────────────────────────────
