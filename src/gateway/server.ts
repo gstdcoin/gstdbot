@@ -32,6 +32,7 @@ import { FeeLedger } from '../fees/ledger.js';
 import { ValidatorManager, ChainId } from '../validators/manager.js';
 import { signVerify } from '@ton/crypto';
 import { peerRequestMessage, isStaleTimestamp } from '../p2p/identity.js';
+import { verifyUpdateManifest, isStaleCommand, type UpdateManifest } from '../lib/platform-auth.js';
 
 // Rewards are calculated server-side via /api/v1/nodes/heartbeat
 // Node does NOT self-award tokens
@@ -177,6 +178,23 @@ function requireNodeAuth(req: any, res: any): boolean {
         return false;
     }
     return true;
+}
+
+function checkUpdateManifest(
+    manifest: UpdateManifest | undefined,
+    enforced: boolean,
+): { ok: true } | { ok: false; status: 400 | 403; error: string } {
+    if (!manifest) {
+        if (enforced) return { ok: false, status: 403, error: 'Signed manifest required (PLATFORM_SIGNING_ENFORCED=true)' };
+        return { ok: true };
+    }
+    if (isStaleCommand(manifest.timestamp)) {
+        return { ok: false, status: 400, error: 'Update manifest timestamp is stale (±60s window)' };
+    }
+    if (!verifyUpdateManifest(manifest)) {
+        return { ok: false, status: 403, error: 'Update manifest signature invalid' };
+    }
+    return { ok: true };
 }
 
 async function requirePeerAuth(req: any, res: any, peerManager: PeerManager | null): Promise<boolean> {
@@ -516,6 +534,17 @@ export class OmegaGateway {
 
         this.app.post('/api/update', async (req, res) => {
             if (!requireNodeAuth(req, res)) return;
+            // ── Manifest signature gate ───────────────────────────
+            const manifest: UpdateManifest | undefined = req.body?.manifest;
+            const enforced = process.env.PLATFORM_SIGNING_ENFORCED === 'true';
+            const mCheck = checkUpdateManifest(manifest, enforced);
+            if (!mCheck.ok) {
+                return res.status(mCheck.status).json({ success: false, error: mCheck.error });
+            }
+            if (!manifest) {
+                logActivity('Self-update requested without a signed manifest — permissive mode', 'warn');
+            }
+            // ─────────────────────────────────────────────────────
             try {
                 const installDir = process.env.GSTD_INSTALL_DIR || require('os').homedir() + '/gstdbot';
                 const branch = getDefaultBranch(installDir);
@@ -537,6 +566,9 @@ export class OmegaGateway {
                     execSync('git reset --hard HEAD', { cwd: installDir, encoding: 'utf-8', timeout: 10000 });
                     execSync('git clean -fd 2>/dev/null || true', { cwd: installDir, encoding: 'utf-8', timeout: 10000 });
                 } catch (_e) { }
+
+                // Capture hash before pull so manifest commit-check can rollback to pre-pull state
+                const preUpdateHash = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8' }).trim();
 
                 // Step 2: Pull latest
                 let pullOutput = '';
@@ -562,6 +594,18 @@ export class OmegaGateway {
 
                 // Keep track of the original hash so we can rollback
                 const originalHash = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8' }).trim();
+
+                // If a manifest was provided, verify the pulled commit matches exactly
+                if (manifest) {
+                    const actualCommit = originalHash; // originalHash is HEAD right after the pull
+                    if (actualCommit !== manifest.commit) {
+                        execSync(`git reset --hard ${preUpdateHash}`, { cwd: installDir, encoding: 'utf-8', timeout: 10000 });
+                        execSync('npm install --legacy-peer-deps', { cwd: installDir, encoding: 'utf-8', timeout: 120000 });
+                        throw new Error(
+                            `Pulled commit ${actualCommit.slice(0, 8)} does not match manifest ${manifest.commit.slice(0, 8)} — rolled back`,
+                        );
+                    }
+                }
 
                 // Step 3: Install deps & Build (strict check)
                 try {
@@ -1903,6 +1947,17 @@ export class OmegaGateway {
 
         this.app.post('/api/node/update', async (req, res) => {
             if (!requireNodeAuth(req, res)) return;
+            // ── Manifest signature gate ───────────────────────────
+            const manifest: UpdateManifest | undefined = req.body?.manifest;
+            const enforced = process.env.PLATFORM_SIGNING_ENFORCED === 'true';
+            const mCheck = checkUpdateManifest(manifest, enforced);
+            if (!mCheck.ok) {
+                return res.status(mCheck.status).json({ ok: false, error: mCheck.error });
+            }
+            if (!manifest) {
+                logActivity('Update requested without a signed manifest — permissive mode', 'warn');
+            }
+            // ─────────────────────────────────────────────────────
             try {
                 const cwd = join(__dirname, '../..');
                 const branch = getDefaultBranch(cwd);
