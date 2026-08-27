@@ -66,6 +66,7 @@ export interface SwarmStats {
     quorumProofsSubmitted: number;
     quorumProofsPending: number;
     quorumAttestationsTotal: number;
+    quorumGateFailed: number;
 }
 
 interface NodeCapabilities {
@@ -129,12 +130,22 @@ export class SwarmAgent {
             quorumProofsSubmitted: 0,
             quorumProofsPending: 0,
             quorumAttestationsTotal: 0,
+            quorumGateFailed: 0,
         };
     }
 
     // ─── P2P Integration ─────────────────────────────────────────
     setIdentity(identity: AttestorIdentity): void { this.identity = identity; }
     setPeerManager(pm: PeerManager | null): void { this.peerManager = pm; }
+
+    private canAttemptQuorum(): boolean {
+        if (!this.p2pNode) return false;
+        if (!this.identity) return false;
+        const peers = (this.p2pNode.getPeers() as any[])
+            .map((p: any) => p.nodeId)
+            .filter((id: string) => id && id !== this.config.nodeId);
+        return peers.length >= 2;
+    }
 
     setP2PNode(node: any): void {
         this.p2pNode = node;
@@ -687,19 +698,19 @@ export class SwarmAgent {
      *  Silently no-ops (existing /tasks/complete reporting is unaffected
      *  either way) when: no P2P node, fewer than 2 live peers, quorum
      *  isn't reached within the timeout, or the platform call fails. */
-    private async attemptQuorumSettlement(task: SwarmTask, taskId: string, result: any): Promise<void> {
-        if (!this.p2pNode) return;
+    private async attemptQuorumSettlement(task: SwarmTask, taskId: string, result: any): Promise<boolean> {
+        if (!this.p2pNode) return false;
         const workerAddr = this.wallet.getAddress();
-        if (!workerAddr) return;
+        if (!workerAddr) return false;
 
         const peers = (this.p2pNode.getPeers() as any[])
             .map((p) => p.nodeId)
             .filter((id: string) => id && id !== this.config.nodeId);
-        if (peers.length < 2) return; // need 2 co-executors for K=3 total
+        if (peers.length < 2) return false; // need 2 co-executors for K=3 total
 
         const coExecutors = peers.slice(0, 2);
 
-        if (!this.identity) return;
+        if (!this.identity) return false;
         const identity = this.identity;
         const resultHashBig = hashResult(JSON.stringify(result));
         const resultHashHex = resultHashBig.toString(16).padStart(64, '0');
@@ -750,7 +761,7 @@ export class SwarmAgent {
             if (process.env.GSTD_P2P_DEBUG) {
                 logActivity(`Quorum not reached for task ${taskId.slice(0, 8)}: ${quorumResult.reason}`, 'info');
             }
-            return;
+            return false;
         }
 
         const settlementPayload = {
@@ -772,6 +783,7 @@ export class SwarmAgent {
             this.queuePendingSettlement(settlementPayload);
             logActivity(`🔐 Quorum reached for task ${taskId.slice(0, 8)} but platform unreachable — saved locally, will retry`, 'info');
         }
+        return true;
     }
 
     // ─── Pending settlement retry queue ─────────────────────────────

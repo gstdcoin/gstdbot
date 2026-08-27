@@ -159,4 +159,81 @@ describe('SwarmAgent quorum attestation gaps', () => {
         });
     });
 
+    describe('canAttemptQuorum()', () => {
+        it('returns false when p2pNode is null', () => {
+            const agent = new SwarmAgent(mockConfig, mockWallet, mockMemory);
+            agent.setIdentity(mockIdentity);
+            // p2pNode is null by default
+            expect((agent as any).canAttemptQuorum()).toBe(false);
+        });
+
+        it('returns false when identity is null', () => {
+            const agent = new SwarmAgent(mockConfig, mockWallet, mockMemory);
+            (agent as any).p2pNode = { getPeers: () => [{ nodeId: 'peer1' }, { nodeId: 'peer2' }] };
+            // identity not set
+            expect((agent as any).canAttemptQuorum()).toBe(false);
+        });
+
+        it('returns false when fewer than 2 non-self peers', () => {
+            const agent = new SwarmAgent(mockConfig, mockWallet, mockMemory);
+            agent.setIdentity(mockIdentity);
+            (agent as any).p2pNode = { getPeers: () => [{ nodeId: 'peer1' }] }; // only 1 peer
+            expect((agent as any).canAttemptQuorum()).toBe(false);
+        });
+
+        it('returns true when p2pNode + identity + 2+ peers', () => {
+            const agent = new SwarmAgent(mockConfig, mockWallet, mockMemory);
+            agent.setIdentity(mockIdentity);
+            (agent as any).p2pNode = {
+                getPeers: () => [{ nodeId: 'peer1' }, { nodeId: 'peer2' }],
+            };
+            expect((agent as any).canAttemptQuorum()).toBe(true);
+        });
+    });
+
+    describe('attemptQuorumSettlement() boolean return', () => {
+        it('returns false when identity is not set', async () => {
+            const agent = new SwarmAgent(mockConfig, mockWallet, mockMemory);
+            (agent as any).p2pNode = { getPeers: () => [{ nodeId: 'peer1' }, { nodeId: 'peer2' }] };
+            const result = await (agent as any).attemptQuorumSettlement(baseTask, 'task-abc', {});
+            expect(result).toBe(false);
+        });
+
+        it('returns false when quorum not reached', async () => {
+            const { awaitQuorum } = await import('../p2p/quorum-coordinator.js');
+            vi.mocked(awaitQuorum).mockResolvedValueOnce({
+                accepted: false, attestations: [], reason: 'timeout', resultHash: '',
+            });
+            const agent = new SwarmAgent(mockConfig, mockWallet, mockMemory);
+            agent.setIdentity(mockIdentity);
+            (agent as any).p2pNode = {
+                getPeers: () => [{ nodeId: 'peer1' }, { nodeId: 'peer2' }],
+                sendTask: vi.fn().mockResolvedValue(undefined),
+            };
+            vi.spyOn(agent as any, 'apiCall').mockResolvedValue(null);
+            const result = await (agent as any).attemptQuorumSettlement(baseTask, 'task-abc', {});
+            expect(result).toBe(false);
+        });
+
+        it('returns true when quorum reached', async () => {
+            const { awaitQuorum } = await import('../p2p/quorum-coordinator.js');
+            const fakeAtts = [
+                { pubkeyHex: 'a'.repeat(64), signatureHex: 'b'.repeat(128) },
+                { pubkeyHex: 'c'.repeat(64), signatureHex: 'd'.repeat(128) },
+            ];
+            vi.mocked(awaitQuorum).mockResolvedValueOnce({
+                accepted: true, attestations: fakeAtts, reason: '', resultHash: 'deadbeef',
+            });
+            const agent = new SwarmAgent(mockConfig, mockWallet, mockMemory);
+            agent.setIdentity(mockIdentity);
+            (agent as any).p2pNode = {
+                getPeers: () => [{ nodeId: 'peer1' }, { nodeId: 'peer2' }],
+                sendTask: vi.fn().mockResolvedValue(undefined),
+            };
+            vi.spyOn(agent as any, 'apiCall').mockResolvedValue({ ok: true });
+            const result = await (agent as any).attemptQuorumSettlement(baseTask, 'task-abc', {});
+            expect(result).toBe(true);
+        });
+    });
+
 });
