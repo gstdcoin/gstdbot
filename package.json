@@ -25,7 +25,7 @@
         "docker:logs": "docker compose logs -f gstd-node",
         "docker:build": "docker compose build --no-cache",
         "eval:quality": "tsx src/tools/quality-eval.ts",
-        "deploy": "npm run build && pm2 restart gstdbot"
+        "deploy": "node_modules/.bin/tsc --skipLibCheck && pm2 restart gstdbot"
     },
     "keywords": [
         "ai",
