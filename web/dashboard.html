@@ -1419,7 +1419,7 @@ async function ipfsUpload(){
       show('ip-up-result',true);toast('Pinned!');ipfsAlert('Content pinned to IPFS.','success');loadIPFS();
     } else {toast('Error: '+(d.error||'Unknown'));ipfsAlert('Upload failed: '+(d.error||'Unknown'),'error');}
   } catch(e){toast('Error: '+e.message);ipfsAlert('Upload failed: '+e.message,'error');}
-  finally{btn.disabled=false;btn.textContent='&#x1F4E4; Pin to IPFS';}
+  finally{btn.disabled=false;btn.innerHTML='&#x1F4E4; Pin to IPFS';}
 }
 
 async function ipfsFetch(){
@@ -1433,7 +1433,7 @@ async function ipfsFetch(){
     document.getElementById('ip-fetch-content').textContent=txt;
     show('ip-fetch-result',true);
   } catch(e){toast('Error: '+e.message);ipfsAlert('Fetch failed: '+e.message,'error');}
-  finally{btn.disabled=false;btn.textContent='&#x1F50D; Fetch';}
+  finally{btn.disabled=false;btn.innerHTML='&#x1F50D; Fetch';}
 }
 
 async function ipfsUnpin(cid){
@@ -1827,14 +1827,14 @@ async function loadSettings(){
 }
 
 async function checkUpdate(){
-  const btn=document.getElementById('s-chk-btn');btn.disabled=true;btn.textContent='Checking...';
+  const btn=document.getElementById('s-chk-btn');btn.disabled=true;btn.innerHTML='Checking...';
   try {
     const d=await api('/api/check-update').then(r=>r.json());
     const bg=document.getElementById('s-upd-badge'),ub=document.getElementById('s-upd-btn');
     if(d.update_available){bg.className='badge badge-yellow';bg.textContent='Update Available';set('s-upd-status',d.commits_behind+' commit'+(d.commits_behind!==1?'s':'')+' behind (current v'+d.current_version+')');ub.style.display='inline-flex';}
     else{bg.className='badge badge-green';bg.textContent='Up to date';set('s-upd-status','Already on latest: v'+(d.current_version||''));ub.style.display='none';}
   } catch(e){toast('Check failed: '+e.message);}
-  finally{btn.disabled=false;btn.textContent='&#x1F50D; Check';}
+  finally{btn.disabled=false;btn.innerHTML='&#x1F50D; Check';}
 }
 
 async function runUpdate(){
