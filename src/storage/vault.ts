@@ -53,7 +53,7 @@ export interface StorageConfig {
     postIntervalMs: number;     // PoSt challenge interval
 }
 
-const PLATFORM_API = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
+const PLATFORM_API = process.env.GSTD_API_URL || 'https://platform.gstdtoken.com/api/v1';
 const DEFAULT_SHARD_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
 const POST_CHALLENGE_INTERVAL = 6 * 60 * 60 * 1000;  // 6 hours
 

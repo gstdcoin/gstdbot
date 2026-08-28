@@ -51,7 +51,7 @@ type BalanceCheckResult = { paid: true } | { paid: false; reason: 'insufficient_
 
 async function checkAndDeductBalance(apiKey: string, priceNano: number): Promise<BalanceCheckResult> {
     try {
-        const resp = await fetch('https://app.gstdtoken.com/api/v1/rpc/charge', {
+        const resp = await fetch('https://platform.gstdtoken.com/api/v1/rpc/charge', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

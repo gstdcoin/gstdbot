@@ -58,7 +58,7 @@ const DEFAULT_RATES: RevenueRates = {
     training_per_epoch: 0.05,     // 0.05 GSTD per training epoch
 };
 
-const PLATFORM_API = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
+const PLATFORM_API = process.env.GSTD_API_URL || 'https://platform.gstdtoken.com/api/v1';
 const SETTLEMENT_BATCH_SIZE = 50;       // Settle after 50 events
 const SETTLEMENT_INTERVAL_MS = 300_000; // Or every 5 minutes
 

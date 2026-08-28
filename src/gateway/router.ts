@@ -6,7 +6,7 @@
  *
  * Tier hierarchy:
  *  L1  Cache        — instant, no network call
- *  L2  GSTD Network — routes to best available node via app.gstdtoken.com
+ *  L2  GSTD Network — routes to best available node via platform.gstdtoken.com
  *  L3  Fallback msg — tell user to retry (network starting up)
  */
 
@@ -464,7 +464,7 @@ CRITICAL: Never mention experts, models, or the synthesis process. Respond in th
 
 export async function getGstdPrice(): Promise<number> {
     try {
-        const resp = await fetch('https://app.gstdtoken.com/api/v1/market/price', { signal: AbortSignal.timeout(3000) });
+        const resp = await fetch('https://platform.gstdtoken.com/api/v1/market/price', { signal: AbortSignal.timeout(3000) });
         if (resp.ok) {
             const data: any = await resp.json();
             return data.gstd_price_usd || data.price_usd || 0.001;

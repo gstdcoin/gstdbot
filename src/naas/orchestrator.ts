@@ -17,7 +17,7 @@ import { GSTDRPCProxy }           from './rpc_proxy.js';
 import { RevenueFlywheelConverter } from './revenue_flywheel.js';
 import { logActivity }              from '../gateway/server.js';
 
-const API_BASE = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
+const API_BASE = process.env.GSTD_API_URL || 'https://platform.gstdtoken.com/api/v1';
 
 function isDockerAvailable(): boolean {
     try { execSync('docker info', { stdio: 'pipe', timeout: 5000 }); return true; }

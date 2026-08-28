@@ -11,7 +11,7 @@
 
 import { logActivity } from '../gateway/server.js';
 
-const API_BASE = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
+const API_BASE = process.env.GSTD_API_URL || 'https://platform.gstdtoken.com/api/v1';
 
 export interface NativeEarning {
     chain:       string;  // 'ETH', 'SOL', etc.

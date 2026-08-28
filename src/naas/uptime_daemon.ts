@@ -16,7 +16,7 @@ import { logActivity } from '../gateway/server.js';
 import { platformHealth } from '../lib/platform-health.js';
 
 const HEARTBEAT_INTERVAL_MS = 30_000; // Every 30 seconds
-const PLATFORM_URL = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
+const PLATFORM_URL = process.env.GSTD_SWARM_URL || 'https://platform.gstdtoken.com';
 
 export interface ContainerStatus {
     name: string;

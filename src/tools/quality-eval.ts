@@ -83,7 +83,7 @@ async function judge(prompt: string, candidates: CandidateResult[]): Promise<Jud
 async function run(): Promise<void> {
     console.log(`[quality-eval] Using Ollama at ${OLLAMA_URL}`);
 
-    const router = new NeuralRouter(process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com', true);
+    const router = new NeuralRouter(process.env.GSTD_SWARM_URL || 'https://platform.gstdtoken.com', true);
     const reportLines: string[] = [
         '# Quality Evaluation Report',
         '',

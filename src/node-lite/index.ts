@@ -21,7 +21,7 @@ const WALLET      = flag('wallet')  || process.env.GSTD_WALLET_ADDRESS || '';
 const NODE_NAME   = flag('name')    || process.env.NODE_NAME            || `lite-${randomBytes(3).toString('hex')}`;
 const PORT        = parseInt(flag('port') || process.env.PORT || '8765', 10);
 const OLLAMA_URL  = (flag('ollama') || process.env.OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '');
-const SWARM_URL   = (flag('swarm')  || process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com').replace(/\/$/, '');
+const SWARM_URL   = (flag('swarm')  || process.env.GSTD_SWARM_URL || 'https://platform.gstdtoken.com').replace(/\/$/, '');
 const NODE_ID     = flag('id') || process.env.GSTD_NODE_ID || `lite-${NODE_NAME}`;
 
 let publicUrl = flag('public-url') || process.env.GSTD_PUBLIC_URL || '';

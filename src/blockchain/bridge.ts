@@ -64,7 +64,7 @@ export class CrossChainBridge {
 
         // Strategy 1: Use platform verify-tx API (most reliable, pre-built)
         try {
-            const apiUrl = process.env.SWARM_API_URL || process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
+            const apiUrl = process.env.SWARM_API_URL || process.env.GSTD_API_URL || 'https://platform.gstdtoken.com/api/v1';
             const resp = await fetch(`${apiUrl}/bridge/p2p/verify-tx`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

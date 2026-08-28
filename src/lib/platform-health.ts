@@ -1,5 +1,5 @@
 /**
- * Shared circuit breaker for calls to the central platform (app.gstdtoken.com).
+ * Shared circuit breaker for calls to the central platform (platform.gstdtoken.com).
  *
  * All platform-facing polling loops in this process (SwarmAgent's 8 timers,
  * routed through its single apiCall() choke point, and UptimeDaemon's own
