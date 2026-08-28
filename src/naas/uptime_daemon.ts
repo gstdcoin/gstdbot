@@ -145,8 +145,9 @@ export class UptimeDaemon {
         // Detect available Ollama models for capability advertising
         const capabilities = await this.getOllamaModels();
 
-        const heartbeat: UptimeHeartbeat & { wallet_address?: string; multiaddrs?: string[]; node_url?: string; capabilities?: string[] } = {
+        const heartbeat: UptimeHeartbeat & { wallet_address?: string; multiaddrs?: string[]; node_url?: string; capabilities?: string[]; node_name?: string } = {
             node_id: this.nodeId,
+            node_name: process.env.NODE_NAME || this.nodeId,
             wallet: this.walletAddress,
             wallet_address: this.walletAddress,
             timestamp: Date.now(),
