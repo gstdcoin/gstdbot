@@ -183,8 +183,10 @@ export class UptimeDaemon {
                 signal: AbortSignal.timeout(25000),
             });
 
+            // A response (even non-2xx) means the platform is reachable —
+            // only network failures (catch) should trip the circuit breaker.
+            platformHealth.recordSuccess();
             if (resp.ok) {
-                platformHealth.recordSuccess();
                 const data = await resp.json() as any;
                 // Server may return updated multiplier and commands
                 if (data.age_multiplier !== undefined) {
@@ -200,7 +202,6 @@ export class UptimeDaemon {
                     this.processPullQueue(data.pull_queue);
                 }
             } else {
-                platformHealth.recordFailure();
                 if (this.heartbeatCount % 10 === 0) {
                     console.warn(`[NaaS] Heartbeat error (attempt ${this.heartbeatCount}): HTTP ${resp.status}`);
                 }

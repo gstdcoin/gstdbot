@@ -1347,11 +1347,12 @@ export class SwarmAgent {
                 body: isGet ? undefined : JSON.stringify(data),
                 signal: AbortSignal.timeout(timeoutMs),
             });
+            // Any HTTP response means the platform is reachable —
+            // only network failures (catch) should trip the circuit breaker.
+            platformHealth.recordSuccess();
             if (resp.ok) {
-                platformHealth.recordSuccess();
                 return await resp.json().catch(() => ({ ok: true }));
             }
-            platformHealth.recordFailure();
             return null;
         } catch (_e) {
             platformHealth.recordFailure();
