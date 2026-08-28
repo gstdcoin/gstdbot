@@ -209,7 +209,7 @@ export class SwarmAgent {
         // Heartbeat every 8 minutes. Node TTL on the platform is 10 min,
         // so this keeps the node alive with comfortable margin while staying
         // well within the Vercel KV free tier (3K req/day).
-        this.heartbeatTimer = setInterval(() => this.heartbeat(), 8 * 60_000);
+        this.heartbeatTimer = setInterval(() => this.heartbeat(), 15 * 60_000);
 
         // Start task polling (every 30 seconds for general queue)
         this.taskPollTimer = setInterval(() => this.pollTasks(), 30_000);
