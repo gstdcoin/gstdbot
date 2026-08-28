@@ -616,8 +616,8 @@ async function main(): Promise<void> {
             
             // ── STEP 3: Install deps + build check ─────────────────────
             try {
-                execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 180000 });
-                
+                execSync('npm install --legacy-peer-deps --include=dev --quiet 2>/dev/null', { cwd: installDir, timeout: 180000 });
+
                 // Build TypeScript → dist/ (required since pm2 runs dist/index.js)
                 execSync('node_modules/.bin/tsc --skipLibCheck 2>/dev/null', { cwd: installDir, timeout: 90000 });
 
@@ -647,7 +647,7 @@ async function main(): Promise<void> {
                 logActivity(`Update FAILED — rolling back to ${snapshotRef.slice(0,8)}`, 'error');
                 
                 execSync(`git reset --hard ${snapshotRef}`, { cwd: installDir, timeout: 15000 });
-                execSync('npm install --legacy-peer-deps --quiet 2>/dev/null', { cwd: installDir, timeout: 120000 });
+                execSync('npm install --legacy-peer-deps --include=dev --quiet 2>/dev/null', { cwd: installDir, timeout: 120000 });
                 
                 console.log(`  🔙 Rolled back to ${snapshotRef.slice(0,8)}. Node continues running.`);
                 logActivity(`Rollback complete. Running on ${snapshotRef.slice(0,8)}`, 'warn');
