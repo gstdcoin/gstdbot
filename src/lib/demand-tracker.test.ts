@@ -71,14 +71,14 @@ describe('DemandTracker', () => {
             tracker.record('qwen2.5:7b');
             tracker.record('mistral:7b');
             const result = tracker.getTopRecommended([]);
-            expect(result.length).toBeLessThanOrEqual(3);
+            expect(result.length).toBe(3);
         });
 
         it('respects a custom n', () => {
             tracker.record('llama3.1:8b');
             tracker.record('llama3.1:70b');
             const result = tracker.getTopRecommended([], 1);
-            expect(result.length).toBeLessThanOrEqual(1);
+            expect(result.length).toBe(1);
         });
     });
 });

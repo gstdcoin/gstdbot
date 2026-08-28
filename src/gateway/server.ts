@@ -33,7 +33,7 @@ import { ValidatorManager, ChainId } from '../validators/manager.js';
 import { signVerify } from '@ton/crypto';
 import { peerRequestMessage, isStaleTimestamp } from '../p2p/identity.js';
 import { verifyUpdateManifest, isStaleCommand, type UpdateManifest } from '../lib/platform-auth.js';
-import { isRegistered, MODEL_REGISTRY } from '../lib/model-registry.js';
+import { isRegistered } from '../lib/model-registry.js';
 import { demandTracker } from '../lib/demand-tracker.js';
 
 // Rewards are calculated server-side via /api/v1/nodes/heartbeat
