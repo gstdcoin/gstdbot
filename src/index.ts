@@ -66,6 +66,7 @@ import { NaaSManager } from './naas/orchestrator.js';
 import { UptimeDaemon } from './naas/uptime_daemon.js';
 import { GstdP2PNode } from './p2p/node.js';
 import { loadOrCreateAttestorIdentity } from './p2p/identity.js';
+import { loadOrCreateP2PIdentity } from './p2p/p2p-identity.js';
 import { hostname } from 'os';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -455,12 +456,35 @@ async function main(): Promise<void> {
     let p2pPeerId = '';
     if (!isPlatform) {
         console.log(`  [17/${TOTAL_STEPS}] Starting P2P mesh network...`);
+        // Load (or create) a stable Ed25519 keypair so the peerId survives restarts.
+        // Without this every restart mints a new peerId, invalidating bootstrap addrs.
+        const p2pIdentity = await loadOrCreateP2PIdentity().catch((e: any) => {
+            console.warn(`    ⚠ Could not load P2P identity: ${e.message} — peerId will be ephemeral`);
+            return null;
+        });
+        if (p2pIdentity && !p2pIdentity.isNew) {
+            console.log(`    ✓ P2P identity loaded (stable peerId)`);
+        }
+        // Derive the public announce host from GSTD_PUBLIC_URL env var if set,
+        // e.g. "https://node.gstdtoken.com" → "node.gstdtoken.com"
+        const publicUrlHost = (() => {
+            try {
+                const u = process.env.GSTD_PUBLIC_URL || '';
+                return u ? new URL(u).hostname : '';
+            } catch { return ''; }
+        })();
         p2pNode = new GstdP2PNode({
             nodeId: config.nodeId,
             walletAddress: wallet.getAddress() || '',
             listenPort: parseInt(process.env.GSTD_P2P_PORT || '4001'),
             enableMdns: process.env.GSTD_P2P_MDNS !== 'false',
             version: config.version,
+            ...(p2pIdentity && { privateKey: p2pIdentity.privateKey }),
+            // Attach WS transport to the gateway HTTP server (same port, same tunnel).
+            // This lets remote nodes reach us at wss://node.gstdtoken.com without any
+            // new Cloudflare tunnel config.
+            httpServer: gateway.getHttpServer(),
+            wsAnnounceHost: publicUrlHost,
         });
         p2pNode.setIdentity(identity);
         try {

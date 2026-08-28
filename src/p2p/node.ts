@@ -15,6 +15,7 @@
  */
 
 import { EventEmitter } from 'events';
+import http from 'http';
 import { z } from 'zod';
 import { resolvePublicUrl } from './peers.js';
 import type { AttestorIdentity } from './identity.js';
@@ -23,17 +24,20 @@ import type { AttestorIdentity } from './identity.js';
 // Add your node's multiaddr to GSTD_BOOTSTRAP_PEERS env var to
 // contribute to bootstrap infrastructure.
 //
-// DEFAULT_BOOTSTRAP_PEERS ships hardcoded (compiled into the software,
-// never fetched from a live service) so a brand-new node can join the
-// DHT with zero configuration. It is EMPTY today: populating it requires
-// a stable DNS record pointing at a project-run node's current address
-// (the current bootstrap candidate uses a Cloudflare tunnel URL that
-// changes on every restart -- a hardcoded multiaddr needs something
-// stable to point at first). See docs/superpowers/specs/2026-08-25-decentralized-discovery-design.md
-// section 2 and this plan's Task 6. DO NOT populate this with a
-// tunnel URL or any other non-stable address -- an empty list here is
-// honest; a stale one silently breaks bootstrap for every new node.
-export const DEFAULT_BOOTSTRAP_PEERS: string[] = [];
+// DEFAULT_BOOTSTRAP_PEERS is compiled into every node release — new nodes
+// use this to join the network with zero configuration. The WS multiaddr
+// below points at the Pi bootstrap node:
+//   - Stable peerId derived from ~/.config/gstdbot/p2p-identity.json
+//     (persisted across restarts — see src/p2p/p2p-identity.ts)
+//   - Reachable at wss://node.gstdtoken.com via Cloudflare tunnel (port 443)
+//     which proxies to the gateway HTTP server (port 8080) on this Pi.
+//   - TCP fallback: /ip4/<Pi-LAN-IP>/tcp/4001 (useful only on LAN)
+//
+// If this Pi goes offline long-term, remove the entry and publish a new
+// release rather than leaving a stale bootstrap that causes connect loops.
+export const DEFAULT_BOOTSTRAP_PEERS: string[] = [
+    '/dns4/node.gstdtoken.com/tcp/443/wss/p2p/12D3KooWJwoerHaucUfo8rD6ycXCqdfAK4zhqUW3sYFXX8zJDTmF',
+];
 
 const GSTD_DEFAULT_BOOTSTRAP: string[] = [
     ...DEFAULT_BOOTSTRAP_PEERS,
@@ -168,7 +172,10 @@ export interface P2PNodeConfig {
     bootstrapPeers: string[];
     enableMdns: boolean;
     version: string;
-    announceIp?: string; // external IP for nodes behind NAT
+    announceIp?: string;       // external IP for nodes behind NAT
+    privateKey?: any;          // stable Ed25519 PrivateKey (from loadOrCreateP2PIdentity)
+    httpServer?: http.Server;  // attach libp2p WS transport to existing HTTP server (same port as gateway)
+    wsAnnounceHost?: string;   // public host for WS announce addr (e.g. "node.gstdtoken.com")
 }
 
 const DEFAULT_P2P_CONFIG: P2PNodeConfig = {
@@ -267,19 +274,52 @@ export class GstdP2PNode extends EventEmitter {
             console.log('    ⚠ Bootstrap: 0 known peers (DEFAULT_BOOTSTRAP_PEERS is empty -- see src/p2p/node.ts)');
         }
 
-        // Announce addresses: include external IP if configured
+        // ── Transports ──────────────────────────────────────────────
+        // Always enable TCP on the P2P port (LAN + direct WAN).
+        // WebSocket transport is added when an httpServer is provided so
+        // that libp2p attaches to the EXISTING gateway HTTP server on port
+        // 8080 (tunneled through Cloudflare at node.gstdtoken.com) instead
+        // of opening a new port. A separate port would require a new tunnel
+        // hostname which needs Tunnel:Edit API permission we don't have.
+        const transports: any[] = [tcp()];
         const listenAddrs = [`/ip4/0.0.0.0/tcp/${this.config.listenPort}`];
         const announceAddrs: string[] = [];
+
         if (this.config.announceIp) {
             announceAddrs.push(`/ip4/${this.config.announceIp}/tcp/${this.config.listenPort}`);
         }
 
+        if (this.config.httpServer) {
+            try {
+                const { webSockets } = await import('@libp2p/websockets');
+                // Pass the existing HTTP server — WS transport attaches without opening a new port.
+                // Cloudflare upgrades HTTP→WS transparently, so the tunnel routes WS connections here.
+                // 'server' is in WebSocketListenerInit but not in WebSocketsInit's TS type;
+                // at runtime createListener() spreads this.init into listener options so it works.
+                transports.push(webSockets({ server: this.config.httpServer } as any));
+                listenAddrs.push('/ip4/0.0.0.0/tcp/0/ws'); // port 0 = use existing server, not a new bind
+
+                // Announce the WS address via the Cloudflare tunnel hostname so remote
+                // nodes can use it as a bootstrap addr: /dns4/node.gstdtoken.com/tcp/443/wss/p2p/{id}
+                const wsHost = this.config.wsAnnounceHost
+                    || process.env.GSTD_P2P_WS_ANNOUNCE
+                    || '';
+                if (wsHost) {
+                    announceAddrs.push(`/dns4/${wsHost}/tcp/443/wss`);
+                }
+                console.log(`    🔌 WS transport: attached to gateway HTTP server${wsHost ? ` (announce: ${wsHost})` : ''}`);
+            } catch (e: any) {
+                console.warn(`    ⚠ WebSocket transport unavailable: ${e.message}`);
+            }
+        }
+
         this.node = await createLibp2p({
+            ...(this.config.privateKey && { privateKey: this.config.privateKey }),
             addresses: {
                 listen:   listenAddrs,
                 announce: announceAddrs.length > 0 ? announceAddrs : undefined,
             },
-            transports:          [tcp()],
+            transports,
             connectionEncrypters:[noise()],
             streamMuxers:        [yamux()],
             peerDiscovery:       peerDiscovery.length > 0 ? peerDiscovery : undefined,
@@ -305,9 +345,12 @@ export class GstdP2PNode extends EventEmitter {
         const peerId = this.node.peerId.toString();
         const addrs  = this.node.getMultiaddrs().map((a: any) => a.toString());
 
+        const wsAddr = addrs.find((a: string) => a.includes('/wss') || a.includes('/ws'));
         console.log(`    🌐 P2P Node: ${peerId.slice(0, 16)}...`);
-        console.log(`    📡 Listen:   :${this.config.listenPort}/tcp`);
-        if (addrs.length > 0) {
+        console.log(`    📡 Listen:   :${this.config.listenPort}/tcp${this.config.httpServer ? ' + WS on gateway port' : ''}`);
+        if (wsAddr) {
+            console.log(`    🔌 WS addr:  ${wsAddr}/p2p/${peerId}`);
+        } else if (addrs.length > 0) {
             console.log(`    📍 Multiaddr: ${addrs[0]}`);
         }
         console.log(`    🔒 Noise/Yamux · mDNS:${this.config.enableMdns} · Bootstrap:${this.config.bootstrapPeers.length}`);

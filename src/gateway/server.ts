@@ -382,6 +382,11 @@ export class OmegaGateway {
         return this.config.apiPort;
     }
 
+    /** Expose the underlying HTTP server so libp2p WebSocket transport can attach to it */
+    getHttpServer(): http.Server {
+        return this.server;
+    }
+
     private normalizeWalletAddress(value: any): string {
         return String(value || '').trim();
     }
