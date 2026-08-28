@@ -280,6 +280,10 @@ export class OmegaGateway {
     getPeerManager(): PeerManager | null {
         return this.peerManager;
     }
+
+    setP2PIdentity(peerId: string, multiaddrs: string[]) {
+        this.platformLink.setP2PIdentity(peerId, multiaddrs);
+    }
     private ipfs: IpfsClient | null = null;
     private feeLedger: FeeLedger = new FeeLedger();
     private validatorManager: ValidatorManager | null = null;

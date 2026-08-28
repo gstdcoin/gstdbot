@@ -465,6 +465,9 @@ async function main(): Promise<void> {
         p2pNode.setIdentity(identity);
         try {
             p2pPeerId = await p2pNode.start();
+            // Publish P2P identity to platform so other nodes can use us for bootstrap
+            const p2pAddrs = p2pNode.getMultiaddrs ? p2pNode.getMultiaddrs() : [];
+            gateway.setP2PIdentity(p2pPeerId, p2pAddrs);
             // Wire P2P into SwarmAgent: P2P tasks routed through processTask(),
             // P2P heartbeats used to dial new WAN peers for mesh formation
             if (swarm) swarm.setP2PNode(p2pNode);

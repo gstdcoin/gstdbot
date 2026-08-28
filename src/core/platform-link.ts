@@ -69,6 +69,8 @@ export class PlatformLink extends EventEmitter {
     private failCount = 0;
     private statsCollector: (() => Partial<HeartbeatData['stats']>) | null = null;
     private capabilitiesProvider: (() => NodeCapabilities) | null = null;
+    private p2pPeerId: string = '';
+    private p2pMultiaddrs: string[] = [];
 
     constructor(config: { platformUrl: string; nodeId: string; walletAddress: string; version: string }) {
         super();
@@ -76,6 +78,12 @@ export class PlatformLink extends EventEmitter {
         this.nodeId = config.nodeId;
         this.walletAddress = config.walletAddress;
         this.version = config.version;
+    }
+
+    /** Called once P2P mesh starts — so heartbeats include bootstrap-able peer data */
+    setP2PIdentity(peerId: string, multiaddrs: string[]) {
+        this.p2pPeerId   = peerId;
+        this.p2pMultiaddrs = multiaddrs;
     }
 
     setStatsCollector(fn: () => Partial<HeartbeatData['stats']>) { this.statsCollector = fn; }
@@ -167,6 +175,8 @@ export class PlatformLink extends EventEmitter {
                     models_loaded:   models.filter(m => isRegistered(m)),
                     mode:            'node',
                     ...(tunnelUrl && { node_url: tunnelUrl }),
+                    ...(this.p2pPeerId && { peer_id: this.p2pPeerId }),
+                    ...(this.p2pMultiaddrs.length && { multiaddrs: this.p2pMultiaddrs }),
                 }),
                 // Platform's /nodes/heartbeat has been observed taking ~18-22s in
                 // production (same root cause already fixed in uptime_daemon.ts) --
