@@ -679,10 +679,9 @@ export class SwarmAgent {
             case 'bridge_verify':
                 return this.processBridgeVerify(task);
             case 'render':
-                return this.processRender(task);
             default:
                 if (task.type.startsWith('render_')) {
-                    return this.processRender(task);
+                    throw new Error(`GPU rendering not supported on this node — task declined (type: ${task.type})`);
                 }
                 throw new Error(`Unknown task type: ${task.type}`);
         }
