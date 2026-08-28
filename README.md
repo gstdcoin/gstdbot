@@ -51,7 +51,7 @@ Your Hardware
 ## What Runs Automatically
 
 ### AI Inference
-Your node polls `app.gstdtoken.com/api/v1/tasks/poll` every 5 seconds for priority inference tasks. When a task arrives (type: `inference`), the node processes it using the configured AI backend and posts the result back to the platform. The result is returned to the requesting client within seconds.
+Your node polls `platform.gstdtoken.com/api/v1/tasks/poll` every 5 seconds for priority inference tasks. When a task arrives (type: `inference`), the node processes it using the configured AI backend and posts the result back to the platform. The result is returned to the requesting client within seconds.
 
 All inference is served through the GSTD network — no external AI provider accounts or API keys required.
 
@@ -110,7 +110,7 @@ npm start
 
 ```bash
 docker run -d \
-  -e GSTD_API_URL=https://app.gstdtoken.com/api/v1 \
+  -e GSTD_API_URL=https://platform.gstdtoken.com/api/v1 \
   -e GSTD_WALLET_ADDRESS=YOUR_TON_WALLET \
   -p 8080:8080 \
   --name gstd-node \
@@ -128,7 +128,7 @@ Copy `.env.example` to `.env` and set:
 ```env
 # Optional — auto-generated on first run
 GSTD_NODE_ID=
-GSTD_API_URL=https://app.gstdtoken.com/api/v1
+GSTD_API_URL=https://platform.gstdtoken.com/api/v1
 
 # P2P (optional — mDNS works on LAN without this)
 GSTD_P2P_PORT=4001
@@ -152,7 +152,7 @@ No external AI API keys are needed. Inference is served entirely through the GST
 src/
 ├── index.ts                # Boot sequence
 ├── core/
-│   ├── platform-link.ts    # Heartbeat + registration with Vercel API
+│   ├── platform-link.ts    # Heartbeat + registration with Cloudflare Worker platform
 │   └── scheduler.ts        # Cron-style task scheduler
 ├── swarm/
 │   ├── agent.ts            # Task polling, processing, earnings, latency tracking
@@ -195,7 +195,7 @@ is unrelated to peer discovery and still runs through the platform as
 described.
 
 ```
-                    app.gstdtoken.com  (Vercel + Upstash Redis)
+                    platform.gstdtoken.com  (Cloudflare Worker + KV)
                     ┌───────────────────────────────────────┐
                     │ Node Registry (KV) -- P2P last resort │
                     │ Priority Task Queue (KV per node)     │
@@ -275,7 +275,7 @@ Most DePIN networks do one thing. GSTD nodes do four — simultaneously, from th
 |---|---|
 | [gstdcoin/contracts](https://github.com/gstdcoin/contracts) | TON smart contracts — token, DAO, settlement |
 | [gstdcoin/gstd-bridge](https://github.com/gstdcoin/gstd-bridge) | Cross-chain bridge validators (Rust) |
-| [gstdcoin/ai](https://github.com/gstdcoin/ai) | Dashboard + Vercel serverless API |
+| [gstdcoin/ai](https://github.com/gstdcoin/ai) | Dashboard + Cloudflare Worker platform API |
 | [gstdcoin/web](https://github.com/gstdcoin/web) | Landing page |
 | **gstdcoin/gstdbot** | **Node OS (this repo)** |
 
