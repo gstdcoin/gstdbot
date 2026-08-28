@@ -58,7 +58,8 @@
   .sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--sidebar-bg);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;overflow-y:auto}
   .sidebar-logo{padding:24px 20px 16px;border-bottom:1px solid var(--border)}
   .logo-row{display:flex;align-items:center;gap:10px}
-  .logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--cyan));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .logo-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+  .logo-icon img{width:100%;height:100%;object-fit:contain;border-radius:8px}
   .logo-name{font-size:18px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
   .logo-status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:6px}
   .status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
@@ -333,7 +334,7 @@
 <div class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-row">
-      <div class="logo-icon">&#x1F9E0;</div>
+      <div class="logo-icon"><img src="/static/logo.png" alt="GSTD"></div>
       <span class="logo-name">GSTD Node</span>
     </div>
     <div class="logo-status">

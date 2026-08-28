@@ -602,7 +602,7 @@ export class OmegaGateway {
                     const actualCommit = originalHash; // originalHash is HEAD right after the pull
                     if (actualCommit !== manifest.commit) {
                         execSync(`git reset --hard ${preUpdateHash}`, { cwd: installDir, encoding: 'utf-8', timeout: 10000 });
-                        execSync('npm install --legacy-peer-deps', { cwd: installDir, encoding: 'utf-8', timeout: 120000 });
+                        execSync('npm install --legacy-peer-deps --include=dev', { cwd: installDir, encoding: 'utf-8', timeout: 120000 });
                         throw new Error(
                             `Pulled commit ${actualCommit.slice(0, 8)} does not match manifest ${manifest.commit.slice(0, 8)} — rolled back`,
                         );
@@ -611,7 +611,7 @@ export class OmegaGateway {
 
                 // Step 3: Install deps & Build (strict check)
                 try {
-                    execSync('npm install --legacy-peer-deps', {
+                    execSync('npm install --legacy-peer-deps --include=dev', {
                         cwd: installDir, encoding: 'utf-8', timeout: 120000,
                     });
                     
@@ -623,7 +623,7 @@ export class OmegaGateway {
                     execSync(`git reset --hard ${originalHash}`, {
                         cwd: installDir, encoding: 'utf-8', timeout: 10000,
                     });
-                    execSync('npm install --legacy-peer-deps', {
+                    execSync('npm install --legacy-peer-deps --include=dev', {
                         cwd: installDir, encoding: 'utf-8', timeout: 120000,
                     });
                     throw new Error('Update validation (build) failed. Rollback applied. ' + buildError.message);
@@ -1454,7 +1454,7 @@ export class OmegaGateway {
                     if (result.trim()) {
                         await sendReply('📦 Updates available:\\n```\\n' + result.trim() + '\\n```\\nApplying update...');
                         execSync('git reset --hard HEAD', { cwd: installDir, timeout: 10000 });
-                        execSync(`git pull origin ${branch} --ff-only && npm install --legacy-peer-deps && npx tsc`, { cwd: installDir, timeout: 120000 });
+                        execSync(`git pull origin ${branch} --ff-only && npm install --legacy-peer-deps --include=dev && npx tsc`, { cwd: installDir, timeout: 120000 });
                         await sendReply('✅ Updated! Restarting...');
                         setTimeout(() => process.exit(0), 1000);
                     } else {
@@ -1500,7 +1500,7 @@ export class OmegaGateway {
             try {
                 if (component === 'core' || component === 'all') {
                     execSync('git reset --hard HEAD', { cwd: installDir, timeout: 10000 });
-                    execSync(`cd ${installDir} && git pull origin ${branch} --ff-only && npm install --legacy-peer-deps && npx tsc`, { timeout: 120000 });
+                    execSync(`cd ${installDir} && git pull origin ${branch} --ff-only && npm install --legacy-peer-deps --include=dev && npx tsc`, { timeout: 120000 });
                     logActivity('Core updated', 'success');
                 }
                 if (component === 'apps' || component === 'all') {
@@ -1931,7 +1931,7 @@ export class OmegaGateway {
                         const branch = getDefaultBranch(cwd);
                         execSync('git reset --hard HEAD', { cwd, encoding: 'utf-8', timeout: 10000 });
                         execSync(`git pull origin ${branch} --ff-only`, { cwd, encoding: 'utf-8', timeout: 30000 });
-                        execSync('npm install --legacy-peer-deps 2>&1 | tail -5 || true', { cwd, encoding: 'utf-8', timeout: 120000 });
+                        execSync('npm install --legacy-peer-deps --include=dev 2>&1 | tail -5 || true', { cwd, encoding: 'utf-8', timeout: 120000 });
                         execSync('npx tsc 2>&1 | tail -5 || true', { cwd, encoding: 'utf-8', timeout: 60000 });
                         logActivity('Update complete! Restart to apply.', 'success');
                         res.json({ ok: true, message: 'Updated. Restart to apply changes.' });
@@ -1980,7 +1980,7 @@ export class OmegaGateway {
                 const cwd = join(__dirname, '../..');
                 const branch = getDefaultBranch(cwd);
                 execSync(`git pull origin ${branch} --ff-only`, { cwd, encoding: 'utf-8', timeout: 30000 });
-                execSync('npm install --legacy-peer-deps 2>&1 | tail -5 || true', { cwd, encoding: 'utf-8', timeout: 120000 });
+                execSync('npm install --legacy-peer-deps --include=dev 2>&1 | tail -5 || true', { cwd, encoding: 'utf-8', timeout: 120000 });
                 execSync('node_modules/.bin/tsc --skipLibCheck 2>&1 | tail -5 || true', { cwd, encoding: 'utf-8', timeout: 60000 });
                 logActivity('Update complete — restarting to apply.', 'success');
                 res.json({ ok: true, message: 'Update applied. Restarting now…' });
@@ -2843,7 +2843,7 @@ export class OmegaGateway {
                 }
                 // Git pull + rebuild
                 execSync('git fetch --all && git reset --hard origin/main', { cwd, timeout: 30000, stdio: 'pipe' });
-                execSync('npm install --legacy-peer-deps', { cwd, timeout: 120000, stdio: 'pipe' });
+                execSync('npm install --legacy-peer-deps --include=dev', { cwd, timeout: 120000, stdio: 'pipe' });
                 execSync('npx tsc', { cwd, timeout: 60000, stdio: 'pipe' });
                 // Restore data
                 if (preserveData) {
@@ -2874,7 +2874,7 @@ export class OmegaGateway {
                 execSync(`mkdir -p ${configDir}`, { timeout: 5000 });
                 const cwd = join(__dirname, '../..');
                 execSync('git fetch --all && git reset --hard origin/main', { cwd, timeout: 30000, stdio: 'pipe' });
-                execSync('npm install --legacy-peer-deps', { cwd, timeout: 120000, stdio: 'pipe' });
+                execSync('npm install --legacy-peer-deps --include=dev', { cwd, timeout: 120000, stdio: 'pipe' });
                 execSync('npx tsc', { cwd, timeout: 60000, stdio: 'pipe' });
                 res.json({ success: true, message: 'Full reset complete. Restarting in 3 seconds...' });
                 setTimeout(() => process.exit(0), 3000);
