@@ -1,5 +1,6 @@
-const fs = require('fs');
+const fs   = require('fs');
 const path = require('path');
+const os   = require('os');
 
 // Parse .env file manually so vars are available even if pm2 env_file is buggy
 function loadEnv(filePath) {
@@ -17,66 +18,95 @@ function loadEnv(filePath) {
   return env;
 }
 
-const dotenv = loadEnv(path.join(__dirname, '.env'));
+// ─── Dynamic paths — works on any machine, not just the Pi ───────────────
+const HOME      = process.env.HOME || os.homedir();
+const INSTALL   = __dirname;                         // wherever the repo lives
+const NODE_BIN  = process.execPath;                  // node that launched pm2
+
+// Resolve Ollama binary: try common install locations in order
+function findOllama() {
+  const candidates = [
+    path.join(HOME, 'ollama-bin', 'bin', 'ollama'),  // Pi custom location
+    path.join(HOME, '.ollama', 'bin', 'ollama'),
+    '/usr/local/bin/ollama',
+    '/usr/bin/ollama',
+  ];
+  return candidates.find(p => fs.existsSync(p)) || candidates[0];
+}
+
+// Resolve IPFS binary
+function findIpfs() {
+  const candidates = [
+    path.join(HOME, 'ipfs-bin', 'ipfs'),  // install.sh puts it here
+    path.join(HOME, '.local', 'bin', 'ipfs'),
+    '/usr/local/bin/ipfs',
+    '/usr/bin/ipfs',
+  ];
+  return candidates.find(p => fs.existsSync(p)) || candidates[0];
+}
+
+const OLLAMA_BIN = findOllama();
+const IPFS_BIN   = findIpfs();
+const LOGS       = path.join(INSTALL, 'logs');
+
+const dotenv = loadEnv(path.join(INSTALL, '.env'));
 
 module.exports = {
   apps: [
   {
     name: 'ollama',
-    script: '/home/bot/ollama-bin/bin/ollama',
+    script: OLLAMA_BIN,
     args: 'serve',
-    cwd: '/home/bot',
+    cwd: HOME,
     env: {
-      OLLAMA_HOME: '/home/bot/.ollama',
-      HOME: '/home/bot',
-      PATH: '/home/bot/ollama-bin/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+      OLLAMA_HOME: path.join(HOME, '.ollama'),
+      HOME,
     },
     autorestart: true,
     restart_delay: 5000,
-    out_file: '/home/bot/gstdbot/logs/ollama.log',
-    error_file: '/home/bot/gstdbot/logs/ollama.error.log',
+    out_file:   path.join(LOGS, 'ollama.log'),
+    error_file: path.join(LOGS, 'ollama.error.log'),
     merge_logs: true,
     log_date_format: 'YYYY-MM-DD HH:mm:ss',
     max_memory_restart: '3G',
   },
   {
     name: 'ipfs',
-    script: '/home/bot/ipfs-bin/ipfs',
+    script: IPFS_BIN,
     args: 'daemon --migrate=true',
-    cwd: '/home/bot',
+    cwd: HOME,
     env: {
-      IPFS_PATH: '/home/bot/.ipfs',
-      HOME: '/home/bot',
+      IPFS_PATH: path.join(HOME, '.ipfs'),
+      HOME,
     },
     autorestart: true,
     restart_delay: 10000,
-    out_file: '/home/bot/gstdbot/logs/ipfs.log',
-    error_file: '/home/bot/gstdbot/logs/ipfs.error.log',
+    out_file:   path.join(LOGS, 'ipfs.log'),
+    error_file: path.join(LOGS, 'ipfs.error.log'),
     max_memory_restart: '512M',
   },
   {
     name: 'tunnel',
-    script: '/home/bot/gstdbot/tunnel.sh',
+    script: path.join(INSTALL, 'tunnel.sh'),
     interpreter: '/bin/bash',
-    cwd: '/home/bot/gstdbot',
-    env: {
-      ...dotenv,
-    },
+    cwd: INSTALL,
+    env: { ...dotenv },
     autorestart: true,
     restart_delay: 5000,
-    out_file: '/home/bot/gstdbot/logs/tunnel.log',
-    error_file: '/home/bot/gstdbot/logs/tunnel.error.log',
+    out_file:   path.join(LOGS, 'tunnel.log'),
+    error_file: path.join(LOGS, 'tunnel.error.log'),
     merge_logs: true,
     max_memory_restart: '256M',
   },
   {
     name: 'gstdbot',
     script: 'dist/index.js',
-    cwd: '/home/bot/gstdbot',
-    interpreter: '/home/bot/.nvm/versions/node/v20.20.2/bin/node',
+    cwd: INSTALL,
+    interpreter: NODE_BIN,
     env: {
       NODE_ENV: 'production',
       GSTD_NAAS_ENABLED: 'false',
+      HOME,
       ...dotenv,
     },
     // Restart policy
@@ -85,11 +115,11 @@ module.exports = {
     max_restarts: 10,
     min_uptime: '30s',
     // Logs
-    out_file: '/home/bot/gstdbot/logs/node.log',
-    error_file: '/home/bot/gstdbot/logs/node.error.log',
+    out_file:   path.join(LOGS, 'node.log'),
+    error_file: path.join(LOGS, 'node.error.log'),
     merge_logs: true,
     log_date_format: 'YYYY-MM-DD HH:mm:ss',
-    // Resource limits — don't compete with trading bot
+    // Resource limits
     max_memory_restart: '900M',
     node_args: '--max-old-space-size=768',
   }]
