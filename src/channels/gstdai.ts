@@ -402,13 +402,15 @@ export class GstdAiBot {
                     ? `$${usd} · 1⭐ = ${gstdPerStar.toFixed(0)} GSTD`
                     : `$${usd} · 1⭐ = ${gstdPerStar.toFixed(0)} GSTD`;
                 try {
+                    // Stars (XTR): no provider_token needed — grammY 1.25 passes it via `other` if needed
                     await ctx.api.sendInvoice(
                         ctx.chat!.id, title, desc,
                         `stars_${stars}_${Date.now()}`,
                         'XTR',
                         [{ label: title, amount: stars }],
                     );
-                } catch {
+                } catch (err: any) {
+                    console.error('[gstdaibot] invoice error:', err.message);
                     const errMsg = l === 'ru' ? '❌ Ошибка создания инвойса.' : '❌ Failed to create invoice.';
                     await ctx.reply(errMsg);
                 }
@@ -636,7 +638,7 @@ export class GstdAiBot {
             parse_mode:   'HTML',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: l === 'ru' ? '🚀 Запустить ноду' : '🚀 Launch node', web_app: { url: TMA_URL } }],
+                    [{ text: l === 'ru' ? '🚀 Запустить ноду' : '🚀 Launch node', web_app: { url: `${TMA_URL}?lang=${l}` } }],
                     [{ text: l === 'ru' ? '🔗 Привязать кошелёк' : '🔗 Link wallet', callback_data: 'wallet_menu' }],
                 ],
             },
