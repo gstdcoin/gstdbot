@@ -180,6 +180,7 @@
   .model-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;margin-top:16px}
   .mc{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:16px;transition:border-color 0.2s}
   .mc:hover{border-color:rgba(139,92,246,0.4)}
+  .mc.border-green{border-color:rgba(34,197,94,0.35);background:rgba(34,197,94,0.04)}
   .mc h4{font-size:14px;font-weight:600;margin-bottom:4px}
   .mc p{font-size:12px;color:var(--muted);margin-bottom:10px}
 
@@ -1252,21 +1253,39 @@ async function loadModels(){
 }
 
 function renderCatalog(catalog,ram){
-  document.getElementById('m-catalog').innerHTML=catalog.map(m=>{
+  const tierLabel={'minimal':'Ultra-light','light':'Light','standard':'Standard','powerful':'Powerful','max':'Maximum / GPU'};
+  const tierOrder={'minimal':0,'light':1,'standard':2,'powerful':3,'max':4};
+  // Sort: installed first, then fits-RAM, then low-RAM; within each group by tier
+  const sorted=[...catalog].sort((a,b)=>{
+    const aFits=ram>=a.size_gb, bFits=ram>=b.size_gb;
+    const aScore=(a.installed?0:aFits?1:2)*10+(tierOrder[a.tier]||2);
+    const bScore=(b.installed?0:bFits?1:2)*10+(tierOrder[b.tier]||2);
+    return aScore-bScore;
+  });
+  // Group by tier for section headers
+  let lastTier='', html='';
+  for(const m of sorted){
     const fits=ram>=m.size_gb;
-    return `<div class="mc">
-      <div class="row jb mb8"><h4>${esc(m.name)}</h4>${m.installed?'<span class="badge badge-green">Installed</span>':fits?'<span class="badge badge-accent">Fits</span>':'<span class="badge badge-yellow">Low RAM</span>'}</div>
-      <p>${esc(m.desc)}</p>
+    if(m.tier!==lastTier){
+      lastTier=m.tier;
+      const tl=tierLabel[m.tier]||m.tier;
+      const ramNeeded=m.tier==='minimal'?'< 2 GB':m.tier==='light'?'2–6 GB':m.tier==='standard'?'6–12 GB':m.tier==='powerful'?'12–20 GB':'32+ GB / GPU';
+      html+=`<div style="grid-column:1/-1;margin-top:8px;margin-bottom:4px"><span class="badge badge-muted">${tl} — ${ramNeeded} RAM</span></div>`;
+    }
+    html+=`<div class="mc${m.installed?' border-green':''}">
+      <div class="row jb mb8"><h4>${esc(m.name)}</h4>${m.installed?'<span class="badge badge-green">&#x2713; Installed</span>':fits?'<span class="badge badge-accent">Fits your RAM</span>':'<span class="badge badge-yellow">Needs more RAM</span>'}</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">${esc(m.desc)}</p>
       <div class="row gap8 mb8">
-        <span class="badge badge-muted">&#x1F4BE; ${m.size_gb} GB</span>
+        <span class="badge badge-muted">&#x1F4BE; ${m.size_gb} GB disk</span>
         <span class="badge badge-muted">&#x1F9E0; ~${m.size_gb} GB RAM</span>
       </div>
       ${m.installed
         ?`<button class="btn btn-danger btn-sm" onclick="removeModel('${esc(m.id)}')">Remove</button>`
-        :`<button class="btn btn-primary btn-sm" onclick="startPull('${esc(m.id)}')" ${fits?'':'style="opacity:0.6"'}>&#x2B07; Install</button>`
+        :`<button class="btn btn-primary btn-sm" onclick="startPull('${esc(m.id)}')" ${fits?'':'disabled title="Not enough RAM"'}>&#x2B07; Install</button>`
       }
     </div>`;
-  }).join('');
+  }
+  document.getElementById('m-catalog').innerHTML=html||'<div class="empty"><p>No models available</p></div>';
 }
 
 function doPullInput(){

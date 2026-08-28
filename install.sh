@@ -33,7 +33,7 @@ err()     { echo -e "  ${RED}✗${NC} $1"; }
 step()    { echo -e "\n${CYAN}[$1/$TOTAL_STEPS]${NC} ${BOLD}$2${NC}"; }
 log()     { echo "[$(date +%H:%M:%S)] $1" >> "$LOG_FILE" 2>/dev/null || true; }
 
-TOTAL_STEPS=7
+TOTAL_STEPS=8
 
 # State management — tracks completed steps
 mark_done()  { echo "$1" >> "$STATE_FILE"; log "DONE: $1"; }
@@ -387,9 +387,69 @@ if [ -f "$INSTALL_DIR/ecosystem.config.js" ] && command -v pm2 &>/dev/null; then
 fi
 
 # ═══════════════════════════════════════════════════════════════
-# STEP 7: Start Node (systemd or background)
+# STEP 7: Install Ollama + pull starter model (AI inference engine)
 # ═══════════════════════════════════════════════════════════════
-step 7 "Starting GSTD Node OS..."
+step 7 "Setting up AI inference engine (Ollama)..."
+
+INSTALLED_MODEL=""
+
+install_ollama() {
+    if command -v ollama &>/dev/null; then
+        info "Ollama already installed ($(ollama --version 2>/dev/null | head -1))"
+        return 0
+    fi
+    info "Installing Ollama..."
+    if curl -fsSL https://ollama.ai/install.sh | sh >/dev/null 2>&1; then
+        info "Ollama installed ✓"
+    else
+        warn "Ollama install failed — install manually: https://ollama.ai"
+        return 1
+    fi
+}
+
+pick_model() {
+    # Choose the best model that fits in RAM with headroom for the OS
+    local ram=$1
+    if   [ "$ram" -ge 32000 ]; then echo "qwen2.5:14b"   # 32GB+  → powerful 14B (8.7GB)
+    elif [ "$ram" -ge 16000 ]; then echo "llama3.1:8b"   # 16GB+  → quality 8B (4.7GB)
+    elif [ "$ram" -ge  8000 ]; then echo "qwen2.5:7b"    # 8GB+   → balanced 7B (4.7GB)
+    elif [ "$ram" -ge  4000 ]; then echo "llama3.2:3b"   # 4GB+   → fast 3B (2.0GB)
+    elif [ "$ram" -ge  2000 ]; then echo "llama3.2:1b"   # 2GB+   → ultra-light (0.8GB)
+    else                            echo ""               # <2GB   → skip
+    fi
+}
+
+if install_ollama; then
+    # Start Ollama daemon if not running
+    if ! curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
+        nohup ollama serve >/dev/null 2>&1 &
+        sleep 3
+    fi
+
+    CHOSEN_MODEL=$(pick_model "${TOTAL_RAM_MB:-0}")
+    if [ -n "$CHOSEN_MODEL" ]; then
+        # Check if already pulled
+        if ollama list 2>/dev/null | grep -q "^${CHOSEN_MODEL}"; then
+            info "Model ${CHOSEN_MODEL} already installed ✓"
+            INSTALLED_MODEL="$CHOSEN_MODEL"
+        else
+            info "Pulling ${CHOSEN_MODEL} (best model for your ${TOTAL_RAM_MB}MB RAM)..."
+            if ollama pull "$CHOSEN_MODEL" 2>&1 | tail -3; then
+                info "Model ${CHOSEN_MODEL} ready ✓"
+                INSTALLED_MODEL="$CHOSEN_MODEL"
+            else
+                warn "Model pull failed — pull manually: ollama pull ${CHOSEN_MODEL}"
+            fi
+        fi
+    else
+        warn "Less than 2GB RAM — skipping model pull. Add more RAM or pull manually."
+    fi
+fi
+
+# ═══════════════════════════════════════════════════════════════
+# STEP 8: Start Node (systemd or background)
+# ═══════════════════════════════════════════════════════════════
+step 8 "Starting GSTD Node OS..."
 
 # Kill any existing process
 pkill -f "node.*gstdbot.*dist/index.js" 2>/dev/null || true
@@ -553,10 +613,11 @@ case "\$1" in
     rollback)
         echo "Rolling back to previous version..."
         cd "\$INSTALL_DIR"
-        git checkout HEAD@{1} 2>/dev/null || git checkout HEAD^ 2>/dev/null || echo "Cannot rollback further."
-        npm run build
-        \$SYS_CMD restart gstd-node 2>/dev/null || node dist/index.js &
-        echo "Rollback complete. Service restarted!"
+        git checkout HEAD@{1} 2>/dev/null || git checkout HEAD^ 2>/dev/null || { echo "Cannot rollback further."; exit 1; }
+        npm install --legacy-peer-deps --include=dev --quiet 2>/dev/null
+        node_modules/.bin/tsc --skipLibCheck 2>/dev/null
+        pm2 restart gstdbot 2>/dev/null || \$SYS_CMD restart gstd-node 2>/dev/null
+        echo "Rollback complete."
         ;;
     restart) \$SYS_CMD restart gstd-node 2>/dev/null || kill \$(cat \$HOME/.config/gstdbot/node.pid) && cd "\$INSTALL_DIR" && node dist/index.js & ;;
     status)  \$SYS_CMD status gstd-node 2>/dev/null ;;
@@ -619,6 +680,11 @@ echo -e "  ${BOLD}Your node info:${NC}"
 echo -e "    Mode:       ${MODE}"
 echo -e "    Node ID:    ${DIM}${NODE_ID:0:16}...${NC}"
 echo -e "    Install:    ${INSTALL_DIR}"
+if [ -n "$INSTALLED_MODEL" ]; then
+    echo -e "    AI Model:   ${GREEN}${INSTALLED_MODEL}${NC} (ready to serve requests)"
+else
+    echo -e "    AI Model:   ${YELLOW}none${NC} — open dashboard → Models to install"
+fi
 echo ""
 
 if [ "$USED_SYSTEMD" = true ]; then

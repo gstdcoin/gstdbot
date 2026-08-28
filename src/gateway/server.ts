@@ -4241,18 +4241,32 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
         // ─── Ollama Model Management ─────────────────────────────────────
 
         const POPULAR_MODELS = [
-            { id: 'llama3.2:3b',        name: 'Llama 3.2 3B',       size_gb: 2.0,  desc: 'Fast, great for edge devices',       family: 'llama',   tier: 'light'    },
-            { id: 'llama3.2:1b',        name: 'Llama 3.2 1B',       size_gb: 0.8,  desc: 'Ultra-fast, minimal RAM needed',     family: 'llama',   tier: 'minimal'  },
-            { id: 'llama3.1:8b',        name: 'Llama 3.1 8B',       size_gb: 4.7,  desc: 'Best quality/speed balance',         family: 'llama',   tier: 'standard' },
-            { id: 'mistral:7b',         name: 'Mistral 7B',         size_gb: 4.1,  desc: 'Strong reasoning, long context',     family: 'mistral', tier: 'standard' },
-            { id: 'phi3:mini',          name: 'Phi-3 Mini',         size_gb: 2.4,  desc: 'Microsoft, great at math & code',    family: 'phi',     tier: 'light'    },
-            { id: 'gemma2:2b',          name: 'Gemma 2 2B',         size_gb: 1.6,  desc: 'Google, efficient & precise',        family: 'gemma',   tier: 'light'    },
-            { id: 'gemma2:9b',          name: 'Gemma 2 9B',         size_gb: 5.4,  desc: 'Google, high quality output',        family: 'gemma',   tier: 'standard' },
-            { id: 'qwen2.5:3b',         name: 'Qwen 2.5 3B',        size_gb: 2.0,  desc: 'Alibaba, strong multilingual',       family: 'qwen',    tier: 'light'    },
-            { id: 'qwen2.5:7b',         name: 'Qwen 2.5 7B',        size_gb: 4.7,  desc: 'Alibaba, coding & math champion',   family: 'qwen',    tier: 'standard' },
-            { id: 'deepseek-r1:7b',     name: 'DeepSeek R1 7B',     size_gb: 4.7,  desc: 'Reasoning specialist, step-by-step', family: 'deepseek', tier: 'standard' },
-            { id: 'codellama:7b',       name: 'CodeLlama 7B',       size_gb: 3.8,  desc: 'Meta, specialized code generation', family: 'llama',   tier: 'standard' },
-            { id: 'nomic-embed-text',   name: 'Nomic Embed Text',   size_gb: 0.3,  desc: 'Text embeddings for search/RAG',    family: 'embed',   tier: 'minimal'  },
+            // ── Ultra-light (< 2 GB RAM) ───────────────────────────────────────────────
+            { id: 'llama3.2:1b',           name: 'Llama 3.2 1B',          size_gb: 0.8,  desc: 'Ultra-fast, works on any device',           family: 'llama',     tier: 'minimal'  },
+            { id: 'gemma3:1b',             name: 'Gemma 3 1B',            size_gb: 0.8,  desc: 'Google 2025, lightweight & capable',        family: 'gemma',     tier: 'minimal'  },
+            { id: 'nomic-embed-text',      name: 'Nomic Embed Text',      size_gb: 0.3,  desc: 'Text embeddings for search / RAG',          family: 'embed',     tier: 'minimal'  },
+            // ── Light (2–4 GB RAM) ─────────────────────────────────────────────────────
+            { id: 'llama3.2:3b',           name: 'Llama 3.2 3B',          size_gb: 2.0,  desc: 'Fast, great for edge & mobile devices',     family: 'llama',     tier: 'light'    },
+            { id: 'qwen2.5:3b',            name: 'Qwen 2.5 3B',           size_gb: 2.0,  desc: 'Alibaba, strong multilingual & math',        family: 'qwen',      tier: 'light'    },
+            { id: 'phi4-mini:3.8b',        name: 'Phi-4 Mini 3.8B',       size_gb: 2.5,  desc: 'Microsoft 2025, best-in-class small model', family: 'phi',       tier: 'light'    },
+            { id: 'gemma3:4b',             name: 'Gemma 3 4B',            size_gb: 3.3,  desc: 'Google 2025, excellent reasoning & code',   family: 'gemma',     tier: 'light'    },
+            // ── Standard (6–8 GB RAM) ──────────────────────────────────────────────────
+            { id: 'llama3.1:8b',           name: 'Llama 3.1 8B',          size_gb: 4.7,  desc: 'Meta, best quality/speed balance',           family: 'llama',     tier: 'standard' },
+            { id: 'qwen2.5:7b',            name: 'Qwen 2.5 7B',           size_gb: 4.7,  desc: 'Alibaba, top coding & math benchmark',       family: 'qwen',      tier: 'standard' },
+            { id: 'qwen2.5-coder:7b',      name: 'Qwen 2.5 Coder 7B',     size_gb: 4.7,  desc: 'Specialized for code generation & review',  family: 'qwen',      tier: 'standard' },
+            { id: 'deepseek-r1:7b',        name: 'DeepSeek R1 7B',        size_gb: 4.7,  desc: 'Reasoning specialist with chain-of-thought', family: 'deepseek',  tier: 'standard' },
+            { id: 'mistral-nemo:12b',      name: 'Mistral Nemo 12B',      size_gb: 7.1,  desc: 'Long context (128k), instruction-tuned',    family: 'mistral',   tier: 'standard' },
+            { id: 'gemma3:12b',            name: 'Gemma 3 12B',           size_gb: 8.1,  desc: 'Google 2025, strong all-round performance', family: 'gemma',     tier: 'standard' },
+            // ── Powerful (16+ GB RAM) ──────────────────────────────────────────────────
+            { id: 'qwen2.5:14b',           name: 'Qwen 2.5 14B',          size_gb: 8.7,  desc: 'Alibaba, GPT-4 class, top leaderboard',     family: 'qwen',      tier: 'powerful' },
+            { id: 'deepseek-r1:14b',       name: 'DeepSeek R1 14B',       size_gb: 8.7,  desc: 'State-of-the-art reasoning, math & science', family: 'deepseek', tier: 'powerful' },
+            { id: 'phi4:14b',              name: 'Phi-4 14B',             size_gb: 9.1,  desc: 'Microsoft 2025, STEM & long-context leader', family: 'phi',       tier: 'powerful' },
+            { id: 'qwen2.5-coder:14b',     name: 'Qwen 2.5 Coder 14B',    size_gb: 8.7,  desc: 'Best open-source coding model available',   family: 'qwen',      tier: 'powerful' },
+            { id: 'mistral:7b',            name: 'Mistral 7B',            size_gb: 4.1,  desc: 'Classic — strong reasoning, long context',   family: 'mistral',   tier: 'standard' },
+            // ── Maximum (32+ GB RAM / GPU) ─────────────────────────────────────────────
+            { id: 'qwen2.5:32b',           name: 'Qwen 2.5 32B',          size_gb: 19.0, desc: 'Near-GPT-4o quality, open weights',          family: 'qwen',      tier: 'max'      },
+            { id: 'deepseek-r1:32b',       name: 'DeepSeek R1 32B',       size_gb: 19.0, desc: 'Frontier reasoning model, beats o1-preview',  family: 'deepseek',  tier: 'max'      },
+            { id: 'llama3.3:70b',          name: 'Llama 3.3 70B',         size_gb: 43.0, desc: 'Meta flagship — requires GPU or 64GB RAM',   family: 'llama',     tier: 'max'      },
         ];
 
         // GET /api/ollama/models — installed + catalog
