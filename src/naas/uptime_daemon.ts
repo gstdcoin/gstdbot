@@ -85,6 +85,13 @@ export class UptimeDaemon {
         // Pre-warm Ollama models so cold-start latency doesn't kill first inference
         this.warmupOllamaModels().catch(() => {});
 
+        // Explicit pre-registration: call /register before any heartbeat to ensure
+        // the node is in KV. The deployed platform Worker's heartbeat() auto-registration
+        // path throws TypeError when CF-injected request headers are copied, causing
+        // error 1101 when the node is not found in KV. Calling /register directly
+        // avoids that path entirely and is idempotent (safe to call on every restart).
+        this.registerNode().catch(() => {});
+
         // Send first heartbeat immediately
         this.sendHeartbeat().catch(() => {});
 
@@ -105,6 +112,40 @@ export class UptimeDaemon {
             clearInterval(this.timer);
             this.timer = null;
             logActivity('Uptime Daemon stopped', 'info');
+        }
+    }
+
+    // ─── Explicit Registration ───────────────────────────────
+
+    private async registerNode(): Promise<void> {
+        try {
+            const capabilities = await this.getOllamaModels();
+            const tunnelUrl = this.getTunnelUrl();
+            const resp = await fetch(`${PLATFORM_URL}/api/v1/nodes/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    node_id: this.nodeId,
+                    name: process.env.NODE_NAME || this.nodeId,
+                    wallet: this.walletAddress,
+                    wallet_address: this.walletAddress,
+                    capabilities,
+                    public_url: tunnelUrl || '',
+                    version: '3.4.0',
+                }),
+                signal: AbortSignal.timeout(10000),
+            });
+            if (resp.ok) {
+                platformHealth.recordSuccess();
+            } else {
+                const body = await resp.text().catch(() => '');
+                if (resp.status === 402 && body.includes('DEPLOYMENT_DISABLED')) {
+                    console.warn('[NaaS] Platform disabled (DEPLOYMENT_DISABLED). NaaS heartbeats suspended.');
+                    this.stop();
+                }
+            }
+        } catch {
+            // Silent — heartbeat will retry; registration is best-effort
         }
     }
 
