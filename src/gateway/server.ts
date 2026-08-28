@@ -45,6 +45,7 @@ export interface GatewayConfig {
     swarmUrl: string;
     cocoonEnabled: boolean;
     sovereigntyMode: 'full' | 'hybrid' | 'fallback';
+    nodeId?: string;
 }
 
 const DEFAULT_CONFIG: GatewayConfig = {
@@ -319,7 +320,7 @@ export class OmegaGateway {
         this.server = http.createServer(this.app);
 
         // ─── Core Module Init ────────────────────────────
-        this.nodeId = process.env.GSTD_NODE_ID || `gstd-${hostname()}-${process.pid}`;
+        this.nodeId = this.config.nodeId || process.env.GSTD_NODE_ID || `gstd-${hostname()}-${process.pid}`;
 
         this.eventBus = new NodeEventBus(this.nodeId);
 

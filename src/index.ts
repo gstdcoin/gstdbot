@@ -254,6 +254,7 @@ async function main(): Promise<void> {
         swarmUrl: process.env.GSTD_SWARM_URL || 'https://platform.gstdtoken.com',
         cocoonEnabled: process.env.GSTD_COCOON_ENABLED !== 'false',
         sovereigntyMode: (process.env.GSTD_SOVEREIGNTY_MODE as any) || 'full',
+        nodeId: config.nodeId,
     });
     await gateway.start();
     const actualPort = gateway.getPort();
