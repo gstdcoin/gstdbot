@@ -88,61 +88,53 @@ and should not grow its own blockchain, consensus, or VM.
 | Rendering | EXPERIMENTAL (simulated) | `processRender()` is a stub; do not enable in any default build |
 | Cross-chain bridge (`gstd-bridge`) | EXPERIMENTAL, separate repo | Not production, no audit budget spent here this cycle |
 
-## Now / Next (concrete, scoped to what this repo can actually execute)
+## Completed this cycle (2026-08-27/28)
 
-Given real constraints (one Pi for testing, no GPU budget, limited session
-budget), the next work is deliberately narrow — a handful of concrete,
-self-contained fixes, not a re-run of the full audit or a rewrite:
+All "Now/Next" and most deferred items from the original roadmap have been
+executed and pushed. Summary of what shipped:
 
-1. **RPC proxy fail-closed** (`src/naas/rpc_proxy.ts`): when the platform
-   payment-check API is unreachable, the proxy currently allows the request for
-   free rather than rejecting it — a real, if currently low-traffic (NaaS is
-   disabled by default), economic hole. Fix: fail closed (503/402), not open.
-2. **Model-routing transparency** (`src/gateway/router.ts`): when a requested
-   model is silently mapped to a different local model, surface both
-   `requested_model` and `actual_model` in the response rather than silently
-   substituting. Small, honest, cheap.
-3. **Dashboard redesign execution**: the 10-task plan is already written
-   (`docs/superpowers/plans/2026-08-26-dashboard-redesign.md`) but not yet run.
+| Item | Commit(s) | Status |
+|---|---|---|
+| RPC proxy fail-closed (`src/naas/rpc_proxy.ts`) | `2e4f2fc` | ✅ Done |
+| Model-routing transparency (`router.ts`, `server.ts`) | `2e4f2fc` | ✅ Done |
+| Dashboard redesign (all 9 tabs, design tokens, skeletons) | `98863e7` | ✅ Done |
+| Signed remote commands (Ed25519 gate, fail-closed) | `c23b4b8` | ✅ Done |
+| Signed update manifests (fail-open + PLATFORM_SIGNING_ENFORCED) | `c23b4b8` | ✅ Done |
+| Node UI mode split (Simple/Advanced/Developer, localStorage) | `91f88e9` | ✅ Done |
+| Model Registry (static allowlist, demand tracker, heartbeat filter) | `dae15b8` | ✅ Done |
+| Quorum as real gate (`canAttemptQuorum()`, `quorumGateFailed` stat) | `ed55c08` | ✅ Done |
+| Node P2P discovery (DHT + mDNS, central registry last-resort) | earlier | ✅ Done |
 
-## Deliberately deferred (not because they're unimportant — because they're not next)
+## Now / Next
 
-- **Signed remote commands / signed updates.** The chat's single most important
-  security recommendation: the platform should never be able to make a node run
-  an arbitrary command or install an unsigned binary; commands and update
-  artifacts should carry a signature the node verifies against a baked-in
-  public key before acting. This repo's audit already closed every *missing
-  auth* instance of remote-command routes this cycle — but auth (is the caller
-  who they claim) is a different property than integrity (is this specific
-  command one the platform operator actually issued, unmodified). Doing this
-  properly means changes on the platform side (`gstdai`) too, not just here —
-  it's a real cross-repo project, not a one-file patch, so it's named here and
-  deliberately not started this cycle rather than attempted half-finished.
-- **Node UI mode split (Simple/Advanced/Developer), hiding non-core
-  functionality by default.** A good idea, bigger than the already-scoped
-  dashboard-redesign plan (which is a visual/consistency pass, not a
-  feature-visibility redesign). Worth its own spec once the redesign plan
-  lands and there's a stable baseline to build the mode split on top of.
-- **Model Registry with manifest/hash/license verification and demand-based
-  scoring.** A real, well-reasoned idea from the analysis, but it's a new
-  subsystem, not a fix — needs its own brainstorming → spec → plan cycle, and
-  isn't blocking anything currently broken.
+The cycle's original "Now/Next" list is fully done. Remaining concrete work:
+
+1. **NaaS end-to-end verification** — NaaS/RPC is fail-closed and the proxy
+   is wired, but no chain (TON/ETH/etc.) has been proven end-to-end on the Pi.
+   Pick one chain (TON is most aligned with the token), verify the full
+   payment → charge → forward → response path on a real request.
+2. **WAN bootstrap DNS record** — P2P mesh works on LAN (mDNS) but WAN
+   bootstrap requires one stable DNS record (a `/dns4/…/tcp/…/p2p/…` bootstrap
+   multiaddr). Human-provisioned, not a code task — but blocking real multi-node
+   WAN operation.
+
+## Deliberately deferred (still not next)
+
 - **GSTD Passport / XP system / Telegram growth mechanics.** These are
   `gstdai`/`gstdweb`/Telegram-bot-repo concerns, not `gstdbot`. Noted here for
   continuity across the ecosystem, not actioned in this repo.
 - **Wallet/node-identity process separation** (separate `gstd-agent` /
   `gstd-worker` / `gstd-updater` processes, wallet signing isolated from the
-  main node process). A real architectural improvement the analysis raises,
-  but a multi-week restructuring, not something to start opportunistically
-  alongside smaller fixes. Tracked here so it isn't forgotten, not scheduled.
+  main node process). A real architectural improvement, but a multi-week
+  restructuring — not something to start opportunistically. Tracked here so it
+  isn't forgotten, not scheduled.
 
 ## What not to do (explicit, so it isn't re-litigated)
 
 - Do not build a GSTD-native blockchain, consensus, or VM. TON is the
   settlement layer; keep it that way.
-- Do not expand NaaS chain coverage before the RPC fail-open bug above is
-  fixed and one chain (whichever is easiest to test on the Pi) is proven
-  end-to-end.
+- Do not expand NaaS chain coverage before one chain (TON is the natural
+  first candidate) is proven end-to-end on the Pi.
 - Do not resume work on `gstd-bridge` from this repo or spend this repo's
   audit/security budget on it — it's a separate, already-flagged-deferred
   project.
