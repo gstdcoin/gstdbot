@@ -33,7 +33,7 @@ interface UserRecord {
 
 // ─── Spam patterns ───
 const SPAM_PATTERNS = [
-    /t\.me\/(?!gstd|GstdAppBot)[\w]+/i,
+    /t\.me\/(?!gstd|GstdAppBot|gstdaibot)[\w]+/i,
     /(?:free\s*airdrop|earn\s*\$?\d+|click\s*here)/i,
     /(?:invest\s*now|guaranteed\s*profit|100x|1000x)/i,
     /(?:whatsapp|signal)\.(?:com|me)/i,
@@ -68,7 +68,7 @@ const PLATFORM_KB = {
     website: 'https://gstdtoken.com',
     chat: 'https://gstdtoken.com/chat',
     monitor: 'https://gstdtoken.com',
-    bot: 'https://t.me/GstdAppBot',
+    bot: 'https://t.me/gstdaibot',
     contract: 'EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi',
     chain: 'TON',
     buyLinks: {

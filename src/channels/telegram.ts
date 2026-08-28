@@ -378,7 +378,7 @@ export class TelegramChannel {
             const msg = `💰 <b>How to Buy GSTD</b>\n\n` +
                   `1️⃣ <b>Telegram Stars</b> — directly in bot, ⭐️ Top Up button\n` +
                   `2️⃣ <b>STON.fi DEX</b> — swap TON → GSTD\n\n` +
-                  `👉 <a href="https://t.me/GstdAppBot?start=buy">Buy in bot</a>`;
+                  `👉 <a href="https://t.me/gstdaibot?start=buy">Buy in bot</a>`;
             await ctx.reply(msg, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
         });
 

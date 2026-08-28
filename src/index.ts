@@ -48,6 +48,7 @@ import { detectOdysseus } from './odysseus/detector.js';
 import { SecurityHardening } from './security/hardening.js';
 import { SwarmOrchestrator } from './swarm/orchestrator.js';
 import { TelegramChannel } from './channels/telegram.js';
+import { GstdAiBot } from './channels/gstdai.js';
 import { SwarmAgent } from './swarm/agent.js';
 import { CollectiveMemory } from './memory/collective.js';
 import { NodeWallet } from './wallet/manager.js';
@@ -377,6 +378,19 @@ async function main(): Promise<void> {
         await telegram.start();
     } else {
         console.log('    Telegram: disabled (no token)');
+    }
+
+    // ── @gstdaibot — clean AI bot ────────────────────────────────────────────
+    const gstdAiToken = process.env.GSTDAI_BOT_TOKEN;
+    if (gstdAiToken) {
+        const gstdAiBot = new GstdAiBot(
+            gstdAiToken,
+            process.env.GSTD_SWARM_URL || 'https://platform.gstdtoken.com',
+        );
+        await gstdAiBot.start();
+        console.log('    @gstdaibot: started');
+    } else {
+        console.log('    @gstdaibot: disabled (no GSTDAI_BOT_TOKEN)');
     }
 
     // ── 14. TON Connect + Mobile Node ────────────────────────────

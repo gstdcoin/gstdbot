@@ -3449,7 +3449,7 @@ export class OmegaGateway {
                     { name: 'Web Chat', url: 'https://gstdtoken.com/chat', icon: '💬', description: 'AI Chat Interface' },
                     { name: 'Monitor', url: 'https://gstdtoken.com/monitor', icon: '📡', description: 'Network Monitor' },
                     { name: 'Node OS', url: 'https://github.com/gstdcoin/gstdbot', icon: '🐝', description: 'Node OS Landing Page' },
-                    { name: 'Telegram Bot', url: 'https://t.me/GstdAppBot', icon: '🤖', description: 'AI Telegram Bot' },
+                    { name: 'Telegram Bot', url: 'https://t.me/gstdaibot', icon: '🤖', description: 'AI Telegram Bot' },
                     { name: 'GitHub', url: 'https://github.com/gstdcoin/gstdbot', icon: '⭐', description: 'Source Code' },
                     { name: 'GitHub Org', url: 'https://github.com/gstdcoin', icon: '🏢', description: 'GSTD Organization' },
                     { name: 'Documentation', url: 'https://github.com/gstdcoin/gstdbot/#install', icon: '📖', description: 'Installation Guide' },
