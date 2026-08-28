@@ -535,10 +535,34 @@
     </div>
 
     <div class="card">
-      <div class="card-header">
+      <div class="card-header" style="flex-wrap:wrap;gap:10px">
         <div class="card-title" style="margin-bottom:0">Model Catalog</div>
-        <span class="muted sm">Green = fits your hardware</span>
+        <div class="row gap8" style="flex-wrap:wrap">
+          <input class="input" id="m-search" placeholder="&#x1F50D; Search models..." style="width:180px" oninput="filterCatalog()" autocomplete="off">
+          <select class="input" id="m-tier-filter" onchange="filterCatalog()" style="width:130px">
+            <option value="">All tiers</option>
+            <option value="minimal">Ultra-light</option>
+            <option value="light">Light</option>
+            <option value="standard">Standard</option>
+            <option value="powerful">Powerful</option>
+            <option value="max">Maximum</option>
+          </select>
+          <select class="input" id="m-family-filter" onchange="filterCatalog()" style="width:120px">
+            <option value="">All types</option>
+            <option value="llama">Llama</option>
+            <option value="qwen">Qwen</option>
+            <option value="gemma">Gemma</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="mistral">Mistral</option>
+            <option value="phi">Phi</option>
+            <option value="vision">Vision</option>
+            <option value="embed">Embed</option>
+            <option value="aya">Aya</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="clearCatalogFilters()" style="padding:0 10px">✕ Clear</button>
+        </div>
       </div>
+      <div id="m-catalog-count" class="muted sm" style="margin:8px 0 4px;display:none"></div>
       <div class="model-grid" id="m-catalog"><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div></div>
     </div>
   </div>
@@ -1252,40 +1276,72 @@ async function loadModels(){
   }
 }
 
+let _catalogData=[], _catalogRam=0;
+
 function renderCatalog(catalog,ram){
+  _catalogData=catalog; _catalogRam=ram;
+  _renderCatalogFiltered(catalog,ram);
+}
+
+function filterCatalog(){
+  const q=(document.getElementById('m-search')?.value||'').trim().toLowerCase();
+  const tier=(document.getElementById('m-tier-filter')?.value||'');
+  const family=(document.getElementById('m-family-filter')?.value||'');
+  let filtered=_catalogData;
+  if(q) filtered=filtered.filter(m=>m.id.toLowerCase().includes(q)||m.name.toLowerCase().includes(q)||m.desc.toLowerCase().includes(q)||(m.family||'').toLowerCase().includes(q));
+  if(tier) filtered=filtered.filter(m=>m.tier===tier);
+  if(family) filtered=filtered.filter(m=>m.family===family);
+  _renderCatalogFiltered(filtered,_catalogRam);
+}
+
+function clearCatalogFilters(){
+  const s=document.getElementById('m-search');
+  const t=document.getElementById('m-tier-filter');
+  const f=document.getElementById('m-family-filter');
+  if(s) s.value='';
+  if(t) t.value='';
+  if(f) f.value='';
+  filterCatalog();
+}
+
+function _renderCatalogFiltered(catalog,ram){
   const tierLabel={'minimal':'Ultra-light','light':'Light','standard':'Standard','powerful':'Powerful','max':'Maximum / GPU'};
   const tierOrder={'minimal':0,'light':1,'standard':2,'powerful':3,'max':4};
-  // Sort: installed first, then fits-RAM, then low-RAM; within each group by tier
+  const cnt=document.getElementById('m-catalog-count');
+  if(cnt){
+    const total=_catalogData.length, shown=catalog.length;
+    cnt.textContent=shown<total?`Showing ${shown} of ${total} models`:`${total} models`;
+    cnt.style.display='';
+  }
   const sorted=[...catalog].sort((a,b)=>{
     const aFits=ram>=a.size_gb, bFits=ram>=b.size_gb;
     const aScore=(a.installed?0:aFits?1:2)*10+(tierOrder[a.tier]||2);
     const bScore=(b.installed?0:bFits?1:2)*10+(tierOrder[b.tier]||2);
     return aScore-bScore;
   });
-  // Group by tier for section headers
   let lastTier='', html='';
   for(const m of sorted){
     const fits=ram>=m.size_gb;
     if(m.tier!==lastTier){
       lastTier=m.tier;
       const tl=tierLabel[m.tier]||m.tier;
-      const ramNeeded=m.tier==='minimal'?'< 2 GB':m.tier==='light'?'2–6 GB':m.tier==='standard'?'6–12 GB':m.tier==='powerful'?'12–20 GB':'32+ GB / GPU';
+      const ramNeeded=m.tier==='minimal'?'< 2 GB':m.tier==='light'?'2–6 GB':m.tier==='standard'?'6–12 GB':m.tier==='powerful'?'12–24 GB':'32+ GB / GPU';
       html+=`<div style="grid-column:1/-1;margin-top:8px;margin-bottom:4px"><span class="badge badge-muted">${tl} — ${ramNeeded} RAM</span></div>`;
     }
     html+=`<div class="mc${m.installed?' border-green':''}">
       <div class="row jb mb8"><h4>${esc(m.name)}</h4>${m.installed?'<span class="badge badge-green">&#x2713; Installed</span>':fits?'<span class="badge badge-accent">Fits your RAM</span>':'<span class="badge badge-yellow">Needs more RAM</span>'}</div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:10px">${esc(m.desc)}</p>
       <div class="row gap8 mb8">
-        <span class="badge badge-muted">&#x1F4BE; ${m.size_gb} GB disk</span>
-        <span class="badge badge-muted">&#x1F9E0; ~${m.size_gb} GB RAM</span>
+        <span class="badge badge-muted">&#x1F4BE; ${m.size_gb} GB</span>
+        <span class="badge badge-muted">${m.family||''}</span>
       </div>
       ${m.installed
         ?`<button class="btn btn-danger btn-sm" onclick="removeModel('${esc(m.id)}')">Remove</button>`
-        :`<button class="btn btn-primary btn-sm" onclick="startPull('${esc(m.id)}')" ${fits?'':'disabled title="Not enough RAM"'}>&#x2B07; Install</button>`
+        :`<button class="btn btn-primary btn-sm" onclick="startPull('${esc(m.id)}')" ${fits?'':'disabled title="Not enough RAM — pull anyway from text input above"'}>&#x2B07; Install</button>`
       }
     </div>`;
   }
-  document.getElementById('m-catalog').innerHTML=html||'<div class="empty"><p>No models available</p></div>';
+  document.getElementById('m-catalog').innerHTML=html||'<div class="empty" style="grid-column:1/-1"><p>No models match your filter</p></div>';
 }
 
 function doPullInput(){
