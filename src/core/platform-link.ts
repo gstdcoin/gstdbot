@@ -116,7 +116,14 @@ export class PlatformLink extends EventEmitter {
                 }),
                 signal: AbortSignal.timeout(10000),
             });
-            if (!resp.ok) throw new Error(`Register failed: ${resp.status}`);
+            if (!resp.ok) {
+                const body = await resp.text().catch(() => '');
+                if (resp.status === 402 && body.includes('DEPLOYMENT_DISABLED')) {
+                    console.warn('[PlatformLink] DEPLOYMENT_DISABLED — registration skipped, running standalone.');
+                    return;
+                }
+                throw new Error(`Register failed: ${resp.status}`);
+            }
             const data: any = await resp.json();
             this.registered = true;
             this.failCount = 0;
@@ -167,7 +174,16 @@ export class PlatformLink extends EventEmitter {
                 signal: AbortSignal.timeout(25000),
             });
 
-            if (!resp.ok) throw new Error(`Heartbeat ${resp.status}`);
+            if (!resp.ok) {
+                const body = await resp.text().catch(() => '');
+                if (resp.status === 402 && body.includes('DEPLOYMENT_DISABLED')) {
+                    // Platform intentionally disabled — stop heartbeating until restart
+                    console.warn('[PlatformLink] DEPLOYMENT_DISABLED — heartbeats suspended.');
+                    this.stop();
+                    return;
+                }
+                throw new Error(`Heartbeat ${resp.status}`);
+            }
             const data: any = await resp.json();
             this.lastHeartbeat = new Date();
             this.failCount = 0;

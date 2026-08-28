@@ -202,6 +202,13 @@ export class UptimeDaemon {
                     this.processPullQueue(data.pull_queue);
                 }
             } else {
+                const body = await resp.text().catch(() => '');
+                if (resp.status === 402 && body.includes('DEPLOYMENT_DISABLED')) {
+                    // Platform intentionally disabled — stop hammering it
+                    console.warn('[NaaS] Platform disabled (DEPLOYMENT_DISABLED). NaaS heartbeats suspended.');
+                    this.stop();
+                    return;
+                }
                 if (this.heartbeatCount % 10 === 0) {
                     console.warn(`[NaaS] Heartbeat error (attempt ${this.heartbeatCount}): HTTP ${resp.status}`);
                 }
