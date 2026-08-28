@@ -87,10 +87,12 @@ export class GstdAiBot {
     private router: NeuralRouter;
     private swarmUrl: string;
     private botToken: string;
+    private adminId: number;
 
     constructor(token: string, swarmUrl: string) {
         this.botToken  = token;
         this.swarmUrl  = swarmUrl;
+        this.adminId   = parseInt(process.env.GSTDAI_ADMIN_ID || '0', 10);
         this.bot       = new Bot<GCtx>(token);
         this.router    = new NeuralRouter(swarmUrl, false);
 
@@ -103,6 +105,12 @@ export class GstdAiBot {
         this.registerCommands();
         this.registerCallbacks();
         this.registerMessageHandler();
+    }
+
+    // ── Admin guard ───────────────────────────────────────────────────────────
+
+    private isAdmin(ctx: any): boolean {
+        return this.adminId > 0 && ctx.from?.id === this.adminId;
     }
 
     // ── API helper ────────────────────────────────────────────────────────────
@@ -210,6 +218,40 @@ export class GstdAiBot {
             await this.showNodeStatus(ctx);
         });
 
+        // /admin — admin panel (owner only)
+        this.bot.command('admin', async (ctx) => {
+            if (!this.isAdmin(ctx)) return;
+            try {
+                const [health, net, nodes] = await Promise.all([
+                    this.api('/api/v1/health').catch(() => ({})),
+                    this.api('/api/v1/network/stats').catch(() => ({})),
+                    this.api('/api/v1/nodes').catch(() => ({ nodes: [] })),
+                ]);
+                const nodeList = nodes.nodes || nodes || [];
+                const price = net.gstd_price_usd > 0 ? `$${Number(net.gstd_price_usd).toFixed(8)}` : 'N/A';
+                await ctx.reply(
+                    `🔐 <b>Admin Panel</b>\n\n` +
+                    `🟢 Платформа: <b>${health.status === 'ok' ? 'Online' : '⚠️ ' + (health.status || '?')}</b>\n` +
+                    `📡 Активных нод: <b>${net.active_workers ?? nodeList.length}</b>\n` +
+                    `⚡ Задач всего: <b>${(net.total_tasks || 0).toLocaleString()}</b>\n` +
+                    `👥 Пользователей: <b>${net.total_users ?? 0}</b>\n` +
+                    `💎 GSTD: <b>${price}</b>\n\n` +
+                    `🤖 @gstdaibot: online`,
+                    {
+                        parse_mode:   'HTML',
+                        reply_markup: {
+                            inline_keyboard: [
+                                [{ text: '📊 Статистика сети', callback_data: 'admin_net' }],
+                                [{ text: '🔄 Проверить ноды',  callback_data: 'admin_nodes' }],
+                            ],
+                        },
+                    }
+                );
+            } catch (err: any) {
+                await ctx.reply(`❌ Ошибка: ${err.message?.slice(0, 80)}`);
+            }
+        });
+
         // /stats — network stats
         this.bot.command('stats', async (ctx) => {
             try {
@@ -231,6 +273,14 @@ export class GstdAiBot {
                 await ctx.reply('❌ Не удалось загрузить статистику.');
             }
         });
+
+        // Set admin-scope commands (only visible to admin)
+        if (this.adminId > 0) {
+            this.bot.api.setMyCommands(
+                [{ command: 'admin', description: '🔐 Admin panel' }],
+                { scope: { type: 'chat', chat_id: this.adminId } }
+            ).catch(() => {});
+        }
 
         // Set bot commands list
         this.bot.api.setMyCommands([
