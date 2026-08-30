@@ -325,6 +325,13 @@ if [ ! -f "$INSTALL_DIR/.env" ] && [ -f "$INSTALL_DIR/.env.example" ]; then
     if [ -n "${NODE_NAME:-}" ]; then
         sed -i "s|^NODE_NAME=.*|NODE_NAME=${NODE_NAME}|" "$INSTALL_DIR/.env"
     fi
+    # Inject GSTD_WALLET_ADDRESS if provided via env
+    if [ -n "${GSTD_WALLET_ADDRESS:-}" ]; then
+        sed -i "s|^GSTD_WALLET_ADDRESS=.*|GSTD_WALLET_ADDRESS=${GSTD_WALLET_ADDRESS}|" "$INSTALL_DIR/.env"
+        info "Wallet address set: ${GSTD_WALLET_ADDRESS:0:12}..."
+    else
+        warn "GSTD_WALLET_ADDRESS not set — run /wallet in @gstdaibot to link your earnings address"
+    fi
     info ".env configured"
 fi
 
