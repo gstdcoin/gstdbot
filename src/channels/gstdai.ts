@@ -55,9 +55,10 @@ const T = {
             `/new — сбросить диалог\n` +
             `/buy — купить GSTD за Telegram Stars\n` +
             `/wallet — привязать TON-кошелёк\n` +
-            `/earn — зарабатывать GSTD (мобильная нода)\n` +
+            `/earn — запустить ноду и зарабатывать GSTD\n` +
             `/balance — баланс\n` +
-            `/node — статус ноды\n` +
+            `/node — статус своей ноды\n` +
+            `/leaderboard — топ нод сети\n` +
             `/stats — статистика сети\n\n` +
             `💡 Просто напиши вопрос — ИИ ответит.`,
         en:
@@ -65,9 +66,10 @@ const T = {
             `/new — reset conversation\n` +
             `/buy — buy GSTD with Telegram Stars\n` +
             `/wallet — link TON wallet\n` +
-            `/earn — earn GSTD (mobile node)\n` +
+            `/earn — run a node and earn GSTD\n` +
             `/balance — balance\n` +
-            `/node — node status\n` +
+            `/node — your node status\n` +
+            `/leaderboard — top nodes leaderboard\n` +
             `/stats — network stats\n\n` +
             `💡 Just send a question — AI will answer.`,
     },
