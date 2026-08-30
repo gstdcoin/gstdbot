@@ -249,8 +249,9 @@ export class GstdAiBot {
         });
 
         // /node + /status
-        this.bot.command('node',   async (ctx) => { await this.showNodeStatus(ctx); });
-        this.bot.command('status', async (ctx) => { await this.showNodeStatus(ctx); });
+        this.bot.command('node',        async (ctx) => { await this.showNodeStatus(ctx); });
+        this.bot.command('status',      async (ctx) => { await this.showNodeStatus(ctx); });
+        this.bot.command('leaderboard', async (ctx) => { await this.showLeaderboard(ctx); });
 
         // /stats
         this.bot.command('stats', async (ctx) => {
@@ -322,8 +323,9 @@ export class GstdAiBot {
             { command: 'wallet',  description: '🔗 Link wallet / Кошелёк' },
             { command: 'earn',    description: '⚡ Earn GSTD / Зарабатывать' },
             { command: 'balance', description: '💎 Balance / Баланс' },
-            { command: 'node',    description: '🖥 Node status / Статус ноды' },
-            { command: 'stats',   description: '📊 Network stats' },
+            { command: 'node',        description: '🖥 Node status / Статус ноды' },
+            { command: 'leaderboard', description: '🏆 Leaderboard / Лидерборд' },
+            { command: 'stats',       description: '📊 Network stats' },
             { command: 'new',     description: '🔄 Reset chat' },
             { command: 'help',    description: 'ℹ️ Help' },
         ]).catch(() => {});
@@ -376,11 +378,12 @@ export class GstdAiBot {
             const data = ctx.callbackQuery.data;
             await ctx.answerCallbackQuery();
 
-            if (data === 'buy_menu')      return this.showBuy(ctx);
-            if (data === 'wallet_menu')   return this.showWallet(ctx);
-            if (data === 'earn_menu')     return this.showEarn(ctx);
-            if (data === 'node_menu')     return this.showNodeStatus(ctx);
-            if (data === 'node_refresh')  return this.showNodeStatus(ctx);
+            if (data === 'buy_menu')         return this.showBuy(ctx);
+            if (data === 'wallet_menu')      return this.showWallet(ctx);
+            if (data === 'earn_menu')        return this.showEarn(ctx);
+            if (data === 'node_menu')        return this.showNodeStatus(ctx);
+            if (data === 'node_refresh')     return this.showNodeStatus(ctx);
+            if (data === 'leaderboard_menu') return this.showLeaderboard(ctx);
             if (data === 'admin_refresh') {
                 if (this.isAdmin(ctx)) return this.showNodeStatus(ctx);
                 return;
@@ -608,43 +611,119 @@ export class GstdAiBot {
 
     private async showEarn(ctx: any) {
         const l = lang(ctx);
-        let totalNodes = 0;
-        try {
-            const net = await this.api('/api/v1/nodes/rewards/network');
-            totalNodes = net.total_nodes || net.active_nodes || 0;
-        } catch { /* no network data, show anyway */ }
 
-        const nodesStr = totalNodes > 0 ? String(totalNodes) : (l === 'ru' ? 'несколько' : 'several');
+        // Fetch real network stats + top earner in parallel
+        let totalNodes = 0;
+        let topEarner = '';
+        let topGstd = 0;
+        try {
+            const [net, lb] = await Promise.all([
+                this.api('/api/v1/network/stats').catch(() => ({})),
+                this.api('/api/v1/nodes/leaderboard?limit=1').catch(() => ({})),
+            ]);
+            totalNodes = (net as any).nodes_online || (net as any).active_nodes || (net as any).total_nodes || 0;
+            const top = ((lb as any).leaderboard || [])[0];
+            if (top) {
+                topEarner = top.name || top.node_id || '';
+                topGstd   = top.gstd_earned || 0;
+            }
+        } catch { /* show anyway */ }
+
+        const nodesStr  = totalNodes > 0 ? String(totalNodes) : (l === 'ru' ? 'несколько' : 'several');
+        const INSTALL_CMD = `curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash`;
+
+        const leaderLine = topGstd > 0
+            ? (l === 'ru'
+                ? `\n🏆 Топ нода: <b>${topEarner || '#1'}</b> — заработала <b>${topGstd.toFixed(4)} GSTD</b>`
+                : `\n🏆 Top node: <b>${topEarner || '#1'}</b> — earned <b>${topGstd.toFixed(4)} GSTD</b>`)
+            : '';
 
         const msg = l === 'ru'
-            ? `⚡ <b>Зарабатывай GSTD — без вложений</b>\n\n` +
-              `Запусти мобильную ноду — твоё устройство обслуживает AI-запросы сети и получает GSTD автоматически.\n\n` +
-              `💰 <b>Примерный заработок:</b>\n` +
-              `📱 Телефон        — <b>0.5–2 GSTD/ч</b>\n` +
-              `🖥 Десктоп 8 ГБ  — <b>1.5 GSTD/ч</b>\n` +
-              `🖥 Десктоп 32 ГБ — <b>5.0 GSTD/ч</b>\n` +
-              `<i>Реальный заработок зависит от нагрузки.</i>\n\n` +
-              `🌐 Нод в сети: <b>${nodesStr}</b> — чем больше пользователей, тем выше спрос.\n\n` +
-              `<b>Нужен TON-кошелёк для получения выплат → /wallet</b>`
-            : `⚡ <b>Earn GSTD — no investment needed</b>\n\n` +
-              `Launch the mobile node — your device serves AI requests from the network and earns GSTD automatically.\n\n` +
-              `💰 <b>Estimated earnings:</b>\n` +
-              `📱 Any phone      — <b>0.5–2 GSTD/h</b>\n` +
-              `🖥 Desktop 8GB   — <b>1.5 GSTD/h</b>\n` +
-              `🖥 Desktop 32GB  — <b>5.0 GSTD/h</b>\n` +
-              `<i>Actual earnings depend on network demand.</i>\n\n` +
-              `🌐 Nodes online: <b>${nodesStr}</b> — more users = more demand.\n\n` +
-              `<b>A TON wallet is required to receive payouts → /wallet</b>`;
+            ? `⚡ <b>Запусти ноду — зарабатывай GSTD</b>\n\n` +
+              `Нода принимает AI-запросы из сети и зарабатывает GSTD за каждый ответ.\n` +
+              `<b>100% выплат идёт операторам</b> — платформа не берёт комиссию.\n\n` +
+              `💰 <b>Заработок (по уровням):</b>\n` +
+              `🔵 Облачный режим — <b>0.001–0.005 GSTD/задачу</b> (не нужен GPU)\n` +
+              `🟡 8 ГБ RAM + Ollama — <b>0.005–0.015 GSTD/задачу</b>\n` +
+              `🟢 32 ГБ RAM + Ollama — <b>до 0.015 GSTD/задачу</b>\n` +
+              `<i>Заработок зависит от количества запросов в сети.</i>${leaderLine}\n\n` +
+              `🌐 Нод онлайн: <b>${nodesStr}</b>\n\n` +
+              `<b>⚡ Одна команда — нода запускается автоматически:</b>\n` +
+              `<code>${INSTALL_CMD}</code>\n\n` +
+              `<b>Нужен TON-кошелёк → /wallet</b>`
+            : `⚡ <b>Run a node — earn GSTD</b>\n\n` +
+              `Your node handles AI requests from the network and earns GSTD per response.\n` +
+              `<b>100% of fees go to node operators</b> — no platform cut.\n\n` +
+              `💰 <b>Earnings (by tier):</b>\n` +
+              `🔵 Cloud mode — <b>0.001–0.005 GSTD/task</b> (no GPU needed)\n` +
+              `🟡 8GB RAM + Ollama — <b>0.005–0.015 GSTD/task</b>\n` +
+              `🟢 32GB RAM + Ollama — <b>up to 0.015 GSTD/task</b>\n` +
+              `<i>Earnings scale with network demand.</i>${leaderLine}\n\n` +
+              `🌐 Nodes online: <b>${nodesStr}</b>\n\n` +
+              `<b>⚡ One command — node starts automatically:</b>\n` +
+              `<code>${INSTALL_CMD}</code>\n\n` +
+              `<b>A TON wallet is required → /wallet</b>`;
 
         await ctx.reply(msg, {
             parse_mode:   'HTML',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: l === 'ru' ? '🚀 Запустить ноду' : '🚀 Launch node', web_app: { url: `${TMA_URL}?lang=${l}` } }],
-                    [{ text: l === 'ru' ? '🔗 Привязать кошелёк' : '🔗 Link wallet', callback_data: 'wallet_menu' }],
+                    [{ text: l === 'ru' ? '🚀 Инструкция (TMA)' : '🚀 Setup guide (TMA)', web_app: { url: `${TMA_URL}?lang=${l}` } }],
+                    [
+                        { text: l === 'ru' ? '🏆 Лидерборд' : '🏆 Leaderboard', callback_data: 'leaderboard_menu' },
+                        { text: l === 'ru' ? '🔗 Привязать кошелёк' : '🔗 Link wallet', callback_data: 'wallet_menu' },
+                    ],
                 ],
             },
         });
+    }
+
+    private async showLeaderboard(ctx: any) {
+        const l = lang(ctx);
+        try {
+            const [lb, price] = await Promise.all([
+                this.api('/api/v1/nodes/leaderboard?limit=10').catch(() => ({ leaderboard: [] })),
+                this.api('/api/v1/market/price').catch(() => ({})),
+            ]);
+            const entries: any[] = (lb as any).leaderboard || [];
+            const gstdPrice: number = (price as any).gstd_price_usd || 0;
+
+            if (!entries.length) {
+                return ctx.reply(l === 'ru'
+                    ? '🏆 Лидерборд пока пуст. Запусти первую ноду → /earn'
+                    : '🏆 Leaderboard is empty. Launch the first node → /earn',
+                    { parse_mode: 'HTML' });
+            }
+
+            const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+            const rows = entries.map((e: any, i: number) => {
+                const name = (e.name || e.node_id || '?').slice(0, 18);
+                const earned = (e.gstd_earned || 0).toFixed(4);
+                const usd = gstdPrice > 0 ? ` ≈$${(e.gstd_earned * gstdPrice).toFixed(4)}` : '';
+                const rep = e.reputation_score > 0 ? ` ⭐${e.reputation_score}` : '';
+                const online = e.online ? ' 🟢' : '';
+                return `${medals[i] || `${i + 1}.`} <b>${name}</b>${online}\n   ${earned} GSTD${usd}${rep}`;
+            }).join('\n');
+
+            const header = l === 'ru'
+                ? `🏆 <b>Топ нод GSTD</b>\n\n`
+                : `🏆 <b>Top GSTD Nodes</b>\n\n`;
+            const footer = l === 'ru'
+                ? `\n\n<i>Твоя нода → /node · Запустить → /earn</i>`
+                : `\n\n<i>Your node → /node · Launch → /earn</i>`;
+
+            await ctx.reply(header + rows + footer, {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [[
+                        { text: l === 'ru' ? '⚡ Запустить ноду' : '⚡ Launch node', callback_data: 'earn_menu' },
+                        { text: l === 'ru' ? '🖥 Моя нода' : '🖥 My node', callback_data: 'node_menu' },
+                    ]],
+                },
+            });
+        } catch {
+            await ctx.reply(l === 'ru' ? '❌ Не удалось загрузить лидерборд.' : '❌ Failed to load leaderboard.');
+        }
     }
 
     private async showBalance(ctx: any) {
