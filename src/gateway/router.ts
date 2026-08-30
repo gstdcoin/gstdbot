@@ -185,7 +185,7 @@ export class NeuralRouter {
 
         // ─── L2: GSTD Task Queue (submit → node processes → poll result → earnings) ─
         try {
-            const result = await this.routeViaTaskQueue(platformUrl, ollamaModel, messages, 45000, telegramId);
+            const result = await this.routeViaTaskQueue(platformUrl, ollamaModel, messages, 120000, telegramId);
             if (result) {
                 this.cache.set(cacheKey, result.content, result.model);
                 demandTracker.record(result.model);

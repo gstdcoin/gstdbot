@@ -878,6 +878,8 @@ export class GstdAiBot {
             const perHour   = earnings.gstd_per_hour != null && earnings.gstd_per_hour > 0
                 ? `${earnings.gstd_per_hour.toFixed(4)} GSTD/h` : null;
 
+            const uptimeRate = isEarly ? 0.1 : 0.05; // GSTD/hour
+            const uptimeDay  = (uptimeRate * 24).toFixed(2);
             const earlyLine = isEarly
                 ? (l === 'ru' ? `🌟 <b>Ранний оператор — 2× навсегда!</b>\n` : `🌟 <b>Early Operator — 2× forever!</b>\n`)
                 : '';
@@ -891,7 +893,8 @@ export class GstdAiBot {
                   `⚡ Задач: <b>${tasks}</b>${earned24h ? ` · За 24ч: <b>${earned24h}</b>` : ''}\n` +
                   `💰 Заработано: <b>${earned} GSTD</b>${usdTotal ? ` <i>${usdTotal}</i>` : ''}${isEarly ? ' <i>(2×)</i>' : ''}\n` +
                   (perHour ? `📈 Темп: <b>${perHour}</b>\n` : '') +
-                  `🕐 Последний раз: <b>${since}</b>\n\n` +
+                  `🕐 Последний раз: <b>${since}</b>\n` +
+                  `⏱ Аптайм-ставка: <b>${uptimeRate} GSTD/ч</b> → ~<b>${uptimeDay} GSTD/день</b>\n\n` +
                   `Нод в сети: <b>${(net as any).active_workers ?? '?'}</b>\n` +
                   `<i>Чем выше репутация — тем больше задач роутится на твою ноду.</i>`
                 : `🖥 <b>Your node</b>\n\n` +
@@ -902,7 +905,8 @@ export class GstdAiBot {
                   `⚡ Tasks: <b>${tasks}</b>${earned24h ? ` · 24h: <b>${earned24h}</b>` : ''}\n` +
                   `💰 Earned: <b>${earned} GSTD</b>${usdTotal ? ` <i>${usdTotal}</i>` : ''}${isEarly ? ' <i>(2×)</i>' : ''}\n` +
                   (perHour ? `📈 Rate: <b>${perHour}</b>\n` : '') +
-                  `🕐 Last seen: <b>${since}</b>\n\n` +
+                  `🕐 Last seen: <b>${since}</b>\n` +
+                  `⏱ Uptime rate: <b>${uptimeRate} GSTD/h</b> → ~<b>${uptimeDay} GSTD/day</b>\n\n` +
                   `Nodes online: <b>${(net as any).active_workers ?? '?'}</b>\n` +
                   `<i>Higher reputation = more tasks routed to your node.</i>`;
 

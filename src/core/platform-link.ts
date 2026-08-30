@@ -196,6 +196,9 @@ export class PlatformLink extends EventEmitter {
             const data: any = await resp.json();
             this.lastHeartbeat = new Date();
             this.failCount = 0;
+            if (data.uptime_reward > 0) {
+                console.log(`  💰 Uptime reward: +${data.uptime_reward.toFixed(6)} GSTD`);
+            }
             this.emit('heartbeat', { ...data, sentAt: this.lastHeartbeat });
 
             if (data.commands?.length > 0) {
