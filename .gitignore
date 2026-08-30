@@ -17,3 +17,11 @@ tsconfig.tsbuildinfo
 
 # Temp output from tests/p2p-quorum-live.ts (not committed, regenerate locally)
 .p2p-test-tmp/
+
+# wrangler files (auto-generated, not part of this repo)
+.wrangler
+wrangler.jsonc
+wrangler.toml
+.dev.vars*
+!.dev.vars.example
+!.env.example
