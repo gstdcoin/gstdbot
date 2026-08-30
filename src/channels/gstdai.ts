@@ -614,6 +614,7 @@ export class GstdAiBot {
 
         // Fetch real network stats + top earner in parallel
         let totalNodes = 0;
+        let earlySlots = 9;
         let topEarner = '';
         let topGstd = 0;
         try {
@@ -621,16 +622,23 @@ export class GstdAiBot {
                 this.api('/api/v1/network/stats').catch(() => ({})),
                 this.api('/api/v1/nodes/leaderboard?limit=1').catch(() => ({})),
             ]);
-            totalNodes = (net as any).nodes_online || (net as any).active_nodes || (net as any).total_nodes || 0;
-            const top = ((lb as any).leaderboard || [])[0];
+            totalNodes  = (net as any).active_workers || (net as any).total_nodes || 0;
+            earlySlots  = (net as any).early_adopter_slots ?? Math.max(0, 10 - totalNodes);
+            const top   = ((lb as any).leaderboard || [])[0];
             if (top) {
                 topEarner = top.name || top.node_id || '';
                 topGstd   = top.gstd_earned || 0;
             }
         } catch { /* show anyway */ }
 
-        const nodesStr  = totalNodes > 0 ? String(totalNodes) : (l === 'ru' ? 'несколько' : 'several');
+        const nodesStr   = totalNodes > 0 ? String(totalNodes) : (l === 'ru' ? 'несколько' : 'several');
         const INSTALL_CMD = `curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash`;
+
+        const earlyLine = earlySlots > 0
+            ? (l === 'ru'
+                ? `\n🏁 <b>Race to 10: осталось ${earlySlots} слот${earlySlots === 1 ? '' : earlySlots < 5 ? 'а' : 'ов'} из 10</b> — ранние операторы зарабатывают <b>2×</b> навсегда!`
+                : `\n🏁 <b>Race to 10: ${earlySlots} of 10 slots left</b> — early operators earn <b>2× forever!</b>`)
+            : (l === 'ru' ? '\n✅ Все 10 ранних слотов заняты.' : '\n✅ All 10 early operator slots are taken.');
 
         const leaderLine = topGstd > 0
             ? (l === 'ru'
@@ -643,10 +651,10 @@ export class GstdAiBot {
               `Нода принимает AI-запросы из сети и зарабатывает GSTD за каждый ответ.\n` +
               `<b>100% выплат идёт операторам</b> — платформа не берёт комиссию.\n\n` +
               `💰 <b>Заработок (по уровням):</b>\n` +
-              `🔵 Облачный режим — <b>0.001–0.005 GSTD/задачу</b> (не нужен GPU)\n` +
+              `🔵 Облачный режим — <b>0.001–0.005 GSTD/задачу</b>\n` +
               `🟡 8 ГБ RAM + Ollama — <b>0.005–0.015 GSTD/задачу</b>\n` +
               `🟢 32 ГБ RAM + Ollama — <b>до 0.015 GSTD/задачу</b>\n` +
-              `<i>Заработок зависит от количества запросов в сети.</i>${leaderLine}\n\n` +
+              `<i>Заработок зависит от нагрузки сети.</i>${earlyLine}${leaderLine}\n\n` +
               `🌐 Нод онлайн: <b>${nodesStr}</b>\n\n` +
               `<b>⚡ Одна команда — нода запускается автоматически:</b>\n` +
               `<code>${INSTALL_CMD}</code>\n\n` +
@@ -655,10 +663,10 @@ export class GstdAiBot {
               `Your node handles AI requests from the network and earns GSTD per response.\n` +
               `<b>100% of fees go to node operators</b> — no platform cut.\n\n` +
               `💰 <b>Earnings (by tier):</b>\n` +
-              `🔵 Cloud mode — <b>0.001–0.005 GSTD/task</b> (no GPU needed)\n` +
+              `🔵 Cloud mode — <b>0.001–0.005 GSTD/task</b>\n` +
               `🟡 8GB RAM + Ollama — <b>0.005–0.015 GSTD/task</b>\n` +
               `🟢 32GB RAM + Ollama — <b>up to 0.015 GSTD/task</b>\n` +
-              `<i>Earnings scale with network demand.</i>${leaderLine}\n\n` +
+              `<i>Earnings scale with network demand.</i>${earlyLine}${leaderLine}\n\n` +
               `🌐 Nodes online: <b>${nodesStr}</b>\n\n` +
               `<b>⚡ One command — node starts automatically:</b>\n` +
               `<code>${INSTALL_CMD}</code>\n\n` +
@@ -702,7 +710,8 @@ export class GstdAiBot {
                 const usd = gstdPrice > 0 ? ` ≈$${(e.gstd_earned * gstdPrice).toFixed(4)}` : '';
                 const rep = e.reputation_score > 0 ? ` ⭐${e.reputation_score}` : '';
                 const online = e.online ? ' 🟢' : '';
-                return `${medals[i] || `${i + 1}.`} <b>${name}</b>${online}\n   ${earned} GSTD${usd}${rep}`;
+                const earlyBadge = e.early_adopter ? ' 🌟' : '';
+                return `${medals[i] || `${i + 1}.`} <b>${name}</b>${earlyBadge}${online}\n   ${earned} GSTD${usd}${rep}`;
             }).join('\n');
 
             const header = l === 'ru'
@@ -813,6 +822,7 @@ export class GstdAiBot {
             const since   = lastSeenMs ? new Date(lastSeenMs).toLocaleTimeString(l === 'ru' ? 'ru-RU' : 'en-US') : '?';
             const rep     = node.reputation_score || 0;
             const avgMs   = node.avg_response_ms  || 0;
+            const isEarly = node.early_adopter === 1 || node.early_adopter === true;
 
             // Fetch detailed earnings (USD value, 24h rate)
             const earnings: any = await this.api(`/api/v1/nodes/${node.node_id}/earnings`).catch(() => ({}));
@@ -821,23 +831,29 @@ export class GstdAiBot {
             const perHour   = earnings.gstd_per_hour != null && earnings.gstd_per_hour > 0
                 ? `${earnings.gstd_per_hour.toFixed(4)} GSTD/h` : null;
 
+            const earlyLine = isEarly
+                ? (l === 'ru' ? `🌟 <b>Ранний оператор — 2× навсегда!</b>\n` : `🌟 <b>Early Operator — 2× forever!</b>\n`)
+                : '';
+
             const msg = l === 'ru'
                 ? `🖥 <b>Твоя нода</b>\n\n` +
+                  earlyLine +
                   `${online ? '🟢' : '🔴'} Статус: <b>${online ? 'Online' : 'Offline'}</b>\n` +
                   `📦 Версия: <b>${node.version || '?'}</b>\n` +
                   `⭐ Репутация: <b>${rep}/100</b>${avgMs ? ` (${avgMs}мс)` : ''}\n` +
                   `⚡ Задач: <b>${tasks}</b>${earned24h ? ` · За 24ч: <b>${earned24h}</b>` : ''}\n` +
-                  `💰 Заработано: <b>${earned} GSTD</b>${usdTotal ? ` <i>${usdTotal}</i>` : ''}\n` +
+                  `💰 Заработано: <b>${earned} GSTD</b>${usdTotal ? ` <i>${usdTotal}</i>` : ''}${isEarly ? ' <i>(2×)</i>' : ''}\n` +
                   (perHour ? `📈 Темп: <b>${perHour}</b>\n` : '') +
                   `🕐 Последний раз: <b>${since}</b>\n\n` +
                   `Нод в сети: <b>${(net as any).active_workers ?? '?'}</b>\n` +
                   `<i>Чем выше репутация — тем больше задач роутится на твою ноду.</i>`
                 : `🖥 <b>Your node</b>\n\n` +
+                  earlyLine +
                   `${online ? '🟢' : '🔴'} Status: <b>${online ? 'Online' : 'Offline'}</b>\n` +
                   `📦 Version: <b>${node.version || '?'}</b>\n` +
                   `⭐ Reputation: <b>${rep}/100</b>${avgMs ? ` (${avgMs}ms)` : ''}\n` +
                   `⚡ Tasks: <b>${tasks}</b>${earned24h ? ` · 24h: <b>${earned24h}</b>` : ''}\n` +
-                  `💰 Earned: <b>${earned} GSTD</b>${usdTotal ? ` <i>${usdTotal}</i>` : ''}\n` +
+                  `💰 Earned: <b>${earned} GSTD</b>${usdTotal ? ` <i>${usdTotal}</i>` : ''}${isEarly ? ' <i>(2×)</i>' : ''}\n` +
                   (perHour ? `📈 Rate: <b>${perHour}</b>\n` : '') +
                   `🕐 Last seen: <b>${since}</b>\n\n` +
                   `Nodes online: <b>${(net as any).active_workers ?? '?'}</b>\n` +
