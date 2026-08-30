@@ -8,6 +8,7 @@ import { Bot, Context, session } from 'grammy';
 import { NeuralRouter } from '../gateway/router.js';
 import { createClient, type RedisClientType } from 'redis';
 import crypto from 'crypto';
+import { beginCell, Address } from '@ton/core';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -424,6 +425,8 @@ export class GstdAiBot {
             if (data === 'earn_menu')        return this.showEarn(ctx);
             if (data === 'node_menu')        return this.showNodeStatus(ctx);
             if (data === 'node_refresh')     return this.showNodeStatus(ctx);
+            if (data === 'claim_gstd')       return this.showClaimVoucher(ctx);
+            if (data.startsWith('claim_confirm_')) return this.confirmClaim(ctx, data);
             if (data === 'leaderboard_menu') return this.showLeaderboard(ctx);
             if (data === 'admin_refresh') {
                 if (this.isAdmin(ctx)) return this.showNodeStatus(ctx);
@@ -916,13 +919,116 @@ export class GstdAiBot {
                   `Nodes online: <b>${(net as any).active_workers ?? '?'}</b>\n` +
                   `<i>Higher reputation = more tasks routed to your node.</i>`;
 
+            const claimBtn = node.gstd_earned >= 0.01
+                ? [{ text: l === 'ru' ? '💸 Вывести GSTD' : '💸 Withdraw GSTD', callback_data: 'claim_gstd' }]
+                : [];
             await ctx.reply(msg, {
                 parse_mode:   'HTML',
-                reply_markup: { inline_keyboard: [[{ text: l === 'ru' ? '🔄 Обновить' : '🔄 Refresh', callback_data: 'node_refresh' }]] },
+                reply_markup: { inline_keyboard: [
+                    [{ text: l === 'ru' ? '🔄 Обновить' : '🔄 Refresh', callback_data: 'node_refresh' }],
+                    ...(claimBtn.length ? [claimBtn] : []),
+                ]},
             });
         } catch (err: any) {
             console.error('[gstdaibot] node status:', err.message);
             await ctx.reply(l === 'ru' ? '❌ Не удалось получить статус.' : '❌ Failed to get status.');
+        }
+    }
+
+    // ── GSTD Uptime Claim ─────────────────────────────────────────────────────
+
+    private async showClaimVoucher(ctx: Context): Promise<void> {
+        const l  = lang(ctx);
+        const tid = ctx.from?.id;
+        if (!tid) return;
+
+        const loading = l === 'ru' ? '⏳ Готовим ваучер...' : '⏳ Preparing voucher...';
+        await ctx.reply(loading);
+
+        try {
+            const voucher: any = await this.api(`/api/v1/claim/voucher?telegram_id=${tid}`);
+
+            if (voucher.error === 'no_wallet') {
+                return void ctx.reply(l === 'ru' ? '❌ Сначала привяжи кошелёк → /wallet' : '❌ Link your wallet first → /wallet');
+            }
+            if (voucher.error === 'nothing_to_claim') {
+                return void ctx.reply(l === 'ru'
+                    ? `❌ Минимум 0.01 GSTD для вывода. Сейчас: ${voucher.current?.toFixed(4) ?? 0} GSTD`
+                    : `❌ Minimum 0.01 GSTD to withdraw. Current: ${voucher.current?.toFixed(4) ?? 0} GSTD`);
+            }
+            if (voucher.error === 'claim_not_enabled') {
+                return void ctx.reply(l === 'ru' ? '❌ Функция вывода ещё не активирована.' : '❌ Withdrawal not yet enabled.');
+            }
+
+            // Build ClaimUptime message BOC for Tonkeeper deep link
+            const sigBytes = Buffer.from(voucher.signature_hex, 'hex');
+            const body = beginCell()
+                .storeUint(0xC1A10002, 32)                          // ClaimUptime opcode
+                .storeAddress(Address.parse(voucher.wallet))
+                .storeCoins(BigInt(voucher.amount_nano))
+                .storeUint(BigInt(voucher.nonce), 64)
+                .storeUint(BigInt(voucher.expiry), 64)
+                .storeRef(beginCell().storeBuffer(sigBytes).endCell())  // sigCell
+                .endCell();
+            const bocBase64 = body.toBoc().toString('base64url');
+
+            const amount    = voucher.amount_gstd.toFixed(4);
+            const contract  = voucher.contract;
+            const deepLink  = `ton://transfer/${contract}?amount=150000000&bin=${bocBase64}`;
+            const expiresAt = new Date(voucher.expiry * 1000).toLocaleTimeString(l === 'ru' ? 'ru-RU' : 'en-US');
+
+            const text = l === 'ru'
+                ? `💸 <b>Вывод GSTD</b>\n\n` +
+                  `Сумма: <b>${amount} GSTD</b>\n` +
+                  `Кошелёк: <code>${voucher.wallet.slice(0,10)}...${voucher.wallet.slice(-6)}</code>\n` +
+                  `Ваучер действует до: <b>${expiresAt}</b>\n\n` +
+                  `1. Нажми <b>«Открыть Tonkeeper»</b>\n` +
+                  `2. Подтверди транзакцию (0.15 TON газ)\n` +
+                  `3. Вернись и нажми <b>«✅ Подтвердить»</b>`
+                : `💸 <b>Withdraw GSTD</b>\n\n` +
+                  `Amount: <b>${amount} GSTD</b>\n` +
+                  `Wallet: <code>${voucher.wallet.slice(0,10)}...${voucher.wallet.slice(-6)}</code>\n` +
+                  `Voucher valid until: <b>${expiresAt}</b>\n\n` +
+                  `1. Tap <b>«Open Tonkeeper»</b>\n` +
+                  `2. Confirm transaction (0.15 TON gas)\n` +
+                  `3. Come back and tap <b>«✅ Confirm»</b>`;
+
+            await ctx.reply(text, {
+                parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: [
+                    [{ text: l === 'ru' ? '🔗 Открыть Tonkeeper' : '🔗 Open Tonkeeper', url: deepLink }],
+                    [{ text: l === 'ru' ? '✅ Подтвердить получение' : '✅ Confirm receipt', callback_data: `claim_confirm_${voucher.nonce}_${tid}` }],
+                ]},
+            });
+        } catch (err: any) {
+            console.error('[gstdaibot] claim voucher:', err.message);
+            await ctx.reply(l === 'ru' ? '❌ Ошибка. Попробуй позже.' : '❌ Error. Try again later.');
+        }
+    }
+
+    private async confirmClaim(ctx: Context, data: string): Promise<void> {
+        const l = lang(ctx);
+        const parts = data.replace('claim_confirm_', '').split('_');
+        const nonce = parts.slice(0, -1).join('_');
+        const tid   = ctx.from?.id;
+        if (!nonce || !tid) return;
+
+        try {
+            const result: any = await this.api('/api/v1/claim/confirm', {
+                method: 'POST',
+                body: JSON.stringify({ nonce, telegram_id: tid }),
+            });
+            if (result.ok) {
+                await ctx.reply(l === 'ru'
+                    ? `✅ <b>${result.claimed_gstd?.toFixed(4)} GSTD</b> подтверждены!\n\nТокены уже на пути в твой кошелёк.`
+                    : `✅ <b>${result.claimed_gstd?.toFixed(4)} GSTD</b> confirmed!\n\nTokens are on their way to your wallet.`,
+                    { parse_mode: 'HTML' });
+            } else {
+                await ctx.reply(l === 'ru' ? '⚠️ Ваучер не найден или истёк.' : '⚠️ Voucher not found or expired.');
+            }
+        } catch (err: any) {
+            console.error('[gstdaibot] claim confirm:', err.message);
+            await ctx.reply(l === 'ru' ? '❌ Ошибка подтверждения.' : '❌ Confirmation error.');
         }
     }
 
