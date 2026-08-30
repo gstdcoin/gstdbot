@@ -477,7 +477,7 @@ export class SwarmAgent {
             try {
                 execSync(`git merge-base --is-ancestor ${snapshot} ${remote}`, { cwd: installDir, timeout: 5000 });
             } catch {
-                logActivity(`Skipping update: origin/main (${remote.slice(0, 8)}) is not a descendant of local HEAD (${snapshot.slice(0, 8)}) -- local commits would be lost`, 'warn');
+                logActivity(`Skipping update: local (${snapshot.slice(0, 8)}) is ahead of origin/main (${remote.slice(0, 8)})`, 'info');
                 return;
             }
 

@@ -641,7 +641,7 @@ async function main(): Promise<void> {
             try {
                 execSync(`git merge-base --is-ancestor ${localHash} ${remoteHash}`, { cwd: installDir, timeout: 5000 });
             } catch {
-                logActivity(`Skipping update: origin/main (${remoteHash.slice(0,8)}) is not a descendant of local HEAD (${localHash.slice(0,8)}) -- local commits would be lost`, 'warn');
+                logActivity(`Skipping update: local (${localHash.slice(0,8)}) is ahead of origin/main (${remoteHash.slice(0,8)})`, 'info');
                 return;
             }
 
