@@ -35,9 +35,9 @@ import type { AttestorIdentity } from './identity.js';
 //
 // If this Pi goes offline long-term, remove the entry and publish a new
 // release rather than leaving a stale bootstrap that causes connect loops.
-export const DEFAULT_BOOTSTRAP_PEERS: string[] = [
-    '/dns4/node.gstdtoken.com/tcp/443/wss/p2p/12D3KooWJwoerHaucUfo8rD6ycXCqdfAK4zhqUW3sYFXX8zJDTmF',
-];
+// Bootstrap peers loaded dynamically from GitHub (peers.ts) and env GSTD_BOOTSTRAP_PEERS.
+// Hardcoded entries removed — they cause self-connect loops when the node IS the bootstrap.
+export const DEFAULT_BOOTSTRAP_PEERS: string[] = [];
 
 const GSTD_DEFAULT_BOOTSTRAP: string[] = [
     ...DEFAULT_BOOTSTRAP_PEERS,
