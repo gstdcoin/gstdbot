@@ -852,8 +852,14 @@ export class GstdAiBot {
             if (!nodeList.length) {
                 return ctx.reply(
                     l === 'ru'
-                        ? `🖥 <b>Нода не найдена</b>\n\nКошелёк: <code>${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}</code>\n\nЗапусти ноду → /earn`
-                        : `🖥 <b>Node not found</b>\n\nWallet: <code>${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}</code>\n\nLaunch a node → /earn`,
+                        ? `🖥 <b>Нода не найдена</b>\n\n` +
+                          `Кошелёк в боте: <code>${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}</code>\n\n` +
+                          `<i>Убедись, что в файле .env ноды переменная <code>GSTD_WALLET_ADDRESS</code> совпадает с кошельком выше. Разные адреса — нода не привяжется к аккаунту.</i>\n\n` +
+                          `Ещё нет ноды? → /earn`
+                        : `🖥 <b>Node not found</b>\n\n` +
+                          `Bot wallet: <code>${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}</code>\n\n` +
+                          `<i>Make sure your node's <code>GSTD_WALLET_ADDRESS</code> in .env matches the wallet above. Different addresses = node won't link to your account.</i>\n\n` +
+                          `No node yet? → /earn`,
                     {
                         parse_mode:   'HTML',
                         reply_markup: { inline_keyboard: [[{ text: l === 'ru' ? '🚀 Запустить ноду' : '🚀 Launch node', web_app: { url: TMA_URL } }]] },
