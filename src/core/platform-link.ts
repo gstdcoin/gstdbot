@@ -103,9 +103,15 @@ export class PlatformLink extends EventEmitter {
         console.log(`  🔗 Platform Link: heartbeat every ${intervalMs / 1000}s → ${this.platformUrl}`);
     }
 
+    private readTunnelUrl(): string {
+        try { return readFileSync('/tmp/gstd_tunnel_url.txt', 'utf8').trim(); } catch { return ''; }
+    }
+
     private async register() {
         try {
             const caps = this.capabilitiesProvider?.() || {};
+            const tunnelUrl = this.readTunnelUrl() || process.env.GSTD_PUBLIC_URL || '';
+            const models: string[] = (caps as any).models || [];
             const resp = await fetch(`${this.platformUrl}/api/v1/nodes/register`, {
                 method: 'POST',
                 headers: {
@@ -113,7 +119,12 @@ export class PlatformLink extends EventEmitter {
                     'X-Wallet-Address': this.walletAddress,
                 },
                 body: JSON.stringify({
-                    name: process.env.NODE_NAME || this.nodeId,
+                    node_id:      this.nodeId,
+                    name:         process.env.NODE_NAME || this.nodeId,
+                    wallet:       this.walletAddress,
+                    public_url:   tunnelUrl,
+                    capabilities: models,
+                    node_version: this.version,
                     specs: {
                         node_id: this.nodeId,
                         version: this.version,
@@ -236,6 +247,76 @@ export class PlatformLink extends EventEmitter {
         }
     }
 
+    // ── Task poll loop ────────────────────────────────────────────────────────
+    // Polls platform for pending AI tasks, runs them on local Ollama, reports result.
+    // Nodes earn TASK_FEE_GSTD per completed task recorded in D1.
+
+    private taskTimer: NodeJS.Timeout | null = null;
+    private tasksBusy = false;
+
+    startTaskLoop(intervalMs = 5000) {
+        this.taskTimer = setInterval(() => this.pollAndProcess(), intervalMs);
+        console.log(`  ⚡ Task loop: polling every ${intervalMs / 1000}s`);
+    }
+
+    private async pollAndProcess() {
+        if (this.tasksBusy || !this.registered) return;
+        this.tasksBusy = true;
+        try {
+            const resp = await fetch(
+                `${this.platformUrl}/api/v1/tasks/poll?node_id=${encodeURIComponent(this.nodeId)}`,
+                { signal: AbortSignal.timeout(8000) }
+            );
+            if (!resp.ok) return;
+            const data: any = await resp.json();
+            if (!data.task?.task_id) return;
+
+            const { task_id, model = 'llama3.2:3b', prompt = '' } = data.task;
+            const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
+
+            let messages: any[];
+            try { messages = JSON.parse(prompt); } catch { messages = [{ role: 'user', content: prompt }]; }
+            if (!Array.isArray(messages)) messages = [{ role: 'user', content: prompt }];
+
+            try {
+                const aiResp = await fetch(`${ollamaUrl}/v1/chat/completions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model, messages, stream: false }),
+                    signal: AbortSignal.timeout(90000),
+                });
+                const aiData: any = aiResp.ok ? await aiResp.json() : null;
+                const content = aiData?.choices?.[0]?.message?.content || '';
+
+                await fetch(`${this.platformUrl}/api/v1/tasks/complete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        task_id,
+                        node_id: this.nodeId,
+                        result: content || null,
+                        error: content ? null : 'empty response',
+                    }),
+                    signal: AbortSignal.timeout(10000),
+                });
+
+                if (content) {
+                    console.log(`  ✅ Task ${task_id} completed (${model}, ${content.length} chars)`);
+                    this.emit('task:completed', { task_id, model });
+                }
+            } catch (err: any) {
+                await fetch(`${this.platformUrl}/api/v1/tasks/complete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_id, node_id: this.nodeId, error: err.message }),
+                    signal: AbortSignal.timeout(5000),
+                }).catch(() => {});
+            }
+        } catch { /* ignore poll errors */ } finally {
+            this.tasksBusy = false;
+        }
+    }
+
     getStatus() {
         return {
             registered: this.registered,
@@ -248,5 +329,6 @@ export class PlatformLink extends EventEmitter {
 
     stop() {
         if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+        if (this.taskTimer) clearInterval(this.taskTimer);
     }
 }
