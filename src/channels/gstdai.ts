@@ -463,7 +463,8 @@ export class GstdAiBot {
             ];
 
             try {
-                const result = await this.router.route('auto', messages);
+                const uid = ctx.from?.id;
+                const result = await this.router.route('auto', messages, uid);
                 const answer = result.content;
 
                 if (question.length > 5) cacheSet(question, answer, result.model).catch(() => {});
@@ -472,7 +473,8 @@ export class GstdAiBot {
                 ctx.session.history.push({ role: 'assistant', content: answer });
                 if (ctx.session.history.length > 40) ctx.session.history = ctx.session.history.slice(-30);
 
-                const footer = `\n\n${result.tier === 'cache' ? '⚡' : '🆓'} ${result.model} · ${result.latencyMs}ms`;
+                const tierIcon = result.tier === 'cache' ? '⚡' : result.nodeId ? '🌐' : '🖥';
+                const footer = `\n\n${tierIcon} ${result.model}${result.nodeId ? ' · node' : ''} · ${result.latencyMs}ms`;
                 await sendHtml(ctx, markdownToHtml(answer + footer));
             } catch (err: any) {
                 console.error('[gstdaibot] AI error:', err.message);
@@ -724,24 +726,43 @@ export class GstdAiBot {
                 );
             }
 
-            const node   = nodeList[0];
-            const online = node.last_seen ? Date.now() - node.last_seen < 10 * 60 * 1000 : false;
-            const tasks  = (node.tasks_completed || 0).toLocaleString();
-            const since  = node.last_seen ? new Date(node.last_seen).toLocaleTimeString(l === 'ru' ? 'ru-RU' : 'en-US') : '?';
+            const node    = nodeList[0];
+            const lastSeenMs = node.last_seen ? node.last_seen * 1000 : 0;
+            const online  = lastSeenMs ? Date.now() - lastSeenMs < 15 * 60 * 1000 : false;
+            const tasks   = (node.tasks_completed || 0).toLocaleString();
+            const earned  = typeof node.gstd_earned === 'number' ? node.gstd_earned.toFixed(4) : '0.0000';
+            const since   = lastSeenMs ? new Date(lastSeenMs).toLocaleTimeString(l === 'ru' ? 'ru-RU' : 'en-US') : '?';
+            const rep     = node.reputation_score || 0;
+            const avgMs   = node.avg_response_ms  || 0;
+
+            // Fetch detailed earnings (USD value, 24h rate)
+            const earnings: any = await this.api(`/api/v1/nodes/${node.node_id}/earnings`).catch(() => ({}));
+            const usdTotal = earnings.usd_earned_total != null ? `≈ $${earnings.usd_earned_total.toFixed(4)}` : '';
+            const earned24h = earnings.gstd_earned_24h != null ? `${earnings.gstd_earned_24h.toFixed(4)} GSTD` : null;
+            const perHour   = earnings.gstd_per_hour != null && earnings.gstd_per_hour > 0
+                ? `${earnings.gstd_per_hour.toFixed(4)} GSTD/h` : null;
 
             const msg = l === 'ru'
                 ? `🖥 <b>Твоя нода</b>\n\n` +
                   `${online ? '🟢' : '🔴'} Статус: <b>${online ? 'Online' : 'Offline'}</b>\n` +
                   `📦 Версия: <b>${node.version || '?'}</b>\n` +
-                  `⚡ Задач: <b>${tasks}</b>\n` +
+                  `⭐ Репутация: <b>${rep}/100</b>${avgMs ? ` (${avgMs}мс)` : ''}\n` +
+                  `⚡ Задач: <b>${tasks}</b>${earned24h ? ` · За 24ч: <b>${earned24h}</b>` : ''}\n` +
+                  `💰 Заработано: <b>${earned} GSTD</b>${usdTotal ? ` <i>${usdTotal}</i>` : ''}\n` +
+                  (perHour ? `📈 Темп: <b>${perHour}</b>\n` : '') +
                   `🕐 Последний раз: <b>${since}</b>\n\n` +
-                  `Нод в сети: <b>${(net as any).active_workers ?? '?'}</b>`
+                  `Нод в сети: <b>${(net as any).active_workers ?? '?'}</b>\n` +
+                  `<i>Чем выше репутация — тем больше задач роутится на твою ноду.</i>`
                 : `🖥 <b>Your node</b>\n\n` +
                   `${online ? '🟢' : '🔴'} Status: <b>${online ? 'Online' : 'Offline'}</b>\n` +
                   `📦 Version: <b>${node.version || '?'}</b>\n` +
-                  `⚡ Tasks: <b>${tasks}</b>\n` +
+                  `⭐ Reputation: <b>${rep}/100</b>${avgMs ? ` (${avgMs}ms)` : ''}\n` +
+                  `⚡ Tasks: <b>${tasks}</b>${earned24h ? ` · 24h: <b>${earned24h}</b>` : ''}\n` +
+                  `💰 Earned: <b>${earned} GSTD</b>${usdTotal ? ` <i>${usdTotal}</i>` : ''}\n` +
+                  (perHour ? `📈 Rate: <b>${perHour}</b>\n` : '') +
                   `🕐 Last seen: <b>${since}</b>\n\n` +
-                  `Nodes online: <b>${(net as any).active_workers ?? '?'}</b>`;
+                  `Nodes online: <b>${(net as any).active_workers ?? '?'}</b>\n` +
+                  `<i>Higher reputation = more tasks routed to your node.</i>`;
 
             await ctx.reply(msg, {
                 parse_mode:   'HTML',

@@ -160,18 +160,13 @@ export class NeuralRouter {
         this.peerManager = pm;
     }
 
-    async route(requestedModel: string, messages: ChatMessage[]): Promise<RouteResult> {
-        const result = await this.routeInternal(requestedModel, messages);
-        // 'auto' (the default on most call sites) always resolves to some
-        // concrete model, so it would always "differ" here without ever
-        // representing a real substitution -- exclude it so the field only
-        // fires when the caller asked for a SPECIFIC model and got a
-        // different one back.
+    async route(requestedModel: string, messages: ChatMessage[], telegramId?: number): Promise<RouteResult> {
+        const result = await this.routeInternal(requestedModel, messages, telegramId);
         const isRealSubstitution = requestedModel !== 'auto' && result.model !== requestedModel;
         return isRealSubstitution ? { ...result, requestedModel } : result;
     }
 
-    private async routeInternal(requestedModel: string, messages: ChatMessage[]): Promise<RouteResult> {
+    private async routeInternal(requestedModel: string, messages: ChatMessage[], telegramId?: number): Promise<RouteResult> {
         const start = Date.now();
 
         // ─── L1: Cache ─────────────────────────────────────────────
@@ -186,8 +181,21 @@ export class NeuralRouter {
 
         const ollamaModel = toOllamaModel(requestedModel);
         const ollamaUrl   = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
+        const platformUrl = (process.env.GSTD_SWARM_URL || 'https://platform.gstdtoken.com').replace(/\/$/, '');
 
-        // ─── L2: Local Ollama (primary — no external deps) ─────────
+        // ─── L2: GSTD Task Queue (submit → node processes → poll result → earnings) ─
+        try {
+            const result = await this.routeViaTaskQueue(platformUrl, ollamaModel, messages, 45000, telegramId);
+            if (result) {
+                this.cache.set(cacheKey, result.content, result.model);
+                demandTracker.record(result.model);
+                return { ...result, latencyMs: Date.now() - start };
+            }
+        } catch (err: any) {
+            console.warn('[Router] Task queue:', err?.message?.substring(0, 80));
+        }
+
+        // ─── L3: Local Ollama (fallback when no network nodes) ─────
         try {
             const result = await this.callOllamaLocal(ollamaUrl, ollamaModel, messages, 512);
             this.cache.set(cacheKey, result.content, result.model);
@@ -197,7 +205,7 @@ export class NeuralRouter {
             console.warn('[Router] Local Ollama unavailable:', err?.message?.substring(0, 80));
         }
 
-        // ─── L3: P2P Peer Network ──────────────────────────────────
+        // ─── L4: P2P Peer Network ──────────────────────────────────
         if (this.peerManager) {
             const peer = this.peerManager.getBestPeer(ollamaModel);
             if (peer) {
@@ -217,7 +225,7 @@ export class NeuralRouter {
             }
         }
 
-        // ─── L4: Fallback ───────────────────────────────────────────
+        // ─── L5: Fallback ───────────────────────────────────────────
         return {
             content: '🐝 The GSTD Swarm is initialising. Please send your message again in a moment.',
             model: 'fallback',
@@ -225,6 +233,61 @@ export class NeuralRouter {
             latencyMs: Date.now() - start,
             usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
         };
+    }
+
+    // ─── GSTD task queue: submit → poll until complete ───────────
+    // Nodes poll every 5s, run Ollama locally, report back. Earnings recorded in D1.
+    private async routeViaTaskQueue(
+        platformUrl: string,
+        model: string,
+        messages: ChatMessage[],
+        timeoutMs: number,
+        telegramId?: number,
+    ): Promise<RouteResult | null> {
+        // Check if any active node exists first (fast D1 read, no subrequest)
+        const statsResp = await fetch(`${platformUrl}/api/v1/network/stats`, {
+            signal: AbortSignal.timeout(5000),
+        });
+        if (!statsResp.ok) return null;
+        const stats: any = await statsResp.json();
+        if (!stats.active_workers || stats.active_workers < 1) return null;
+
+        // Submit task to D1 queue with user id for payment tracking
+        const prompt = JSON.stringify(messages);
+        const submitResp = await fetch(`${platformUrl}/api/v1/tasks/submit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model, prompt, telegram_id: telegramId || 0 }),
+            signal: AbortSignal.timeout(8000),
+        });
+        if (!submitResp.ok) return null;
+        const { task_id } = await submitResp.json() as any;
+        if (!task_id) return null;
+
+        // Poll until complete or timeout
+        const deadline = Date.now() + timeoutMs;
+        while (Date.now() < deadline) {
+            await new Promise(r => setTimeout(r, 2000));
+            try {
+                const pollResp = await fetch(`${platformUrl}/api/v1/tasks/${task_id}`, {
+                    signal: AbortSignal.timeout(5000),
+                });
+                if (!pollResp.ok) continue;
+                const { task } = await pollResp.json() as any;
+                if (task?.status === 'completed' && task.response) {
+                    return {
+                        content: task.response,
+                        model: task.model || model,
+                        tier: 'gstd',
+                        nodeId: task.node_id,
+                        latencyMs: 0,
+                        usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+                    };
+                }
+                if (task?.status === 'failed') return null;
+            } catch { /* retry */ }
+        }
+        return null;
     }
 
     // ─── Local Ollama call ───────────────────────────────────────
