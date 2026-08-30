@@ -278,6 +278,42 @@ export class GstdAiBot {
             }
         });
 
+        // /announce — owner only: broadcast Race to 10 to all D1 users
+        this.bot.command('announce', async (ctx) => {
+            if (!this.isAdmin(ctx)) return;
+            try {
+                const net = await this.api('/api/v1/network/stats').catch(() => ({}));
+                const slots = (net as any).early_adopter_slots ?? 9;
+                const users = await this.api('/api/v1/telegram/bot/users').catch(() => ({ users: [] }));
+                const ids: number[] = ((users as any).users || []).map((u: any) => u.telegram_id).filter(Boolean);
+
+                if (!ids.length) {
+                    return ctx.reply('❌ No users in D1 yet.');
+                }
+
+                const text =
+                    `🚀 <b>GSTD Race to 10 — осталось ${slots} слотов</b>\n\n` +
+                    `Первые 10 нод зарабатывают <b>2× вечно</b>. Нода уже на Pi — нужны ещё.\n\n` +
+                    `⚡ <b>Запуск одной командой:</b>\n` +
+                    `<code>curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash</code>\n\n` +
+                    `💰 100% комиссий → операторам нод. Ранние операторы: двойная ставка.\n` +
+                    `🏆 /leaderboard — посмотри, кто уже зарабатывает\n` +
+                    `⚡ /earn — подробнее`;
+
+                let sent = 0, failed = 0;
+                for (const tid of ids) {
+                    try {
+                        await this.bot.api.sendMessage(tid, text, { parse_mode: 'HTML' });
+                        sent++;
+                    } catch { failed++; }
+                    await new Promise(r => setTimeout(r, 50)); // 20 msg/s Telegram limit
+                }
+                await ctx.reply(`✅ Broadcast done: ${sent} sent, ${failed} failed out of ${ids.length} users.`);
+            } catch (err: any) {
+                await ctx.reply(`❌ Announce error: ${err.message?.slice(0, 100)}`);
+            }
+        });
+
         // /admin — owner only
         this.bot.command('admin', async (ctx) => {
             if (!this.isAdmin(ctx)) return;
@@ -313,7 +349,10 @@ export class GstdAiBot {
         // Set admin-scope commands
         if (this.adminId > 0) {
             this.bot.api.setMyCommands(
-                [{ command: 'admin', description: '🔐 Admin panel' }],
+                [
+                    { command: 'admin',    description: '🔐 Admin panel' },
+                    { command: 'announce', description: '📣 Broadcast Race to 10 to all users' },
+                ],
                 { scope: { type: 'chat', chat_id: this.adminId } }
             ).catch(() => {});
         }
@@ -674,6 +713,11 @@ export class GstdAiBot {
               `<code>${INSTALL_CMD}</code>\n\n` +
               `<b>A TON wallet is required → /wallet</b>`;
 
+        const shareText = l === 'ru'
+            ? `🏁 GSTD Race to 10: ${earlySlots > 0 ? `осталось ${earlySlots} слот${earlySlots === 1 ? '' : earlySlots < 5 ? 'а' : 'ов'} из 10` : 'слоты заканчиваются'}!\n\nПервые 10 нод зарабатывают 2× вечно — ранний оператор получает вдвое больше за каждую AI-задачу.\n\n⚡ Запуск одной командой:\ncurl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash\n\n@gstdaibot`
+            : `🏁 GSTD Race to 10: ${earlySlots > 0 ? `${earlySlots} of 10 slots left` : 'slots filling up'}!\n\nFirst 10 nodes earn 2× forever — early operators get double fees on every AI task.\n\n⚡ One command to launch:\ncurl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash\n\n@gstdaibot`;
+        const shareUrl = `https://t.me/share/url?url=https%3A%2F%2Ft.me%2Fgstdaibot&text=${encodeURIComponent(shareText)}`;
+
         await ctx.reply(msg, {
             parse_mode:   'HTML',
             reply_markup: {
@@ -683,6 +727,7 @@ export class GstdAiBot {
                         { text: l === 'ru' ? '🏆 Лидерборд' : '🏆 Leaderboard', callback_data: 'leaderboard_menu' },
                         { text: l === 'ru' ? '🔗 Привязать кошелёк' : '🔗 Link wallet', callback_data: 'wallet_menu' },
                     ],
+                    [{ text: l === 'ru' ? '📣 Поделиться (Race to 10)' : '📣 Share (Race to 10)', url: shareUrl }],
                 ],
             },
         });
