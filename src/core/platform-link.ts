@@ -61,6 +61,7 @@ export class PlatformLink extends EventEmitter {
     private capabilitiesProvider: (() => NodeCapabilities) | null = null;
     private p2pPeerId: string = '';
     private p2pMultiaddrs: string[] = [];
+    private nodePubkey: string = '';
 
     constructor(config: { platformUrl: string; nodeId: string; walletAddress: string; version: string }) {
         super();
@@ -79,6 +80,7 @@ export class PlatformLink extends EventEmitter {
     setStatsCollector(fn: () => Partial<HeartbeatData['stats']>) { this.statsCollector = fn; }
     setCapabilitiesProvider(fn: () => NodeCapabilities) { this.capabilitiesProvider = fn; }
     setWalletAddress(address: string) { this.walletAddress = address; }
+    setNodePubkey(pubkeyHex: string) { this.nodePubkey = pubkeyHex; }
 
     async start(intervalMs = 60000) {
         // Delay registration briefly so wallet.init() completes first
@@ -115,6 +117,7 @@ export class PlatformLink extends EventEmitter {
                     public_url:   tunnelUrl,
                     capabilities: models,
                     node_version: this.version,
+                    node_pubkey:  this.nodePubkey || undefined,
                     specs: {
                         node_id: this.nodeId,
                         version: this.version,

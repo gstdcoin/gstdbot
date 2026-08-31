@@ -43,7 +43,7 @@ if (typeof (Promise as any).withResolvers !== 'function') {
  */
 
 import { OmegaGateway, logActivity } from './gateway/server.js';
-import { isRegistered, getEntry } from './lib/model-registry.js';
+import { isRegistered, getEntry, modelFitsInRam } from './lib/model-registry.js';
 import { detectOdysseus } from './odysseus/detector.js';
 import { SecurityHardening } from './security/hardening.js';
 import { SwarmOrchestrator } from './swarm/orchestrator.js';
@@ -77,8 +77,11 @@ EventEmitter.defaultMaxListeners = 50;
 
 // ─── AI Backend Model Detection ─────────────────────────────────
 // Returns the list of models this node can actually serve.
-// Priority: Ollama local models (sovereign inference, no external deps).
+// Filters by available system RAM so we never advertise models we can't load.
 async function resolveAvailableModels(): Promise<string[]> {
+    const { totalmem } = await import('os');
+    const ramGb = totalmem() / (1024 ** 3);
+
     const models: string[] = [];
 
     // Ollama — query locally installed models
@@ -88,7 +91,11 @@ async function resolveAvailableModels(): Promise<string[]> {
         if (resp.ok) {
             const data: any = await resp.json();
             for (const m of (data.models || [])) {
-                if (m.name) models.push(m.name);
+                if (m.name && modelFitsInRam(m.name, ramGb)) {
+                    models.push(m.name);
+                } else if (m.name) {
+                    console.log(`  ⚠️  Model ${m.name} skipped — requires more RAM than available (${ramGb.toFixed(1)} GB)`);
+                }
             }
         }
     } catch (_e) { /* Ollama not running yet */ }
@@ -96,11 +103,12 @@ async function resolveAvailableModels(): Promise<string[]> {
     // Odysseus — detect special AI workspace capabilities
     const odysseus = await detectOdysseus();
     if (odysseus.running && odysseus.models.length > 0) {
-        models.push(...odysseus.models);
+        for (const m of odysseus.models) {
+            if (modelFitsInRam(m, ramGb)) models.push(m);
+        }
         console.log(`  🔮 Odysseus detected: ${odysseus.models.join(', ')}`);
     }
 
-    // No backend? Fallback to empty list — heartbeat will report 0 capabilities
     return [...new Set(models)]; // deduplicate
 }
 
@@ -260,6 +268,7 @@ async function main(): Promise<void> {
     });
     await gateway.start();
     const actualPort = gateway.getPort();
+    gateway.setNodePubkey(identity.pubkeyHex);
 
     // ── 2. Blockchain Manager (GSTD Wallet + Staking) ───────────
     console.log(`  [2/${TOTAL_STEPS}] Initializing blockchain...`);
@@ -315,47 +324,67 @@ async function main(): Promise<void> {
 
     if (!isPlatform) {
         // ── 7. Resource Sharing ─────────────────────────────────────
-        console.log(`  [7/${TOTAL_STEPS}] Enabling resource sharing...`);
-        resources = new ResourceSharing(config);
-        await resources.init();
+        if (process.env.GSTD_SHARING_ENABLED === 'true') {
+            console.log(`  [7/${TOTAL_STEPS}] Enabling resource sharing...`);
+            resources = new ResourceSharing(config);
+            await resources.init();
+        } else {
+            console.log(`  [7/${TOTAL_STEPS}] Resource sharing: disabled (set GSTD_SHARING_ENABLED=true)`);
+        }
 
-        // ── 8. Federated Training ───────────────────────────────────
-        console.log(`  [8/${TOTAL_STEPS}] Initializing training engine...`);
-        trainer = new SwarmTrainer(config);
-        await trainer.init();
+        // ── 8. Federated Training ─── disabled by default (Phase 2) ──
+        if (process.env.GSTD_TRAINING_ENABLED === 'true') {
+            console.log(`  [8/${TOTAL_STEPS}] Initializing training engine...`);
+            trainer = new SwarmTrainer(config);
+            await trainer.init();
+        } else {
+            console.log(`  [8/${TOTAL_STEPS}] Federated training: disabled (set GSTD_TRAINING_ENABLED=true)`);
+        }
 
-        // ── 9. Storage Vault ────────────────────────────────────────
-        console.log(`  [9/${TOTAL_STEPS}] Initializing Storage Vault...`);
-        storageVault = new StorageVault(config.nodeId);
-        storageVault.setRevenueEngine(revenue);
-        await storageVault.init();
+        // ── 9. Storage Vault ─── disabled by default (Phase 2) ────────
+        if (process.env.GSTD_STORAGE_ENABLED === 'true') {
+            console.log(`  [9/${TOTAL_STEPS}] Initializing Storage Vault...`);
+            storageVault = new StorageVault(config.nodeId);
+            storageVault.setRevenueEngine(revenue);
+            await storageVault.init();
+        } else {
+            console.log(`  [9/${TOTAL_STEPS}] Storage vault: disabled (set GSTD_STORAGE_ENABLED=true)`);
+        }
 
-        // ── 10. Compute Marketplace ─────────────────────────────────
-        console.log(`  [10/${TOTAL_STEPS}] Initializing Compute Marketplace...`);
-        computeMarket = new ComputeMarketplace(config.nodeId);
-        computeMarket.setRevenueEngine(revenue);
-        await computeMarket.init();
+        // ── 10. Compute Marketplace ─── disabled by default (Phase 2) ─
+        if (process.env.GSTD_COMPUTE_ENABLED === 'true') {
+            console.log(`  [10/${TOTAL_STEPS}] Initializing Compute Marketplace...`);
+            computeMarket = new ComputeMarketplace(config.nodeId);
+            computeMarket.setRevenueEngine(revenue);
+            await computeMarket.init();
+        } else {
+            console.log(`  [10/${TOTAL_STEPS}] Compute marketplace: disabled (set GSTD_COMPUTE_ENABLED=true)`);
+        }
 
-        // ── 11. Traffic Relay ───────────────────────────────────────
-        console.log(`  [11/${TOTAL_STEPS}] Initializing Traffic Relay...`);
-        trafficRelay = new TrafficRelay(config.nodeId);
-        trafficRelay.setRevenueEngine(revenue);
-        (trafficRelay as any).setFeeLedger(gateway.getFeeLedger());
-        await trafficRelay.init();
-        trafficRelay.mountRoutes(gateway.getExpressApp());
+        // ── 11. Traffic Relay ─── disabled by default (Phase 2) ───────
+        if (process.env.GSTD_RELAY_ENABLED === 'true') {
+            console.log(`  [11/${TOTAL_STEPS}] Initializing Traffic Relay...`);
+            trafficRelay = new TrafficRelay(config.nodeId);
+            trafficRelay.setRevenueEngine(revenue);
+            (trafficRelay as any).setFeeLedger(gateway.getFeeLedger());
+            await trafficRelay.init();
+            trafficRelay.mountRoutes(gateway.getExpressApp());
+        } else {
+            console.log(`  [11/${TOTAL_STEPS}] Traffic relay: disabled (set GSTD_RELAY_ENABLED=true)`);
+        }
 
-        // ── 12. NaaS (Node-as-a-Service: Multi-Chain RPC) ───────────
-        console.log(`  [12/${TOTAL_STEPS}] Initializing NaaS (Multi-Chain RPC)...`);
-        naas = new NaaSManager();
-        const apiKey = process.env.GSTD_API_KEY || wallet.getAddress() || config.nodeId;
-        if (process.env.GSTD_NAAS_ENABLED !== 'false') {
+        // ── 12. NaaS (Node-as-a-Service) ─── disabled by default (Phase 3) ─
+        if (process.env.GSTD_NAAS_ENABLED === 'true') {
+            console.log(`  [12/${TOTAL_STEPS}] Initializing NaaS (Multi-Chain RPC)...`);
+            naas = new NaaSManager();
+            const apiKey = process.env.GSTD_API_KEY || wallet.getAddress() || config.nodeId;
             await naas.start(apiKey);
         } else {
-            console.log('    NaaS: disabled (set GSTD_NAAS_ENABLED=true)');
+            console.log(`  [12/${TOTAL_STEPS}] NaaS: disabled (set GSTD_NAAS_ENABLED=true)`);
         }
     } else {
         console.log('  [7/7] Node subsystems: SKIPPED (platform mode)');
-        console.log('    ↳ Resource Sharing, Training, Storage, Compute, Relay, NaaS — remote nodes only');
+        console.log('    ↳ Resource Sharing, Training, Storage, Compute, Relay, NaaS — disabled by default');
     }
 
     // ── 13. Remote Access + Channels ────────────────────────────

@@ -21,6 +21,7 @@ import type { NodeWallet } from '../wallet/manager.js';
 import type { CollectiveMemory } from '../memory/collective.js';
 import { CrossChainBridge } from '../blockchain/bridge.js';
 import type { AttestorIdentity } from '../p2p/identity.js';
+import { signWithIdentity } from '../p2p/identity.js';
 import type { PeerManager } from '../p2p/peers.js';
 import { hashResult, signAttestation, taskIdToUint64 } from '../p2p/attestation.js';
 import { awaitQuorum } from '../p2p/quorum-coordinator.js';
@@ -980,11 +981,27 @@ export class SwarmAgent {
             // if the platform is unreachable, queue the report and retry rather
             // than falsely recording locally-earned stats the platform never saw
             // (identical failure mode already fixed for quorum settlement above).
+            const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
+            const resultHash = createHash('sha256').update(resultStr).digest('hex');
+
+            // Task Proof: Ed25519 sign of SHA-256(task_id + ":" + result_hash)
+            // Allows the platform to verify this node actually computed this result.
+            let node_sig: string | undefined;
+            let node_pubkey: string | undefined;
+            if (this.identity) {
+                const proofMsg = createHash('sha256').update(`${taskId}:${resultHash}`).digest();
+                node_sig    = signWithIdentity(this.identity, proofMsg).toString('hex');
+                node_pubkey = this.identity.pubkeyHex;
+            }
+
             const completionPayload = {
                 task_id:      taskId,
                 job_id:       (task as any).payload?.job_id || undefined,
                 node_id:      this.config.nodeId,
                 result,
+                result_hash:  resultHash,
+                node_sig,
+                node_pubkey,
                 wallet_address: this.wallet.getAddress(),
                 reward_gstd:  task.reward_gstd,
                 protocol_fee: (task as any).protocol_fee || 0,

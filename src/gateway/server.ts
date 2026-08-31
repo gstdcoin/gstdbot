@@ -284,6 +284,10 @@ export class OmegaGateway {
     setP2PIdentity(peerId: string, multiaddrs: string[]) {
         this.platformLink.setP2PIdentity(peerId, multiaddrs);
     }
+
+    setNodePubkey(pubkeyHex: string) {
+        this.platformLink.setNodePubkey(pubkeyHex);
+    }
     private ipfs: IpfsClient | null = null;
     private feeLedger: FeeLedger = new FeeLedger();
     private validatorManager: ValidatorManager | null = null;
