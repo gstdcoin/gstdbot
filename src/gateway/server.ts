@@ -4564,10 +4564,9 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             });
         }
 
-        // POST /api/v1/tasks/push — platform pushes a task directly to this node (M4)
-        // Replaces 5s polling with near-real-time delivery. Fallback poll still works.
+        // POST /api/v1/tasks/push — platform pushes a task directly (M4) or for verification (M5)
         this.app.post('/api/v1/tasks/push', async (req, res) => {
-            const { task_id, model = 'auto', prompt = '', platform_url } = req.body || {};
+            const { task_id, model = 'auto', prompt = '', platform_url, is_verification = false } = req.body || {};
             if (!task_id || !prompt) { res.status(400).json({ error: 'task_id and prompt required' }); return; }
 
             const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
@@ -4575,10 +4574,8 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                 ? (this._availableModels[0] || 'llama3.2:3b')
                 : model;
 
-            // Ack immediately so platform knows task is accepted
-            res.json({ accepted: true, task_id, model: resolvedModel });
+            res.json({ accepted: true, task_id, model: resolvedModel, is_verification });
 
-            // Process async — call Ollama then report to platform
             (async () => {
                 const start = Date.now();
                 const platformBase = platform_url || process.env.GSTD_SWARM_URL || 'https://platform.gstdtoken.com';
@@ -4597,6 +4594,12 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                     const content = aiData?.choices?.[0]?.message?.content || '';
                     const response_ms = Date.now() - start;
 
+                    // M5: compute result_hash for verification comparison
+                    const { createHash } = await import('crypto');
+                    const result_hash = content
+                        ? createHash('sha256').update(content).digest('hex')
+                        : undefined;
+
                     const nodeId = process.env.GSTD_NODE_ID || this.nodeId;
                     await fetch(`${platformBase}/api/v1/tasks/complete`, {
                         method: 'POST',
@@ -4604,19 +4607,22 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                         body: JSON.stringify({
                             task_id,
                             node_id: nodeId,
-                            result: content || null,
+                            result: is_verification ? undefined : (content || null),
                             error: content ? null : 'empty response',
                             response_ms,
+                            result_hash,
+                            is_verification,
                         }),
                         signal: AbortSignal.timeout(10000),
                     });
-                    if (content) logActivity(`Pushed task ${task_id} done (${resolvedModel}, ${content.length}ch, ${response_ms}ms)`, 'info');
+                    const tag = is_verification ? 'verify' : 'push';
+                    if (content) logActivity(`${tag} task ${task_id} done (${resolvedModel}, ${content.length}ch, ${response_ms}ms)`, 'info');
                 } catch (err: any) {
                     const nodeId = process.env.GSTD_NODE_ID || this.nodeId;
                     await fetch(`${platformBase}/api/v1/tasks/complete`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ task_id, node_id: nodeId, error: err.message }),
+                        body: JSON.stringify({ task_id, node_id: nodeId, error: err.message, is_verification }),
                         signal: AbortSignal.timeout(5000),
                     }).catch(() => {});
                 }
