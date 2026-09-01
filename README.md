@@ -3,10 +3,25 @@
 > Run a node. Earn tokens. Own the network.  
 > Open-source software that turns any computer into a revenue-generating node in the GSTD decentralized AI + blockchain network.
 
-[![Version](https://img.shields.io/badge/version-3.5.0-8b5cf6)](https://github.com/gstdcoin/gstdbot/releases)
+[![Version](https://img.shields.io/badge/version-3.6.0-8b5cf6)](https://github.com/gstdcoin/gstdbot/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-22c55e)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-06b6d4)](https://nodejs.org)
-[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey)](https://github.com/gstdcoin/gstdbot)
+[![MCP](https://img.shields.io/badge/MCP-Claude%20Code-7c3aed)](https://github.com/gstdcoin/gstdbot/tree/main/mcp)
+[![GSTD Network](https://platform.gstdtoken.com/badge.svg)](https://gstdtoken.com)
+
+## ⚡ MCP Server for Claude Code
+
+Run Llama 3, Mistral, CodeLlama, Qwen, DeepSeek and **50+ open-source models** directly from Claude Code — free, no API key.
+
+```bash
+claude mcp add --transport http gstd https://platform.gstdtoken.com/mcp
+```
+
+→ [Full MCP documentation](https://github.com/gstdcoin/gstdbot/tree/main/mcp)
+
+---
+
+## Run a Node
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
