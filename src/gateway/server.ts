@@ -4564,6 +4564,65 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             });
         }
 
+        // POST /api/v1/tasks/push — platform pushes a task directly to this node (M4)
+        // Replaces 5s polling with near-real-time delivery. Fallback poll still works.
+        this.app.post('/api/v1/tasks/push', async (req, res) => {
+            const { task_id, model = 'auto', prompt = '', platform_url } = req.body || {};
+            if (!task_id || !prompt) { res.status(400).json({ error: 'task_id and prompt required' }); return; }
+
+            const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
+            const resolvedModel = (model === 'auto' || !model)
+                ? (this._availableModels[0] || 'llama3.2:3b')
+                : model;
+
+            // Ack immediately so platform knows task is accepted
+            res.json({ accepted: true, task_id, model: resolvedModel });
+
+            // Process async — call Ollama then report to platform
+            (async () => {
+                const start = Date.now();
+                const platformBase = platform_url || process.env.GSTD_SWARM_URL || 'https://platform.gstdtoken.com';
+                try {
+                    let messages: any[];
+                    try { messages = JSON.parse(prompt); } catch { messages = [{ role: 'user', content: prompt }]; }
+                    if (!Array.isArray(messages)) messages = [{ role: 'user', content: prompt }];
+
+                    const aiResp = await fetch(`${ollamaUrl}/v1/chat/completions`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ model: resolvedModel, messages, stream: false }),
+                        signal: AbortSignal.timeout(90000),
+                    });
+                    const aiData: any = aiResp.ok ? await aiResp.json() : null;
+                    const content = aiData?.choices?.[0]?.message?.content || '';
+                    const response_ms = Date.now() - start;
+
+                    const nodeId = process.env.GSTD_NODE_ID || this.nodeId;
+                    await fetch(`${platformBase}/api/v1/tasks/complete`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            task_id,
+                            node_id: nodeId,
+                            result: content || null,
+                            error: content ? null : 'empty response',
+                            response_ms,
+                        }),
+                        signal: AbortSignal.timeout(10000),
+                    });
+                    if (content) logActivity(`Pushed task ${task_id} done (${resolvedModel}, ${content.length}ch, ${response_ms}ms)`, 'info');
+                } catch (err: any) {
+                    const nodeId = process.env.GSTD_NODE_ID || this.nodeId;
+                    await fetch(`${platformBase}/api/v1/tasks/complete`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ task_id, node_id: nodeId, error: err.message }),
+                        signal: AbortSignal.timeout(5000),
+                    }).catch(() => {});
+                }
+            })();
+        });
+
         logActivity('Core modules v4.0 initialized: EventBus, PlatformLink, ModelFailover, Diagnostics, UsageTracker, Scheduler', 'info');
     }
 

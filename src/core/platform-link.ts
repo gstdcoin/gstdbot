@@ -248,9 +248,11 @@ export class PlatformLink extends EventEmitter {
     private taskTimer: NodeJS.Timeout | null = null;
     private tasksBusy = false;
 
-    startTaskLoop(intervalMs = 5000) {
+    // M4: polling is now fallback only — platform pushes tasks directly via /api/v1/tasks/push.
+    // Default interval raised to 30s to reduce unnecessary platform traffic.
+    startTaskLoop(intervalMs = 30000) {
         this.taskTimer = setInterval(() => this.pollAndProcess(), intervalMs);
-        console.log(`  ⚡ Task loop: polling every ${intervalMs / 1000}s`);
+        console.log(`  ⚡ Task loop: fallback poll every ${intervalMs / 1000}s (M4: push-primary)`);
     }
 
     private async pollAndProcess() {
