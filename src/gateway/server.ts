@@ -15,7 +15,7 @@ import { SessionManager, Session } from './sessions.js';
 import { cpus, totalmem, freemem, hostname, platform, arch, loadavg, uptime as osUptime, networkInterfaces } from 'os';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, appendFileSync } from 'fs';
 import { join } from 'path';
-import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
+import { createHash, randomBytes, scrypt, timingSafeEqual } from 'crypto';
 import { AppManager } from '../apps/manager.js';
 import { NodeWallet } from '../wallet/manager.js';
 import { execSync } from 'child_process';
@@ -321,7 +321,7 @@ export class OmegaGateway {
     };
     private freeApiKeyHashes = new Map<string, { wallet: string; issuedAt: number; telegramId?: string }>();
     private readonly freeApiRequiredBalance = 10_000;
-    private readonly apiKeyHashSecret = randomBytes(32);
+    private readonly apiKeyHashSalt = randomBytes(32);
 
     // ─── Core Modules (v4.0) ─────────────────────────────────────
     private eventBus: NodeEventBus;
@@ -412,8 +412,10 @@ export class OmegaGateway {
         return TON_ADDRESS_RE.test(address);
     }
 
-    private hashApiKey(apiKey: string): string {
-        return createHmac('sha256', this.apiKeyHashSecret).update(apiKey).digest('hex');
+    private hashApiKey(apiKey: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+            scrypt(apiKey, this.apiKeyHashSalt, 32, (err, derived) => (err ? reject(err) : resolve(derived.toString('hex'))));
+        });
     }
 
     private extractApiKey(req: express.Request): string {
@@ -1144,7 +1146,7 @@ export class OmegaGateway {
                 }
 
                 const apiKey = `gstd_free_${randomBytes(24).toString('hex')}`;
-                const keyHash = this.hashApiKey(apiKey);
+                const keyHash = await this.hashApiKey(apiKey);
                 this.freeApiKeyHashes.set(keyHash, { wallet: walletAddress, issuedAt: Date.now(), telegramId });
 
                 const endpoint = `${req.protocol}://${req.get('host')}/api/v1/free-api/chat`;
@@ -1170,7 +1172,7 @@ export class OmegaGateway {
                 return;
             }
 
-            const keyHash = this.hashApiKey(apiKey);
+            const keyHash = await this.hashApiKey(apiKey);
             const entry = this.freeApiKeyHashes.get(keyHash);
             if (!entry) {
                 res.status(401).json({ error: 'Invalid API key' });
