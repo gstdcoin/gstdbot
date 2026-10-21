@@ -181,10 +181,10 @@ src/
 │   ├── orchestrator.ts     # Multi-node load balancing
 │   └── sovereign.ts        # P2P mesh, governance, node economics
 ├── training/
-│   ├── federated.ts        # SwarmTrainer — polls training jobs, submits gradients
+│   ├── federated.ts        # Experimental trainer — API execution is paused
 │   ├── aggregator.ts       # FedAvg gradient aggregation
 │   ├── specialization.ts   # Domain specialization tracking (EMA)
-│   ├── thermal-router.ts   # Entropy-based training peer routing
+│   ├── thermal-router.ts   # Experimental training peer routing (paused)
 │   ├── health.ts           # Node health self-diagnostics + autonomy level
 │   └── offline-queue.ts    # SQLite offline task queue (network resilience)
 ├── p2p/
@@ -273,7 +273,7 @@ Most DePIN networks do one thing. GSTD nodes do four — simultaneously, from th
 | Feature | GSTD | io.net | Akash | Bittensor | Render |
 |---|---|---|---|---|---|
 | AI inference routing | ✅ ThermalRouter | ✅ | ❌ | ✅ partial | ❌ |
-| Federated fine-tuning | ✅ LoRA marketplace | ❌ | ❌ | ❌ | ❌ |
+| Federated fine-tuning | ⏸ Paused pending isolated worker sandboxing | ❌ | ❌ | ❌ | ❌ |
 | Blockchain NaaS | ✅ 5 chains | ❌ | ❌ | ❌ | ❌ |
 | Any hardware (phone/Pi/laptop/server) | ✅ | ❌ | ❌ | ❌ | ❌ GPU only |
 | Node operator revenue share | **90%** | ~70% | ~80% | ~82% | ~80% |
@@ -283,9 +283,9 @@ Most DePIN networks do one thing. GSTD nodes do four — simultaneously, from th
 
 - **ThermalRouter** — routes each inference request using information entropy to the statistically optimal node. Unlike round-robin or latency-only routing, ThermalRouter models the entire swarm's capacity distribution and picks the node that minimizes response entropy. No other DePIN network does this.
 
-- **MetaCognitive quality gating** — before submitting a training gradient, each node self-evaluates the gradient quality (0–1 score) using a metacognitive evaluator. Low-quality gradients are discarded locally. This eliminates poisoning attacks without a central validator.
+- **MetaCognitive quality gating (research only)** — the distributed fine-tuning marketplace is currently paused. New jobs, gradients, peer registration, and training task dispatch are disabled until isolated worker sandboxing and settlement verification are implemented.
 
-- **Federated fine-tuning marketplace** — users submit a JSONL dataset and get back a LoRA adapter trained across the swarm. 10–30× cheaper than OpenAI fine-tuning. Nodes compete on quality score; the best gradients are aggregated using FedAvg with outlier rejection.
+- **Federated fine-tuning (planned)** — dataset submissions and training rewards are not currently available. No training jobs are accepted or dispatched.
 
 - **Any hardware** — a Raspberry Pi 4, an old laptop, a phone (via Telegram bot), or a 256-core server. The node detects hardware and activates the matching modules automatically. No minimum GPU requirement.
 

@@ -80,6 +80,8 @@ def check_capacity(base_model, free_gb, has_gpu, vram_gb):
 
 
 def download_shard(url: str, job_id: str, work_dir: Path) -> Path:
+    if not isinstance(job_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", job_id):
+        raise ValueError("job_id must be a bounded alphanumeric identifier")
     if not url.startswith("https://"):
         raise ValueError("shard_url must be https")
     hostname = urllib.parse.urlparse(url).hostname or ""

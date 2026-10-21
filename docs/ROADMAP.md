@@ -27,7 +27,9 @@ see `docs/superpowers/plans/2026-08-26-full-functional-audit.md` and its ledger)
   DHT, just shipped this cycle — see `docs/superpowers/specs/2026-08-25-decentralized-discovery-design.md`),
   quorum/attestation scaffolding for task verification, Docker/NaaS orchestration
   (thin — mostly `docker run` with resource limits, not real production chain
-  operations), LoRA fine-tuning (a real Python subprocess pipeline, not a stub).
+  operations), and experimental LoRA fine-tuning code. Fine-tuning API routes,
+  dispatch and completion are disabled pending isolated execution and settlement
+  verification; the experimental pipeline is not a usable marketplace.
 - **Confirmed fake/simulated, not to be marketed as real:** GPU rendering
   (`processRender()` sleeps and returns a fake hash), storage (task processing
   just writes into in-memory collective memory, no erasure coding/replication/
@@ -83,7 +85,7 @@ and should not grow its own blockchain, consensus, or VM.
 | Quorum/attestation | BETA | Best-effort, doesn't yet block the centralized `/tasks/complete` path |
 | Wallet / TON Connect | PRODUCTION (this cycle's fixes deployed) | Auth-bypass and wallet-hijack routes fixed and deployed |
 | NaaS / Docker orchestration | BETA, narrow scope only | Real for TON/XRPL/Bitcoin/Ethereum RPC; do not expand chain coverage until the RPC fail-open bug is fixed and one chain is proven end-to-end |
-| Federated learning / LoRA | BETA | LoRA fine-tuning subprocess pipeline is real; distributed FedAvg training loop is a framework, not a running marketplace |
+| Federated learning / LoRA | PAUSED / NOT AVAILABLE | API job creation, task dispatch, gradient submission and node gateway training routes are disabled until isolated worker sandboxing and settlement verification are implemented |
 | Storage | EXPERIMENTAL | Do not market as Storj/Filecoin-equivalent |
 | Rendering | EXPERIMENTAL (simulated) | `processRender()` is a stub; do not enable in any default build |
 | Cross-chain bridge (`gstd-bridge`) | EXPERIMENTAL, separate repo | Not production, no audit budget spent here this cycle |

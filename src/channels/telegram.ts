@@ -1091,7 +1091,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
             let tierSection = '';
             let nextTierGstd = 0;
             try {
-                const tierData = await this.apiCall(`/api/v1/access/tier?wallet=${wallet}`);
+                const tierData = await this.apiCall(`/api/v1/access/tier?telegram_id=${ctx.from.id}`);
                 const t  = tierData.current_tier;
                 const nt = tierData.next_tier;
                 nextTierGstd = tierData.gstd_to_next || 0;
@@ -1312,7 +1312,7 @@ QUALITY BAR: Your answer must be the BEST the user has ever received from any AI
                 // Fetch tier info
                 let tierLine = '';
                 try {
-                    const tierData = await this.apiCall(`/api/v1/access/tier?wallet=${walletData.wallet}`);
+                    const tierData = await this.apiCall(`/api/v1/access/tier?telegram_id=${ctx.from.id}`);
                     const t = tierData.current_tier;
                     tierLine = `\n\n${t.emoji} <b>Access tier: ${t.name}</b>\n` +
                         (tierData.gstd_to_next > 0 ? `   └ Next tier in <b>${tierData.gstd_to_next.toFixed(1)} GSTD</b> — keep running your node!` : `   └ Maximum tier unlocked`);

@@ -42,6 +42,7 @@ export interface QuorumResult {
 
 export interface QuorumTaskContext {
     taskId: string;
+    settlementAddress: Address;
     identity: AttestorIdentity; // used to sign endorsements for peers on the fly
     workerAddr: string; // this node's own TON address — who gets paid if quorum is reached
     ownResultHash: string; // hex
@@ -91,6 +92,7 @@ export function awaitQuorum(p2p: GstdP2PNode, ctx: QuorumTaskContext): Promise<Q
             const verified = candidates.filter((a) =>
                 verifyAttestationLocally(
                     { pubkeyHex: a.pubkeyHex, signatureHex: a.signatureHex },
+                    ctx.settlementAddress,
                     taskIdU64,
                     workerAddr,
                     resultHashBig,
@@ -140,6 +142,7 @@ export function awaitQuorum(p2p: GstdP2PNode, ctx: QuorumTaskContext): Promise<Q
                 const peerAddr = Address.parse(att.workerAddr);
                 const endorsement = signAttestation(
                     ctx.identity,
+                    ctx.settlementAddress,
                     taskIdU64,
                     peerAddr,
                     resultHashBig,

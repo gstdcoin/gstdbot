@@ -1,11 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SwarmAgent } from './agent.js';
 import type { AttestorIdentity } from '../p2p/identity.js';
 import type { Attestation } from '../p2p/attestation.js';
 
 vi.mock('../gateway/server.js', () => ({ logActivity: vi.fn() }));
 vi.mock('../lib/platform-health.js', () => ({ platformHealth: { getStatus: vi.fn() } }));
-vi.mock('../blockchain/bridge.js', () => ({ CrossChainBridge: class {} }));
 
 vi.mock('../p2p/attestation.js', () => ({
     hashResult: vi.fn().mockReturnValue(0n),
@@ -63,6 +62,51 @@ const baseTask = {
 };
 
 describe('SwarmAgent quorum attestation gaps', () => {
+    beforeEach(() => {
+        vi.stubEnv('GSTD_SETTLEMENT_ADDRESS', 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c');
+    });
+
+    afterEach(() => {
+        vi.unstubAllEnvs();
+    });
+
+    it('rejects fine-tuning until an OS sandbox is available', async () => {
+        const agent = new SwarmAgent(mockConfig, mockWallet, mockMemory);
+        await expect((agent as any).processFinetune({
+            id: 'job-1',
+            payload: { job_id: 'job-1', shard_id: 'shard-1' },
+        })).rejects.toThrow('finetune capability not verified on this node');
+    });
+
+    it('rejects bridge verification tasks without cryptographic attestation', async () => {
+        const agent = new SwarmAgent(mockConfig, mockWallet, mockMemory);
+        await expect((agent as any).computeTaskResult({
+            type: 'bridge_verify',
+            payload: {
+                source_chain: 'TON',
+                dest_chain: 'Solana',
+                amount: 1,
+                tx_hash: 'tx-hash',
+            },
+        })).rejects.toThrow('cryptographic attestation is implemented');
+    });
+
+    it('advertises only enabled task kinds to the assignment API', async () => {
+        const agent = new SwarmAgent(mockConfig, mockWallet, mockMemory);
+        (agent as any).connected = true;
+        vi.spyOn(agent as any, 'getResourceStats').mockReturnValue({});
+        const apiCall = vi.spyOn(agent as any, 'apiCall').mockResolvedValue({ task: null });
+
+        await (agent as any).pollTasks();
+        await (agent as any).pollPriorityInference();
+
+        expect(apiCall).toHaveBeenCalledTimes(2);
+        for (const call of apiCall.mock.calls) {
+            expect(call[1]).toMatchObject({
+                supported_task_kinds: ['inference', 'embedding', 'verification', 'storage'],
+            });
+        }
+    });
 
     describe('task.id normalization in participateInQuorumVerification', () => {
         it('sets task.id from task.task_id when id is absent', async () => {

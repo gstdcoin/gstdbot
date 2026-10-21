@@ -111,6 +111,7 @@ async function main() {
     const peerIdOf = (i: number) => peerIds[i];
 
     const taskId = '11111111-1111-1111-1111-111111111111';
+    const settlementAddress = require('@ton/core').Address.parse(process.env.GSTD_SETTLEMENT_ADDRESS || '');
     // Nodes 0 and 1 compute the SAME (honest, majority) result.
     // Node 2 computes a DIFFERENT result (simulating a fault or dishonest node).
     const honestResult = 'the answer is 42';
@@ -129,6 +130,7 @@ async function main() {
 
         const att = signAttestation(
             identity,
+            settlementAddress,
             taskIdU64,
             require('@ton/core').Address.parse(workerAddr),
             BigInt('0x' + resultHash),
@@ -151,6 +153,7 @@ async function main() {
 
         const result = await awaitQuorum(nodes[i], {
             taskId,
+            settlementAddress,
             identity,
             workerAddr,
             ownResultHash: resultHash,

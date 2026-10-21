@@ -31,7 +31,13 @@ import { IpfsClient } from '../storage/ipfs.js';
 import { FeeLedger } from '../fees/ledger.js';
 import { ValidatorManager, ChainId } from '../validators/manager.js';
 import { signVerify } from '@ton/crypto';
-import { peerRequestMessage, isStaleTimestamp } from '../p2p/identity.js';
+import {
+    loadOrCreateAttestorIdentity,
+    peerRequestMessage,
+    isStaleTimestamp,
+    signPeerRequest,
+    type AttestorIdentity,
+} from '../p2p/identity.js';
 import { verifyUpdateManifest, isStaleCommand, type UpdateManifest } from '../lib/platform-auth.js';
 import { fastForwardNodeUpdate, rollbackNodeUpdate } from '../lib/node-update.js';
 import { isRegistered } from '../lib/model-registry.js';
@@ -289,6 +295,10 @@ export class OmegaGateway {
     setNodePubkey(pubkeyHex: string) {
         this.platformLink.setNodePubkey(pubkeyHex);
     }
+    setAttestorIdentity(identity: AttestorIdentity) {
+        this.attestorIdentity = identity;
+        this.platformLink.setIdentity(identity);
+    }
     private ipfs: IpfsClient | null = null;
     private feeLedger: FeeLedger = new FeeLedger();
     private validatorManager: ValidatorManager | null = null;
@@ -315,6 +325,7 @@ export class OmegaGateway {
     // ─── Core Modules (v4.0) ─────────────────────────────────────
     private eventBus: NodeEventBus;
     private platformLink: PlatformLink;
+    private attestorIdentity: AttestorIdentity | null = null;
     private modelFailover: ModelFailover;
     private diagnostics: Diagnostics;
     private usageTracker: UsageTracker;
@@ -414,18 +425,16 @@ export class OmegaGateway {
 
     private async fetchWalletBalance(walletAddress: string): Promise<number> {
         const normalized = this.normalizeWalletAddress(walletAddress);
-        if (!normalized) return 0;
-        try {
-            const resp = await fetch(
-                `${this.config.swarmUrl}/api/v1/access/tier?wallet=${encodeURIComponent(normalized)}`,
-                { signal: AbortSignal.timeout(5000) }
-            );
-            if (!resp.ok) return 0;
-            const data: any = await resp.json().catch(() => ({}));
-            return Number(data?.balance_gstd || data?.gstd || 0);
-        } catch (_e) {
-            return 0;
-        }
+        if (!normalized || !this.isTonAddress(normalized)) throw new Error('Invalid TON wallet address');
+        const resp = await fetch(
+            `${this.config.swarmUrl}/api/v1/balance/public?wallet=${encodeURIComponent(normalized)}`,
+            { signal: AbortSignal.timeout(5000) }
+        );
+        if (!resp.ok) throw new Error(`Balance service returned HTTP ${resp.status}`);
+        const data: any = await resp.json();
+        const balance = Number(data?.balance_gstd ?? data?.gstd ?? 0);
+        if (!Number.isFinite(balance) || balance < 0) throw new Error('Balance service returned an invalid balance');
+        return balance;
     }
 
     private setupAPI(): void {
@@ -1085,37 +1094,72 @@ export class OmegaGateway {
 
         // ─── Free API Key (requires linked wallet >= 10000 GSTD) ───────
         this.app.post('/api/v1/free-api/key', async (req, res) => {
-            const walletAddress = this.normalizeWalletAddress(req.body?.wallet_address);
-            const telegramId = this.normalizeWalletAddress(req.body?.telegram_id);
-            if (!walletAddress || !this.isTonAddress(walletAddress)) {
-                res.status(400).json({ error: 'Valid TON wallet address required' });
+            const configuredBotToken = process.env.TELEGRAM_BOT_TOKEN || '';
+            const expectedToken = Buffer.from(configuredBotToken);
+            const providedToken = Buffer.from(String(req.get('X-Bot-Token') || ''));
+            if (!expectedToken.length || expectedToken.length !== providedToken.length ||
+                !timingSafeEqual(expectedToken, providedToken)) {
+                res.status(401).json({ error: 'Valid internal bot token required' });
                 return;
             }
 
-            const balance = await this.fetchWalletBalance(walletAddress);
-            if (balance < this.freeApiRequiredBalance) {
-                res.status(403).json({
-                    error: `Need ${this.freeApiRequiredBalance} GSTD on linked wallet. Current: ${balance}`,
+            const telegramId = String(req.body?.telegram_id ?? '');
+            if (!/^\d{1,15}$/.test(telegramId)) {
+                res.status(400).json({ error: 'Valid telegram_id required' });
+                return;
+            }
+
+            try {
+                const linkResponse = await fetch(
+                    `${this.config.swarmUrl}/api/v1/telegram/bot/wallet?telegram_id=${encodeURIComponent(telegramId)}`,
+                    {
+                        headers: { 'X-Bot-Token': configuredBotToken },
+                        signal: AbortSignal.timeout(5000),
+                    }
+                );
+                if (!linkResponse.ok) throw new Error(`Telegram wallet service returned HTTP ${linkResponse.status}`);
+                const linkData: any = await linkResponse.json();
+                const walletAddress = this.normalizeWalletAddress(linkData?.wallet);
+                if (!linkData?.linked || !walletAddress || !this.isTonAddress(walletAddress)) {
+                    res.status(403).json({ error: 'Telegram account has no valid linked wallet' });
+                    return;
+                }
+
+                const requestedWallet = req.body?.wallet_address;
+                if (requestedWallet !== undefined &&
+                    this.normalizeWalletAddress(requestedWallet) !== walletAddress) {
+                    res.status(403).json({ error: 'Wallet does not match the linked Telegram account' });
+                    return;
+                }
+
+                const balance = await this.fetchWalletBalance(walletAddress);
+                if (balance < this.freeApiRequiredBalance) {
+                    res.status(403).json({
+                        error: `Need ${this.freeApiRequiredBalance} GSTD on linked wallet. Current: ${balance}`,
+                        required_balance: this.freeApiRequiredBalance,
+                        balance,
+                    });
+                    return;
+                }
+
+                const apiKey = `gstd_free_${randomBytes(24).toString('hex')}`;
+                const keyHash = this.hashApiKey(apiKey);
+                this.freeApiKeyHashes.set(keyHash, { wallet: walletAddress, issuedAt: Date.now(), telegramId });
+
+                const endpoint = `${req.protocol}://${req.get('host')}/api/v1/free-api/chat`;
+                res.json({
+                    ok: true,
+                    api_key: apiKey,
+                    endpoint,
+                    model: 'gstd-free-ultra-speed',
+                    wallet: walletAddress,
                     required_balance: this.freeApiRequiredBalance,
                     balance,
                 });
-                return;
+            } catch (err: any) {
+                console.error('[gateway/free-api/key] wallet verification failed:', err?.message || err);
+                res.status(502).json({ error: 'Could not verify the Telegram wallet or GSTD balance' });
             }
-
-            const apiKey = `gstd_free_${randomBytes(24).toString('hex')}`;
-            const keyHash = this.hashApiKey(apiKey);
-            this.freeApiKeyHashes.set(keyHash, { wallet: walletAddress, issuedAt: Date.now(), telegramId });
-
-            const endpoint = `${req.protocol}://${req.get('host')}/api/v1/free-api/chat`;
-            res.json({
-                ok: true,
-                api_key: apiKey,
-                endpoint,
-                model: 'gstd-free-ultra-speed',
-                wallet: walletAddress,
-                required_balance: this.freeApiRequiredBalance,
-                balance,
-            });
         });
 
         this.app.post('/api/v1/free-api/chat', async (req, res) => {
@@ -1132,7 +1176,14 @@ export class OmegaGateway {
                 return;
             }
 
-            const liveBalance = await this.fetchWalletBalance(entry.wallet);
+            let liveBalance: number;
+            try {
+                liveBalance = await this.fetchWalletBalance(entry.wallet);
+            } catch (err: any) {
+                console.error('[gateway/free-api/chat] balance check failed:', err?.message || err);
+                res.status(502).json({ error: 'Could not verify the wallet balance' });
+                return;
+            }
             if (liveBalance < this.freeApiRequiredBalance) {
                 res.status(403).json({
                     error: `API key requires wallet balance >= ${this.freeApiRequiredBalance} GSTD`,
@@ -2333,14 +2384,7 @@ export class OmegaGateway {
 
         // ─── Training Status ─────────────────────────────────────
         this.app.get('/api/training/status', (_req, res) => {
-            const trainer = this.subsystems?.trainer;
-            if (!trainer) { res.json({ status: 'disabled', activeJobs: 0 }); return; }
-            res.json({
-                status: 'active',
-                stats: trainer.getStats?.() || {},
-                activeJobs: trainer.getActiveJobs?.()?.length || 0,
-                jobs: trainer.getActiveJobs?.()?.slice(0, 10) || [],
-            });
+            res.json({ status: 'disabled', activeJobs: 0, jobs: [] });
         });
 
         // ─── Dashboard Chat ──────────────────────────────────────
@@ -3005,7 +3049,6 @@ export class OmegaGateway {
         // ═══════════════════════════════════════════════════════════
         const TIERS = {
             validator:  { minBalance: 1_000_000, label: 'TON Validator',      commission: 0.05 },
-            training:   { minBalance: 100, label: 'Model Training',    commission: 0.05 },
             enterprise: { minBalance: 100_000_000, label: 'Enterprise Swarm', commission: 0.05 },
         };
 
@@ -3014,11 +3057,6 @@ export class OmegaGateway {
             address: string; stakedTotal: number; commission: number;
             stakers: Record<string, number>; rewards: Record<string, number>;
             registeredAt: number; active: boolean; apy: number;
-        }> = {};
-        const trainingJobs: Record<string, {
-            id: string; owner: string; modelName: string; status: string;
-            tokensAllocated: number; tokensSpent: number; nodesUsed: string[];
-            createdAt: number; progress: number;
         }> = {};
         const enterpriseContracts: Record<string, {
             id: string; owner: string; cpuCores: number; ramGB: number; gpuCount: number;
@@ -3120,166 +3158,44 @@ export class OmegaGateway {
             res.json({ success: true, unstaked: unstakeAmount, remaining: validator.stakers[address] || 0 });
         });
 
-        // ─── MODEL TRAINING ENDPOINTS ─────────────────────────────
-        this.app.post('/api/training/start', (req, res) => {
-            const { address, signature, modelName, tokensAllocated, config: _config } = req.body || {};
-            if (!address || !signature || !modelName) {
-                res.status(400).json({ error: 'address, signature, modelName required' }); return;
-            }
-            if (!verifySignature(address, signature, `train:${modelName}:${tokensAllocated || 0}`)) {
-                res.status(401).json({ error: 'Invalid signature' }); return;
-            }
-            const balance = verifyWalletBalance(address);
-            if (balance < TIERS.training.minBalance) {
-                res.status(403).json({
-                    error: `Model training requires ${TIERS.training.minBalance.toLocaleString()} GSTD on balance`,
-                    required: TIERS.training.minBalance, current: balance
-                }); return;
-            }
-            const tokens = tokensAllocated || 1_000_000;
-            const jobId = `train_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-            trainingJobs[jobId] = {
-                id: jobId, owner: address, modelName, status: 'queued',
-                tokensAllocated: tokens, tokensSpent: 0, nodesUsed: [],
-                createdAt: Date.now(), progress: 0,
-            };
-            logActivity(`Training job started: ${modelName} by ${address.slice(0, 12)}... (${tokens.toLocaleString()} GSTD allocated)`, 'success');
-            res.json({ success: true, jobId, job: trainingJobs[jobId] });
+        // Fine-tuning stays closed until task execution is isolated and reward settlement is verified.
+        const trainingDisabledResponse = {
+            error: 'training_disabled',
+            message: 'Distributed fine-tuning is paused until isolated worker sandboxing and settlement verification are implemented.',
+        };
+        this.app.post('/api/training/start', (_req, res) => {
+            res.status(410).json(trainingDisabledResponse);
         });
-
         this.app.get('/api/training/jobs', (_req, res) => {
-            const jobs = Object.values(trainingJobs).map(j => ({
-                id: j.id, modelName: j.modelName, owner: j.owner.slice(0, 12) + '...',
-                status: j.status, progress: j.progress + '%',
-                tokensAllocated: j.tokensAllocated, tokensSpent: j.tokensSpent,
-                nodesCount: j.nodesUsed.length, createdAt: j.createdAt,
-            }));
-            res.json({ jobs, count: jobs.length });
+            res.status(410).json(trainingDisabledResponse);
+        });
+        this.app.post('/api/training/contribute', (_req, res) => {
+            res.status(410).json(trainingDisabledResponse);
+        });
+        this.app.post('/api/training/gradient', (_req, res) => {
+            res.status(410).json(trainingDisabledResponse);
+        });
+        this.app.post('/api/training/peer/register', (_req, res) => {
+            res.status(410).json(trainingDisabledResponse);
+        });
+        this.app.post('/api/training/peer/load', (_req, res) => {
+            res.status(410).json(trainingDisabledResponse);
         });
 
-        this.app.post('/api/training/contribute', (req, res) => {
-            const { nodeAddress, jobId, gpuType, cpuCores, ramGB: _ramGB } = req.body || {};
-            if (!nodeAddress || !jobId) { res.status(400).json({ error: 'nodeAddress and jobId required' }); return; }
-            const job = trainingJobs[jobId];
-            if (!job || job.status === 'completed') { res.status(404).json({ error: 'Job not found or completed' }); return; }
-            if (!job.nodesUsed.includes(nodeAddress)) job.nodesUsed.push(nodeAddress);
-            job.status = 'training';
-            // Simulate resource consumption
-            const tokensForWork = Math.min(1000 * (cpuCores || 1) + 5000 * (gpuType ? 1 : 0), job.tokensAllocated - job.tokensSpent);
-            job.tokensSpent += tokensForWork;
-            job.progress = Math.min(100, Math.round((job.tokensSpent / job.tokensAllocated) * 100));
-            if (job.progress >= 100) job.status = 'completed';
-            // Distribute tokens to contributing node
-            distributeTokens(tokensForWork, [nodeAddress], TIERS.training.commission);
-            logActivity(`Training: ${nodeAddress.slice(0, 12)}... contributing to ${job.modelName} (${gpuType || 'CPU'})`, 'success');
-            res.json({ success: true, tokensEarned: tokensForWork * 0.95, jobProgress: job.progress + '%' });
+        this.app.get('/api/training/leaderboard', (_req, res) => {
+            res.status(410).json(trainingDisabledResponse);
         });
-
-        // ─── DISTRIBUTED FINE-TUNING ENDPOINTS ───────────────────
-        // Submit gradient from a training node
-        this.app.post('/api/training/gradient', (req, res) => {
-            const trainer = this.subsystems?.trainer;
-            if (!trainer) { res.status(503).json({ error: 'Training engine not available' }); return; }
-            const { jobId, nodeId, domain, metacognitiveScore, gradientNorm, datasetSize, valLossImprovement, loraPath } = req.body || {};
-            if (!jobId || !nodeId || metacognitiveScore === undefined || gradientNorm === undefined) {
-                res.status(400).json({ error: 'jobId, nodeId, metacognitiveScore, gradientNorm required' }); return;
-            }
-            const result = trainer.submitGradient({
-                jobId, nodeId, domain: domain || 'general',
-                metacognitiveScore: Number(metacognitiveScore),
-                gradientNorm: Number(gradientNorm),
-                datasetSize: Number(datasetSize) || 1,
-                valLossImprovement: Number(valLossImprovement) || 0,
-                loraPath: loraPath || '',
-                submittedAt: Date.now(),
-            });
-            res.json(result);
+        this.app.get('/api/training/health', (_req, res) => {
+            res.status(410).json(trainingDisabledResponse);
         });
-
-        // Register a training peer node
-        this.app.post('/api/training/peer/register', (req, res) => {
-            const trainer = this.subsystems?.trainer;
-            if (!trainer) { res.status(503).json({ error: 'Training engine not available' }); return; }
-            const { nodeId, address, gpuAvailable, vramGb, capabilities } = req.body || {};
-            if (!nodeId || !address) { res.status(400).json({ error: 'nodeId and address required' }); return; }
-            trainer.registerPeer({
-                nodeId, address,
-                gpuAvailable: Boolean(gpuAvailable),
-                vramGb: Number(vramGb) || 0,
-                latencyMs: 0,
-                latencyHistory: [],
-                successRate: 0.8,
-                currentLoad: 0,
-                capabilities: capabilities || ['finetune'],
-            });
-            res.json({ ok: true, nodeId });
-        });
-
-        // Update peer load
-        this.app.post('/api/training/peer/load', (req, res) => {
-            const trainer = this.subsystems?.trainer;
-            if (!trainer) { res.status(503).json({ ok: false }); return; }
-            const { nodeId, load } = req.body || {};
-            if (!nodeId || load === undefined) { res.status(400).json({ error: 'nodeId and load required' }); return; }
-            trainer.updatePeerLoad(nodeId, Number(load));
-            res.json({ ok: true });
-        });
-
-        // Get specialization leaderboard
-        this.app.get('/api/training/leaderboard', (req, res) => {
-            const trainer = this.subsystems?.trainer;
-            if (!trainer) { res.json({ leaderboard: [], domain: 'general' }); return; }
-            const domain = (req.query.domain as string) || 'general';
-            res.json({ leaderboard: trainer.getLeaderboard(domain), domain });
-        });
-
-        // Node health snapshot
-        this.app.get('/api/training/health', async (_req, res) => {
-            const trainer = this.subsystems?.trainer;
-            if (!trainer) { res.json({ status: 'disabled' }); return; }
-            const health = trainer.getHealth ? await trainer.getHealth() : { status: 'no_health_monitor' };
-            res.json(health);
-        });
-
-        // List supported base models
         this.app.get('/api/training/models', (_req, res) => {
-            res.json({
-                models: [
-                    { id: 'llama3.1:8b',  name: 'Llama 3.1 8B',  minVramGb: 6, quantization: '4bit' },
-                    { id: 'qwen2.5:7b',   name: 'Qwen 2.5 7B',   minVramGb: 6, quantization: '4bit' },
-                    { id: 'mistral:7b',   name: 'Mistral 7B',     minVramGb: 6, quantization: '4bit' },
-                ],
-                dataFormat: 'JSONL Alpaca: {"instruction":"...","input":"...","output":"..."}',
-                minExamples: 500,
-                paymentToken: 'GSTD',
-                burnRate: 0.15,
-                nodeRewardRate: 0.80,
-                treasuryRate: 0.05,
-            });
+            res.status(410).json(trainingDisabledResponse);
         });
-
-        // Get job details with aggregation checkpoint history
-        this.app.get('/api/training/jobs/:id', (req, res) => {
-            const trainer = this.subsystems?.trainer;
-            if (!trainer) { res.status(503).json({ error: 'Training engine not available' }); return; }
-            const job = trainer.getActiveJobs().find((j: any) => j.id === req.params.id);
-            if (!job) { res.status(404).json({ error: 'Job not found or completed' }); return; }
-            res.json({
-                ...job,
-                checkpoints: (job as any).checkpoints || [],
-                pendingSubmissions: trainer.aggregator?.getJobSubmissions(job.id)?.length || 0,
-            });
+        this.app.get('/api/training/jobs/:id', (_req, res) => {
+            res.status(410).json(trainingDisabledResponse);
         });
-
-        // Route a shard to best available peer
-        this.app.post('/api/training/route', (req, res) => {
-            const trainer = this.subsystems?.trainer;
-            if (!trainer) { res.status(503).json({ error: 'Training engine not available' }); return; }
-            const { shard } = req.body || {};
-            if (!shard?.id || !shard?.jobId) { res.status(400).json({ error: 'shard.id and shard.jobId required' }); return; }
-            const peer = trainer.routeShard(shard);
-            if (!peer) { res.status(503).json({ error: 'No capable peers available', shard }); return; }
-            res.json({ peer, shard });
+        this.app.post('/api/training/route', (_req, res) => {
+            res.status(410).json(trainingDisabledResponse);
         });
 
         // ─── ENTERPRISE SWARM ENDPOINTS ───────────────────────────
@@ -3333,7 +3249,7 @@ export class OmegaGateway {
                 address, pendingRewards: nodeRewards[address] || 0,
                 sources: {
                     staking: 'Validator staking rewards',
-                    training: 'Model training contribution',
+                    training: 'Training rewards are currently disabled',
                     enterprise: 'Enterprise swarm participation',
                     tasks: 'Swarm task processing',
                 },
@@ -3370,9 +3286,12 @@ export class OmegaGateway {
                         totalStaked: Object.values(validatorRegistry).reduce((s, v) => s + v.stakedTotal, 0),
                     },
                     training: {
-                        ...TIERS.training, unlocked: balance >= TIERS.training.minBalance,
-                        activeJobs: Object.values(trainingJobs).filter(j => j.status !== 'completed').length,
-                        totalModels: Object.keys(trainingJobs).length,
+                        label: 'Model Training (Paused)',
+                        enabled: false,
+                        unlocked: false,
+                        activeJobs: 0,
+                        totalModels: 0,
+                        message: 'Isolated worker sandboxing and settlement verification are required before training can reopen.',
                     },
                     enterprise: {
                         ...TIERS.enterprise, unlocked: balance >= TIERS.enterprise.minBalance,
@@ -4654,9 +4573,14 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                         : undefined;
 
                     const nodeId = process.env.GSTD_NODE_ID || this.nodeId;
-                    await fetch(`${platformBase}/api/v1/tasks/complete`, {
+                    const identity = this.attestorIdentity || loadOrCreateAttestorIdentity();
+                    const completion = await fetch(`${platformBase}/api/v1/tasks/complete`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Wallet-Address': this.wallet?.getAddress() || '',
+                            ...signPeerRequest(identity, nodeId),
+                        },
                         body: JSON.stringify({
                             task_id,
                             node_id: nodeId,
@@ -4668,16 +4592,13 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                         }),
                         signal: AbortSignal.timeout(10000),
                     });
+                    if (!completion.ok) {
+                        throw new Error(`Platform rejected task completion: HTTP ${completion.status}`);
+                    }
                     const tag = is_verification ? 'verify' : 'push';
                     if (content) logActivity(`${tag} task ${task_id} done (${resolvedModel}, ${content.length}ch, ${response_ms}ms)`, 'info');
                 } catch (err: any) {
-                    const nodeId = process.env.GSTD_NODE_ID || this.nodeId;
-                    await fetch(`${platformBase}/api/v1/tasks/complete`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ task_id, node_id: nodeId, error: err.message, is_verification }),
-                        signal: AbortSignal.timeout(5000),
-                    }).catch(() => {});
+                    logActivity(`Platform task completion failed for ${task_id}: ${err.message || 'network error'}`, 'error');
                 }
             })();
         });

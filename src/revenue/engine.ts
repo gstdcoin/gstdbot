@@ -250,6 +250,11 @@ export class RevenueEngine {
                     `💰 Settlement: +${totalAmount.toFixed(4)} GSTD (${batch.length} events) → ${result.tx_hash || 'queued'}`,
                     'success'
                 );
+            } else if (resp.status === 410) {
+                logActivity(
+                    `Settlement batch was not accepted by the platform; ${batch.length} local earning events remain unpaid`,
+                    'warn',
+                );
             } else {
                 // Put back in queue for retry
                 this.pendingSettlement.unshift(...batch);

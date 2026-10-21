@@ -10,7 +10,7 @@
  */
 
 import { cpus, totalmem, freemem, platform, arch, loadavg, tmpdir } from 'os';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { execSync, spawn } from 'child_process';
 import { readFileSync, writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
@@ -20,12 +20,18 @@ import { fastForwardNodeUpdate, rollbackNodeUpdate } from '../lib/node-update.js
 import type { NodeConfig } from '../index.js';
 import type { NodeWallet } from '../wallet/manager.js';
 import type { CollectiveMemory } from '../memory/collective.js';
-import { CrossChainBridge } from '../blockchain/bridge.js';
 import type { AttestorIdentity } from '../p2p/identity.js';
-import { signWithIdentity } from '../p2p/identity.js';
+import { signPeerRequest, signWithIdentity } from '../p2p/identity.js';
 import type { PeerManager } from '../p2p/peers.js';
 import { hashResult, signAttestation, taskIdToUint64 } from '../p2p/attestation.js';
 import { awaitQuorum } from '../p2p/quorum-coordinator.js';
+import {
+    isValidFinetuneIdentifier,
+    readBoundedResponseText,
+    SUPPORTED_TASK_KINDS,
+    validateInferenceTaskInput,
+    validateMemoryTaskInput,
+} from './task-validation.js';
 import { Address } from '@ton/core';
 
 const PENDING_SETTLEMENTS_FILE = join(process.env.GSTD_CONFIG_DIR || '/home/bot/.config/gstdbot', 'pending-settlements.json');
@@ -194,15 +200,11 @@ export class SwarmAgent {
             return;
         }
 
-        // Gate the 'finetune' capability on a real, verified Python training
-        // environment -- a node must not advertise it can train unless it
-        // actually can. This is what tasks/poll.ts's nodeCanHandle() checks
-        // against (it requires 'finetune' literally present in this array).
-        this.trainingCapable = await this.checkTrainingCapable();
-        if (this.trainingCapable && !this.config.models.available.includes('finetune')) {
-            this.config.models.available.push('finetune');
-            console.log('    🎓 Fine-tuning capability verified — advertising "finetune"');
-        }
+        // Python availability does not provide isolation. Do not advertise
+        // fine-tuning until task execution has an OS-level sandbox.
+        this.trainingCapable = false;
+        this.config.models.available = this.config.models.available.filter((model) => model !== 'finetune');
+        logActivity('Fine-tuning disabled: OS-level task sandbox is not configured', 'warn');
 
         // Register with platform
         await this.register();
@@ -310,10 +312,15 @@ export class SwarmAgent {
     }
     private async register(): Promise<void> {
         try {
+            if (!this.identity) {
+                throw new Error('Persistent node identity is required for platform registration');
+            }
             const caps = this.getCapabilities();
             // Platform expects: { name, specs } + X-Wallet-Address header
             const payload = {
                 name: this.config.nodeName,
+                node_id: this.config.nodeId,
+                node_pubkey: this.identity.pubkeyHex,
                 specs: {
                     node_id: caps.node_id,
                     platform: caps.platform,
@@ -624,6 +631,7 @@ export class SwarmAgent {
             const result = await this.apiCall('/tasks/poll', {
                 node_id:      this.config.nodeId,
                 capabilities: this.config.models.available,
+                supported_task_kinds: SUPPORTED_TASK_KINDS,
                 resources:    this.getResourceStats(),
                 max_tasks:    1,
             });
@@ -644,6 +652,7 @@ export class SwarmAgent {
             const result = await this.apiCall('/tasks/poll', {
                 node_id:       this.config.nodeId,
                 capabilities:  this.config.models.available,
+                supported_task_kinds: SUPPORTED_TASK_KINDS,
                 resources:     this.getResourceStats(),
                 priority_only: true,
             });
@@ -670,7 +679,7 @@ export class SwarmAgent {
             case 'storage':
                 return this.processStorage(task);
             case 'bridge_verify':
-                return this.processBridgeVerify(task);
+                throw new Error('Bridge verification tasks are disabled until cryptographic attestation is implemented');
             case 'render':
             default:
                 if (task.type.startsWith('render_')) {
@@ -692,6 +701,18 @@ export class SwarmAgent {
      *  isn't reached within the timeout, or the platform call fails. */
     private async attemptQuorumSettlement(task: SwarmTask, taskId: string, result: any): Promise<boolean> {
         if (!this.p2pNode) return false;
+        const settlementAddressRaw = process.env.GSTD_SETTLEMENT_ADDRESS;
+        if (!settlementAddressRaw) {
+            logActivity('Quorum settlement disabled: GSTD_SETTLEMENT_ADDRESS is not configured', 'info');
+            return false;
+        }
+        let settlementAddress: Address;
+        try {
+            settlementAddress = Address.parse(settlementAddressRaw);
+        } catch {
+            logActivity('Quorum settlement disabled: GSTD_SETTLEMENT_ADDRESS is invalid', 'error');
+            return false;
+        }
         const workerAddr = this.wallet.getAddress();
         if (!workerAddr) return false;
 
@@ -710,7 +731,9 @@ export class SwarmAgent {
         const workerAddrParsed = Address.parse(workerAddr);
         const gstdBonusAmount = 0n;
         const computeUnits = 1n;
-        const ownSig = signAttestation(identity, taskIdU64, workerAddrParsed, resultHashBig, gstdBonusAmount, computeUnits);
+        const ownSig = signAttestation(
+            identity, settlementAddress, taskIdU64, workerAddrParsed, resultHashBig, gstdBonusAmount, computeUnits,
+        );
 
         // Dispatch to co-executors so they independently compute the same
         // task and can cross-sign (fire-and-forget — awaitQuorum below
@@ -730,6 +753,7 @@ export class SwarmAgent {
 
         const quorumResult = await awaitQuorum(this.p2pNode, {
             taskId,
+            settlementAddress,
             identity,
             workerAddr,
             ownResultHash: resultHashHex,
@@ -901,13 +925,18 @@ export class SwarmAgent {
         try {
             const result = await this.computeTaskResult(task);
             const identity = this.identity;
+            const settlementAddressRaw = process.env.GSTD_SETTLEMENT_ADDRESS;
+            if (!settlementAddressRaw) return;
+            const settlementAddress = Address.parse(settlementAddressRaw);
             const resultHashBig = hashResult(JSON.stringify(result));
             const resultHashHex = resultHashBig.toString(16).padStart(64, '0');
             const taskIdU64 = taskIdToUint64(task.id);
             const workerAddrParsed = Address.parse(workerAddr);
             const gstdBonusAmount = 0n;
             const computeUnits = 1n;
-            const ownSig = signAttestation(identity, taskIdU64, workerAddrParsed, resultHashBig, gstdBonusAmount, computeUnits);
+            const ownSig = signAttestation(
+                identity, settlementAddress, taskIdU64, workerAddrParsed, resultHashBig, gstdBonusAmount, computeUnits,
+            );
 
             const otherCoExecutors = coExecutors.filter((id) => id !== this.config.nodeId);
 
@@ -918,6 +947,7 @@ export class SwarmAgent {
             // our reveal + endorsing matching peers) is what matters.
             await awaitQuorum(this.p2pNode, {
                 taskId: task.id,
+                settlementAddress,
                 identity,
                 workerAddr,
                 ownResultHash: resultHashHex,
@@ -1063,15 +1093,40 @@ export class SwarmAgent {
             body: JSON.stringify({ model, messages, max_tokens: maxTok, temperature: temp }),
             signal: AbortSignal.timeout(60_000),
         });
-        if (!resp.ok) throw new Error(`API error ${resp.status}: ${await resp.text().catch(() => '')}`);
-        return resp.json();
+        const responseText = await readBoundedResponseText(resp);
+        if (!resp.ok) throw new Error(`API error ${resp.status}: ${responseText.slice(0, 2048)}`);
+        let data: unknown;
+        try {
+            data = JSON.parse(responseText);
+        } catch {
+            throw new Error('Inference backend returned invalid JSON');
+        }
+        if (
+            !data || typeof data !== 'object' || Array.isArray(data)
+            || !Array.isArray((data as Record<string, unknown>).choices)
+            || typeof ((data as { choices: Array<{ message?: { content?: unknown } }> }).choices[0]?.message?.content) !== 'string'
+        ) {
+            throw new Error('Inference backend returned an invalid completion response');
+        }
+        return data;
     }
 
     private async processInference(task: SwarmTask): Promise<any> {
-        const model    = task.model || this.config.models.available[0] || 'llama3.2:3b';
-        const messages = (task as any).messages || [{ role: 'user', content: task.prompt }];
-        const maxTok   = (task as any).max_tokens || (task.payload?.max_tokens) || 2048;
-        const temp     = (task as any).temperature ?? 0.7;
+        const inferenceTask = task as SwarmTask & {
+            messages?: unknown;
+            max_tokens?: unknown;
+            temperature?: unknown;
+        };
+        const request = validateInferenceTaskInput({
+            model: task.model || this.config.models.available[0] || 'llama3.2:3b',
+            messages: inferenceTask.messages ?? [{ role: 'user', content: task.prompt }],
+            max_tokens: inferenceTask.max_tokens ?? task.payload?.max_tokens ?? 2048,
+            temperature: inferenceTask.temperature ?? 0.7,
+        });
+        if (!request) {
+            throw new Error('Inference task input is invalid or exceeds configured limits');
+        }
+        const { model, messages, max_tokens: maxTok, temperature: temp } = request;
         const startMs  = Date.now();
 
         let data: any;
@@ -1136,14 +1191,17 @@ export class SwarmAgent {
 
     private async processFinetune(task: SwarmTask): Promise<any> {
         const p = (task as any).payload || {};
-        const jobId   = p.job_id   || '';
-        const shardId = p.shard_id || ((task as any).task_id || task.id);
+        const jobId = p.job_id;
+        const shardId = p.shard_id || (task as any).task_id || task.id;
+        if (!isValidFinetuneIdentifier(jobId) || !isValidFinetuneIdentifier(shardId)) {
+            throw new Error('finetune task has invalid job or shard identifier');
+        }
 
         if (!this.trainingCapable) {
             throw new Error('finetune capability not verified on this node');
         }
 
-        const taskFile = join(tmpdir(), `gstd_finetune_task_${shardId}.json`);
+        const taskFile = join(tmpdir(), `gstd_finetune_task_${randomUUID()}.json`);
         writeFileSync(taskFile, JSON.stringify({
             job_id:     jobId,
             shard_id:   shardId,
@@ -1197,35 +1255,35 @@ export class SwarmAgent {
     }
 
     private async processEmbedding(task: SwarmTask): Promise<any> {
-        // Store content in collective memory for embedding
-        const text = task.payload?.text || task.prompt || '';
-        await this.memory.store(`emb:${task.id}`, text, 'embedding', 1.0);
-        return { stored: true, length: text.length };
+        const input = validateMemoryTaskInput(task);
+        if (!input || input.type !== 'embedding') {
+            throw new Error('Embedding task input is invalid or exceeds configured limits');
+        }
+        await this.memory.store(`emb:${input.id}`, input.text, 'embedding', 1.0);
+        return { stored: true, length: input.text.length };
     }
 
     private async processVerification(task: SwarmTask): Promise<any> {
+        const input = validateMemoryTaskInput(task);
+        if (!input || input.type !== 'verification') {
+            throw new Error('Verification task input is invalid or exceeds configured limits');
+        }
         // Verify an existing answer by re-querying
-        const cached = await this.memory.recall(task.prompt || '');
+        const cached = await this.memory.recall(input.prompt);
         return {
             verified: !!cached,
             confidence: cached?.confidence || 0,
-            matches: cached?.answer === task.payload?.expected_answer,
+            matches: cached?.answer === input.expectedAnswer,
         };
     }
 
     private async processStorage(task: SwarmTask): Promise<any> {
-        // Store data in local memory
-        const key = task.payload?.key || task.id;
-        const value = task.payload?.value || '';
-        await this.memory.store(key, value, 'storage', 1.0);
-        return { stored: true, key };
-    }
-
-    private async processBridgeVerify(task: SwarmTask): Promise<any> {
-        // Run cross chain lock-and-unlock validation
-        const bridge = new CrossChainBridge();
-        const verification = await bridge.processBridgeTask(task.payload);
-        return verification;
+        const input = validateMemoryTaskInput(task);
+        if (!input || input.type !== 'storage') {
+            throw new Error('Storage task input is invalid or exceeds configured limits');
+        }
+        await this.memory.store(input.key, input.value, 'storage', 1.0);
+        return { stored: true, key: input.key };
     }
 
     private async processRender(task: SwarmTask): Promise<any> {
@@ -1322,27 +1380,6 @@ export class SwarmAgent {
         });
     }
 
-    private async checkTrainingCapable(): Promise<boolean> {
-        const scriptPath = join(this.config.installDir, 'scripts', 'finetune.py');
-        try {
-            // Importing torch+transformers+peft alone takes 17-21s standalone on
-            // this Pi, and measurably longer during actual node startup (P2P mesh,
-            // wallet init, etc. competing for CPU concurrently) -- 30s was still
-            // observed to fail intermittently during real startup even though it
-            // comfortably passes in isolation. 60s gives real margin under
-            // startup-time contention instead of chasing this again per-restart.
-            const stdout = await this.runPythonScript([scriptPath, '--check'], 60_000);
-            const result = JSON.parse(stdout.trim().split('\n').pop() || '{}');
-            return result.capable === true;
-        } catch (e: any) {
-            // Log why -- this check failing silently (as it did twice before this
-            // comment was added) is exactly what makes a too-short timeout hard to
-            // diagnose from the outside.
-            console.log(`    ⚠ Fine-tuning capability check failed: ${e.message || e}`);
-            return false;
-        }
-    }
-
     private async apiCall(endpoint: string, data: any, method?: string, query?: string): Promise<any> {
         // Heartbeat and register are exempt from the circuit breaker: skipping either
         // risks the platform's 10-min node TTL expiring with no re-registration path,
@@ -1364,6 +1401,7 @@ export class SwarmAgent {
                     'Content-Type': 'application/json',
                     'X-Wallet-Address': walletAddr,
                     'X-Node-Id': this.config.nodeId,
+                    ...(this.identity ? signPeerRequest(this.identity, this.config.nodeId) : {}),
                 },
                 body: isGet ? undefined : JSON.stringify(data),
                 signal: AbortSignal.timeout(timeoutMs),

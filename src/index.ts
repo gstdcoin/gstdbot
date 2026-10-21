@@ -279,9 +279,9 @@ async function main(): Promise<void> {
         sovereigntyMode: (process.env.GSTD_SOVEREIGNTY_MODE as any) || 'full',
         nodeId: config.nodeId,
     });
+    gateway.setAttestorIdentity(identity);
     await gateway.start();
     const actualPort = gateway.getPort();
-    gateway.setNodePubkey(identity.pubkeyHex);
 
     // ── 2. Blockchain Manager (GSTD Wallet + Staking) ───────────
     console.log(`  [2/${TOTAL_STEPS}] Initializing blockchain...`);
@@ -320,9 +320,9 @@ async function main(): Promise<void> {
     if (!isPlatform) {
         console.log(`  [6/${TOTAL_STEPS}] Joining swarm network...`);
         swarm = new SwarmAgent(config, wallet, memory);
-        await swarm.start();
         if (swarm) swarm.setIdentity(identity);
         if (swarm) swarm.setPeerManager(gateway.getPeerManager());
+        await swarm.start();
     } else {
         console.log('  [6/7] Swarm: SKIPPED (platform mode)');
     }

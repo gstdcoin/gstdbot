@@ -3,6 +3,7 @@
  * `SettlementMaster.tact`'s `verifyQuorum()`:
  *
  *   msgHash = beginCell()
+ *       .storeAddress(settlementAddress)
  *       .storeUint(taskId, 64)
  *       .storeAddress(workerAddr)
  *       .storeUint(resultHash, 256)
@@ -43,6 +44,7 @@ export function taskIdToUint64(taskUuid: string): bigint {
 }
 
 export function computeMsgHash(
+    settlementAddress: Address,
     taskId: bigint,
     workerAddr: Address,
     resultHash: bigint,
@@ -50,6 +52,7 @@ export function computeMsgHash(
     computeUnits: bigint,
 ): Buffer {
     return beginCell()
+        .storeAddress(settlementAddress)
         .storeUint(taskId, 64)
         .storeAddress(workerAddr)
         .storeUint(resultHash, 256)
@@ -67,13 +70,14 @@ export function hashResult(result: string): bigint {
 
 export function signAttestation(
     identity: AttestorIdentity,
+    settlementAddress: Address,
     taskId: bigint,
     workerAddr: Address,
     resultHash: bigint,
     gstdBonusAmount: bigint,
     computeUnits: bigint,
 ): Attestation {
-    const hash = computeMsgHash(taskId, workerAddr, resultHash, gstdBonusAmount, computeUnits);
+    const hash = computeMsgHash(settlementAddress, taskId, workerAddr, resultHash, gstdBonusAmount, computeUnits);
     const signature = ed25519Sign(hash, identity.keyPair.secretKey);
     return { pubkeyHex: identity.pubkeyHex, signatureHex: signature.toString('hex') };
 }
@@ -81,13 +85,14 @@ export function signAttestation(
 /** Local sanity check — same primitive the contract's checkSignature() uses. */
 export function verifyAttestationLocally(
     att: Attestation,
+    settlementAddress: Address,
     taskId: bigint,
     workerAddr: Address,
     resultHash: bigint,
     gstdBonusAmount: bigint,
     computeUnits: bigint,
 ): boolean {
-    const hash = computeMsgHash(taskId, workerAddr, resultHash, gstdBonusAmount, computeUnits);
+    const hash = computeMsgHash(settlementAddress, taskId, workerAddr, resultHash, gstdBonusAmount, computeUnits);
     return signVerify(hash, Buffer.from(att.signatureHex, 'hex'), Buffer.from(att.pubkeyHex, 'hex'));
 }
 
