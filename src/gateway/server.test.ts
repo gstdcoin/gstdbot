@@ -10,12 +10,17 @@ let gatewayServer: Server | undefined;
 let fetchMock: ReturnType<typeof vi.fn>;
 let previousBotToken: string | undefined;
 
-function postJson(port: number, body: Record<string, unknown>, headers: Record<string, string> = {}) {
+function postJson(
+    port: number,
+    body: Record<string, unknown>,
+    headers: Record<string, string> = {},
+    path = '/api/v1/free-api/key',
+) {
     return new Promise<{ status: number; body: Record<string, unknown> }>((resolve, reject) => {
         const request = httpRequest({
             hostname: '127.0.0.1',
             port,
-            path: '/api/v1/free-api/key',
+            path,
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...headers },
         }, (response) => {
@@ -74,6 +79,12 @@ describe('gateway free API key authorization', () => {
         const address = gatewayServer?.address();
         if (!address || typeof address === 'string') throw new Error('Gateway test server is not listening');
         return postJson(address.port, body, token ? { 'X-Bot-Token': token } : {});
+    }
+
+    async function pushTask(body: Record<string, unknown>) {
+        const address = gatewayServer?.address();
+        if (!address || typeof address === 'string') throw new Error('Gateway test server is not listening');
+        return postJson(address.port, body, {}, '/api/v1/tasks/push');
     }
 
     it('rejects unauthenticated key issuance before resolving a wallet', async () => {
@@ -147,5 +158,32 @@ describe('gateway free API key authorization', () => {
         expect(response.body).toMatchObject({
             error: 'Could not verify the Telegram wallet or GSTD balance',
         });
+    });
+
+    it('ignores caller-controlled platform URLs when reporting pushed task completion', async () => {
+        fetchMock.mockImplementation(async (input: string | URL | Request) => {
+            const url = String(input);
+            if (url === 'http://127.0.0.1:11434/v1/chat/completions') {
+                return new Response(JSON.stringify({
+                    choices: [{ message: { content: 'task result' } }],
+                }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            }
+            if (url === 'https://platform.example/api/v1/tasks/complete') {
+                return new Response('{}', { status: 200 });
+            }
+            throw new Error(`Unexpected request target: ${url}`);
+        });
+
+        const response = await pushTask({
+            task_id: 'task-123',
+            prompt: 'finish the task',
+            platform_url: 'http://127.0.0.1:2375',
+        });
+        expect(response.status).toBe(200);
+
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+        const targets = fetchMock.mock.calls.map(([target]) => String(target));
+        expect(targets).toContain('https://platform.example/api/v1/tasks/complete');
+        expect(targets).not.toContain('http://127.0.0.1:2375/api/v1/tasks/complete');
     });
 });

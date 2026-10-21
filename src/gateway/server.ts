@@ -15,7 +15,7 @@ import { SessionManager, Session } from './sessions.js';
 import { cpus, totalmem, freemem, hostname, platform, arch, loadavg, uptime as osUptime, networkInterfaces } from 'os';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, appendFileSync } from 'fs';
 import { join } from 'path';
-import { createHash, randomBytes, timingSafeEqual } from 'crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { AppManager } from '../apps/manager.js';
 import { NodeWallet } from '../wallet/manager.js';
 import { execSync } from 'child_process';
@@ -321,6 +321,7 @@ export class OmegaGateway {
     };
     private freeApiKeyHashes = new Map<string, { wallet: string; issuedAt: number; telegramId?: string }>();
     private readonly freeApiRequiredBalance = 10_000;
+    private readonly apiKeyHashSecret = randomBytes(32);
 
     // ─── Core Modules (v4.0) ─────────────────────────────────────
     private eventBus: NodeEventBus;
@@ -412,7 +413,7 @@ export class OmegaGateway {
     }
 
     private hashApiKey(apiKey: string): string {
-        return createHash('sha256').update(apiKey).digest('hex');
+        return createHmac('sha256', this.apiKeyHashSecret).update(apiKey).digest('hex');
     }
 
     private extractApiKey(req: express.Request): string {
@@ -4538,7 +4539,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
 
         // POST /api/v1/tasks/push — platform pushes a task directly (M4) or for verification (M5)
         this.app.post('/api/v1/tasks/push', async (req, res) => {
-            const { task_id, model = 'auto', prompt = '', platform_url, is_verification = false } = req.body || {};
+            const { task_id, model = 'auto', prompt = '', is_verification = false } = req.body || {};
             if (!task_id || !prompt) { res.status(400).json({ error: 'task_id and prompt required' }); return; }
 
             const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
@@ -4550,7 +4551,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
 
             (async () => {
                 const start = Date.now();
-                const platformBase = platform_url || process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
+                const platformBase = this.config.swarmUrl.replace(/\/+$/, '');
                 try {
                     let messages: any[];
                     try { messages = JSON.parse(prompt); } catch { messages = [{ role: 'user', content: prompt }]; }
