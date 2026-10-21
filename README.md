@@ -6,18 +6,16 @@
 [![Version](https://img.shields.io/badge/version-3.5.0-8b5cf6)](https://github.com/gstdcoin/gstdbot/releases)
 [![License](https://img.shields.io/badge/license-PolyForm%20NC%201.0.0-orange)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-06b6d4)](https://nodejs.org)
-[![MCP](https://img.shields.io/badge/MCP-Claude%20Code-7c3aed)](https://github.com/gstdcoin/gstdbot/tree/main/mcp)
-[![GSTD Network](https://app.gstdtoken.com/badge.svg)](https://gstdtoken.com)
+[![Website](https://img.shields.io/badge/website-gstdtoken.com-00d2ff)](https://gstdtoken.com)
+[![Platform](https://img.shields.io/badge/platform-app.gstdtoken.com-0ea5e9)](https://app.gstdtoken.com)
+[![Telegram](https://img.shields.io/badge/Telegram-@gstdaibot-26a5e4)](https://t.me/gstdaibot)
 
-## ⚡ MCP Server for Claude Code
+Turn a laptop, server or Raspberry Pi into a GSTD node: it registers with the platform, sends heartbeats, takes AI inference tasks through a local [Ollama](https://ollama.com) and reports results. Verified work is accounted in GSTD.
 
-Run Llama 3, Mistral, CodeLlama, Qwen, DeepSeek and **50+ open-source models** directly from Claude Code — free, no API key.
-
-```bash
-claude mcp add --transport http gstd https://app.gstdtoken.com/mcp
-```
-
-→ [Full MCP documentation](https://github.com/gstdcoin/gstdbot/tree/main/mcp)
+- **One command to join** — `install.sh` sets up the node and its local dashboard.
+- **Runs on modest hardware** — weaker devices get verification and relay roles instead of inference.
+- **Honest by design** — the live [network stats](https://app.gstdtoken.com/api/v1/stats/public) are the source of truth; this README does not quote earnings or node counts.
+- **Sovereign core** — an experimental, platform-independent verified-task layer with multi-process tests ([details below](#sovereign-core-new-experimental)).
 
 ---
 
@@ -26,6 +24,10 @@ claude mcp add --transport http gstd https://app.gstdtoken.com/mcp
 ```bash
 curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
 ```
+
+Then link the same TON wallet in [@gstdaibot](https://t.me/gstdaibot) (`/wallet`) to see your node and claimable rewards there (`/node`).
+
+> AI agents: a stdio MCP server for a running sovereign node is available via `npm run sovereign:mcp`. A hosted MCP endpoint is not currently deployed.
 
 ---
 
@@ -82,13 +84,15 @@ All inference is served through the GSTD network — no external AI provider acc
 ### Node-as-a-Service (NaaS)
 Based on your hardware, the node auto-deploys blockchain infrastructure via Docker:
 
-| Chain | Min RAM | What you earn |
-|---|---|---|
-| XRPL liteserver | 2 GB | XRP RPC fees |
-| TON liteserver | 4 GB | TON RPC fees |
-| Solana RPC | 16 GB | SOL RPC fees |
-| Ethereum full node | 32 GB | ETH RPC fees |
-| Bitcoin node | 8 GB | BTC RPC fees |
+Experimental and off by default (`GSTD_NAAS_ENABLED`). No RPC revenue is distributed to node operators today.
+
+| Chain | Min RAM |
+|---|---|
+| XRPL liteserver | 2 GB |
+| TON liteserver | 4 GB |
+| Solana RPC | 16 GB |
+| Ethereum full node | 32 GB |
+| Bitcoin node | 8 GB |
 
 ### P2P Mesh
 Nodes discover each other directly via libp2p — mDNS (LAN) and a Kademlia DHT (WAN), with the platform's node registry as an explicit last-resort fallback only used when P2P discovery finds nothing. Once connected, tasks can route directly between nodes — no platform roundtrip. The mesh self-heals: if a node goes offline, tasks reroute automatically. WAN-wide DHT bootstrap needs a stable seed address — see `src/p2p/node.ts` for the current status of that rollout.
@@ -97,7 +101,7 @@ Nodes discover each other directly via libp2p — mDNS (LAN) and a Kademlia DHT 
 
 ## Hardware Tiers
 
-Node tier is determined by hardware capability (hardware multiplier), not uptime. More powerful hardware unlocks more modules. Bonus percentages below are design parameters, not guaranteed earnings:
+Node tier is determined by hardware capability (hardware multiplier), not uptime. More powerful hardware unlocks more modules. The bonus column is a local licensing parameter in `src/naas/node_license.ts`; it is **not** applied by the platform's reward settlement and is not a promise of earnings:
 
 | Tier | Hardware Multiplier | Max Modules | Earnings Bonus |
 |---|---|---|---|
