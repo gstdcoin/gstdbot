@@ -25,6 +25,8 @@ export const ManifestSchema = z.object({
     deadline: z.number().int().positive(),
     maxAttempts: z.number().int().min(1).max(5),
     acceptance: z.literal('verifier-hash-match'),
+    /** Nodes the publisher authorizes to coordinate the task if the publisher goes silent. */
+    backups: z.array(z.string().regex(/^[0-9a-f]{64}$/)).max(3).optional(),
 }).strict().refine(m => m.entity === `npm:${m.params.package}`, { message: 'entity must be npm:<package>' });
 export type Manifest = z.infer<typeof ManifestSchema>;
 
@@ -118,8 +120,33 @@ export interface HistoryEntry {
     verifiers: string[];
 }
 
+/** How long coordination must be silent before the first backup may take over. */
+export function failoverMs(m: Manifest): number {
+    return Math.max(5_000, 2 * m.leaseMs);
+}
+
 export class Board {
     private objects = new Map<string, Envelope>();
+
+    /**
+     * The publisher always coordinates. A backup named in the manifest may
+     * coordinate only with envelopes stamped after the failover window opened.
+     */
+    private isCoordinator(m: Envelope<Manifest>, e: Envelope): boolean {
+        if (e.signer === m.signer) return true;
+        return (m.payload.backups ?? []).includes(e.signer) && e.ts >= m.ts + failoverMs(m.payload);
+    }
+
+    /** Latest valid coordinator activity; a silent publisher lets backups take over. */
+    lastCoordinator(taskId: string): { ts: number; signer: string } | null {
+        const m = this.manifest(taskId);
+        if (!m) return null;
+        let last = { ts: m.ts, signer: m.signer };
+        for (const e of [...this.leases(taskId), ...this.finalizes(taskId)]) {
+            if (e.ts > last.ts || (e.ts === last.ts && e.signer === m.signer)) last = { ts: e.ts, signer: e.signer };
+        }
+        return last;
+    }
 
     has(id: string): boolean { return this.objects.has(id); }
     get(id: string): Envelope | undefined { return this.objects.get(id); }
@@ -166,12 +193,12 @@ export class Board {
         return e && e.type === 'task.publish' ? e as Envelope<Manifest> : undefined;
     }
 
-    /** Leases are only valid when signed by the task publisher. */
+    /** Leases are only valid when signed by the publisher or an authorized, activated backup. */
     leases(taskId: string): Envelope<Lease>[] {
         const m = this.manifest(taskId);
         if (!m) return [];
         return this.ofType<Lease>('task.lease')
-            .filter(l => l.signer === m.signer && l.payload.taskId === taskId)
+            .filter(l => l.payload.taskId === taskId && this.isCoordinator(m, l))
             .sort((a, b) => a.payload.epoch - b.payload.epoch || (a.id < b.id ? -1 : 1));
     }
 
@@ -217,7 +244,7 @@ export class Board {
         const m = this.manifest(taskId);
         if (!m) return [];
         return this.ofType<z.infer<typeof FinalizeSchema>>('task.finalize')
-            .filter(f => f.signer === m.signer && f.payload.taskId === taskId)
+            .filter(f => f.payload.taskId === taskId && this.isCoordinator(m, f))
             .sort((a, b) => a.ts - b.ts || (a.id < b.id ? -1 : 1));
     }
 

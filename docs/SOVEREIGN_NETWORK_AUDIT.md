@@ -73,12 +73,18 @@ Fixed during the round: `/sov/msg` and `/sov/sync` now register the sender as a 
 ## 6. Not implemented / not verified
 
 - Real payouts, on-chain settlement from the sovereign ledger (forbidden without explicit approval).
-- Sybil resistance: announced prices/roles are self-declared; bounded only by per-task budget, no-self-reward and the cap. Open problem.
+- Sybil resistance: announced prices/roles are self-declared; bounded only by per-task budget, no-self-reward and the cap. Task coordinators prefer workers and verifiers on different hosts, but that is a soft preference, not protection. Open problem (needs stake or identity).
 - Source-truth: matching hashes prove two nodes saw the same bytes, not that the bytes are true (a source mismatch yields `rejected`).
 - NAT traversal / relays across the internet, TLS between nodes, anti-DoS beyond a per-IP rate limit, resource sandboxing of arbitrary jobs (only one fixed read-only adapter exists).
-- AI-provider interface and MCP wrapper over `/sov/query` — **not implemented**.
+- AI inference provider: **not implemented**. Only data providers exist (`src/sovereign/providers.ts`, one built-in: `npm-registry`).
 - Hardware tests (Raspberry Pi, phones), long soak tests, tests across real networks/partitions beyond localhost.
 - Scenarios beyond those in the table above (e.g. disk-full, clock skew beyond the 5-minute future check) are not covered.
+
+## 6a. Added after the first audit (implemented and tested)
+
+- **Publisher failover:** a task manifest may name up to 3 `backups`. If coordination (leases/finalize) is silent for `max(5s, 2×leaseMs)` × (rank+1), a backup may issue leases. Backup envelopes are valid only when stamped after that window; nodes not named in the manifest are ignored; coordinators never earn rewards on their own task. Covered by `src/sovereign/failover.test.ts` and a multi-process test that kills the publisher (`tests/sovereign/failover.int.test.ts`). Limits: backups are chosen by the publisher (a colluding publisher plus backup is still a trust assumption); if the publisher and every backup are down, the task still stalls until its deadline.
+- **Data provider interface:** `src/sovereign/providers.ts` (`DataProvider`, `ProviderRegistry`); announce and execution go through it.
+- **MCP wrapper:** `src/sovereign/mcp.ts`, stdio JSON-RPC, tools `gstd_network_status`, `gstd_list_tasks`, `gstd_query_entity` (re-verifies the proof bundle offline) and `gstd_publish_task` (needs `GSTD_SOV_ADMIN_TOKEN` in the environment, never as an argument). Run: `npm run sovereign:mcp -- --node http://127.0.0.1:7701`.
 
 ## 7. Central dependency map (legacy runtime)
 
@@ -93,13 +99,13 @@ Fixed during the round: `/sov/msg` and `/sov/sync` now register the sender as a 
 
 ## 8. Must not go to production yet
 
-Real payouts; any claim of income or "fully decentralized"; settlement from the simulated ledger; the sovereign core as a public network entry point without TLS/auth review; legacy platform with 0 online nodes and a dry-run settlement; shared Telegram token; open Dependabot alerts in `contracts` (25) and `gstd-bridge` (16) pending owner approval.
+Real payouts; any claim of income or "fully decentralized"; settlement from the simulated ledger; the sovereign core as a public network entry point without TLS/auth review; legacy platform with 0 online nodes and a dry-run settlement; shared Telegram token; remaining Dependabot alerts that need major upgrades (see `docs` follow-ups in each repo).
 
 ## 9. Next tasks
 
-1. Owner approval to commit/push/open PRs for `ai`, `gstdbot`, `web`, `A2A` (nothing is published).
+1. ~~Owner approval to commit/push/open PRs~~ done: changes are merged to `main` in `ai`, `gstdbot`, `web`, `A2A`, `contracts`, `gstd-bridge`.
 2. Raspberry Pi 4 and multi-machine runs of `npm run test:sovereign` scenarios.
 3. Verify deployed `SettlementMasterV2` shares on-chain (read-only).
-4. Provider interface (local model / OpenAI-compatible, explicit cost and rate limits) and MCP wrapper.
-5. Sybil/reputation design, TLS between nodes, publisher failover.
-6. Approved dependency updates for `contracts` and `gstd-bridge`.
+4. LLM inference provider (local model / OpenAI-compatible, explicit cost and rate limits).
+5. Sybil/reputation design (stake or identity) and TLS between nodes.
+6. Dependency updates: done for `contracts` (lockfile + jest 30) and `gstd-bridge` (libp2p 0.57); the rest needs upstream fixes (Tact `protobufjs`).

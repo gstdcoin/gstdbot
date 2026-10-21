@@ -65,14 +65,15 @@ export function computeAccruals(taskId: string, board: Board, params: RewardPara
     if (!m || ev.status !== 'accepted' || !ev.resultId || !ev.worker) return [];
     const manifest: Manifest = m.payload;
     const publisher = m.signer;
+    const coordinators = new Set([publisher, ...(manifest.backups ?? [])]);
 
     const budget = BigInt(manifest.budgetNano);
     const pool = budget * BigInt(params.operatorShareBps) / BPS;
     const cap = pool * BigInt(params.perNodeCapBps) / BPS;
 
-    // Self-dealing: a publisher funding its own task does not collect operator rewards from it.
-    const executorEligible = ev.worker !== publisher;
-    const verifiers = ev.matchVerifiers.filter(v => v !== publisher && v !== ev.worker);
+    // Self-dealing: a coordinator of a task does not collect operator rewards from it.
+    const executorEligible = !coordinators.has(ev.worker);
+    const verifiers = ev.matchVerifiers.filter(v => !coordinators.has(v) && v !== ev.worker);
 
     const execPool = pool * BigInt(params.executionShareBps) / BPS;
     const verifyPool = pool * BigInt(params.verificationShareBps) / BPS;

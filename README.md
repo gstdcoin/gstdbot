@@ -46,6 +46,8 @@ Income depends on real demand; there may be no tasks at a given time. Nothing he
 
 ```bash
 npm run sovereign -- --data-dir ./.sov --port 7701 --roles data,verify --peers http://<other-node>:7701
+# MCP server (stdio) for AI agents, talking to a running node
+npm run sovereign:mcp -- --node http://127.0.0.1:7701
 ```
 
 The rest of the node (gateway, swarm agent, dashboard, Telegram) still uses the central platform; see [CENTRAL_DEPENDENCIES.md](CENTRAL_DEPENDENCIES.md).

@@ -17,9 +17,10 @@ import {
     canonicalize, loadOrCreateIdentity, sha256Hex, signEnvelope, type Envelope, type NodeIdentity,
 } from './crypto.js';
 import {
-    Board, ManifestSchema, ROLES, type Announce, type Manifest, type Role,
+    Board, ManifestSchema, ROLES, failoverMs, type Announce, type Manifest, type Role,
 } from './board.js';
-import { DEFAULT_ADAPTER_CONFIG, fetchNpmVersion, type AdapterConfig } from './adapters.js';
+import { DEFAULT_ADAPTER_CONFIG, type AdapterConfig } from './adapters.js';
+import { ProviderRegistry } from './providers.js';
 import { DEFAULT_PARAMS, Ledger, simulatePayout, type RewardParams } from './rewards.js';
 
 export interface SovereignConfig {
@@ -70,6 +71,7 @@ export function isPrivateHost(host: string): boolean {
 export class SovereignNode {
     readonly identity: NodeIdentity;
     readonly board = new Board();
+    readonly providers = new ProviderRegistry();
     readonly ledger: Ledger;
     private peers = new Map<string, PeerRecord>();
     private server: http.Server | null = null;
@@ -188,12 +190,13 @@ export class SovereignNode {
         return env;
     }
 
-    publishTask(input: { package: string; funding: 'commercial' | 'subsidized'; budgetNano: string; minVerifiers?: number; leaseMs?: number; deadlineMs?: number; maxAttempts?: number }): string {
+    publishTask(input: { package: string; funding: 'commercial' | 'subsidized'; budgetNano: string; minVerifiers?: number; leaseMs?: number; deadlineMs?: number; maxAttempts?: number; backups?: string[] }): string {
         const manifest: Manifest = ManifestSchema.parse({
             kind: 'data.fetch', adapter: 'npm-registry', params: { package: input.package }, entity: `npm:${input.package}`,
             funding: input.funding, budgetNano: input.budgetNano, minVerifiers: input.minVerifiers ?? 1,
             leaseMs: input.leaseMs ?? 15_000, deadline: Date.now() + (input.deadlineMs ?? 120_000),
             maxAttempts: input.maxAttempts ?? 3, acceptance: 'verifier-hash-match',
+            ...(input.backups && input.backups.length > 0 ? { backups: input.backups.filter(b => b !== this.nodeId) } : {}),
         });
         return this.emit('task.publish', manifest).id;
     }
@@ -201,24 +204,37 @@ export class SovereignNode {
     private announce(): void {
         const payload: Announce = {
             roles: this.cfg.roles.filter(r => ROLES.includes(r)),
-            adapters: ['npm-registry'], priceNano: this.cfg.priceNano, httpUrl: this.url, protocol: 1,
+            adapters: this.providers.ids(), priceNano: this.cfg.priceNano, httpUrl: this.url, protocol: 1,
         };
         this.emit('node.announce', payload);
         this.lastAnnounce = Date.now();
     }
 
     // ── duties ───────────────────────────────────────────────────
-    private candidates(role: 'data' | 'verify', exclude: Set<string>, taskId: string): string[] {
+    private hostOf(nodeId: string): string {
+        try { return new URL(this.board.announces().get(nodeId)?.payload.httpUrl ?? '').hostname; } catch { return ''; }
+    }
+
+    /**
+     * Preference order: lowest price, different host than `avoidHosts` (one
+     * operator running many identities on one machine should not fill every
+     * role), proven history, then a task-specific deterministic tiebreak.
+     * Host diversity is a soft preference, not Sybil resistance.
+     */
+    private candidates(role: 'data' | 'verify', exclude: Set<string>, taskId: string, avoidHosts: Set<string> = new Set()): string[] {
         const accepted = new Map<string, number>();
         for (const id of this.board.taskIds()) {
             const ev = this.board.evaluate(id);
             if (ev.status === 'accepted' && ev.worker) accepted.set(ev.worker, (accepted.get(ev.worker) ?? 0) + 1);
         }
+        const sameHost = (id: string) => { const h = this.hostOf(id); return h !== '' && avoidHosts.has(h) ? 1 : 0; };
         return [...this.board.announces().values()]
             .filter(a => a.payload.roles.includes(role) && a.payload.adapters.includes('npm-registry') && !exclude.has(a.signer))
             .sort((a, b) => {
                 const price = BigInt(a.payload.priceNano) - BigInt(b.payload.priceNano);
                 if (price !== 0n) return price < 0n ? -1 : 1;
+                const diversity = sameHost(a.signer) - sameHost(b.signer);
+                if (diversity !== 0) return diversity;
                 const q = (accepted.get(b.signer) ?? 0) - (accepted.get(a.signer) ?? 0);
                 if (q !== 0) return q;
                 const ha = sha256Hex(`${taskId}|${a.signer}`); const hb = sha256Hex(`${taskId}|${b.signer}`);
@@ -227,10 +243,23 @@ export class SovereignNode {
             .map(a => a.signer);
     }
 
+    /** True when this node should coordinate the task now: it is the publisher, or an authorized backup after silence. */
+    private coordinates(taskId: string, now: number): boolean {
+        const m = this.board.manifest(taskId);
+        if (!m) return false;
+        if (m.signer === this.nodeId) return true;
+        const rank = (m.payload.backups ?? []).indexOf(this.nodeId);
+        if (rank < 0) return false;
+        const last = this.board.lastCoordinator(taskId);
+        if (!last) return false;
+        if (last.signer === this.nodeId) return true;
+        return now - last.ts >= failoverMs(m.payload) * (rank + 1);
+    }
+
     private publisherDuty(now: number): void {
         for (const taskId of this.board.taskIds()) {
             const m = this.board.manifest(taskId)!;
-            if (m.signer !== this.nodeId) continue;
+            if (!this.coordinates(taskId, now)) continue;
             const ev = this.board.evaluate(taskId, now);
             const mine = this.board.finalizes(taskId);
 
@@ -242,11 +271,12 @@ export class SovereignNode {
             }
             if (ev.status === 'expired') continue;
 
+            const reserved = new Set([m.signer, ...(m.payload.backups ?? []), this.nodeId]);
             const dataLeases = this.board.leases(taskId).filter(l => l.payload.role === 'data');
             const hasResult = this.board.results(taskId).length > 0;
             const latest = dataLeases[dataLeases.length - 1];
             if (!hasResult && (!latest || (latest.payload.expiresAt < now && dataLeases.length < m.payload.maxAttempts))) {
-                const used = new Set(dataLeases.map(l => l.payload.worker)); used.add(this.nodeId);
+                const used = new Set([...dataLeases.map(l => l.payload.worker), ...reserved]);
                 const [worker] = this.candidates('data', used, taskId);
                 if (worker) {
                     this.emit('task.lease', { taskId, role: 'data', worker, epoch: (latest?.payload.epoch ?? 0) + 1, expiresAt: now + m.payload.leaseMs });
@@ -257,8 +287,9 @@ export class SovereignNode {
                 const vLeases = this.board.leases(taskId).filter(l => l.payload.role === 'verify');
                 const active = vLeases.filter(l => l.payload.expiresAt >= now || this.board.attests(taskId, first.id).some(a => a.signer === l.payload.worker));
                 if (active.length < m.payload.minVerifiers) {
-                    const used = new Set(vLeases.map(l => l.payload.worker)); used.add(this.nodeId); used.add(first.signer);
-                    for (const v of this.candidates('verify', used, taskId).slice(0, m.payload.minVerifiers - active.length)) {
+                    const used = new Set([...vLeases.map(l => l.payload.worker), ...reserved, first.signer]);
+                    const avoid = new Set([this.hostOf(first.signer)].filter(Boolean));
+                    for (const v of this.candidates('verify', used, taskId, avoid).slice(0, m.payload.minVerifiers - active.length)) {
                         this.emit('task.lease', { taskId, role: 'verify', worker: v, epoch: 1, expiresAt: now + m.payload.leaseMs });
                     }
                 }
@@ -278,12 +309,19 @@ export class SovereignNode {
         }
     }
 
+    private fetchVia(adapter: string, params: Record<string, unknown>) {
+        const provider = this.providers.get(adapter);
+        if (!provider) throw new Error(`no provider for adapter ${adapter}`);
+        provider.validate(params);
+        return provider.fetch(params, this.cfg.adapter);
+    }
+
     private async runFetch(lease: Envelope<{ taskId: string; epoch: number }>): Promise<void> {
         try {
             if (this.cfg.fetchDelayMs > 0) await new Promise(r => setTimeout(r, this.cfg.fetchDelayMs));
             const m = this.board.manifest(lease.payload.taskId);
             if (!m) return;
-            const version = await fetchNpmVersion(m.payload.params.package, this.cfg.adapter);
+            const version = await this.fetchVia(m.payload.adapter, m.payload.params);
             if (process.env.GSTD_SOV_FAULT_INJECTION === '1' && this.cfg.faultInjection?.tamperResults) {
                 const content = { ...(version.content as object), versions: [{ version: '9.9.9-injected', publishedAt: null }] };
                 version.content = content;
@@ -314,7 +352,7 @@ export class SovereignNode {
         const m = this.board.manifest(taskId);
         if (!m) return;
         try {
-            const mine = await fetchNpmVersion(m.payload.params.package, this.cfg.adapter);
+            const mine = await this.fetchVia(m.payload.adapter, m.payload.params);
             const same = mine.contentHash === result.payload.version.contentHash;
             this.emit('task.attest', {
                 taskId, resultId: result.id, verdict: same ? 'match' : 'mismatch', observedHash: mine.contentHash,

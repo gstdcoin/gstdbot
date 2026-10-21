@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:sovereign": "vitest run src/sovereign tests/sovereign --testTimeout=180000",
     "sovereign": "tsx src/sovereign/cli.ts",
+    "sovereign:mcp": "tsx src/sovereign/mcp.ts",
     "test:watch": "vitest",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build",
