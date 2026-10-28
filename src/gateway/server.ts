@@ -487,7 +487,7 @@ export class OmegaGateway {
             limit: 120,
             standardHeaders: false,
             legacyHeaders: true,
-            handler: (req, res) => {
+            handler: (req: any, res: any) => {
                 logActivity(`Rate limited: ${req.ip || 'unknown'}`, 'warn');
                 res.status(429).json({ error: 'Too many requests. Try again in 1 minute.' });
             },

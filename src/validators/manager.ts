@@ -17,9 +17,9 @@
  * Status via API: GET  /api/validators
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync, renameSync } from 'fs';
 import { join } from 'path';
-import { spawn, ChildProcess, execSync } from 'child_process';
+import { spawn, ChildProcess, execFileSync } from 'child_process';
 import { EventEmitter } from 'events';
 import { logActivity } from '../gateway/server.js';
 
@@ -200,7 +200,7 @@ export class ValidatorManager extends EventEmitter {
         if (!existsSync(configPath)) {
             // Download TON mainnet config
             try {
-                execSync(`curl -fsSL https://ton.org/global.config.json -o ${configPath}`, { timeout: 15000 });
+                execFileSync('curl', ['-fsSL', 'https://ton.org/global.config.json', '-o', configPath], { timeout: 15000 });
             } catch { return false; }
         }
 
@@ -341,7 +341,8 @@ export class ValidatorManager extends EventEmitter {
         const arch = process.arch === 'arm64' ? 'arm64' : 'x86_64';
         const url  = `https://github.com/ton-blockchain/ton/releases/latest/download/lite-client-linux-${arch}`;
         mkdirSync(LITE_CLIENT_DIR, { recursive: true });
-        execSync(`curl -fsSL "${url}" -o ${LITE_CLIENT_DIR}/lite-client && chmod +x ${LITE_CLIENT_DIR}/lite-client`, { timeout: 120000 });
+        execFileSync('curl', ['-fsSL', url, '-o', `${LITE_CLIENT_DIR}/lite-client`], { timeout: 120000 });
+        chmodSync(`${LITE_CLIENT_DIR}/lite-client`, 0o755);
     }
 
     private async installEth(): Promise<void> {
@@ -349,7 +350,10 @@ export class ValidatorManager extends EventEmitter {
         // Helios is a Rust light client — grab latest release
         const url = `https://github.com/a16z/helios/releases/latest/download/helios-${arch}-unknown-linux-gnu.tar.gz`;
         mkdirSync(HELIOS_DIR, { recursive: true });
-        execSync(`curl -fsSL "${url}" | tar -xz -C ${HELIOS_DIR}/ && chmod +x ${HELIOS_DIR}/helios`, { timeout: 120000 });
+        const heliosTgz = join(HELIOS_DIR, 'helios.tar.gz');
+        execFileSync('curl', ['-fsSL', url, '-o', heliosTgz], { timeout: 120000 });
+        execFileSync('tar', ['-xz', '-C', HELIOS_DIR + '/', '-f', heliosTgz], { timeout: 120000 });
+        chmodSync(`${HELIOS_DIR}/helios`, 0o755);
     }
 
     private async installBtc(): Promise<void> {
@@ -357,7 +361,12 @@ export class ValidatorManager extends EventEmitter {
         const ver  = '28.0';
         const url  = `https://bitcoincore.org/bin/bitcoin-core-${ver}/bitcoin-${ver}-${arch}.tar.gz`;
         mkdirSync(BITCOIN_DIR, { recursive: true });
-        execSync(`curl -fsSL "${url}" | tar -xz -C /tmp/btc-tmp --strip-components=2 "bitcoin-${ver}/bin/bitcoind" && mv /tmp/btc-tmp/bitcoind ${BITCOIN_DIR}/ && chmod +x ${BITCOIN_DIR}/bitcoind`, { timeout: 300000 });
+        mkdirSync('/tmp/btc-tmp', { recursive: true });
+        const btcTgz = '/tmp/btc-tmp/bitcoin.tar.gz';
+        execFileSync('curl', ['-fsSL', url, '-o', btcTgz], { timeout: 300000 });
+        execFileSync('tar', ['-xz', '-C', '/tmp/btc-tmp', '--strip-components=2', '-f', btcTgz, `bitcoin-${ver}/bin/bitcoind`], { timeout: 300000 });
+        renameSync('/tmp/btc-tmp/bitcoind', `${BITCOIN_DIR}/bitcoind`);
+        chmodSync(`${BITCOIN_DIR}/bitcoind`, 0o755);
     }
 
     // ─── Poll status ──────────────────────────────────────────────

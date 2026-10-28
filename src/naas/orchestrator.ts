@@ -11,7 +11,7 @@
  *   6. Report to GSTD Platform + earn rewards
  */
 
-import { execSync, spawn } from 'child_process';
+import { execSync, execFileSync, spawn } from 'child_process';
 import { HardwareDetector, RoleAssigner, AssignedRole } from './hardware_profiler.js';
 import { GSTDRPCProxy }           from './rpc_proxy.js';
 import { RevenueFlywheelConverter } from './revenue_flywheel.js';
@@ -19,8 +19,17 @@ import { logActivity }              from '../gateway/server.js';
 
 const API_BASE = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
 
+// SSRF guard for the env-derived API base: parse through the URL object,
+// require http(s), reject embedded credentials.
+function safeApiBase(raw: string): string {
+    const u = new URL(raw);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') throw new Error('unsafe api url');
+    if (u.username || u.password) throw new Error('unsafe api url');
+    return u.origin + (u.pathname === '/' ? '' : u.pathname);
+}
+
 function isDockerAvailable(): boolean {
-    try { execSync('docker info', { stdio: 'pipe', timeout: 5000 }); return true; }
+    try { execFileSync('docker', ['info'], { stdio: 'pipe', timeout: 5000 }); return true; }
     catch { return false; }
 }
 
@@ -35,7 +44,7 @@ async function launchChainNode(role: AssignedRole): Promise<boolean> {
         .flatMap(([k, v]) => ['-e', `${k}=${v}`]);
 
     const cmd = [
-        'docker', 'run', '-d',
+        'run', '-d',
         '--name', containerName,
         '--restart', 'unless-stopped',
         '--cpus', '2.0',
@@ -49,7 +58,7 @@ async function launchChainNode(role: AssignedRole): Promise<boolean> {
 
     try {
         // Check if already running
-        const running = execSync(`docker ps -q --filter name=${containerName}`, { timeout: 5000 }).toString().trim();
+        const running = execFileSync('docker', ['ps', '-q', '--filter', `name=${containerName}`], { timeout: 5000, encoding: 'utf-8' }).trim();
         if (running) {
             logActivity(`  ✅ ${role.chain} (${role.mode}) already running`);
             return true;
@@ -61,7 +70,7 @@ async function launchChainNode(role: AssignedRole): Promise<boolean> {
         await new Promise<void>((resolve) => pull.on('close', () => resolve()));
 
         // Launch
-        execSync(cmd.join(' '), { timeout: 30_000, stdio: 'pipe' });
+        execFileSync('docker', cmd, { timeout: 30_000, stdio: 'pipe' });
         logActivity(`  🚀 ${role.chain} (${role.mode}) started on port :${role.rpcPort}`, 'success');
         return true;
     } catch (e: any) {
@@ -72,7 +81,7 @@ async function launchChainNode(role: AssignedRole): Promise<boolean> {
 
 async function reportToGSTD(apiKey: string, roles: AssignedRole[], profile: any): Promise<void> {
     try {
-        const resp = await fetch(`${API_BASE}/naas/register`, {
+        const resp = await fetch(new URL(`${safeApiBase(API_BASE)}/naas/register`), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
