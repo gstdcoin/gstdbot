@@ -386,3 +386,28 @@ describe('PlatformLink configured task default', () => {
         expect(pl.getStatus().worker.resultsSubmitted).toBe(1);
     });
 });
+
+
+describe('PlatformLink heartbeat failure diagnostics', () => {
+    it('reports bounded safe failure codes and clears them after recovery', async () => {
+        const link = makePL();
+        (link as any).registered = true;
+        const log = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const fetcher = vi.fn().mockResolvedValue({ok:false,status:503,text:async ()=>'private upstream details'});
+        vi.stubGlobal('fetch', fetcher);
+        try {
+            await (link as any).sendHeartbeat();
+            await (link as any).sendHeartbeat();
+            expect(link.getStatus().lastHeartbeatError).toBe('http_503');
+            expect(log).toHaveBeenCalledTimes(1);
+            expect(log.mock.calls.flat().join(' ')).not.toContain('private');
+            fetcher.mockResolvedValue({ok:true,json:async()=>({})});
+            await (link as any).sendHeartbeat();
+            expect(link.getStatus().lastHeartbeatError).toBeNull();
+            expect(link.getStatus().lastHeartbeat).not.toBeNull();
+        } finally {
+            log.mockRestore();
+            await link.stop();
+        }
+    });
+});

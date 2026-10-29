@@ -77,6 +77,8 @@ export class PlatformLink extends EventEmitter {
     private lastTaskCompletion: Date | null = null;
     private taskResultsSubmitted = 0;
     private lastTaskErrorPhase: string | null = null;
+    private lastHeartbeatError: string | null = null;
+    private lastHeartbeatErrorLog = 0;
 
     constructor(config: { platformUrl: string; nodeId: string; walletAddress: string; version: string }) {
         super();
@@ -285,6 +287,7 @@ export class PlatformLink extends EventEmitter {
             }
             const data: any = await resp.json();
             this.lastHeartbeat = new Date();
+            this.lastHeartbeatError = null;
             this.failCount = 0;
             if (data.uptime_reward > 0) {
                 console.log(`  💰 Uptime reward: +${data.uptime_reward.toFixed(6)} GSTD`);
@@ -296,7 +299,14 @@ export class PlatformLink extends EventEmitter {
             }
         } catch (e: any) {
             this.failCount++;
-            this.emit('heartbeat:error', { error: e.message, failCount: this.failCount });
+            const http = /^Heartbeat (\d{3})$/.exec(String(e?.message || ''));
+            const code = http ? 'http_' + http[1] : e?.name === 'TimeoutError' || e?.name === 'AbortError' ? 'timeout' : 'network_error';
+            if (code !== this.lastHeartbeatError || Date.now() - this.lastHeartbeatErrorLog >= 300_000) {
+                console.warn('[PlatformLink] Heartbeat unavailable: ' + code);
+                this.lastHeartbeatErrorLog = Date.now();
+            }
+            this.lastHeartbeatError = code;
+            this.emit('heartbeat:error', { error: code, failCount: this.failCount });
 
             // Re-register if too many failures
             if (this.failCount >= 5) {
@@ -547,6 +557,7 @@ export class PlatformLink extends EventEmitter {
             registered: this.registered,
             walletAddress: this.walletAddress,
             lastHeartbeat: this.lastHeartbeat?.toISOString() || null,
+            lastHeartbeatError: this.lastHeartbeatError,
             failCount: this.failCount,
             platformUrl: this.platformUrl,
             nodeId: this.nodeId,

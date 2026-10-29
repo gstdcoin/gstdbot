@@ -21,13 +21,17 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  const h:CatalogHardware={total_ram:8*1024**3,available_ram:6*1024**3,disk_free:20*1024**3,cpu_cores:4,gpu_vram:0,gpu_name:null,local_runtime:true,platform:'linux',arch:'arm64'};
  const catalog={hardware:h,network:{models:[{model_id:'remote:large',nodes_count:1,price_gstd:0.1}]},models:modelCatalog().map(m=>({...m,compatibility:compatibility(m,h)}))};
  const address='0:'+'77'.repeat(32);
- let bound:any=null;let ollamaAvailable=true;let httpsHelper=false;let configuredHttps:any=null;
+ let bound:any=null;let ollamaAvailable=true;let httpsHelper=false;let configuredHttps:any=null;let pulledModel='';const downloadedModels=new Set<string>();
  const fetcher=vi.fn(async(path:string,options:any)=>{
   if(path==='/api/node/https/status')return{ok:true,status:200,json:async()=>httpsHelper?{helperInstalled:true,state:'not_configured',verified:false}:{helperInstalled:false,state:'helper_required',setupSupported:true}};
   if(path==='/api/node/https/configure'){configuredHttps=JSON.parse(options.body);return{ok:true,status:202,json:async()=>({helperInstalled:true,state:'verified',verified:true,domain:'node.example.org',expires:'2030-01-01T00:00:00Z'})};}
   if(path==='/api/node/operator')return{ok:true,status:200,json:async()=>({node_id:'fixture-existing',version:'3.7.0',name:'Fixture',uptime:60,cpu:{usage:5,load_1m:.1},ram:{used:1024**3,total:h.total_ram},compute:{active:0,capacity:1},requests:0,platform:{registered:true,publicUrl:null,worker:{enabled:true,lastPoll:new Date().toISOString(),resultsSubmitted:0,busy:false}},payout_address:'0:'+'88'.repeat(32)})};
-  if(path==='/api/ollama/models')return{ok:true,status:200,json:async()=>({ollama_available:ollamaAvailable,installed:ollamaAvailable?[{id:'qwen3.5:0.8b',size:100}]:[],running:[]})};
-  if(path==='/api/ollama/catalog')return{ok:true,status:200,json:async()=>catalog};
+  if(path==='/api/ollama/models')return{ok:true,status:200,json:async()=>({ollama_available:ollamaAvailable,installed:ollamaAvailable?[{id:'qwen3.5:0.8b',size:100},...[...downloadedModels].map(id=>({id,size:100}))]:[],running:[]})};
+  if(path==='/api/ollama/catalog'||path==='/api/ollama/catalog/refresh')return{ok:true,status:200,json:async()=>catalog};
+  if(path==='/api/ollama/models/pull'){
+   pulledModel=JSON.parse(options.body).model;downloadedModels.add(pulledModel);let sent=false;
+   return{ok:true,status:200,body:{getReader:()=>({read:async()=>sent?{done:true}:(sent=true,{done:false,value:Buffer.from('data: {"status":"success"}\n\n')})})}};
+  }
   if(path==='/api/node/reward-wallet'){
    if(options.method==='POST'){bound=JSON.parse(options.body);return{ok:true,status:200,json:async()=>({payout:{address,revision:1}})};}
    return{ok:true,status:200,json:async()=>({payout:null})};
@@ -56,9 +60,22 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  expect(configuredHttps).toEqual({domain:'node.example.org',email:'operator@example.org',agreeTerms:true,exposePublic:true});
  expect(elements.get('httpsInstall')!.disabled).toBe(true);
  expect(elements.get('httpsLink')!.attributes.href).toBe('https://node.example.org');
+ // Refreshing online metadata must preserve an explicitly entered custom model.
+ const custom=elements.get('newModel')!;
+ custom.value='custom-family:7b';custom.oninput();
+ await elements.get('refreshCatalog')!.onclick();
+ expect(elements.get('installChoice')!.value).toBe('');
+ expect(custom.value).toBe('custom-family:7b');
+ expect(elements.get('modelPlan')!.textContent).toContain('неизвестна');
+ await elements.get('install')!.onclick();
+ expect(pulledModel).toBe('custom-family:7b');
+ expect(elements.get('installChoice')!.value).toBe('');
  const choice=elements.get('installChoice')!;
  choice.value='qwen3.5:27b';choice.onchange();expect(elements.get('install')!.disabled).toBe(true);
  choice.value='qwen3.5:2b';choice.onchange();expect(elements.get('install')!.disabled).toBe(false);
+ await elements.get('install')!.onclick();
+ expect(pulledModel).toBe('qwen3.5:2b');
+ expect(elements.get('install')!.disabled).toBe(true);
  expect(elements.get('readinessSteps')!.children).toHaveLength(5);
  expect(elements.get('nextAction')!.textContent).toContain('кошелёк');
  expect(elements.get('walletForm')!.classes.has('hidden')).toBe(false);
