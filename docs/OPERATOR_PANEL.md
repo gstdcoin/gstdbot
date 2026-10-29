@@ -122,3 +122,31 @@ Submitted-result counters cover only this process’s background queue. They exc
 7. Запустите одну копию, проверьте прежний ID ноды, личный адрес новых наград, регистрацию, успешный poll и локальный тест модели. Временный адрес туннеля может смениться; прежний URL не считается доказательством доступности. Подтвердите новый маршрут в реестре.
 
 Owner checklist: stop the existing node; keep an encrypted offline copy of its whole configuration/data directories, persistent identity keys, watch-only wallet, PIN digest and launch environment. Restore ownership and permissions before starting the replacement, and never run two copies of one identity simultaneously. A corrupt identity must be restored, not regenerated. Verify the previous node ID, payout recipient, signed registration, successful polling and inference afterward. No production restore rehearsal has been completed by writing this guide.
+
+## HTTPS form and Let’s Encrypt
+
+The authenticated panel includes **HTTPS and Let’s Encrypt**. This is an optional domain-only setup profile; outbound paid-campaign work and an existing HTTPS tunnel do not require it. It does not add a payment check to the public inference API: direct API calls consume node resources without creating rewards. The dashboard remains PIN protected; Ollama is not proxied directly.
+
+1. Use a domain you control. Its public A/AAAA records and internet ports 80/443 must reach this machine. DNS, router/NAT and firewall changes remain an owner task. Another active web proxy or occupied ports are not stopped or overwritten.
+2. On a non-root Debian/Ubuntu systemd installation, the panel shows one local administrator bootstrap command. Run it **on the node machine**, then press **Check HTTPS**. Do not enter a sudo password, keys or DNS-provider credentials in the form. Containers, root-run nodes and other OS/service layouts require an administrator-managed proxy.
+3. Enter the domain and email, read the linked Let’s Encrypt terms, and separately allow transmission of those fields and public HTTPS exposure. The form then starts a bounded configuration job. No issuance starts merely because the helper was installed.
+4. Success requires a locally verified Let’s Encrypt certificate, hostname, trusted chain, remaining validity and the proxied GSTD health response. File existence or a running service alone is insufficient. External NAT reachability is not independently confirmed. The existing HTTP gateway, working tunnel and registered public URL are not changed automatically.
+
+The bootstrap extracts the Caddy binary from trusted APT package metadata with SHA256 verification, without executing the stock proxy package or starting its service. A root-owned socket-activated helper accepts only strict HTTPS requests from the configured node UID. The node keeps its existing service sandbox; it receives neither root shell access nor certificate private keys. The Caddy admin endpoint is a private Unix socket in a directory unavailable to the node user.
+
+Caddy persists certificate storage and renews certificates automatically. The managed proxy is enabled for boot only after verification. Failed first issuance is stopped; a failed managed replacement restores the old configuration. A control-service crash recovers the pending job without starting another CA attempt. Issuance attempts have a ten-minute cooldown. Replacing an already configured domain is deliberately an administrator task so the form cannot remove a working hostname.
+
+The helper binds one fixed local HTTP port. If the node moves to another port, HTTPS is marked unready; an administrator must review `/etc/gstd-node-https/bootstrap.json`, restart `gstd-node-https-control.service`, then apply the same-domain form configuration. Do not expose arbitrary localhost services through this helper.
+
+Certificate renewal is automatic; privileged software upgrades are not. After a reviewed source update, rerun the local bootstrap to refresh the root-owned helper and binary. It restarts only the control helper, not a working proxy. Activating a new Caddy binary requires an administrator-controlled proxy restart during a maintenance window. Keep `/var/lib/gstd-node-https` private and persistent; it contains CA account and certificate material. Do not upload it to a public repository.
+
+### Настройка HTTPS через форму
+
+Войдите в панель ноды и откройте **HTTPS и Let’s Encrypt**. Для очереди оплаченных заданий и уже работающего HTTPS-туннеля сертификат на самой машине не обязателен.
+
+1. Подготовьте свой домен: A/AAAA должны вести на эту машину, порты 80/443 — быть доступны из интернета. За DNS, роутер и firewall отвечает владелец.
+2. Один раз выполните на машине административную команду, показанную в панели. Это устанавливает системный помощник без выпуска сертификата и открытия публичного прокси. Автоматический вариант поддерживает Debian/Ubuntu с systemd и отдельным непривилегированным пользователем ноды.
+3. Нажмите **Проверить HTTPS**, заполните домен/email и отдельно подтвердите условия Let’s Encrypt и публичный доступ. Нажмите **Настроить HTTPS автоматически**. Не вводите пароль sudo или приватные ключи в форму.
+4. Панель покажет результат проверки сертификата и срок действия. Caddy продлевает сертификат автоматически. После первого сбоя прокси останавливается; неудачное изменение восстанавливает прежнюю конфигурацию. Повторная заявка доступна через десять минут.
+
+Проверка выполняется локально и не подтверждает прохождение внешнего NAT. Рабочий туннель и адрес в реестре не меняются автоматически. Прямой публичный API расходует вычислительные ресурсы без проверки оплаты GSTD и сам не создаёт наград. Для другого домена, обновления системного помощника или изменения его фиксированного порта нужен администратор. Приватные ключи остаются в системном хранилище Caddy; не публикуйте его содержимое.

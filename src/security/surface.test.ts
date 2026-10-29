@@ -13,3 +13,10 @@ describe('compute node boundaries',()=>{
     });
 });
 afterEach(()=>vi.unstubAllGlobals());
+
+it('keeps managed HTTPS operator-only and retires copied-key SSL routes',()=>{
+ expect(nodeSurface('/api/node/https/status')).toBe('operator');
+ expect(nodeSurface('/api/node/https/configure')).toBe('operator');
+ expect(nodeSurface('/api/ssl/status')).toBe('retired');
+ expect(nodeSurface('/api/ssl/setup')).toBe('retired');
+});

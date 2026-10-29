@@ -20,3 +20,7 @@ Historical design notes are archived in docs/ARCHIVED_NODE_README.md. They do no
 ## Operator dashboard
 
 Manage local models, view CPU/RAM and compute slots, configure the first public payout address and update the node manually in the PIN-protected dashboard. [English and Russian operator guide](docs/OPERATOR_PANEL.md). Bind your own public TON wallet for new rewards without changing node identity; existing balances and assigned work keep their previous recipient. The panel includes a model catalogue with resource estimates and a readiness checklist. Signed outbound workers can pull funded campaign jobs without exposing a public port; direct platform chat additionally needs a reachable protected HTTPS endpoint. Technical readiness is not a promise of paid demand.
+
+### Optional HTTPS
+
+The operator panel can configure a domain-based Let’s Encrypt HTTPS proxy after one local administrator bootstrap on supported non-root Debian/Ubuntu systemd installs. Certificates renew through Caddy; DNS and public ports remain an owner responsibility. It preserves the current tunnel and does not turn free direct inference into paid work. See [the HTTPS operator instructions](docs/OPERATOR_PANEL.md#https-form-and-lets-encrypt).

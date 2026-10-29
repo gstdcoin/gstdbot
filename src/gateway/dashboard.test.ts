@@ -21,8 +21,10 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  const h:CatalogHardware={total_ram:8*1024**3,available_ram:6*1024**3,disk_free:20*1024**3,cpu_cores:4,gpu_vram:0,gpu_name:null,local_runtime:true,platform:'linux',arch:'arm64'};
  const catalog={hardware:h,network:{models:[{model_id:'remote:large',nodes_count:1,price_gstd:0.1}]},models:modelCatalog().map(m=>({...m,compatibility:compatibility(m,h)}))};
  const address='0:'+'77'.repeat(32);
- let bound:any=null;let ollamaAvailable=true;
+ let bound:any=null;let ollamaAvailable=true;let httpsHelper=false;let configuredHttps:any=null;
  const fetcher=vi.fn(async(path:string,options:any)=>{
+  if(path==='/api/node/https/status')return{ok:true,status:200,json:async()=>httpsHelper?{helperInstalled:true,state:'not_configured',verified:false}:{helperInstalled:false,state:'helper_required',bootstrapCommand:'sudo bash /fixture/setup-node-https.sh --user fixture --port 8081'}};
+  if(path==='/api/node/https/configure'){configuredHttps=JSON.parse(options.body);return{ok:true,status:202,json:async()=>({helperInstalled:true,state:'verified',verified:true,domain:'node.example.org',expires:'2030-01-01T00:00:00Z'})};}
   if(path==='/api/node/operator')return{ok:true,status:200,json:async()=>({node_id:'fixture-existing',version:'3.7.0',name:'Fixture',uptime:60,cpu:{usage:5,load_1m:.1},ram:{used:1024**3,total:h.total_ram},compute:{active:0,capacity:1},requests:0,platform:{registered:true,publicUrl:null,worker:{enabled:true,lastPoll:new Date().toISOString(),resultsSubmitted:0,busy:false}},payout_address:'0:'+'88'.repeat(32)})};
   if(path==='/api/ollama/models')return{ok:true,status:200,json:async()=>({ollama_available:ollamaAvailable,installed:ollamaAvailable?[{id:'qwen3.5:0.8b',size:100}]:[],running:[]})};
   if(path==='/api/ollama/catalog')return{ok:true,status:200,json:async()=>catalog};
@@ -40,6 +42,19 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  };
  runInNewContext(html.split('<script>')[1].split('</script>')[0],context);
  await vi.waitFor(()=>expect(elements.get('installChoice')!.children.length).toBeGreaterThan(10));
+ expect(elements.get('httpsInstall')!.disabled).toBe(true);
+ expect(elements.get('httpsBootstrap')!.textContent).toContain('sudo bash');
+ httpsHelper=true;await elements.get('httpsRefresh')!.onclick();
+ expect(elements.get('httpsInstall')!.disabled).toBe(true);
+ elements.get('httpsTerms')!.checked=true;elements.get('httpsTerms')!.onchange();
+ expect(elements.get('httpsInstall')!.disabled).toBe(true);
+ elements.get('httpsExposure')!.checked=true;elements.get('httpsExposure')!.onchange();
+ expect(elements.get('httpsInstall')!.disabled).toBe(false);
+ elements.get('httpsDomain')!.value='node.example.org';elements.get('httpsEmail')!.value='operator@example.org';
+ await elements.get('httpsInstall')!.onclick();
+ expect(configuredHttps).toEqual({domain:'node.example.org',email:'operator@example.org',agreeTerms:true,exposePublic:true});
+ expect(elements.get('httpsInstall')!.disabled).toBe(true);
+ expect(elements.get('httpsLink')!.attributes.href).toBe('https://node.example.org');
  const choice=elements.get('installChoice')!;
  choice.value='qwen3.5:27b';choice.onchange();expect(elements.get('install')!.disabled).toBe(true);
  choice.value='qwen3.5:2b';choice.onchange();expect(elements.get('install')!.disabled).toBe(false);

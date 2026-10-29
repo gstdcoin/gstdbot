@@ -1,3 +1,4 @@
+import { httpsStatus, httpsHelperRequest, validateHttpsRequest } from '../lib/node-https.js';
 import {networkModels} from '../lib/network-models.js';
 import {setupTokenFor} from '../security/setup-token.js';
 import {isCloudModel} from '../lib/local-model-options.js';
@@ -2708,58 +2709,24 @@ export class OmegaGateway {
         // ═══════════════════════════════════════════════════════════
         // ─── LET'S ENCRYPT + SSL MANAGEMENT ──────────────────────
         // ═══════════════════════════════════════════════════════════
-        this.app.get('/api/ssl/status', (_req, res) => {
-            const sslDir = join(require('os').homedir(), '.config', 'gstdbot', 'ssl');
-            const hasCert = existsSync(join(sslDir, 'fullchain.pem'));
-            const hasKey = existsSync(join(sslDir, 'privkey.pem'));
-            let domain = '';
-            try { domain = readFileSync(join(sslDir, 'domain.txt'), 'utf-8').trim(); } catch (_e) {}
-            res.json({
-                enabled: hasCert && hasKey,
-                domain,
-                certPath: hasCert ? join(sslDir, 'fullchain.pem') : null,
-                expires: hasCert ? this.getCertExpiry(join(sslDir, 'fullchain.pem')) : null,
-            });
-        });
-
-        this.app.post('/api/ssl/setup', async (req, res) => {
+        this.app.get('/api/node/https/status', async (req, res) => {
             if (!requireNodeAuth(req, res)) return;
-            const { domain, email } = req.body || {};
-            if (!domain || !email) {
-                res.status(400).json({ error: 'domain and email required' });
-                return;
-            }
-            if (typeof domain !== 'string' || !/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(domain)) {
-                res.status(400).json({ error: 'Invalid domain' });
-                return;
-            }
-            if (typeof email !== 'string' || email.length > 254 || !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
-                res.status(400).json({ error: 'Invalid email' });
-                return;
-            }
-            const sslDir = join(require('os').homedir(), '.config', 'gstdbot', 'ssl');
+            res.json(await httpsStatus(join(__dirname, '..', '..'), this.config.apiPort));
+        });
+        this.app.post('/api/node/https/configure', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             try {
-                if (!existsSync(sslDir)) mkdirSync(sslDir, { recursive: true });
-                // Install certbot if needed, then obtain cert. Arguments are passed without a shell.
-                const run = (file: string, args: string[]) => execFileSync(file, args, { timeout: 120000, stdio: 'pipe' });
-                try {
-                    run('which', ['certbot']);
-                } catch {
-                    run('sudo', ['apt-get', 'update', '-qq']);
-                    run('sudo', ['apt-get', 'install', '-y', '-qq', 'certbot']);
-                }
-                run('sudo', ['certbot', 'certonly', '--standalone', '--non-interactive', '--agree-tos', '-m', email, '-d', domain, '--http-01-port', '80']);
-                const owner = require('os').userInfo().username as string;
-                for (const pem of ['fullchain.pem', 'privkey.pem']) {
-                    run('sudo', ['cp', `/etc/letsencrypt/live/${domain}/${pem}`, `${sslDir}/`]);
-                    run('sudo', ['chown', owner, join(sslDir, pem)]);
-                }
-                writeFileSync(join(sslDir, 'domain.txt'), domain);
-                logActivity(`SSL certificate obtained for ${domain}`, 'success');
-                res.json({ success: true, domain, message: `SSL certificate installed for ${domain}. Restart node to enable HTTPS.` });
-            } catch (e: any) {
-                logActivity('SSL setup failed: ' + e.message, 'error');
-                res.status(500).json({ error: 'SSL setup failed: ' + e.message });
+                const input = validateHttpsRequest(req.body);
+                const installed = await httpsHelperRequest({ action:'status' });
+                if (installed.upstreamPort !== this.config.apiPort) { res.status(409).json({error:'https_upstream_mismatch'}); return; }
+                const state = await httpsHelperRequest({ action:'configure', ...input });
+                res.status(202).json(state);
+            } catch (error: any) {
+                const code = error?.message;
+                const known = ['invalid_request','invalid_domain','invalid_email','consent_required','https_busy','https_cooldown','domain_change_requires_manual','https_helper_unavailable'];
+                const safe = known.includes(code) ? code : 'https_setup_failed';
+                const status = (safe === 'https_busy' || safe === 'domain_change_requires_manual') ? 409 : safe === 'https_cooldown' ? 429 : safe === 'https_helper_unavailable' ? 503 : safe === 'https_setup_failed' ? 500 : 400;
+                res.status(status).json({ error:safe });
             }
         });
 
