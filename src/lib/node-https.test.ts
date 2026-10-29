@@ -7,7 +7,7 @@ const sockets = vi.hoisted(()=>({next:null as any,path:''}));
 vi.mock('node:fs',async()=>{const actual=await vi.importActual<typeof import('node:fs')>('node:fs');return {...actual,existsSync:(path:any)=>['/run/systemd/system','/usr/bin/apt-get'].includes(path)?true:['/.dockerenv','/run/.containerenv'].includes(path)?false:actual.existsSync(path)};});
 vi.mock('node:os',()=>({platform:()=> 'linux',userInfo:()=>({uid:1001,username:'node-worker'})}));
 vi.mock('node:net',()=>({createConnection:(path:string)=>{sockets.path=path;return sockets.next;}}));
-import { validateHttpsRequest, sanitizeHttpsStatus, httpsBootstrapCommand, httpsHelperRequest } from './node-https.js';
+import { validateHttpsRequest, sanitizeHttpsStatus, httpsAutomaticSetupSupported, httpsHelperRequest } from './node-https.js';
 
 const valid={domain:'NODE.example.org',email:'operator+node@example.org',agreeTerms:true,exposePublic:true};
 it('accepts only a domain profile and two explicit permissions',()=>{
@@ -26,9 +26,9 @@ it('never returns helper logs keys email credentials or external reachability cl
  expect(sanitizeHttpsStatus({state:'failed',verified:true,error:'private key contents'}).verified).toBe(false);
  expect(sanitizeHttpsStatus({state:'failed',error:'private key contents'}).error).toBeUndefined();
 });
-it('shows a safely quoted local command and rejects runtime-invalid upstream ports',()=>{
- expect(httpsBootstrapCommand("/srv/node's files",8081)).toBe("sudo bash '/srv/node'\\''s files/scripts/setup-node-https.sh' --user 'node-worker' --port 8081");
- for (const port of [0,80,443,2019,65536,NaN,8081.5,'8081; id' as any]) expect(httpsBootstrapCommand('/srv/node',port)).toBeNull();
+it('reports supported installation capability without generating terminal commands',()=>{
+ expect(httpsAutomaticSetupSupported(8081)).toBe(true);
+ for (const port of [0,80,443,2019,65536,NaN,8081.5,'8081; id' as any]) expect(httpsAutomaticSetupSupported(port)).toBe(false);
 });
 class Socket extends EventEmitter {
  body='';setTimeout(){}destroy(){}

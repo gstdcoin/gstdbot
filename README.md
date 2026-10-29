@@ -23,4 +23,4 @@ Manage local models, view CPU/RAM and compute slots, configure the first public 
 
 ### Optional HTTPS
 
-The operator panel can configure a domain-based Let’s Encrypt HTTPS proxy after one local administrator bootstrap on supported non-root Debian/Ubuntu systemd installs. Certificates renew through Caddy; DNS and public ports remain an owner responsibility. It preserves the current tunnel and does not turn free direct inference into paid work. See [the HTTPS operator instructions](docs/OPERATOR_PANEL.md#https-form-and-lets-encrypt).
+The operator panel can configure a domain-based Let’s Encrypt HTTPS proxy on supported non-root Debian/Ubuntu systemd installs; the privileged installer prepares the narrowly scoped HTTPS component automatically. Certificates renew through Caddy; DNS and public ports remain an owner responsibility. It preserves the current tunnel and does not turn free direct inference into paid work. See [the HTTPS operator instructions](docs/OPERATOR_PANEL.md#https-form-and-lets-encrypt).

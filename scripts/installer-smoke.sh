@@ -34,6 +34,10 @@ const fs=require('fs'),assert=require('assert/strict');
  assert.equal(first.status,200);const {token}=await first.json();
  const catalog=await fetch(base+'/api/ollama/catalog',{headers:{Authorization:'Bearer '+token}});
  assert.equal(catalog.status,200);assert((await catalog.json()).models.length>0);
+ // Root/container installs must remain healthy without installing a host HTTPS controller.
+ const https=await fetch(base+'/api/node/https/status',{headers:{Authorization:'Bearer '+token}});
+ assert.equal(https.status,200);assert.equal((await https.json()).helperInstalled,false);
+ assert.equal(fs.existsSync('/etc/gstd-node-https/bootstrap.json'),false);
  console.log('Fresh pinned GitHub install, production-environment build, compatibility entry point, first login and packaged catalog passed. No model inference tested.');
 })().catch(e=>{console.error(e.message);process.exit(1)});
 NODE

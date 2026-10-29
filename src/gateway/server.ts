@@ -2711,7 +2711,7 @@ export class OmegaGateway {
         // ═══════════════════════════════════════════════════════════
         this.app.get('/api/node/https/status', async (req, res) => {
             if (!requireNodeAuth(req, res)) return;
-            res.json(await httpsStatus(join(__dirname, '..', '..'), this.config.apiPort));
+            res.json(await httpsStatus(this.config.apiPort));
         });
         this.app.post('/api/node/https/configure', async (req, res) => {
             if (!requireNodeAuth(req, res)) return;

@@ -718,6 +718,33 @@ for i in $(seq 1 10); do
     sleep 1
 done
 
+# Prepare the narrowly scoped HTTPS controller during the privileged installer,
+# not from an HTTP request. Issuance/public exposure still require panel consent.
+# Optional capability: never prompt for credentials or block a working node.
+if [ "$(uname -s)" = Linux ] && [ "$(id -u)" -gt 0 ] \
+    && [ -d /run/systemd/system ] && command -v apt-get >/dev/null 2>&1 \
+    && [ ! -e /.dockerenv ] && [ ! -e /run/.containerenv ]; then
+    if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+        if [[ "$DASH_PORT" =~ ^[0-9]{4,5}$ ]] && [ "$DASH_PORT" -ge 1024 ] \
+            && [ "$DASH_PORT" -le 65535 ] && [ "$DASH_PORT" -ne 2019 ] \
+            && [ -f "$INSTALL_DIR/scripts/setup-node-https.sh" ]; then
+            info "Preparing HTTPS controls for the dashboard (no certificate or public listener yet)..."
+            if timeout 300 sudo -n bash "$INSTALL_DIR/scripts/setup-node-https.sh" \
+                --user "$(id -un)" --port "$DASH_PORT" >>"$LOG_FILE" 2>&1; then
+                info "HTTPS controls ready — choose a domain and configure HTTPS in the dashboard"
+            else
+                warn "Optional HTTPS controls could not be prepared; the node remains available. Check HTTPS status in the dashboard."
+            fi
+        else
+            warn "HTTPS controls were not prepared: the configured gateway port or helper source is unsupported."
+        fi
+    else
+        info "HTTPS system controls need installation-level administrator access; existing HTTPS tunnels and outbound work remain available."
+    fi
+else
+    info "Automatic HTTPS system controls are unavailable for this installation profile; existing HTTPS tunnels and outbound work remain available."
+fi
+
 # ═══════════════════════════════════════════════════════════════
 # DONE — Summary
 # ═══════════════════════════════════════════════════════════════

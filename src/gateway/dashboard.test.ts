@@ -23,7 +23,7 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  const address='0:'+'77'.repeat(32);
  let bound:any=null;let ollamaAvailable=true;let httpsHelper=false;let configuredHttps:any=null;
  const fetcher=vi.fn(async(path:string,options:any)=>{
-  if(path==='/api/node/https/status')return{ok:true,status:200,json:async()=>httpsHelper?{helperInstalled:true,state:'not_configured',verified:false}:{helperInstalled:false,state:'helper_required',bootstrapCommand:'sudo bash /fixture/setup-node-https.sh --user fixture --port 8081'}};
+  if(path==='/api/node/https/status')return{ok:true,status:200,json:async()=>httpsHelper?{helperInstalled:true,state:'not_configured',verified:false}:{helperInstalled:false,state:'helper_required',setupSupported:true}};
   if(path==='/api/node/https/configure'){configuredHttps=JSON.parse(options.body);return{ok:true,status:202,json:async()=>({helperInstalled:true,state:'verified',verified:true,domain:'node.example.org',expires:'2030-01-01T00:00:00Z'})};}
   if(path==='/api/node/operator')return{ok:true,status:200,json:async()=>({node_id:'fixture-existing',version:'3.7.0',name:'Fixture',uptime:60,cpu:{usage:5,load_1m:.1},ram:{used:1024**3,total:h.total_ram},compute:{active:0,capacity:1},requests:0,platform:{registered:true,publicUrl:null,worker:{enabled:true,lastPoll:new Date().toISOString(),resultsSubmitted:0,busy:false}},payout_address:'0:'+'88'.repeat(32)})};
   if(path==='/api/ollama/models')return{ok:true,status:200,json:async()=>({ollama_available:ollamaAvailable,installed:ollamaAvailable?[{id:'qwen3.5:0.8b',size:100}]:[],running:[]})};
@@ -43,7 +43,8 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  runInNewContext(html.split('<script>')[1].split('</script>')[0],context);
  await vi.waitFor(()=>expect(elements.get('installChoice')!.children.length).toBeGreaterThan(10));
  expect(elements.get('httpsInstall')!.disabled).toBe(true);
- expect(elements.get('httpsBootstrap')!.textContent).toContain('sudo bash');
+ expect(html).not.toContain('id="httpsBootstrap"');
+ expect(elements.get('httpsStatus')!.textContent).toContain('автоматически при установке');
  httpsHelper=true;await elements.get('httpsRefresh')!.onclick();
  expect(elements.get('httpsInstall')!.disabled).toBe(true);
  elements.get('httpsTerms')!.checked=true;elements.get('httpsTerms')!.onchange();

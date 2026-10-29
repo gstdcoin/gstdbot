@@ -1,7 +1,6 @@
 import { existsSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { platform, userInfo } from 'node:os';
-import { resolve } from 'node:path';
 
 const SOCKET = '/run/gstd-node-https/control.sock';
 const PRIVATE_SUFFIX = /\.(?:local|localhost|internal|lan|home|corp|intranet|localdomain)$/;
@@ -70,21 +69,18 @@ export function httpsHelperRequest(body: Record<string, unknown>): Promise<Https
         socket.on('end',()=>{if (!settled) finish(Error('https_helper_unavailable'));});
     });
 }
-function shellQuote(value: string): string { return "'"+value.replace(/'/g,"'\\''")+"'"; }
-/** Display-only local bootstrap: never execute this command from a web request. */
-export function httpsBootstrapCommand(installDir: string, port: number): string | null {
-    if (platform() !== 'linux' || userInfo().uid === 0 || !existsSync('/run/systemd/system') || !existsSync('/usr/bin/apt-get') || existsSync('/.dockerenv') || existsSync('/run/.containerenv') || !Number.isInteger(port) || port < 1024 || port > 65535 || port === 2019) return null;
-    return 'sudo bash '+shellQuote(resolve(installDir,'scripts/setup-node-https.sh'))+
-        ' --user '+shellQuote(userInfo().username)+' --port '+port;
+/** System capability only: panel management never exposes a shell command. */
+export function httpsAutomaticSetupSupported(port: number): boolean {
+    return platform() === 'linux' && userInfo().uid !== 0 && existsSync('/run/systemd/system') && existsSync('/usr/bin/apt-get') && !existsSync('/.dockerenv') && !existsSync('/run/.containerenv') && Number.isInteger(port) && port >= 1024 && port <= 65535 && port !== 2019;
 }
-export async function httpsStatus(installDir: string, port: number) {
+export async function httpsStatus(port: number) {
     try {
         const status = await httpsHelperRequest({action:'status'});
-        if (status.upstreamPort !== port) return {...status, verified:false, state:'upstream_mismatch', error:'https_upstream_mismatch', bootstrapCommand:null};
-        return { ...status, bootstrapCommand:httpsBootstrapCommand(installDir,port) };
+        if (status.upstreamPort !== port) return {...status, verified:false, state:'upstream_mismatch', error:'https_upstream_mismatch', setupSupported:httpsAutomaticSetupSupported(port)};
+        return { ...status, setupSupported:httpsAutomaticSetupSupported(port) };
     }
     catch {
         return {helperInstalled:false, state:'helper_required', verified:false, externalVerified:false,
-            bootstrapCommand:httpsBootstrapCommand(installDir,port)};
+            setupSupported:httpsAutomaticSetupSupported(port)};
     }
 }
