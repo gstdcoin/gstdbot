@@ -1,3 +1,4 @@
+import {modelDownloadGate,streamModelDownload,downloadDisconnect} from '../lib/model-download.js';
 import {huggingFaceCatalog,HuggingFaceLookupError} from '../lib/huggingface-models.js';
 import { httpsStatus, httpsHelperRequest, validateHttpsRequest } from '../lib/node-https.js';
 import {networkModels} from '../lib/network-models.js';
@@ -4298,7 +4299,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                 const known=error instanceof HuggingFaceLookupError;
                 const code=known?error.code:'hf_repository_unavailable';
                 if(known&&error.retryAfterSeconds)res.setHeader('Retry-After',String(error.retryAfterSeconds));
-                return res.status(code==='hf_invalid_repository'?400:code==='hf_lookup_cooldown'||code==='hf_rate_limited'?429:code==='hf_access_restricted'?403:code==='hf_repository_not_found'?404:502)
+                return res.status(code==='hf_invalid_repository'?400:code==='hf_lookup_cooldown'||code==='hf_rate_limited'?429:code==='hf_access_restricted'?403:code==='hf_repository_not_found'?404:code==='hf_file_unavailable'?422:502)
                     .json({error:code,...(known&&error.retryAfterSeconds?{retry_after_seconds:error.retryAfterSeconds}:{})});
             }
         });
@@ -4338,47 +4339,28 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             if(hfReview.applies&&!reviewed)return res.status(409).json({error:'hf_check_repository_first'});
             if(reviewed && compatibility(reviewed,catalogHardware()).status==='insufficient')
                 return res.status(409).json({error:'model_resources_insufficient'});
-            logActivity(`Pulling Ollama model: ${model}`, 'info');
-            res.setHeader('Content-Type', 'text/event-stream');
-            res.setHeader('Cache-Control', 'no-cache');
-            res.setHeader('X-Accel-Buffering', 'no');
+            let release:()=>void;
+            try{release=modelDownloadGate.acquire();}
+            catch{return res.status(409).json({error:'model_download_in_progress'});}
+            const cancellation=downloadDisconnect(res);
             try {
-                const pullResp = await fetch(`${ollamaUrl}/api/pull`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: model, stream: true }),
-                    signal: AbortSignal.timeout(30 * 60 * 1000),
+                logActivity(`Pulling Ollama model: ${model}`, 'info');
+                res.setHeader('Content-Type', 'text/event-stream');
+                res.setHeader('Cache-Control', 'no-cache');
+                res.setHeader('X-Accel-Buffering', 'no');
+                await streamModelDownload(model,ollamaUrl,cancellation.signal,data=>{
+                    if(cancellation.signal.aborted||res.destroyed)throw Error('model_download_cancelled');
+                    res.write(`data: ${JSON.stringify(data)}\n\n`);
                 });
-                if (!pullResp.ok || !pullResp.body) {
-                    const err = await pullResp.text().catch(() => 'unknown error');
-                    res.write(`data: ${JSON.stringify({ error: err })}\n\n`);
-                    return res.end();
-                }
-                const reader = (pullResp.body as any).getReader();
-                const decoder = new TextDecoder();
-                let pending = '';
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    pending += decoder.decode(value, { stream: true });
-                    const lines = pending.split('\n');
-                    pending = lines.pop() || '';
-                    for (const line of lines) {
-                        if (!line.trim()) continue;
-                        try {
-                            const data = JSON.parse(line);
-                            res.write(`data: ${JSON.stringify(data)}\n\n`);
-                            if (data.status === 'success') {
-                                logActivity(`Model pulled: ${model}`, 'success');
-                                await this._refreshOllamaModels();
-                            }
-                        } catch (_) {}
-                    }
-                }
-            } catch (e: any) {
-                res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`);
+                logActivity(`Model pulled: ${model}`, 'success');
+                await this._refreshOllamaModels();
+            } catch (error:any) {
+                const code=['model_download_failed','model_download_incomplete','model_download_cancelled','model_runtime_update_required'].includes(error?.message)?error.message:'model_download_failed';
+                if(!res.destroyed&&!res.writableEnded)res.write(`data: ${JSON.stringify({error:code})}\n\n`);
+            } finally {
+                cancellation.dispose();release();
+                if(!res.destroyed&&!res.writableEnded)res.end();
             }
-            res.end();
         });
 
         // DELETE /api/ollama/models/:name — remove a model

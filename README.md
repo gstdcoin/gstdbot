@@ -24,3 +24,7 @@ Manage local models, view CPU/RAM and compute slots, configure the first public 
 ### Optional HTTPS
 
 The operator panel can configure a domain-based Let’s Encrypt HTTPS proxy on supported non-root Debian/Ubuntu systemd installs; the privileged installer prepares the narrowly scoped HTTPS component automatically. Certificates renew through Caddy; DNS and public ports remain an owner responsibility. It preserves the current tunnel and does not turn free direct inference into paid work. See [the HTTPS operator instructions](docs/OPERATOR_PANEL.md#https-form-and-lets-encrypt).
+
+### Hugging Face community
+
+Import a public GGUF repository or file link, inspect resource estimates and declared licensing, then download and test with dashboard buttons. [Operator and model-author guide](docs/HUGGINGFACE.md). No hosted-inference key is needed for this public-model flow; installing models alone does not earn tokens.

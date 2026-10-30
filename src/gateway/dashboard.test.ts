@@ -21,18 +21,18 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  const h:CatalogHardware={total_ram:8*1024**3,available_ram:6*1024**3,disk_free:20*1024**3,cpu_cores:4,gpu_vram:0,gpu_name:null,local_runtime:true,platform:'linux',arch:'arm64'};
  const catalog={hardware:h,network:{models:[{model_id:'remote:large',nodes_count:1,price_gstd:0.1}]},models:modelCatalog().map(m=>({...m,compatibility:compatibility(m,h)}))};
  const hfModels=[1,30].map((size,index)=>{const model={id:'hf.co/example/model-GGUF:model-'+(index?'Q8_0':'Q4_K_M')+'.gguf',filename:'model-'+(index?'Q8_0':'Q4_K_M')+'.gguf',repository:'example/model-GGUF',title:'HF fixture',category:'huggingface',legacy:false,download_bytes:size*1024**3,verified_at:'2030-01-01T00:00:00Z',source:'https://huggingface.co/example/model-GGUF'};return {...model,compatibility:compatibility(model,h)};});
- let hfLookups=0;
+ let hfLookups=0;let hfPreferred:string|undefined;let hfLookupFails=false;let pullWait=false;let activePullSignal:AbortSignal|undefined;
  const address='0:'+'77'.repeat(32);
  let bound:any=null;let ollamaAvailable=true;let httpsHelper=false;let configuredHttps:any=null;let pulledModel='';const downloadedModels=new Set<string>();
  const fetcher=vi.fn(async(path:string,options:any)=>{
-  if(path==='/api/node/huggingface/models'){hfLookups++;expect(JSON.parse(options.body)).toEqual({repository:'example/model-GGUF'});return{ok:true,status:200,json:async()=>({repository:'example/model-GGUF',models:hfModels,cached:true,estimate_only:true})};}
+  if(path==='/api/node/huggingface/models'){hfLookups++;expect(JSON.parse(options.body)).toEqual({repository:'example/model-GGUF'});if(hfLookupFails)return{ok:false,status:404,json:async()=>({error:'hf_file_unavailable'})};return{ok:true,status:200,json:async()=>({repository:'example/model-GGUF',repository_url:'https://huggingface.co/example/model-GGUF',license:'apache-2.0',license_url:'https://huggingface.co/example/model-GGUF/blob/main/LICENSE',downloads:42,last_modified:'2030-01-01T00:00:00Z',preferred_filename:hfPreferred,models:hfModels,cached:true,estimate_only:true})};}
   if(path==='/api/node/https/status')return{ok:true,status:200,json:async()=>httpsHelper?{helperInstalled:true,state:'not_configured',verified:false}:{helperInstalled:false,state:'helper_required',setupSupported:true}};
   if(path==='/api/node/https/configure'){configuredHttps=JSON.parse(options.body);return{ok:true,status:202,json:async()=>({helperInstalled:true,state:'verified',verified:true,domain:'node.example.org',expires:'2030-01-01T00:00:00Z'})};}
   if(path==='/api/node/operator')return{ok:true,status:200,json:async()=>({node_id:'fixture-existing',version:'3.7.0',name:'Fixture',uptime:60,cpu:{usage:5,load_1m:.1},ram:{used:1024**3,total:h.total_ram},compute:{active:0,capacity:1},requests:0,platform:{registered:true,publicUrl:null,worker:{enabled:true,lastPoll:new Date().toISOString(),resultsSubmitted:0,busy:false}},payout_address:'0:'+'88'.repeat(32)})};
   if(path==='/api/ollama/models')return{ok:true,status:200,json:async()=>({ollama_available:ollamaAvailable,installed:ollamaAvailable?[{id:'qwen3.5:0.8b',size:100},...[...downloadedModels].map(id=>({id,size:100}))]:[],running:[]})};
   if(path==='/api/ollama/catalog'||path==='/api/ollama/catalog/refresh')return{ok:true,status:200,json:async()=>catalog};
   if(path==='/api/ollama/models/pull'){
-   pulledModel=JSON.parse(options.body).model;downloadedModels.add(pulledModel);let sent=false;
+   pulledModel=JSON.parse(options.body).model;activePullSignal=options.signal;if(pullWait)return{ok:true,status:200,body:{getReader:()=>({read:()=>new Promise((_resolve,reject)=>options.signal.addEventListener('abort',()=>reject(Object.assign(new Error('aborted'),{name:'AbortError'}))))})}};downloadedModels.add(pulledModel);let sent=false;
    return{ok:true,status:200,body:{getReader:()=>({read:async()=>sent?{done:true}:(sent=true,{done:false,value:Buffer.from('data: {"status":"success"}\n\n')})})}};
   }
   if(path==='/api/node/reward-wallet'){
@@ -45,7 +45,7 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
   document:{documentElement:{lang:''},hidden:false,title:'',getElementById:(id:string)=>elements.get(id),querySelectorAll:()=>labels,createElement:()=>new Element()},
   navigator:{language:'ru-RU'},localStorage:storage({}),sessionStorage:storage({gstd_operator_session:'fixture-only'}),
   Option:class{constructor(public text:string,public value:string){}},fetch:fetcher,
-  setInterval:()=>0,location:{reload(){}},console,TextDecoder,Set,Date,
+  setInterval:()=>0,location:{reload(){}},console,TextDecoder,Set,Date,AbortController,
  };
  runInNewContext(html.split('<script>')[1].split('</script>')[0],context);
  await vi.waitFor(()=>expect(elements.get('installChoice')!.children.length).toBeGreaterThan(10));
@@ -81,6 +81,14 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  await elements.get('hfCheck')!.onclick();
  expect(hfLookups).toBe(1);
  expect(fetcher.mock.calls.filter(([path])=>path==='/api/ollama/models/pull')).toHaveLength(beforePulls);
+ expect(elements.get('hfFile')!.children).toHaveLength(2); // incompatible files hidden by default
+ expect(elements.get('hfFile')!.value).toBe(''); // no implicit download selection
+ expect(elements.get('hfRecommendation')!.textContent).toContain('Q4_K_M');
+ expect(elements.get('hfRepositoryInfo')!.textContent).toContain('apache-2.0');
+ expect(elements.get('hfSourceLink')!.attributes.href).toBe('https://huggingface.co/example/model-GGUF');
+ elements.get('hfRecommend')!.onclick();
+ expect(elements.get('newModel')!.value).toBe(hfModels[0].id);
+ elements.get('hfFitOnly')!.checked=false;elements.get('hfFitOnly')!.onchange();
  expect(elements.get('hfFile')!.children).toHaveLength(3);
  elements.get('hfFile')!.value=hfModels[0].id;elements.get('hfFile')!.onchange();
  elements.get('hfFile')!.value='';elements.get('hfFile')!.onchange();
@@ -103,6 +111,39 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  await elements.get('install')!.onclick();
  expect(pulledModel).toBe(hfModels[0].id);
  expect(elements.get('install')!.disabled).toBe(true);
+ // Installing does not change the current conversation or send an inference request.
+ expect(elements.get('model')!.value).toBe('remote:large');
+ expect(elements.get('testInstalled')!.disabled).toBe(false);
+ const beforeInference=fetcher.mock.calls.filter(([path])=>path==='/v1/chat/completions').length;
+ elements.get('testInstalled')!.onclick();
+ expect(elements.get('model')!.value).toBe(hfModels[0].id);
+ expect(elements.get('privacy')!.value).toBe('local');
+ expect(fetcher.mock.calls.filter(([path])=>path==='/v1/chat/completions')).toHaveLength(beforeInference);
+ // An explicit file link may select an incompatible file, but never downloads it or replaces it.
+ hfPreferred=hfModels[1].filename;
+ await elements.get('hfCheck')!.onclick();
+ expect(elements.get('hfFile')!.value).toBe(hfModels[1].id);
+ expect(elements.get('install')!.disabled).toBe(true);
+ hfLookupFails=true;await elements.get('hfCheck')!.onclick();
+ expect(elements.get('hfFile')!.value).toBe('');
+ expect(elements.get('newModel')!.value).toBe('');
+ expect(elements.get('install')!.disabled).toBe(true);
+ expect(elements.get('hfStatus')!.textContent).toContain('Другой файл не выбран');
+ hfLookupFails=false;hfPreferred=undefined;
+ // A periodic catalogue render must not re-enable a live download; cancellation does no delete.
+ custom.value='cancel-fixture:small';custom.oninput();pullWait=true;activePullSignal=undefined;
+ const waitingDownload=elements.get('install')!.onclick();
+ await vi.waitFor(()=>expect(activePullSignal).toBeDefined());
+ await elements.get('refreshCatalog')!.onclick();
+ expect(elements.get('install')!.disabled).toBe(true);
+ elements.get('cancelDownload')!.onclick();await waitingDownload;
+ expect(activePullSignal!.aborted).toBe(true);
+ expect(elements.get('downloadInfo')!.textContent).toContain('Скачивание остановлено');
+ expect(elements.get('cancelDownload')!.disabled).toBe(true);
+ expect(elements.get('install')!.disabled).toBe(false);
+ expect(fetcher.mock.calls.some(([path])=>path.includes('delete'))).toBe(false);
+ pullWait=false;
+
  const choice=elements.get('installChoice')!;
  choice.value='qwen3.5:27b';choice.onchange();expect(elements.get('install')!.disabled).toBe(true);
  choice.value='qwen3.5:2b';choice.onchange();expect(elements.get('install')!.disabled).toBe(false);
