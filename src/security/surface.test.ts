@@ -20,3 +20,5 @@ it('keeps managed HTTPS operator-only and retires copied-key SSL routes',()=>{
  expect(nodeSurface('/api/ssl/status')).toBe('retired');
  expect(nodeSurface('/api/ssl/setup')).toBe('retired');
 });
+
+it('keeps Hugging Face metadata lookup behind the operator session',()=>{expect(nodeSurface('/api/node/huggingface/models')).toBe('operator');});

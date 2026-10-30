@@ -150,3 +150,14 @@ Certificate renewal is automatic; privileged software upgrades are not. After a 
 4. Панель покажет результат проверки сертификата и срок действия. Caddy продлевает сертификат автоматически. После первого сбоя прокси останавливается; неудачное изменение восстанавливает прежнюю конфигурацию. Повторная заявка доступна через десять минут.
 
 Проверка выполняется локально и не подтверждает прохождение внешнего NAT. Рабочий туннель и адрес в реестре не меняются автоматически. Прямой публичный API расходует вычислительные ресурсы без проверки оплаты GSTD и сам не создаёт наград. Для другого домена, обновления системного помощника или изменения его фиксированного порта нужен администратор. Приватные ключи остаются в системном хранилище Caddy; не публикуйте его содержимое.
+
+
+## Hugging Face GGUF models / Модели Hugging Face
+
+In **Model directory → Models from Hugging Face**, enter `organisation/repository` or its official HTTPS link, press **Check repository**, then choose a GGUF file. The normal **Download model** button performs the separate weight download into local Ollama. No API key, login, remote inference, Python dependency installation or remote code execution is added. Existing custom Ollama model names still work.
+
+The lookup is opt-in: one bounded request to the official Hub model metadata API, a six-hour per-repository cache (maximum 16 repositories), one new lookup per 30 seconds per node, and `Retry-After` backoff on rate limiting. Page loads, language changes and normal status polling do not request Hugging Face. Metadata responses are limited to 2 MiB, with an eight-second timeout; up to 100 eligible files are shown. Public ungated repositories, known-size single root-level GGUF files only; split shards and multimodal projector files are excluded.
+
+File sizes come from repository metadata. Existing hardware estimates use those sizes; they do not prove architecture support, quality, performance or successful startup. The installed Ollama version must support the selected file. Hugging Face aliases reference a mutable default branch, not a pinned commit. Recheck expired metadata before downloading. A restart clears the in-memory metadata cache; it does not remove downloaded weights.
+
+В **Каталоге моделей → Модели из Hugging Face** укажите репозиторий или официальную ссылку, нажмите **Проверить репозиторий**, выберите GGUF-файл и отдельно нажмите **Скачать модель**. Для публичных репозиториев ключ API не нужен. Проверка получает только список и размеры; модель не скачивается автоматически. RAM и диск оцениваются по размеру файла, а архитектура и запуск требуют поддержки вашей версией Ollama. Закрытые и gated-репозитории, части разбитой модели и mmproj не поддерживаются. Кеш действует 6 часов; ограничение новых проверок — 30 секунд на ноду, ответы 429 приостанавливают запросы. Выбор модели сохраняется при смене языка и обновлении каталога.

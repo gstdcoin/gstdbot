@@ -20,9 +20,12 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  const labels=[...html.matchAll(/data-i="([^"]+)"/g)].map(m=>{const e=new Element();e.dataset.i=m[1];return e;});
  const h:CatalogHardware={total_ram:8*1024**3,available_ram:6*1024**3,disk_free:20*1024**3,cpu_cores:4,gpu_vram:0,gpu_name:null,local_runtime:true,platform:'linux',arch:'arm64'};
  const catalog={hardware:h,network:{models:[{model_id:'remote:large',nodes_count:1,price_gstd:0.1}]},models:modelCatalog().map(m=>({...m,compatibility:compatibility(m,h)}))};
+ const hfModels=[1,30].map((size,index)=>{const model={id:'hf.co/example/model-GGUF:model-'+(index?'Q8_0':'Q4_K_M')+'.gguf',filename:'model-'+(index?'Q8_0':'Q4_K_M')+'.gguf',repository:'example/model-GGUF',title:'HF fixture',category:'huggingface',legacy:false,download_bytes:size*1024**3,verified_at:'2030-01-01T00:00:00Z',source:'https://huggingface.co/example/model-GGUF'};return {...model,compatibility:compatibility(model,h)};});
+ let hfLookups=0;
  const address='0:'+'77'.repeat(32);
  let bound:any=null;let ollamaAvailable=true;let httpsHelper=false;let configuredHttps:any=null;let pulledModel='';const downloadedModels=new Set<string>();
  const fetcher=vi.fn(async(path:string,options:any)=>{
+  if(path==='/api/node/huggingface/models'){hfLookups++;expect(JSON.parse(options.body)).toEqual({repository:'example/model-GGUF'});return{ok:true,status:200,json:async()=>({repository:'example/model-GGUF',models:hfModels,cached:true,estimate_only:true})};}
   if(path==='/api/node/https/status')return{ok:true,status:200,json:async()=>httpsHelper?{helperInstalled:true,state:'not_configured',verified:false}:{helperInstalled:false,state:'helper_required',setupSupported:true}};
   if(path==='/api/node/https/configure'){configuredHttps=JSON.parse(options.body);return{ok:true,status:202,json:async()=>({helperInstalled:true,state:'verified',verified:true,domain:'node.example.org',expires:'2030-01-01T00:00:00Z'})};}
   if(path==='/api/node/operator')return{ok:true,status:200,json:async()=>({node_id:'fixture-existing',version:'3.7.0',name:'Fixture',uptime:60,cpu:{usage:5,load_1m:.1},ram:{used:1024**3,total:h.total_ram},compute:{active:0,capacity:1},requests:0,platform:{registered:true,publicUrl:null,worker:{enabled:true,lastPoll:new Date().toISOString(),resultsSubmitted:0,busy:false}},payout_address:'0:'+'88'.repeat(32)})};
@@ -70,6 +73,36 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  await elements.get('install')!.onclick();
  expect(pulledModel).toBe('custom-family:7b');
  expect(elements.get('installChoice')!.value).toBe('');
+ // Hugging Face metadata is fetched only by its button, never on page load or refresh.
+ expect(hfLookups).toBe(0);
+ elements.get('model')!.value='remote:large';elements.get('model')!.onchange();
+ const beforePulls=fetcher.mock.calls.filter(([path])=>path==='/api/ollama/models/pull').length;
+ elements.get('hfRepository')!.value='example/model-GGUF';
+ await elements.get('hfCheck')!.onclick();
+ expect(hfLookups).toBe(1);
+ expect(fetcher.mock.calls.filter(([path])=>path==='/api/ollama/models/pull')).toHaveLength(beforePulls);
+ expect(elements.get('hfFile')!.children).toHaveLength(3);
+ elements.get('hfFile')!.value=hfModels[0].id;elements.get('hfFile')!.onchange();
+ elements.get('hfFile')!.value='';elements.get('hfFile')!.onchange();
+ expect(elements.get('newModel')!.value).toBe('');
+ expect(elements.get('install')!.disabled).toBe(true);
+ expect(elements.get('model')!.value).toBe('remote:large');
+ elements.get('hfFile')!.value=hfModels[1].id;elements.get('hfFile')!.onchange();
+ expect(elements.get('install')!.disabled).toBe(true);
+ elements.get('hfFile')!.value=hfModels[0].id;elements.get('hfFile')!.onchange();
+ expect(elements.get('install')!.disabled).toBe(false);
+ expect(elements.get('modelPlan')!.textContent).toContain('Hugging Face');
+ expect(elements.get('modelPlan')!.textContent).not.toContain('Современная');
+ await elements.get('refreshCatalog')!.onclick();
+ elements.get('language')!.value='en';elements.get('language')!.onchange();
+ expect(elements.get('hfFile')!.value).toBe(hfModels[0].id);
+ expect(elements.get('newModel')!.value).toBe(hfModels[0].id);
+ expect(elements.get('model')!.value).toBe('remote:large');
+ expect(hfLookups).toBe(1);
+ elements.get('language')!.value='ru';elements.get('language')!.onchange();
+ await elements.get('install')!.onclick();
+ expect(pulledModel).toBe(hfModels[0].id);
+ expect(elements.get('install')!.disabled).toBe(true);
  const choice=elements.get('installChoice')!;
  choice.value='qwen3.5:27b';choice.onchange();expect(elements.get('install')!.disabled).toBe(true);
  choice.value='qwen3.5:2b';choice.onchange();expect(elements.get('install')!.disabled).toBe(false);

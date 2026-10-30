@@ -1,3 +1,4 @@
+import {huggingFaceCatalog,HuggingFaceLookupError} from '../lib/huggingface-models.js';
 import { httpsStatus, httpsHelperRequest, validateHttpsRequest } from '../lib/node-https.js';
 import {networkModels} from '../lib/network-models.js';
 import {setupTokenFor} from '../security/setup-token.js';
@@ -4286,6 +4287,22 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             await refreshModelCatalog();res.json(await catalogResponse());
         });
 
+        // Opt-in metadata from one public GGUF repository; no tokens, search or weight download.
+        this.app.post('/api/node/huggingface/models', async (req,res)=>{
+            if(!requireNodeAuth(req,res))return;
+            try{
+                if(!req.body||Object.keys(req.body).some(key=>key!=='repository'))return res.status(400).json({error:'hf_invalid_repository'});
+                const result=await huggingFaceCatalog.lookup(req.body.repository),hardware=catalogHardware();
+                return res.json({...result,models:result.models.map(model=>({...model,compatibility:compatibility(model,hardware)}))});
+            }catch(error){
+                const known=error instanceof HuggingFaceLookupError;
+                const code=known?error.code:'hf_repository_unavailable';
+                if(known&&error.retryAfterSeconds)res.setHeader('Retry-After',String(error.retryAfterSeconds));
+                return res.status(code==='hf_invalid_repository'?400:code==='hf_lookup_cooldown'||code==='hf_rate_limited'?429:code==='hf_access_restricted'?403:code==='hf_repository_not_found'?404:502)
+                    .json({error:code,...(known&&error.retryAfterSeconds?{retry_after_seconds:error.retryAfterSeconds}:{})});
+            }
+        });
+
         // GET /api/ollama/models — installed + catalog
         this.app.get('/api/ollama/models', async (_req, res) => {
             const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
@@ -4316,7 +4333,9 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                 return res.status(400).json({ error: 'Invalid model name' });
             }
             const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
-            const reviewed = modelCatalog().find(m=>m.id===model);
+            const hfReview=huggingFaceCatalog.reviewPull(model);
+            const reviewed = hfReview.applies?hfReview.model:modelCatalog().find(m=>m.id===model);
+            if(hfReview.applies&&!reviewed)return res.status(409).json({error:'hf_check_repository_first'});
             if(reviewed && compatibility(reviewed,catalogHardware()).status==='insufficient')
                 return res.status(409).json({error:'model_resources_insufficient'});
             logActivity(`Pulling Ollama model: ${model}`, 'info');

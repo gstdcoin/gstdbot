@@ -9,3 +9,5 @@ it('uses supported thinking controls without exposing reasoning as a final answe
 it('rejects cloud model tags before inference or installation',()=>{
  for(const name of ['gemma4:cloud','gpt-oss:20b-cloud']){expect(isCloudModel(name)).toBe(true);expect(()=>localModelOptions(name)).toThrow('cloud_models_disabled');}
 });
+
+it('treats an exact HF GGUF alias as local weights even when its owner name contains cloud',()=>{expect(isCloudModel('hf.co/cloud-owner/model-GGUF:model-Q4_K_M.gguf')).toBe(false);expect(localModelOptions('hf.co/cloud-owner/model-GGUF:model-Q4_K_M.gguf')).toEqual({});});
