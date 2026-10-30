@@ -1,3 +1,4 @@
+import {sanitizeWorkResources,type WorkResources} from '../lib/work-resources.js';
 import { readTunnelUrl } from '../lib/tunnel-url.js';
 import {isCloudModel,localModelOptions} from '../lib/local-model-options.js';
 import {withComputeSlot,computeCapacityAvailable} from '../security/compute.js';
@@ -16,7 +17,7 @@ import {withComputeSlot,computeCapacityAvailable} from '../security/compute.js';
 
 import { EventEmitter } from 'events';
 import { createHash } from 'crypto';
-import { cpus, totalmem } from 'os';
+import { totalmem } from 'os';
 import { verifyPlatformCommand, isStaleCommand, type PlatformCommand } from '../lib/platform-auth.js';
 import { loadOrCreateAttestorIdentity, signPeerRequest, signWithIdentity, type AttestorIdentity } from '../p2p/identity.js';
 
@@ -67,6 +68,7 @@ export class PlatformLink extends EventEmitter {
     private lastHeartbeat: Date | null = null;
     private failCount = 0;
     private statsCollector: (() => Partial<HeartbeatData['stats']>) | null = null;
+    private resourcesProvider: (() => WorkResources) | null = null;
     private capabilitiesProvider: (() => NodeCapabilities) | null = null;
     private p2pPeerId: string = '';
     private p2pMultiaddrs: string[] = [];
@@ -96,6 +98,10 @@ export class PlatformLink extends EventEmitter {
 
     setStatsCollector(fn: () => Partial<HeartbeatData['stats']>) { this.statsCollector = fn; }
     setCapabilitiesProvider(fn: () => NodeCapabilities) { this.capabilitiesProvider = fn; }
+    setResourcesProvider(fn: () => WorkResources) { this.resourcesProvider = fn; }
+    private workResources(): WorkResources {
+        try { return sanitizeWorkResources(this.resourcesProvider?.()); } catch { return sanitizeWorkResources(null); }
+    }
     setWalletAddress(address: string) { this.walletAddress = address; }
     setNodePubkey(pubkeyHex: string) { this.nodePubkey = pubkeyHex; }
     setIdentity(identity: AttestorIdentity) { this.identity = identity; this.nodePubkey = identity.pubkeyHex; }
@@ -190,9 +196,9 @@ export class PlatformLink extends EventEmitter {
                         platform: process.platform,
                         arch: process.arch,
                         mode: 'node',
-                        cpu_cores: cpus().length,
                         ram_total_mb: Math.round(totalmem() / 1024 / 1024),
                         capabilities: caps,
+                        ...this.workResources(),
                     },
                 }),
                 signal: AbortSignal.timeout(10000),
@@ -260,7 +266,8 @@ export class PlatformLink extends EventEmitter {
                     node_name:       process.env.NODE_NAME || this.nodeId,
                     node_version:    this.version,
                     platform: process.platform, arch: process.arch,
-                    cpu_cores: cpus().length, ram_mb: Math.round(totalmem()/1024/1024),
+                    ram_mb: Math.round(totalmem()/1024/1024),
+                    ...this.workResources(),
                     uptime_hours:    Math.round(process.uptime() / 3600),
                     queries_served:  stats.queryCount || 0,
                     capabilities:    models,
@@ -425,7 +432,7 @@ export class PlatformLink extends EventEmitter {
                         node_id: this.nodeId,
                         capabilities: ['inference', ...(this.capabilitiesProvider?.().models || [])],
                         supported_task_kinds: ['inference'],
-                        resources: {},
+                        resources: this.workResources(),
                     }),
                     signal: AbortSignal.timeout(25000),
                 }

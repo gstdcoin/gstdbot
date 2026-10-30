@@ -2,9 +2,9 @@ name: Fresh source installer smoke
 on:
   push:
     branches: [main]
-    paths: ['install.sh', 'scripts/install.sh', 'scripts/installer-smoke.sh', 'scripts/setup-node-https.sh', 'scripts/node-https-helper.py', 'package*.json', 'src/**', 'web/**', 'data/**', '.github/workflows/installer-smoke.yml']
+    paths: ['install.sh', 'scripts/install.sh', 'scripts/installer-smoke.sh', 'scripts/configure-install-env.cjs', 'scripts/setup-node-https.sh', 'scripts/node-https-helper.py', 'package*.json', 'src/**', 'web/**', 'data/**', '.github/workflows/installer-smoke.yml']
   pull_request:
-    paths: ['install.sh', 'scripts/install.sh', 'scripts/installer-smoke.sh', 'scripts/setup-node-https.sh', 'scripts/node-https-helper.py', 'package*.json', 'src/**', 'web/**', 'data/**', '.github/workflows/installer-smoke.yml']
+    paths: ['install.sh', 'scripts/install.sh', 'scripts/installer-smoke.sh', 'scripts/configure-install-env.cjs', 'scripts/setup-node-https.sh', 'scripts/node-https-helper.py', 'package*.json', 'src/**', 'web/**', 'data/**', '.github/workflows/installer-smoke.yml']
   workflow_dispatch:
 permissions:
   contents: read

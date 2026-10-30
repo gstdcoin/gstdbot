@@ -411,3 +411,25 @@ describe('PlatformLink heartbeat failure diagnostics', () => {
         }
     });
 });
+
+describe('consistent work resource advertisement',()=>{
+ it('includes the sanitized provider in registration, heartbeat and task poll',async()=>{
+  const pl=makePL();
+  const resources={cpu_cores:4,ram_free_mb:2048,storage_free_gb:7,gpu_vram_mb:0};
+  pl.setResourcesProvider(()=>resources);
+  const fetchMock=vi.fn(async()=>new Response(JSON.stringify({ok:true,tasks:[]}),{status:200}));
+  vi.stubGlobal('fetch',fetchMock);
+  await (pl as any).register();
+  await (pl as any).sendHeartbeat();
+  await (pl as any).pollAndProcess();
+  const calls=fetchMock.mock.calls as unknown as Array<[string,{body:string}]>;
+  expect(JSON.parse(calls.find(([url])=>url.endsWith('/register'))![1].body).specs).toMatchObject(resources);
+  expect(JSON.parse(calls.find(([url])=>url.endsWith('/heartbeat'))![1].body)).toMatchObject(resources);
+  expect(JSON.parse(calls.find(([url])=>url.endsWith('/poll'))![1].body).resources).toEqual(resources);
+  pl.stop();
+ });
+ it('uses zeros if measurement collection throws',()=>{
+  const pl=makePL();pl.setResourcesProvider(()=>{throw Error('probe failed');});
+  expect((pl as any).workResources()).toEqual({cpu_cores:0,ram_free_mb:0,storage_free_gb:0,gpu_vram_mb:0});
+ });
+});

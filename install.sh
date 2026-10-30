@@ -51,7 +51,16 @@ TOTAL_STEPS=8
 # State management — tracks completed steps
 mark_done()  { echo "$1" >> "$STATE_FILE"; log "DONE: $1"; }
 is_done()    { [ -f "$STATE_FILE" ] && grep -qx "$1" "$STATE_FILE" 2>/dev/null; }
-reset_step() { [ -f "$STATE_FILE" ] && sed -i "/$1/d" "$STATE_FILE" 2>/dev/null; true; }
+reset_step() {
+    [ -f "$STATE_FILE" ] || return 0
+    local state_tmp
+    state_tmp=$(mktemp "$CONFIG_DIR/.install-state.XXXXXX") || return 1
+    if awk -v target="$1" '$0 != target' "$STATE_FILE" > "$state_tmp"; then
+        mv "$state_tmp" "$STATE_FILE"
+    else
+        rm -f "$state_tmp"; return 1
+    fi
+}
 
 update_existing_checkout() {
     local branch="$1"
@@ -108,7 +117,8 @@ check_environment() {
     command -v df >/dev/null && df -h "$HOME" | tail -1 || true
     command -v node >/dev/null && node --version || true
     command -v ollama >/dev/null && ollama --version || true
-    echo 'GPU is optional. No GPU drivers will be installed or replaced.'
+    echo 'GPU is optional. This read-only check changes no drivers.'
+    echo 'A full install may let the official Ollama installer configure GPU dependencies with administrator access; existing Ollama installations are preserved.'
 }
 
 # ─── Handle flags ────────────────────────────────────────────────
@@ -388,29 +398,14 @@ info "Config: $MODE mode, port $DASH_PORT, ID: ${NODE_ID:0:8}..."
 # Copy .env if missing
 if [ ! -f "$INSTALL_DIR/.env" ] && [ -f "$INSTALL_DIR/.env.example" ]; then
     cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"
-    # Inject NODE_NAME if set
-    if [ -n "${NODE_NAME:-}" ]; then
-        sed -i "s|^NODE_NAME=.*|NODE_NAME=${NODE_NAME}|" "$INSTALL_DIR/.env"
-    fi
-    # Inject GSTD_WALLET_ADDRESS if provided via env
+    GSTD_SETUP_ENV="$INSTALL_DIR/.env" GSTD_SETUP_TOKEN_FILE="$CONFIG_DIR/setup-token" \
+        GSTD_SETUP_NODE_NAME="$NODE_NAME" GSTD_SETUP_WALLET_ADDRESS="${GSTD_WALLET_ADDRESS:-}" \
+        node "$INSTALL_DIR/scripts/configure-install-env.cjs"
     if [ -n "${GSTD_WALLET_ADDRESS:-}" ]; then
-        sed -i "s|^GSTD_WALLET_ADDRESS=.*|GSTD_WALLET_ADDRESS=${GSTD_WALLET_ADDRESS}|" "$INSTALL_DIR/.env"
         info "Wallet address set: ${GSTD_WALLET_ADDRESS:0:12}..."
     else
-        warn "GSTD_WALLET_ADDRESS not set — set your public TON address as GSTD_WALLET_ADDRESS before accepting paid work"
+        warn "GSTD_WALLET_ADDRESS not set — bind your public TON address in the dashboard before accepting paid work"
     fi
-    GSTD_SETUP_ENV="$INSTALL_DIR/.env" GSTD_SETUP_TOKEN_FILE="$CONFIG_DIR/setup-token" node <<'NODESETUP'
-const fs=require('node:fs'),crypto=require('node:crypto');
-const envFile=process.env.GSTD_SETUP_ENV,tokenFile=process.env.GSTD_SETUP_TOKEN_FILE;
-let env=fs.readFileSync(envFile,'utf8');
-const token=fs.existsSync(tokenFile)?fs.readFileSync(tokenFile,'utf8').trim():crypto.randomBytes(32).toString('hex');
-if(!/^[a-f0-9]{64}$/.test(token))throw new Error('Invalid existing setup-token file; review it manually.');
-env=env.replace(/^GSTD_DASHBOARD_SETUP_TOKEN=.*$/m,'GSTD_DASHBOARD_SETUP_TOKEN='+token);
-if(!/^GSTD_DASHBOARD_SETUP_TOKEN=/m.test(env))env+='\nGSTD_DASHBOARD_SETUP_TOKEN='+token+'\n';
-if(!fs.existsSync(tokenFile))fs.writeFileSync(tokenFile,token+'\n',{mode:0o600,flag:'wx'});
-fs.chmodSync(tokenFile,0o600);
-fs.writeFileSync(envFile,env,{mode:0o600});fs.chmodSync(envFile,0o600);
-NODESETUP
     info "Initial setup token saved locally: $CONFIG_DIR/setup-token (keep it private)"
     info ".env configured"
 fi

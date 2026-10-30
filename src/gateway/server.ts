@@ -1,3 +1,5 @@
+import {workResources} from '../lib/work-resources.js';
+import {runtimeOffloadEvidence} from '../lib/hardware-discovery.js';
 import {modelDownloadGate,streamModelDownload,downloadDisconnect} from '../lib/model-download.js';
 import {huggingFaceCatalog,HuggingFaceLookupError} from '../lib/huggingface-models.js';
 import { httpsStatus, httpsHelperRequest, validateHttpsRequest } from '../lib/node-https.js';
@@ -290,6 +292,9 @@ export class OmegaGateway {
     private sessions: SessionManager;
     private config: GatewayConfig;
     private _availableModels: string[] = [];
+    private _hardwareSnapshot: ReturnType<typeof catalogHardware> | null = null;
+    private _hardwareMeasuredAt = 0;
+    private _runtimeEvidence = runtimeOffloadEvidence(null);
     private clients = new Map<string, WebSocket>();
     private appManager: AppManager;
     private peerManager: PeerManager | null = null;
@@ -532,6 +537,10 @@ export class OmegaGateway {
                 platform: this.platformLink.getStatus(),
                 payout_address: this.wallet?.getAddress() || null,
                 models: this._availableModels,
+                hardware: this._hardwareSnapshot,
+                hardware_measured_at: this._hardwareMeasuredAt,
+                runtime_evidence: this._runtimeEvidence,
+                work_resources: workResources(this._hardwareSnapshot,this._hardwareMeasuredAt),
                 accounting_url: this.config.swarmUrl + '/payments',
             });
         });
@@ -4623,13 +4632,22 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
 
     private async _refreshOllamaModels(): Promise<void> {
         const ollamaUrl = (process.env.OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '');
+        this._hardwareSnapshot = null;
+        this._hardwareMeasuredAt = 0;
+        this._runtimeEvidence = runtimeOffloadEvidence(null);
         try {
             const r = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(3000) });
-            if (r.ok) {
-                const d: any = await r.json();
-                this._availableModels = (d.models || []).map((m: any) => m.name as string).filter((m:string)=>!!m&&!isCloudModel(m));
-            }
-        } catch (_) { /* Ollama not running yet */ }
+            if (!r.ok) throw Error('runtime_unavailable');
+            const d: any = await r.json();
+            if (!Array.isArray(d.models)) throw Error('invalid_runtime_models');
+            this._availableModels = d.models.map((m: any) => m.name as string).filter((m:string)=>!!m&&!isCloudModel(m));
+            this._hardwareSnapshot = catalogHardware();
+            this._hardwareMeasuredAt = Date.now();
+            try {
+                const ps = await fetch(`${ollamaUrl}/api/ps`, { signal: AbortSignal.timeout(3000) });
+                if (ps.ok) this._runtimeEvidence = runtimeOffloadEvidence(await ps.json());
+            } catch { /* Runtime allocation evidence is optional, never free VRAM. */ }
+        } catch { this._availableModels = []; }
     }
 
     private async _preWarmOllama(): Promise<void> {
@@ -4727,6 +4745,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                             queryCount: this.metrics.totalRequests,
                             wsClients: this.eventBus.getClientCount(),
                         }));
+                        this.platformLink.setResourcesProvider(() => workResources(this._hardwareSnapshot,this._hardwareMeasuredAt));
                         this.platformLink.setCapabilitiesProvider(() => ({
                             models: this._availableModels,
                             channels: ['webchat'],
