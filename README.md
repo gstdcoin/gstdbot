@@ -28,3 +28,7 @@ The operator panel can configure a domain-based Let’s Encrypt HTTPS proxy on s
 ### Hugging Face community
 
 Import a public GGUF repository or file link, inspect resource estimates and declared licensing, then download and test with dashboard buttons. [Operator and model-author guide](docs/HUGGINGFACE.md). No hosted-inference key is needed for this public-model flow; installing models alone does not earn tokens.
+
+## License
+
+[PolyForm Noncommercial License 1.0.0](LICENSE) plus the additional GSTD network permission. Individuals and companies may participate commercially and build network applications; covered paid network compute settles in canonical GSTD. Unrelated business fees, local-only/free use and native TON gas are outside that payment condition. Other commercial core uses require a separate license. Third-party rights and earlier release licenses remain unchanged. The core is source-available, not OSI open source; the separately licensed [A2A SDK](https://github.com/gstdcoin/A2A) uses Apache-2.0.
