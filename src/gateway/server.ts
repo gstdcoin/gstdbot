@@ -1,3 +1,4 @@
+import {reviewHfImport} from '../lib/hf-import.js';
 import {workResources} from '../lib/work-resources.js';
 import {runtimeOffloadEvidence} from '../lib/hardware-discovery.js';
 import {modelDownloadGate,streamModelDownload,downloadDisconnect} from '../lib/model-download.js';
@@ -523,6 +524,10 @@ export class OmegaGateway {
         });
 
         // Operator view uses local measurements and the actual signed PlatformLink.
+        this.app.post('/api/node/huggingface/import', (req,res)=>{
+            try { res.json(reviewHfImport(req.body?.repository,req.body?.file)); }
+            catch { res.status(422).json({error:'hf_invalid_repository'}); }
+        });
         this.app.get('/api/node/operator', (_req, res) => {
             const cpu = cpus();
             res.json({

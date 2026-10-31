@@ -13,6 +13,14 @@ GSTD connects model users and independent compute operators. Hugging Face is a s
 
 Model-file lists are cached for six hours; checks and errors are bounded to protect free resources. There is no background Hub crawl. Downloads consume network traffic and disk space; large contexts and parallel requests need more memory. The native Ollama alias uses the repository's mutable default branch, not a pinned revision.
 
+## Open a model link in your own node
+
+Use [the GSTD model handoff](https://gstdtoken.com/local-model?hf_repo=bartowski%2FSmolLM2-135M-Instruct-GGUF&hf_file=SmolLM2-135M-Instruct-Q4_K_M.gguf) to review a public model and enter your own node address. This page does not scan your computer, contact a node automatically, keep its address or start a download. It opens the protected node panel only when you select **Open my node**.
+
+The panel accepts `hf_repo` and optional `hf_file` query parameters on its root URL. After operator authentication it validates and prefills the repository/file form, then removes the query from the address bar. Existing drafts are kept. Checking the repository, downloading and inference remain separate manual actions. The exact file must exist in the bounded catalogue; there is no automatic substitute. Other query parameters are not forwarded. Use a current node version; older versions do not process this handoff.
+
+Supported imports are public ungated repositories and individual top-level GGUF filenames on `main`. Shards, projectors, encoded paths and gated/private models are not supported. A Hugging Face Local Apps listing is a separate upstream contribution; publication here does not mean Hugging Face has accepted or listed GSTD.
+
 ## Model author: attribution without a new distribution pipeline
 
 The node shows the source repository and declared license. Ollama downloads from the original Hugging Face repository; GSTD does not repackage your weights or claim authorship. This version does not introduce model-author royalties or change the agreed 85/10/5 distribution.

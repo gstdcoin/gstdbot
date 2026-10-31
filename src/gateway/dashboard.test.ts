@@ -25,6 +25,7 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  const address='0:'+'77'.repeat(32);
  let bound:any=null;let ollamaAvailable=true;let httpsHelper=false;let configuredHttps:any=null;let pulledModel='';const downloadedModels=new Set<string>();
  const fetcher=vi.fn(async(path:string,options:any)=>{
+  if(path==='/api/node/huggingface/import'){expect(JSON.parse(options.body)).toEqual({repository:'example/model-GGUF',file:'model-Q4_K_M.gguf'});return{ok:true,status:200,json:async()=>({repository:'example/model-GGUF',review_input:'https://huggingface.co/example/model-GGUF/blob/main/model-Q4_K_M.gguf'})};}
   if(path==='/api/node/huggingface/models'){hfLookups++;expect(JSON.parse(options.body)).toEqual({repository:'example/model-GGUF'});if(hfLookupFails)return{ok:false,status:404,json:async()=>({error:'hf_file_unavailable'})};return{ok:true,status:200,json:async()=>({repository:'example/model-GGUF',repository_url:'https://huggingface.co/example/model-GGUF',license:'apache-2.0',license_url:'https://huggingface.co/example/model-GGUF/blob/main/LICENSE',downloads:42,last_modified:'2030-01-01T00:00:00Z',preferred_filename:hfPreferred,models:hfModels,cached:true,estimate_only:true})};}
   if(path==='/api/node/https/status')return{ok:true,status:200,json:async()=>httpsHelper?{helperInstalled:true,state:'not_configured',verified:false}:{helperInstalled:false,state:'helper_required',setupSupported:true}};
   if(path==='/api/node/https/configure'){configuredHttps=JSON.parse(options.body);return{ok:true,status:202,json:async()=>({helperInstalled:true,state:'verified',verified:true,domain:'node.example.org',expires:'2030-01-01T00:00:00Z'})};}
@@ -45,10 +46,15 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
   document:{documentElement:{lang:''},hidden:false,title:'',getElementById:(id:string)=>elements.get(id),querySelectorAll:()=>labels,createElement:()=>new Element()},
   navigator:{language:'ru-RU'},localStorage:storage({}),sessionStorage:storage({gstd_operator_session:'fixture-only'}),
   Option:class{constructor(public text:string,public value:string){}},fetch:fetcher,
-  setInterval:()=>0,location:{reload(){}},console,TextDecoder,Set,Date,AbortController,
+  setInterval:()=>0,location:{search:'?hf_repo=example%2Fmodel-GGUF&hf_file=model-Q4_K_M.gguf&token=ignored',pathname:'/',reload(){}},history:{replaceState:vi.fn()},URLSearchParams,console,TextDecoder,Set,Date,AbortController,
  };
  runInNewContext(html.split('<script>')[1].split('</script>')[0],context);
  await vi.waitFor(()=>expect(elements.get('installChoice')!.children.length).toBeGreaterThan(10));
+ await vi.waitFor(()=>expect(elements.get('hfRepository')!.value).toContain('/blob/main/model-Q4_K_M.gguf'));
+ expect(hfLookups).toBe(0);
+ expect(elements.get('install')!.disabled).toBe(true);
+ expect(context.history.replaceState).toHaveBeenCalledWith(null,'','/');
+ expect(fetcher.mock.calls.filter(([path])=>path==='/v1/chat/completions'||path==='/api/ollama/models/pull')).toHaveLength(0);
  expect(elements.get('httpsInstall')!.disabled).toBe(true);
  expect(html).not.toContain('id="httpsBootstrap"');
  expect(elements.get('httpsStatus')!.textContent).toContain('автоматически при установке');
