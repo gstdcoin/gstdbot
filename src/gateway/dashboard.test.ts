@@ -118,6 +118,9 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  elements.get('testInstalled')!.onclick();
  expect(elements.get('model')!.value).toBe(hfModels[0].id);
  expect(elements.get('privacy')!.value).toBe('local');
+ expect(elements.get('question')!.value).toContain('полезную задачу');
+ elements.get('question')!.value='My unsent draft';elements.get('testInstalled')!.onclick();
+ expect(elements.get('question')!.value).toBe('My unsent draft');
  expect(fetcher.mock.calls.filter(([path])=>path==='/v1/chat/completions')).toHaveLength(beforeInference);
  // An explicit file link may select an incompatible file, but never downloads it or replaces it.
  hfPreferred=hfModels[1].filename;
