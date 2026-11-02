@@ -145,6 +145,20 @@ export interface InferenceOptions {
 
 export class NeuralRouter {
     private cache = new ResponseCache();
+    private autoModel: {id:string;expires:number}|null=null;
+    invalidateAutoModel():void { this.autoModel=null; }
+    private async localAutoModel(url:string):Promise<string> {
+        if(this.autoModel&&this.autoModel.expires>Date.now())return this.autoModel.id;
+        const response=await fetch(url+'/api/tags',{signal:AbortSignal.timeout(3000)});
+        if(!response.ok)throw Error('Local model inventory unavailable');
+        const data:any=await response.json();
+        if(!Array.isArray(data.models))throw Error('Local model inventory unavailable');
+        const installed=data.models.filter((m:any)=>typeof m.name==='string'&&m.name.length<=512&&!isCloudModel(m.name));
+        const preferred=installed.find((m:any)=>canonicalModel(m.name)===canonicalModel(DEFAULT_MODEL));
+        const chosen=preferred||installed.sort((a:any,b:any)=>(Number.isFinite(a.size)&&a.size>=0?a.size:Infinity)-(Number.isFinite(b.size)&&b.size>=0?b.size:Infinity))[0];
+        if(!chosen)throw Error('No local models installed');
+        this.autoModel={id:chosen.name,expires:Date.now()+30_000};return chosen.name;
+    }
     private peerManager: import('../p2p/peers.js').PeerManager | null = null;
 
     constructor(_swarmUrl: string, _cocoonEnabled: boolean, private taskWakeup?: () => void | Promise<void>) {}
@@ -175,12 +189,13 @@ export class NeuralRouter {
             };
         }
 
-        const ollamaModel = toOllamaModel(requestedModel);
+        let ollamaModel = toOllamaModel(requestedModel);
         const ollamaUrl   = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
         const platformUrl = (process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com').replace(/\/$/, '');
 
         // ─── L3: Local Ollama (fallback when no network nodes) ─────
         try {
+            if(requestedModel==='auto')ollamaModel=await this.localAutoModel(ollamaUrl);
             const result = await this.callOllamaLocal(ollamaUrl, ollamaModel, messages, options.maxTokens ?? 512, options.temperature);
             if (options.cache === true) this.cache.set(cacheKey, result.content, result.model);
             demandTracker.record(ollamaModel);

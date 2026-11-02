@@ -4558,6 +4558,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
     }
 
     private async _refreshOllamaModels(): Promise<void> {
+        this.router.invalidateAutoModel();
         const ollamaUrl = (process.env.OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '');
         this._hardwareSnapshot = null;
         this._hardwareMeasuredAt = 0;
