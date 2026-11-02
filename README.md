@@ -34,3 +34,7 @@ Import a public GGUF repository or file link, inspect resource estimates and dec
 ## License
 
 [PolyForm Noncommercial License 1.0.0](LICENSE) plus the additional GSTD network permission. Individuals and companies may participate commercially and build network applications; covered paid network compute settles in canonical GSTD. Unrelated business fees, local-only/free use and native TON gas are outside that payment condition. Other commercial core uses require a separate license. Third-party rights and earlier release licenses remain unchanged. The core is source-available, not OSI open source; the separately licensed [A2A SDK](https://github.com/gstdcoin/A2A) uses Apache-2.0.
+
+## Independent operators and recovery
+
+[Powerful-node pilot / Подключение мощной ноды](docs/POWERFUL_NODE_PILOT.md) explains actual model availability, direct-chat HTTPS requirements and current payment limits. [Recovery verification](docs/RECOVERY_REHEARSAL.md) distinguishes offline restoration checks from an encrypted off-machine backup.
