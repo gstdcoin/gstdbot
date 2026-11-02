@@ -8,7 +8,7 @@ import {networkModels} from '../lib/network-models.js';
 import {setupTokenFor} from '../security/setup-token.js';
 import {isCloudModel} from '../lib/local-model-options.js';
 import {modelCatalog,refreshModelCatalog,catalogHardware,compatibility} from '../lib/model-catalog.js';
-import {withComputeSlot,ComputeCapacityError,computeLoad} from '../security/compute.js';
+import {withComputeSlot,ComputeCapacityError,computeLoad,acquireComputeMaintenance} from '../security/compute.js';
 import { hashPin,verifyPin } from '../security/pin.js';
 import { nodeSurface } from '../security/surface.js';
 /**
@@ -4380,29 +4380,41 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
         // DELETE /api/ollama/models/:name — remove a model
         this.app.delete('/api/ollama/models/:name', async (req, res) => {
             if (!requireNodeAuth(req, res)) return;
-            const model = decodeURIComponent(req.params.name);
-            if (!/^[a-z0-9:._/-]+$/i.test(model)) {
-                return res.status(400).json({ error: 'Invalid model name' });
+            // Express has already decoded this route parameter; never decode it twice.
+            const model = req.params.name;
+            if (!/^[a-z0-9:._/-]{1,160}$/i.test(model)) {
+                return res.status(400).json({ error: 'invalid_model_name' });
             }
+            if (computeLoad().active > 0) return res.status(409).json({error:'compute_busy'});
+            let release:()=>void;
+            try { release=modelDownloadGate.acquire(); }
+            catch { return res.status(409).json({error:'model_download_in_progress'}); }
+            let releaseCompute:()=>void;
+            try { releaseCompute=acquireComputeMaintenance(); }
+            catch { release();return res.status(409).json({error:'compute_busy'}); }
             const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
             try {
-                const r = await fetch(`${ollamaUrl}/api/delete`, {
+                const ps=await fetch(ollamaUrl+'/api/ps',{signal:AbortSignal.timeout(3000)});
+                if(!ps.ok)return res.status(503).json({error:'model_state_unavailable'});
+                const state=await ps.json() as {models?:Array<{name?:string;model?:string}>};
+                if(!Array.isArray(state.models))return res.status(503).json({error:'model_state_unavailable'});
+                const canonical=(name:string)=>name.includes(':')?name:name+':latest';
+                if(state.models.some(m=>canonical(m.name||m.model||'')===canonical(model)))
+                    return res.status(409).json({error:'model_loaded'});
+                if(computeLoad().active>0)return res.status(409).json({error:'compute_busy'});
+                const r = await fetch(ollamaUrl+'/api/delete', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name: model }),
                     signal: AbortSignal.timeout(10000),
                 });
-                if (r.ok) {
-                    logActivity(`Model removed: ${model}`, 'info');
-                    await this._refreshOllamaModels();
-                    res.json({ ok: true, removed: model });
-                } else {
-                    const err = await r.text().catch(() => 'delete failed');
-                    res.status(400).json({ ok: false, error: err });
-                }
-            } catch (e: any) {
-                res.status(500).json({ ok: false, error: e.message });
-            }
+                if (!r.ok) return res.status(r.status===404?404:502).json({error:r.status===404?'model_not_found':'model_delete_failed'});
+                logActivity(`Model removed: ${model}`, 'info');
+                await this._refreshOllamaModels();
+                return res.json({ok:true,removed:model});
+            } catch {
+                return res.status(503).json({error:'model_delete_failed'});
+            } finally { releaseCompute();release(); }
         });
 
         // GET /api/node/hardware — hardware specs for model recommendations

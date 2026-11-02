@@ -21,6 +21,7 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  const h:CatalogHardware={total_ram:8*1024**3,available_ram:6*1024**3,disk_free:20*1024**3,cpu_cores:4,gpu_vram:0,gpu_name:null,local_runtime:true,platform:'linux',arch:'arm64'};
  const catalog={hardware:h,network:{models:[{model_id:'remote:large',nodes_count:1,price_gstd:0.1}]},models:modelCatalog().map(m=>({...m,compatibility:compatibility(m,h)}))};
  const hfModels=[1,30].map((size,index)=>{const model={id:'hf.co/example/model-GGUF:model-'+(index?'Q8_0':'Q4_K_M')+'.gguf',filename:'model-'+(index?'Q8_0':'Q4_K_M')+'.gguf',repository:'example/model-GGUF',title:'HF fixture',category:'huggingface',legacy:false,download_bytes:size*1024**3,verified_at:'2030-01-01T00:00:00Z',source:'https://huggingface.co/example/model-GGUF'};return {...model,compatibility:compatibility(model,h)};});
+ let deletionConfirmed=false;
  let hfLookups=0;let hfPreferred:string|undefined;let hfLookupFails=false;let pullWait=false;let activePullSignal:AbortSignal|undefined;
  const address='0:'+'77'.repeat(32);
  let bound:any=null;let ollamaAvailable=true;let httpsHelper=false;let configuredHttps:any=null;let pulledModel='';const downloadedModels=new Set<string>();
@@ -30,6 +31,7 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
   if(path==='/api/node/https/status')return{ok:true,status:200,json:async()=>httpsHelper?{helperInstalled:true,state:'not_configured',verified:false}:{helperInstalled:false,state:'helper_required',setupSupported:true}};
   if(path==='/api/node/https/configure'){configuredHttps=JSON.parse(options.body);return{ok:true,status:202,json:async()=>({helperInstalled:true,state:'verified',verified:true,domain:'node.example.org',expires:'2030-01-01T00:00:00Z'})};}
   if(path==='/api/node/operator')return{ok:true,status:200,json:async()=>({node_id:'fixture-existing',version:'3.7.0',name:'Fixture',uptime:60,cpu:{usage:5,load_1m:.1},ram:{used:1024**3,total:h.total_ram},compute:{active:0,capacity:1},requests:0,platform:{registered:true,publicUrl:null,worker:{enabled:true,lastPoll:new Date().toISOString(),resultsSubmitted:0,busy:false}},payout_address:'0:'+'88'.repeat(32)})};
+  if(path.startsWith('/api/ollama/models/')&&options.method==='DELETE'){expect(options.headers.Authorization).toBe('Bearer fixture-only');return{ok:true,status:200,json:async()=>({ok:true})};}
   if(path==='/api/ollama/models')return{ok:true,status:200,json:async()=>({ollama_available:ollamaAvailable,installed:ollamaAvailable?[{id:'qwen3.5:0.8b',size:100},...[...downloadedModels].map(id=>({id,size:100}))]:[],running:[]})};
   if(path==='/api/ollama/catalog'||path==='/api/ollama/catalog/refresh')return{ok:true,status:200,json:async()=>catalog};
   if(path==='/api/ollama/models/pull'){
@@ -45,7 +47,7 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  const context:any={
   document:{documentElement:{lang:''},hidden:false,title:'',getElementById:(id:string)=>elements.get(id),querySelectorAll:()=>labels,createElement:()=>new Element()},
   navigator:{language:'ru-RU'},localStorage:storage({}),sessionStorage:storage({gstd_operator_session:'fixture-only'}),
-  Option:class{constructor(public text:string,public value:string){}},fetch:fetcher,
+  confirm:vi.fn(()=>deletionConfirmed),Option:class{constructor(public text:string,public value:string){}},fetch:fetcher,
   setInterval:()=>0,location:{search:'?hf_repo=example%2Fmodel-GGUF&hf_file=model-Q4_K_M.gguf&token=ignored',pathname:'/',reload(){}},history:{replaceState:vi.fn()},URLSearchParams,console,TextDecoder,Set,Date,AbortController,
  };
  runInNewContext(html.split('<script>')[1].split('</script>')[0],context);
@@ -55,6 +57,12 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  expect(elements.get('install')!.disabled).toBe(true);
  expect(context.history.replaceState).toHaveBeenCalledWith(null,'','/');
  expect(fetcher.mock.calls.filter(([path])=>path==='/v1/chat/completions'||path==='/api/ollama/models/pull')).toHaveLength(0);
+ const deleteButton=elements.get('models')!.children[0].children[2];
+ expect(deleteButton.textContent).toBe('Удалить модель');
+ await deleteButton.onclick();
+ expect(fetcher.mock.calls.filter(([,o])=>o?.method==='DELETE')).toHaveLength(0);
+ deletionConfirmed=true;await deleteButton.onclick();
+ expect(fetcher.mock.calls.filter(([path,o])=>path==='/api/ollama/models/qwen3.5%3A0.8b'&&o?.method==='DELETE')).toHaveLength(1);
  expect(elements.get('httpsInstall')!.disabled).toBe(true);
  expect(html).not.toContain('id="httpsBootstrap"');
  expect(elements.get('httpsStatus')!.textContent).toContain('автоматически при установке');

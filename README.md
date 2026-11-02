@@ -19,6 +19,8 @@ Historical design notes are archived in docs/ARCHIVED_NODE_README.md. They do no
 
 ## Operator dashboard
 
+Remove unused local models using **Delete model** in the model catalogue and confirm the exact name. Deletion requires an operator session and is blocked during model downloads, active computation, or while the selected model is loaded in Ollama. Wait for automatic unloading, then refresh. Shared model files are retained; deleting a model does not necessarily free its full displayed size. Reuse requires downloading it again.
+
 Manage local models, view CPU/RAM and compute slots, configure the first public payout address and update the node manually in the PIN-protected dashboard. [English and Russian operator guide](docs/OPERATOR_PANEL.md). Bind your own public TON wallet for new rewards without changing node identity; existing balances and assigned work keep their previous recipient. The panel includes a model catalogue with resource estimates and a readiness checklist. Signed outbound workers can pull funded campaign jobs without exposing a public port; direct platform chat additionally needs a reachable protected HTTPS endpoint. Technical readiness is not a promise of paid demand.
 
 ### Optional HTTPS

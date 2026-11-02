@@ -44,7 +44,7 @@ function postJson(
             });
         });
         request.on('error', reject);
-        request.end(method === 'GET' ? undefined : JSON.stringify(body));
+        request.end(method === 'GET' || method === 'DELETE' ? undefined : JSON.stringify(body));
     });
 }
 
@@ -287,6 +287,37 @@ describe('gateway free API key authorization', () => {
         expect(body.models.find((m:any)=>m.id==='qwen3.5:0.8b').compatibility.runtime_validation).toBe('required');
         expect(body.hardware.cpu_cores).toBeGreaterThan(0);
         expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('protects model deletion with operator auth and live Ollama state, preserving exact HF names', async () => {
+        const address=gatewayServer!.address() as {port:number};
+        const path='/api/ollama/models/'+encodeURIComponent('hf.co/example/model-GGUF:file.gguf');
+        expect((await postJson(address.port,{}, {},path,'DELETE')).status).toBe(401);
+        expect(fetchMock).not.toHaveBeenCalled();
+        const login=await postJson(address.port,{pin:'83572914',setupToken:process.env.GSTD_DASHBOARD_SETUP_TOKEN},{},'/api/auth/setup');
+        const headers={Authorization:'Bearer '+login.body.token};
+        fetchMock.mockResolvedValue(new Response(JSON.stringify({models:[{name:'hf.co/example/model-GGUF:file.gguf'}]})));
+        const loaded=await postJson(address.port,{},headers,path,'DELETE');
+        expect(loaded.status).toBe(409);
+        expect(loaded.body.error).toBe('model_loaded');
+        expect(fetchMock.mock.calls.some(([,o]:any)=>o?.method==='DELETE')).toBe(false);
+        fetchMock.mockClear();
+        fetchMock.mockRejectedValue(new Error('offline private upstream detail'));
+        const offline=await postJson(address.port,{},headers,path,'DELETE');
+        expect(offline.status).toBe(503);
+        expect(JSON.stringify(offline.body)).not.toContain('private upstream');
+        fetchMock.mockClear();
+        fetchMock.mockImplementation(async(url:string,options:any)=>{
+            if(String(url).endsWith('/api/delete')){
+                expect(JSON.parse(options.body)).toEqual({name:'hf.co/example/model-GGUF:file.gguf'});
+                return new Response(null,{status:200});
+            }
+            return new Response(JSON.stringify({models:[]}));
+        });
+        const deleted=await postJson(address.port,{},headers,path,'DELETE');
+        expect(deleted.status).toBe(200);
+        expect(deleted.body.removed).toBe('hf.co/example/model-GGUF:file.gguf');
+        expect(fetchMock.mock.calls.filter(([,o]:any)=>o?.method==='DELETE')).toHaveLength(1);
     });
 
 });
