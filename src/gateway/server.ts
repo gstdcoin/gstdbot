@@ -1,3 +1,4 @@
+import {LoginAttemptLimiter} from '../security/login-limit.js';
 import {reviewHfImport} from '../lib/hf-import.js';
 import {workResources} from '../lib/work-resources.js';
 import {runtimeOffloadEvidence} from '../lib/hardware-discovery.js';
@@ -258,34 +259,10 @@ async function requirePeerAuth(req: any, res: any, peerManager: PeerManager | nu
     return true;
 }
 
-// ─── Auth Rate Limiting ──────────────────────────────────────────
-const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
-function checkLoginRateLimit(ip: string): { allowed: boolean; remaining: number; lockoutMs?: number } {
-    const entry = loginAttempts.get(ip);
-    if (entry && Date.now() < entry.lockedUntil) {
-        return { allowed: false, remaining: 0, lockoutMs: entry.lockedUntil - Date.now() };
-    }
-    if (entry && Date.now() >= entry.lockedUntil) {
-        loginAttempts.delete(ip);
-    }
-    return { allowed: true, remaining: MAX_LOGIN_ATTEMPTS - (entry?.count || 0) };
-}
-function recordLoginAttempt(ip: string, success: boolean): void {
-    if (success) { loginAttempts.delete(ip); return; }
-    const entry = loginAttempts.get(ip) || { count: 0, lockedUntil: 0 };
-    entry.count++;
-    if (entry.count >= MAX_LOGIN_ATTEMPTS) {
-        entry.lockedUntil = Date.now() + LOCKOUT_DURATION;
-        logActivity(`IP ${ip} locked out for 15min after ${entry.count} failed login attempts`, 'warn');
-    }
-    loginAttempts.set(ip, entry);
-}
-
 const nodeStartedAt = Date.now();
 
 export class OmegaGateway {
+    private loginLimiter=new LoginAttemptLimiter();
     private wss: WebSocketServer | null = null;
     private app = express();
     private server: http.Server;
@@ -1375,7 +1352,7 @@ export class OmegaGateway {
         // POST /api/auth/login — verify PIN with brute-force protection
         this.app.post('/api/auth/login', (req, res) => {
             const ip = req.ip || req.socket.remoteAddress || 'unknown';
-            const rateCheck = checkLoginRateLimit(ip);
+            const rateCheck = this.loginLimiter.check(ip);
             if (!rateCheck.allowed) {
                 const mins = Math.ceil((rateCheck.lockoutMs || 0) / 60000);
                 res.status(429).json({ success: false, error: `Too many attempts. Locked for ${mins} minutes.`, lockedMinutes: mins });
@@ -1391,12 +1368,12 @@ export class OmegaGateway {
                     pinHash=hashPin(pin);
                     writeFileSync(pinFile,pinHash,{encoding:'utf8',mode:0o600});
                 }
-                recordLoginAttempt(ip, true);
+                this.loginLimiter.record(ip, true);
                 const token = createAuthToken();
                 logActivity('Dashboard login successful', 'success');
                 res.json({ success: true, token });
             } else {
-                recordLoginAttempt(ip, false);
+                this.loginLimiter.record(ip, false);
                 logActivity(`Failed login attempt from ${ip}`, 'warn');
                 res.status(401).json({ success: false, error: 'Invalid PIN', remaining: rateCheck.remaining - 1 });
             }
@@ -4576,73 +4553,6 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                 }
             });
         }
-
-        // POST /api/v1/tasks/push — platform pushes a task directly (M4) or for verification (M5)
-        this.app.post('/api/v1/tasks/push', async (req, res) => {
-            const { task_id, model = 'auto', prompt = '', is_verification = false } = req.body || {};
-            if (!task_id || !prompt) { res.status(400).json({ error: 'task_id and prompt required' }); return; }
-
-            const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
-            const resolvedModel = (model === 'auto' || !model)
-                ? (this._availableModels[0] || 'llama3.2:3b')
-                : model;
-
-            res.json({ accepted: true, task_id, model: resolvedModel, is_verification });
-
-            (async () => {
-                const start = Date.now();
-                const platformBase = this.config.swarmUrl.replace(/\/+$/, '');
-                try {
-                    let messages: any[];
-                    try { messages = JSON.parse(prompt); } catch { messages = [{ role: 'user', content: prompt }]; }
-                    if (!Array.isArray(messages)) messages = [{ role: 'user', content: prompt }];
-
-                    const aiResp = await fetch(`${ollamaUrl}/v1/chat/completions`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ model: resolvedModel, messages, stream: false }),
-                        signal: AbortSignal.timeout(90000),
-                    });
-                    const aiData: any = aiResp.ok ? await aiResp.json() : null;
-                    const content = aiData?.choices?.[0]?.message?.content || '';
-                    const response_ms = Date.now() - start;
-
-                    // M5: compute result_hash for verification comparison
-                    const { createHash } = await import('crypto');
-                    const result_hash = content
-                        ? createHash('sha256').update(content).digest('hex')
-                        : undefined;
-
-                    const nodeId = process.env.GSTD_NODE_ID || this.nodeId;
-                    const identity = this.attestorIdentity || loadOrCreateAttestorIdentity();
-                    const completion = await fetch(`${platformBase}/api/v1/tasks/complete`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Wallet-Address': this.wallet?.getAddress() || '',
-                            ...signPeerRequest(identity, nodeId),
-                        },
-                        body: JSON.stringify({
-                            task_id,
-                            node_id: nodeId,
-                            result: is_verification ? undefined : (content || null),
-                            error: content ? null : 'empty response',
-                            response_ms,
-                            result_hash,
-                            is_verification,
-                        }),
-                        signal: AbortSignal.timeout(10000),
-                    });
-                    if (!completion.ok) {
-                        throw new Error(`Platform rejected task completion: HTTP ${completion.status}`);
-                    }
-                    const tag = is_verification ? 'verify' : 'push';
-                    if (content) logActivity(`${tag} task ${task_id} done (${resolvedModel}, ${content.length}ch, ${response_ms}ms)`, 'info');
-                } catch (err: any) {
-                    logActivity(`Platform task completion failed for ${task_id}: ${err.message || 'network error'}`, 'error');
-                }
-            })();
-        });
 
         logActivity('Core modules v4.0 initialized: EventBus, PlatformLink, ModelFailover, Diagnostics, UsageTracker, Scheduler', 'info');
     }

@@ -199,31 +199,23 @@ describe('gateway free API key authorization', () => {
         });
     });
 
-    it('ignores caller-controlled platform URLs when reporting pushed task completion', async () => {
-        fetchMock.mockImplementation(async (input: string | URL | Request) => {
-            const url = String(input);
-            if (url === 'http://127.0.0.1:11434/v1/chat/completions') {
-                return new Response(JSON.stringify({
-                    choices: [{ message: { content: 'task result' } }],
-                }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-            }
-            if (url === 'https://platform.example/api/v1/tasks/complete') {
-                return new Response('{}', { status: 200 });
-            }
-            throw new Error(`Unexpected request target: ${url}`);
-        });
-
-        const response = await pushTask({
-            task_id: 'task-123',
-            prompt: 'finish the task',
-            platform_url: 'http://127.0.0.1:2375',
-        });
-        expect(response.status).toBe(200);
-
-        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-        const targets = fetchMock.mock.calls.map(([target]) => String(target));
-        expect(targets).toContain('https://platform.example/api/v1/tasks/complete');
-        expect(targets).not.toContain('http://127.0.0.1:2375/api/v1/tasks/complete');
+    it('retires unsigned push tasks before inference or node-signed completion', async () => {
+        for(const body of [{task_id:'task-123',prompt:'compute',platform_url:'http://127.0.0.1:2375'},{task_id:'verify-123',prompt:'compute',is_verification:true}]){
+            const response=await pushTask(body);
+            expect(response.status).toBe(410);
+        }
+        expect(fetchMock).not.toHaveBeenCalled();
+        const address=gatewayServer!.address() as {port:number};
+        expect((await postJson(address.port,{}, {},'/api/v1/tasks/push/alias')).status).toBe(410);
+    });
+    it('blocks a sixth PIN attempt even when it has the correct PIN',async()=>{
+        const address=gatewayServer!.address() as {port:number};
+        await postJson(address.port,{pin:'83572914',setupToken:process.env.GSTD_DASHBOARD_SETUP_TOKEN},{},'/api/auth/setup');
+        for(let i=0;i<5;i++){
+            const response=await postJson(address.port,{pin:'00000000'},{},'/api/auth/login');
+            expect(response.status).toBe(401);expect(response.body.remaining).toBe(4-i);
+        }
+        expect((await postJson(address.port,{pin:'83572914'},{},'/api/auth/login')).status).toBe(429);
     });
     it('protects operator measurements, payout setup and model downloads before any side effect', async () => {
         const address = gatewayServer!.address() as {port:number};
