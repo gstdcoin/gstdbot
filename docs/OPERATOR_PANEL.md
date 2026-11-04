@@ -2,7 +2,7 @@
 
 ## Русский
 
-Откройте адрес панели из установщика, обычно `http://localhost:8080`. У текущей машины — `http://100.93.119.75:8081` через Tailscale. Войдите с существующим PIN. Для первого входа используйте токен `~/.config/gstdbot/setup-token` на машине и новый PIN из 8–12 цифр. Секреты не отправляйте в чат. При первом запуске токен создаётся локально с правами 0600, если не задан явно. Для Docker он находится в /data/gstdbot/setup-token; прочитать его на своей машине можно командой `docker exec gstd-node cat /data/gstdbot/setup-token`. Токен не выводится в журналы.
+Откройте адрес панели из установщика, обычно `http://localhost:8080`. Используйте адрес своей установки, а не IP чужой ноды. Войдите с существующим PIN. Для первого входа используйте токен `~/.config/gstdbot/setup-token` на машине и новый PIN из 8–12 цифр. Секреты не отправляйте в чат. При первом запуске токен создаётся локально с правами 0600, если не задан явно. Для Docker он находится в /data/gstdbot/setup-token; прочитать его на своей машине можно командой `docker exec gstd-node cat /data/gstdbot/setup-token`. Токен не выводится в журналы.
 
 ### Выбор и установка модели
 
@@ -60,7 +60,7 @@ SSH-доступ и записи known_hosts должны быть настро�
 
 ## English
 
-Open the dashboard printed by the installer (normally port 8080; this machine uses 8081). Sign in with the existing PIN. First setup uses the local setup token and an 8–12 digit PIN.
+Open your own dashboard address printed by the installer (normally port 8080). Sign in with the existing PIN. First setup uses the local setup token and an 8–12 digit PIN.
 
 - **Models:** select a reviewed local Ollama model from the internet catalog. Read the download size, estimated RAM, resource status and metadata date, then download. Installed models appear in the chat selector. Online metadata refresh is manual and limited to once per 6 hours. The advanced field accepts other local model names; cloud tags are blocked.
 - **Compatibility:** estimates include OS headroom and short text context. They do not guarantee runtime, driver support or speed. Remote Ollama hardware is not inferred from the gateway machine. Memory across machines is not pooled.
@@ -100,14 +100,14 @@ CI's fresh-source-installer check clones the exact public GitHub commit in a dis
 - **Исходящая очередь:** подписанная нода забирает задания из профинансированных кампаний. Для этого публичный IP/туннель не обязателен. Свежая успешная проверка очереди подтверждает связь, но не наличие оплаченного заказа.
 - **Прямой чат:** платформа обращается к HTTPS-адресу исполнителя. Указанный адрес не доказывает внешнюю доступность: проверьте ноду в реестре и настройте защищённый маршрут по своей сетевой схеме. Не открывайте Ollama напрямую в интернет.
 
-Счётчик отправленных результатов относится только к фоновой очереди после запуска. Он не включает прямые запросы чата и не является балансом, доказательством принятия или начисления. Оплаченную принятую работу и награды проверяйте в [«Баланс и награды»](https://app.gstdtoken.com/ru/payments?from=node). Реальный вывод в TON подписывает владелец кошелька обеспечения; личная авторизация получателя сама по себе не исполняет перевод.
+Счётчик отправленных результатов относится только к фоновой очереди после запуска. Он не включает прямые запросы чата и не является балансом, доказательством принятия или начисления. Оплаченную принятую работу и награды проверяйте в [«Баланс и награды»](https://app.gstdtoken.com/ru/payments?from=node). Для внутреннего баланса платформы перевод подписывает владелец кошелька обеспечения. Отдельный [mainnet escrow · бета](https://app.gstdtoken.com/ru/escrow-mainnet) хранит средства задания в контрактах: получатель подписывает получение своей доли. Эти суммы не переходят во внутренний баланс. Реальный mainnet-цикл пока не подтверждён.
 
 The **Background work readiness** section shows Ollama, installed models, registration, reward recipient, the last successful task poll and compute capacity. A new node needs its public payout address before registration can finish. These checks reuse data already fetched and add no Cloudflare requests.
 
 - **Outbound queue:** signed nodes pull tasks from funded campaigns without a public port. A successful poll confirms connectivity, not paid demand.
 - **Direct chat:** the platform calls the executor’s HTTPS endpoint. A configured address does not prove external reachability; check the registry. Never expose Ollama directly.
 
-Submitted-result counters cover only this process’s background queue. They exclude direct chat requests and do not prove acceptance, paid work or a money balance. Check accepted paid work and rewards on the platform. On-chain payouts require the custody owner’s signature; recipient wallet authentication alone does not execute a transfer.
+Submitted-result counters cover only this process’s background queue. They exclude direct chat requests and do not prove acceptance, paid work or a money balance. Check accepted paid work and rewards on the platform. Platform-ledger payouts require the custody owner’s signature. Separate [mainnet escrow beta](https://app.gstdtoken.com/escrow-mainnet) jobs keep funds in contracts and use beneficiary-signed claims; they do not credit the ledger. A real mainnet cycle is still unverified.
 
 ## Восстановление вручную / Manual recovery gate
 
