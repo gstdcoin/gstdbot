@@ -60,6 +60,8 @@ Object.assign(TEXT.ru,{hfImportReview:'Модель из ссылки подго
 Object.assign(TEXT.en,{hfImportReview:'Model link prepared. Sign in, check the repository and compatibility. Downloads require your button press.',hfImportDraft:'Your draft was kept; the linked model was not inserted.'});
 Object.assign(TEXT.ru,{apply:'Обновить и перезапустить',updateConfirm:'Обновить исходники, проверить сборку и перезапустить эту ноду? Конфигурация и ключи сохраняются. Вычисления будут временно недоступны.',updateWorking:'Обновление выполняется. Установка и проверка сборки могут занять несколько минут. Не нажимайте повторно и не закрывайте страницу.'});
 Object.assign(TEXT.en,{apply:'Update and restart',updateConfirm:'Update source, validate the build and restart this node? Configuration and keys are preserved. Compute will be temporarily unavailable.',updateWorking:'Updating. Dependency installation and build validation may take several minutes. Do not resubmit or close this page.'});
+Object.assign(TEXT.ru,{release_signing_unavailable:'Подписанный выпуск недоступен. Администратор платформы должен восстановить ключ выпуска; проверка подписи не отключалась.'});
+Object.assign(TEXT.en,{release_signing_unavailable:'Signed release is unavailable. The platform operator must restore the release key; signature verification remains enforced.'});
 let hfImport=null;
 try{const q=new URLSearchParams(location.search||'');if(q.has('hf_repo')||q.has('hf_file')){
  hfImport={repository:q.getAll('hf_repo').length===1?q.get('hf_repo'):null,file:q.getAll('hf_file').length<=1?q.get('hf_file')||undefined:null};
@@ -149,7 +151,10 @@ el('apply').onclick=async()=>{
  if(el('apply').disabled||!confirm(t('updateConfirm')))return;
  el('apply').disabled=true;el('check').disabled=true;el('updateInfo').textContent=t('updateWorking');
  try{
-  const result=await api('/api/node/update',{});
+  const published=await fetch('https://app.gstdtoken.com/api/v1/nodes/update/manifest',{credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(10000)});
+  const release=await published.json();
+  if(!published.ok||!release.manifest)throw Error(release.error||'release_signing_unavailable');
+  const result=await api('/api/node/update',{manifest:release.manifest});
   if(result.success!==true&&result.ok!==true)throw Error(result.error||result.message||t('failed'));
   el('updateInfo').textContent=t('restarting')+'\n'+(result.new_version||'')+' '+(result.new_hash||'');
  }catch(e){el('updateInfo').textContent=errorText(e);el('apply').disabled=false;el('check').disabled=false;}

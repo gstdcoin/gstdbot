@@ -48,7 +48,7 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
   document:{documentElement:{lang:''},hidden:false,title:'',getElementById:(id:string)=>elements.get(id),querySelectorAll:()=>labels,createElement:()=>new Element()},
   navigator:{language:'ru-RU'},localStorage:storage({}),sessionStorage:storage({gstd_operator_session:'fixture-only'}),
   confirm:vi.fn(()=>deletionConfirmed),Option:class{constructor(public text:string,public value:string){}},fetch:fetcher,
-  setInterval:()=>0,location:{search:'?hf_repo=example%2Fmodel-GGUF&hf_file=model-Q4_K_M.gguf&token=ignored',pathname:'/',reload(){}},history:{replaceState:vi.fn()},URLSearchParams,console,TextDecoder,Set,Date,AbortController,
+  setInterval:()=>0,location:{search:'?hf_repo=example%2Fmodel-GGUF&hf_file=model-Q4_K_M.gguf&token=ignored',pathname:'/',reload(){}},history:{replaceState:vi.fn()},URLSearchParams,console,TextDecoder,Set,Date,AbortController,AbortSignal,
  };
  runInNewContext(html.split('<script>')[1].split('</script>')[0],context);
  await vi.waitFor(()=>expect(elements.get('installChoice')!.children.length).toBeGreaterThan(10));
@@ -205,21 +205,22 @@ it('requires one explicit update confirmation and shows progress or HTTP-200 fai
  for(const m of html.matchAll(/id="([^"]+)"/g))elements.set(m[1],new Element());
  const labels=[...html.matchAll(/data-i="([^"]+)"/g)].map(m=>{const e=new Element();e.dataset.i=m[1];return e;});
  let approved=false,finish:any;
- const fetcher=vi.fn(async(path:string)=>{
+ const fetcher=vi.fn(async(path:string,options?:any)=>{
+  if(path==='https://app.gstdtoken.com/api/v1/nodes/update/manifest')return{ok:true,status:200,json:async()=>({manifest:{commit:'a'.repeat(40),branch:'main',version:'3.7.1',timestamp:Date.now(),sig:'fixture-only'}})};
   if(path==='/api/check-update')return{ok:true,status:200,json:async()=>({current_hash:'samehash',remote_hash:'samehash',update_available:false})};
-  if(path==='/api/node/update')return new Promise(resolve=>{finish=resolve;});
+  if(path==='/api/node/update'){expect(JSON.parse(options.body).manifest.commit).toBe('a'.repeat(40));return new Promise(resolve=>{finish=resolve;});}
   throw Error('Unexpected request '+path);
  });
- const context:any={document:{documentElement:{lang:''},hidden:false,title:'',getElementById:(id:string)=>elements.get(id),querySelectorAll:()=>labels,createElement:()=>new Element()},navigator:{language:'en'},localStorage:storage({}),sessionStorage:storage({}),confirm:vi.fn(()=>approved),Option:class{constructor(public text:string,public value:string){}},fetch:fetcher,setInterval:()=>0,location:{search:'',pathname:'/'},URLSearchParams,console,TextDecoder,Set,Date,AbortController};
+ const context:any={document:{documentElement:{lang:''},hidden:false,title:'',getElementById:(id:string)=>elements.get(id),querySelectorAll:()=>labels,createElement:()=>new Element()},navigator:{language:'en'},localStorage:storage({}),sessionStorage:storage({}),confirm:vi.fn(()=>approved),Option:class{constructor(public text:string,public value:string){}},fetch:fetcher,setInterval:()=>0,location:{search:'',pathname:'/'},URLSearchParams,console,TextDecoder,Set,Date,AbortController,AbortSignal};
  runInNewContext(html.split('<script>')[1].split('</script>')[0],context);
  expect(html).not.toContain('id="updateConsent"');
  await elements.get('check')!.onclick();expect(elements.get('apply')!.disabled).toBe(false);
  await elements.get('apply')!.onclick();expect(fetcher.mock.calls.filter(([p])=>p==='/api/node/update')).toHaveLength(0);
  approved=true;const operation=elements.get('apply')!.onclick();
  expect(elements.get('apply')!.disabled).toBe(true);expect(elements.get('updateInfo')!.textContent).toContain('Updating');
- await elements.get('apply')!.onclick();expect(fetcher.mock.calls.filter(([p])=>p==='/api/node/update')).toHaveLength(1);
+ await elements.get('apply')!.onclick();await vi.waitFor(()=>expect(fetcher.mock.calls.filter(([p])=>p==='/api/node/update')).toHaveLength(1));
  finish({ok:true,status:200,json:async()=>({ok:false,message:'Update failed: fixture build failure'})});await operation;
  expect(elements.get('updateInfo')!.textContent).toContain('fixture build failure');expect(elements.get('apply')!.disabled).toBe(false);
- const success=elements.get('apply')!.onclick();finish({ok:true,status:200,json:async()=>({success:true,new_version:'3.7.1',new_hash:'fixture'})});await success;
+ const success=elements.get('apply')!.onclick();await vi.waitFor(()=>expect(fetcher.mock.calls.filter(([p])=>p==='/api/node/update')).toHaveLength(2));finish({ok:true,status:200,json:async()=>({success:true,new_version:'3.7.1',new_hash:'fixture'})});await success;
  expect(elements.get('updateInfo')!.textContent).toContain('3.7.1');expect(elements.get('updateInfo')!.textContent).toContain('restarting');
 });

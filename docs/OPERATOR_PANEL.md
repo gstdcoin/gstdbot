@@ -178,3 +178,7 @@ RU: По умолчанию показаны файлы, которые поме
 Нажмите «Проверить версию», затем **«Обновить и перезапустить»** и подтвердите диалог. Отдельного флажка больше нет. Эта кнопка также пересобирает актуальные исходники, если Git уже обновлён, а работающий процесс — нет. Ход операции и ошибка показываются непосредственно в блоке обновления. Не повторяйте запрос, пока операция выполняется. Конфигурация и ключи сохраняются; изменённые отслеживаемые файлы не перезаписываются автоматически.
 
 Select Check for updates, then **Update and restart**, and confirm the dialog. There is no separate checkbox. This also rebuilds current source when the running process is older. Progress and errors appear beside the action. Do not resubmit while it runs. Existing configuration/key preservation and dirty-source protections remain in force.
+
+Подтверждённое обновление получает свежий подписанный манифест выпуска с платформы и передаёт его ноде. Если подпись обязательна, а ключ выпуска на платформе не восстановлен, обновление блокируется с явной ошибкой. Подпись и закрепление Git-коммита не отключаются. Не путайте ключ выпуска с ключами TON-кошелька.
+
+Confirmed updates request a fresh platform-signed release manifest and submit it to the node. Missing signing configuration blocks updates explicitly; it does not disable signature or commit verification. The release-signing key is unrelated to TON wallet keys.
