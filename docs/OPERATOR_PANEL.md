@@ -171,3 +171,10 @@ The panel shows the repository’s declared licence and source links when suppli
 During a download, **Stop download** aborts this panel’s request without deleting models or partial files. Native Ollama may reuse partial data on retry. The exact target remains visible in the progress area, and refreshes cannot enable a second download. After installation, **Select installed model for a local test** explicitly selects it in the local chat without sending a prompt or changing the current conversation automatically. Resource sharing and rewards still require a registered node, available paid work and accepted execution; installing a popular model does not guarantee income.
 
 RU: По умолчанию показаны файлы, которые помещаются по оценке ресурсов. Можно открыть все варианты, проверить лицензию и явно выбрать предложенный файл. Q4_K_M — предпочтение для удобного старта при достаточной памяти, а не гарантия качества. Кнопка остановки не удаляет данные; повтор может использовать загруженные части. После установки отдельная кнопка выбирает модель в локальном чате для проверки. Скачивание модели само по себе не создаёт GSTD и не гарантирует задания.
+
+
+### Source update confirmation / Подтверждение обновления
+
+Нажмите «Проверить версию», затем **«Обновить и перезапустить»** и подтвердите диалог. Отдельного флажка больше нет. Эта кнопка также пересобирает актуальные исходники, если Git уже обновлён, а работающий процесс — нет. Ход операции и ошибка показываются непосредственно в блоке обновления. Не повторяйте запрос, пока операция выполняется. Конфигурация и ключи сохраняются; изменённые отслеживаемые файлы не перезаписываются автоматически.
+
+Select Check for updates, then **Update and restart**, and confirm the dialog. There is no separate checkbox. This also rebuilds current source when the running process is older. Progress and errors appear beside the action. Do not resubmit while it runs. Existing configuration/key preservation and dirty-source protections remain in force.

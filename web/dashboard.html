@@ -16,7 +16,7 @@
 <section><h2 data-i="readiness"></h2><p data-i="readinessHint"></p><ol id="readinessSteps" class="readiness"></ol><p id="nextAction" role="status"></p><p id="directRoute" class="muted"></p><p id="workerSummary" class="muted"></p><small data-i="workerHint"></small><p><a id="networkLink" href="https://app.gstdtoken.com/nodes" target="_blank" rel="noreferrer" data-i="networkStatus"></a></p></section>
 <div class="grid">
 <section id="walletSection"><h2 data-i="wallet"></h2><p data-i="walletHint"></p><p id="payout" class="address"></p><p id="identityWallet" class="muted address"></p><div id="walletForm"><label><span data-i="address"></span><input id="walletAddress" autocomplete="off" spellcheck="false" placeholder="UQ… / EQ… / 0:…"></label><label><input id="walletConsent" type="checkbox"> <span data-i="walletConsent"></span></label><button id="bind" data-i="bind" disabled></button></div><p><a href="https://app.gstdtoken.com/payments" target="_blank" rel="noreferrer" id="balanceLink" data-i="balance"></a></p><p><a id="pricingLink" href="https://app.gstdtoken.com/node-economics" target="_blank" rel="noreferrer" data-i="pricing"></a></p><small data-i="moneyHint"></small></section>
-<section id="updatesSection"><h2 data-i="updates"></h2><p id="version"></p><p data-i="updateHint"></p><button id="check" data-i="check"></button><pre id="updateInfo"></pre><div id="updateAction" class="hidden"><label><input id="updateConsent" type="checkbox"> <span data-i="updateConsent"></span></label><button id="apply" data-i="apply" disabled></button></div><small data-i="containerHint"></small></section>
+<section id="updatesSection"><h2 data-i="updates"></h2><p id="version"></p><p data-i="updateHint"></p><button id="check" data-i="check"></button><pre id="updateInfo" role="status" aria-live="polite"></pre><div id="updateAction" class="hidden"><button id="apply" data-i="apply"></button></div><small data-i="containerHint"></small></section>
 <section id="httpsSection" class="wide"><h2 data-i="httpsTitle"></h2><p data-i="httpsIntro"></p><p id="httpsStatus" role="status"></p><small data-i="httpsPrerequisites"></small>
 <label><span data-i="httpsDomain"></span><input id="httpsDomain" autocomplete="off" spellcheck="false" placeholder="node.example.org"></label>
 <label><span data-i="httpsEmail"></span><input id="httpsEmail" type="email" autocomplete="email" placeholder="operator@example.org"></label>
@@ -58,6 +58,8 @@ Object.assign(TEXT.ru,{localTestQuestion:'Кратко представься и
 Object.assign(TEXT.en,{localTestQuestion:'Briefly introduce yourself and name one useful task you can help with.'});
 Object.assign(TEXT.ru,{hfImportReview:'Модель из ссылки подготовлена. Войдите, проверьте репозиторий и совместимость. Скачивание начинается только вашей кнопкой.',hfImportDraft:'Черновик сохранён; модель из ссылки не подставлена.'});
 Object.assign(TEXT.en,{hfImportReview:'Model link prepared. Sign in, check the repository and compatibility. Downloads require your button press.',hfImportDraft:'Your draft was kept; the linked model was not inserted.'});
+Object.assign(TEXT.ru,{apply:'Обновить и перезапустить',updateConfirm:'Обновить исходники, проверить сборку и перезапустить эту ноду? Конфигурация и ключи сохраняются. Вычисления будут временно недоступны.',updateWorking:'Обновление выполняется. Установка и проверка сборки могут занять несколько минут. Не нажимайте повторно и не закрывайте страницу.'});
+Object.assign(TEXT.en,{apply:'Update and restart',updateConfirm:'Update source, validate the build and restart this node? Configuration and keys are preserved. Compute will be temporarily unavailable.',updateWorking:'Updating. Dependency installation and build validation may take several minutes. Do not resubmit or close this page.'});
 let hfImport=null;
 try{const q=new URLSearchParams(location.search||'');if(q.has('hf_repo')||q.has('hf_file')){
  hfImport={repository:q.getAll('hf_repo').length===1?q.get('hf_repo'):null,file:q.getAll('hf_file').length<=1?q.get('hf_file')||undefined:null};
@@ -142,9 +144,16 @@ el('httpsInstall').onclick=async()=>{
  }catch(e){el('httpsStatus').textContent=httpsError(e.message);el('httpsInstall').disabled=false}
 };
 
-el('check').onclick=async()=>{el('check').disabled=true;el('updateAction').classList.add('hidden');el('updateConsent').checked=false;el('apply').disabled=true;try{update=await api('/api/check-update');if(update.error)throw Error(t('checkFailed'));el('updateInfo').textContent=(update.update_available?t('updateFound'):t('upToDate'))+'\n'+(update.current_hash||update.current_version||'')+' → '+(update.remote_hash||update.latest_version||'')+'\n'+(update.changelog||[]).join('\n');el('updateAction').classList.toggle('hidden',!update.current_hash)}catch(e){notice(errorText(e))}finally{el('check').disabled=false}};
-el('updateConsent').onchange=()=>el('apply').disabled=!el('updateConsent').checked;
-el('apply').onclick=async()=>{if(!el('updateConsent').checked)return;el('apply').disabled=true;notice(t('working'));try{await api('/api/update',{});notice(t('restarting'))}catch(e){notice(errorText(e));el('apply').disabled=false}};
+el('check').onclick=async()=>{el('check').disabled=true;el('updateAction').classList.add('hidden');el('apply').disabled=true;try{update=await api('/api/check-update');if(update.error)throw Error(t('checkFailed'));el('updateInfo').textContent=(update.update_available?t('updateFound'):t('upToDate'))+'\n'+(update.current_hash||update.current_version||'')+' → '+(update.remote_hash||update.latest_version||'')+'\n'+(update.changelog||[]).join('\n');el('updateAction').classList.toggle('hidden',!update.current_hash);el('apply').disabled=!update.current_hash}catch(e){notice(errorText(e))}finally{el('check').disabled=false}};
+el('apply').onclick=async()=>{
+ if(el('apply').disabled||!confirm(t('updateConfirm')))return;
+ el('apply').disabled=true;el('check').disabled=true;el('updateInfo').textContent=t('updateWorking');
+ try{
+  const result=await api('/api/update',{});
+  if(result.success!==true&&result.ok!==true)throw Error(result.error||result.message||t('failed'));
+  el('updateInfo').textContent=t('restarting')+'\n'+(result.new_version||'')+' '+(result.new_hash||'');
+ }catch(e){el('updateInfo').textContent=errorText(e);el('apply').disabled=false;el('check').disabled=false;}
+};
 el('install').onclick=async()=>{
  if(downloadBusy)return;const name=el('installChoice').value||el('newModel').value.trim();
  if(!/^[a-z0-9:._/-]{1,160}$/i.test(name)){notice(t('invalidModel'));return}

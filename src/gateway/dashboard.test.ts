@@ -199,3 +199,27 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  expect(elements.get('workerSummary')!.textContent).toContain('Results submitted: 0');
  expect(elements.get('directRoute')!.textContent).toContain('outbound funded campaign queue needs no public address');
 });
+
+it('requires one explicit update confirmation and shows progress or HTTP-200 failures beside the button',async()=>{
+ const html=readFileSync('web/dashboard.html','utf8'),elements=new Map<string,Element>();
+ for(const m of html.matchAll(/id="([^"]+)"/g))elements.set(m[1],new Element());
+ const labels=[...html.matchAll(/data-i="([^"]+)"/g)].map(m=>{const e=new Element();e.dataset.i=m[1];return e;});
+ let approved=false,finish:any;
+ const fetcher=vi.fn(async(path:string)=>{
+  if(path==='/api/check-update')return{ok:true,status:200,json:async()=>({current_hash:'samehash',remote_hash:'samehash',update_available:false})};
+  if(path==='/api/update')return new Promise(resolve=>{finish=resolve;});
+  throw Error('Unexpected request '+path);
+ });
+ const context:any={document:{documentElement:{lang:''},hidden:false,title:'',getElementById:(id:string)=>elements.get(id),querySelectorAll:()=>labels,createElement:()=>new Element()},navigator:{language:'en'},localStorage:storage({}),sessionStorage:storage({}),confirm:vi.fn(()=>approved),Option:class{constructor(public text:string,public value:string){}},fetch:fetcher,setInterval:()=>0,location:{search:'',pathname:'/'},URLSearchParams,console,TextDecoder,Set,Date,AbortController};
+ runInNewContext(html.split('<script>')[1].split('</script>')[0],context);
+ expect(html).not.toContain('id="updateConsent"');
+ await elements.get('check')!.onclick();expect(elements.get('apply')!.disabled).toBe(false);
+ await elements.get('apply')!.onclick();expect(fetcher.mock.calls.filter(([p])=>p==='/api/update')).toHaveLength(0);
+ approved=true;const operation=elements.get('apply')!.onclick();
+ expect(elements.get('apply')!.disabled).toBe(true);expect(elements.get('updateInfo')!.textContent).toContain('Updating');
+ await elements.get('apply')!.onclick();expect(fetcher.mock.calls.filter(([p])=>p==='/api/update')).toHaveLength(1);
+ finish({ok:true,status:200,json:async()=>({ok:false,message:'Update failed: fixture build failure'})});await operation;
+ expect(elements.get('updateInfo')!.textContent).toContain('fixture build failure');expect(elements.get('apply')!.disabled).toBe(false);
+ const success=elements.get('apply')!.onclick();finish({ok:true,status:200,json:async()=>({success:true,new_version:'3.7.1',new_hash:'fixture'})});await success;
+ expect(elements.get('updateInfo')!.textContent).toContain('3.7.1');expect(elements.get('updateInfo')!.textContent).toContain('restarting');
+});
