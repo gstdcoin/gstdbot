@@ -5,9 +5,9 @@ import { createHash } from 'crypto';
  * Ed25519 public key of the GSTD platform operator — baked into source so
  * it is auditable in every PR and cannot be overridden at runtime.
  * To rotate: generate a new keypair, commit the new pubkey, ship a release.
- * The matching private key seed lives in the gstdai secrets vault.
+ * The matching release seed is held only in the platform Worker secret; never a TON wallet seed.
  */
-export const PLATFORM_PUBKEY_HEX = '1451788de7861b5b2dc31073606bdbab337682fe7acb74b317ad34e60ecd2a75';
+export const PLATFORM_PUBKEY_HEX = '82a7b29cca0bff9cdd7ac285277af45287bce77066cf40548ca16ab34a63f30e';
 
 export interface PlatformCommand {
     type:     string;
