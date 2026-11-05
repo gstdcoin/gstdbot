@@ -598,6 +598,7 @@ export class OmegaGateway {
                 res.json({
                     update_available: localHash !== remoteHash,
                     current_version: currentVersion,
+                    signed_manifest_required: process.env.PLATFORM_SIGNING_ENFORCED === 'true',
                     current_hash: localHash.slice(0, 8),
                     remote_hash: remoteHash.slice(0, 8),
                     commits_behind: behind,
@@ -615,7 +616,7 @@ export class OmegaGateway {
                     });
                     if (resp.ok) {
                         const data = await resp.json() as any;
-                        res.json(data);
+                        res.json({...data,signed_manifest_required:process.env.PLATFORM_SIGNING_ENFORCED==='true'});
                         return;
                     }
                 } catch (_fallback) { }
