@@ -1,3 +1,4 @@
+import {endpointProof} from '../lib/endpoint-proof.js';
 import {LoginAttemptLimiter} from '../security/login-limit.js';
 import {reviewHfImport} from '../lib/hf-import.js';
 import {workResources} from '../lib/work-resources.js';
@@ -480,6 +481,12 @@ export class OmegaGateway {
         }));
 
         // ─── Health ──────────────────────────────────────────────
+        this.app.get('/.well-known/gstd-node', (req,res) => {
+            res.setHeader('Cache-Control','no-store');
+            if(!this.attestorIdentity){res.status(503).json({error:'identity_unavailable'});return;}
+            try{res.json(endpointProof(this.attestorIdentity,this.nodeId,req.query as Record<string,unknown>));}
+            catch{res.status(400).json({error:'invalid_endpoint_challenge'});}
+        });
         this.app.get('/health', (_req, res) => {
             res.json({
                 status: 'ok',
