@@ -1,5 +1,7 @@
 # GSTD compute node
 
+**Русский:** это программа вычислительной ноды, а Telegram-бот работает в репозитории ai. [Карта проекта и инструкции](https://github.com/gstdcoin/ai/blob/main/docs/INDEX.md).
+
 Share AI compute, earn GSTD from funded accepted work, and use those credits on other nodes.
 
 [Start here / Начните здесь](https://github.com/gstdcoin/ai/blob/main/docs/START_HERE.md) · [Public step-by-step guide](https://gstdtoken.com/docs#get-started)
