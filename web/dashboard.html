@@ -149,7 +149,7 @@ el('apply').onclick=async()=>{
  if(el('apply').disabled||!confirm(t('updateConfirm')))return;
  el('apply').disabled=true;el('check').disabled=true;el('updateInfo').textContent=t('updateWorking');
  try{
-  const result=await api('/api/update',{});
+  const result=await api('/api/node/update',{});
   if(result.success!==true&&result.ok!==true)throw Error(result.error||result.message||t('failed'));
   el('updateInfo').textContent=t('restarting')+'\n'+(result.new_version||'')+' '+(result.new_hash||'');
  }catch(e){el('updateInfo').textContent=errorText(e);el('apply').disabled=false;el('check').disabled=false;}
