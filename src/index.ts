@@ -43,7 +43,7 @@ if (typeof (Promise as any).withResolvers !== 'function') {
  */
 
 import { OmegaGateway, logActivity } from './gateway/server.js';
-import { fastForwardNodeUpdate, rollbackNodeUpdate } from './lib/node-update.js';
+import { updateApprovedNode, rollbackNodeUpdate } from './lib/node-update.js';
 import { DEFAULT_GSTD_API_URL, normalizeGstdApiUrl } from './core/api-url.js';
 import { readSavedNodeConfig } from './lib/saved-node-config.js';
 import { isRegistered, getEntry, modelFitsInRam } from './lib/model-registry.js';
@@ -488,7 +488,7 @@ async function main(): Promise<void> {
         console.log('  🚫 P2P/NaaS:    DISABLED (remote user nodes only)');
         console.log('');
         console.log('  💡 Nodes run on USER machines, not this server!');
-        console.log('     Install: curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash');
+        console.log('     Verified installer instructions: https://github.com/gstdcoin/gstdbot#installation');
         console.log('');
         logActivity('GSTD Platform Server v' + config.version + ' booted in ' + bootTime + 's (platform mode)', 'success');
     } else {
@@ -551,7 +551,7 @@ async function main(): Promise<void> {
         if (shuttingDown) return;
         try {
             const installDir = config.installDir || join(homedir(), 'gstdbot');
-            const update = fastForwardNodeUpdate(installDir, 'main');
+            const update = await updateApprovedNode(installDir, 'main');
             const { previousHash: localHash, updatedHash: remoteHash } = update;
             if (localHash === remoteHash) return; // Already up to date
 

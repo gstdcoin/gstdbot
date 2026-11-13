@@ -65,6 +65,12 @@ export function verifyUpdateManifest(manifest: UpdateManifest, pubkeyHex = PLATF
     }
 }
 
+export function isApprovedUpdate(manifest: UpdateManifest | undefined, branch: string): manifest is UpdateManifest {
+    return !!manifest && /^[a-f0-9]{40}$/.test(manifest.commit) && manifest.branch === branch &&
+        /^\d+\.\d+\.\d+$/.test(manifest.version) && Number.isSafeInteger(manifest.timestamp) &&
+        /^[a-f0-9]{128}$/.test(manifest.sig) && !isStaleCommand(manifest.timestamp) && verifyUpdateManifest(manifest);
+}
+
 /** Returns true if the timestamp is outside the ±maxSkewMs replay-protection window. */
 export function isStaleCommand(timestamp: number, maxSkewMs = 60_000): boolean {
     return Math.abs(Date.now() - timestamp) > maxSkewMs;

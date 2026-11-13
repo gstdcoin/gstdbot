@@ -1,4 +1,5 @@
 import { execFileSync } from 'child_process';
+import { isApprovedUpdate, type UpdateManifest } from './platform-auth.js';
 
 export interface NodeUpdateResult {
     previousHash: string;
@@ -14,16 +15,32 @@ const runGit: GitRunner = (args, cwd) => execFileSync('git', args, {
     timeout: 60000,
 });
 
-function isCommitHash(value: string): boolean {
-    return /^[a-f0-9]{40,64}$/i.test(value);
+function isCommitHash(value: unknown): value is string {
+    return typeof value === 'string'
+        && (value.length === 40 || value.length === 64)
+        && !/[^a-f0-9]/i.test(value);
+}
+
+export async function updateApprovedNode(installDir: string, branch: string, manifest?: UpdateManifest): Promise<NodeUpdateResult> {
+    if (!manifest) {
+        const response = await fetch('https://app.gstdtoken.com/api/v1/nodes/update/manifest', {
+            redirect: 'error', signal: AbortSignal.timeout(5000), headers: { 'Cache-Control': 'no-cache' },
+        });
+        if (!response.ok) throw Error('Signed node release unavailable');
+        manifest = (await response.json() as { manifest?: UpdateManifest }).manifest;
+    }
+    if (!isApprovedUpdate(manifest, branch)) throw Error('Invalid or stale signed node release');
+    return fastForwardNodeUpdate(installDir, branch, manifest.commit);
 }
 
 export function fastForwardNodeUpdate(
     installDir: string,
     branch: string,
+    expectedCommit: string,
     run: GitRunner = runGit,
-    expectedCommit?: string,
 ): NodeUpdateResult {
+    if (!isCommitHash(expectedCommit)) throw new Error('Invalid signed update commit');
+
     const dirtyFiles = run(['status', '--porcelain', '--untracked-files=no'], installDir).trim();
     if (dirtyFiles) {
         throw new Error('Tracked local changes detected; refusing to overwrite node files');
@@ -32,16 +49,17 @@ export function fastForwardNodeUpdate(
     run(['check-ref-format', '--branch', branch], installDir);
     const previousHash = run(['rev-parse', 'HEAD'], installDir).trim();
     if (!isCommitHash(previousHash)) throw new Error('Unable to determine current Git commit');
-
-    run(['fetch', '--no-tags', 'origin', branch], installDir);
-    if (run(['rev-parse', '--is-shallow-repository'], installDir).trim() === 'true') {
-        run(['fetch', '--unshallow', '--no-tags', 'origin', branch], installDir);
+    if (expectedCommit.length !== previousHash.length) {
+        throw new Error('Signed update commit uses a different Git object format');
     }
+
+    const shallow = run(['rev-parse', '--is-shallow-repository'], installDir).trim() === 'true';
+    const fetchOptions = shallow ? ['--unshallow', '--no-tags'] : ['--no-tags'];
+    run(['fetch', ...fetchOptions, '--', 'origin', expectedCommit], installDir);
 
     const targetHash = run(['rev-parse', 'FETCH_HEAD'], installDir).trim();
     if (!isCommitHash(targetHash)) throw new Error('Unable to determine fetched Git commit');
-    if (expectedCommit !== undefined && (!isCommitHash(expectedCommit)
-        || targetHash.toLowerCase() !== expectedCommit.toLowerCase())) {
+    if (targetHash.toLowerCase() !== expectedCommit.toLowerCase()) {
         throw new Error('Fetched commit does not match the signed update manifest; update refused');
     }
 
