@@ -87,7 +87,7 @@ The private `GET /api/node/model-directory` endpoint supplies cached network mod
 
 ## Installation checks
 
-Use the root `install.sh` as the canonical entry point; `scripts/install.sh` delegates to it. `--check` performs read-only platform checks. Fresh installs may be pinned to an immutable full commit SHA with `GSTD_INSTALL_REF`; this applies to cloning a new checkout, not rewriting an existing installation.
+Use the verified root `install.sh` described in the README. `--check` performs read-only platform checks. Both fresh installs and updates verify the platform-signed immutable release before running package scripts. The repository's isolated installer smoke test pins its fixture commit separately.
 
 The installer uses Node.js for configuration, includes build dependencies even when `NODE_ENV=production`, preserves existing configuration fields and refuses malformed JSON. Systemd is selected only when its manager is present; otherwise PM2 is installed in the current user's `~/.local` prefix. Reboot startup still depends on the operating system's init/user-session setup. Prefer a dedicated unprivileged operator account for a real compute node.
 

@@ -12,8 +12,12 @@ Share AI compute, earn GSTD from funded accepted work, and use those credits on 
 - [Platform payments](https://app.gstdtoken.com/payments)
 - [Deployment and central dependencies](CENTRAL_DEPENDENCIES.md)
 
+## Installation
+
+The command checks the reviewed installer checksum before running it. The installer then checks the operator-signed release.
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
+(installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh -o "$installer" && printf '%s  %s\n' c314582d0712ec9f9611cd3c86f18d1a54099d41f2a8fec2d37f7d315b323732 "$installer" | sha256sum -c - && bash "$installer")
 ```
 
 Link your own public TON wallet in the operator dashboard; no seed is required. Advanced installs may set GSTD_WALLET_ADDRESS for the initial watch-only address. Keep the dashboard PIN and setup token private. Default direct requests remain local; choose network routing explicitly when you want to share a prompt with other executors.

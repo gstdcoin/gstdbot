@@ -10,6 +10,7 @@ import { cpus, totalmem, freemem, hostname, platform, arch, loadavg, uptime as o
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { getWallet, getBalance } from '../wallet/manager.js';
+import { updateApprovedNode, rollbackNodeUpdate } from '../lib/node-update.js';
 
 export interface DashboardConfig {
     host: string;
@@ -333,10 +334,16 @@ export async function startDashboard(port: number = 8080, host: string = '0.0.0.
                 try {
                     const { execSync } = require('child_process');
                     const cwd = join(__dirname, '../..');
-                    logActivity('Pulling latest from GitHub...', 'info');
-                    execSync('git pull', { cwd, encoding: 'utf-8', timeout: 30000 });
-                    logActivity('Building project (npx tsc)...', 'info');
-                    execSync('npx tsc', { cwd, encoding: 'utf-8', timeout: 60000 });
+                    const release = await updateApprovedNode(cwd, 'main');
+                    if (release.previousHash !== release.updatedHash) {
+                        try {
+                            execSync('npm ci --include=dev', { cwd, encoding: 'utf-8', timeout: 120000 });
+                            execSync('npm run build', { cwd, encoding: 'utf-8', timeout: 120000 });
+                        } catch (error) {
+                            rollbackNodeUpdate(cwd, release.previousHash);
+                            throw error;
+                        }
+                    }
                     logActivity('Update complete! Restart to apply.', 'success');
                     res.json({ ok: true, message: 'Updated. Restart to apply changes.' });
                 } catch (e: any) {
