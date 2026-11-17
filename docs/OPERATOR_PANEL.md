@@ -106,6 +106,10 @@ The **Background work readiness** section shows Ollama, installed models, regist
 
 **Model self-test** runs one short acceptance prompt on the selected installed model in loopback Ollama. It waits for the operator to start it and refuses to run while the node is processing work. The result shows whether the answer passed, elapsed request time and generation tokens per second when Ollama reports them. It makes no Cloudflare requests and earns no rewards. A pass covers this sample on this runtime. GPU allocation, external availability and payout readiness have their own checks.
 
+**Scheduled maintenance** saves a start and end time on the node. An active window stops new direct inference and task polling. A poll already admitted before the window can finish its assignment and submit the result. Wait for the dashboard to show that active work has finished before restarting the computer. The regular heartbeat communicates the window to the platform.
+
+**Real task history** keeps the last 200 locally observed assignments across restarts. The dashboard shows acknowledged submissions, local inference failures, unconfirmed submissions and unknown outcomes separately. An acknowledged submission can still require buyer acceptance and payout. Polls with no assignment, verification probes, direct chat and self-tests are excluded. An interrupted assignment keeps an unknown outcome unless the node later records a result.
+
 - **Outbound queue:** signed nodes pull tasks from funded campaigns without a public port. A successful poll confirms connectivity, not paid demand.
 - **Direct chat:** the platform calls the executor’s HTTPS endpoint. A configured address does not prove external reachability; check the registry. Never expose Ollama directly.
 

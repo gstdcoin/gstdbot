@@ -3,6 +3,7 @@ import {LoginAttemptLimiter} from '../security/login-limit.js';
 import {reviewHfImport} from '../lib/hf-import.js';
 import {workResources} from '../lib/work-resources.js';
 import {runtimeOffloadEvidence} from '../lib/hardware-discovery.js';
+import { maintenanceStatus, parseMaintenance, setMaintenance } from '../lib/host-operations.js';
 import {localSelfTestEndpoint, runHostSelfTest} from '../lib/host-self-test.js';
 import {modelDownloadGate,streamModelDownload,downloadDisconnect} from '../lib/model-download.js';
 import {huggingFaceCatalog,HuggingFaceLookupError} from '../lib/huggingface-models.js';
@@ -532,8 +533,19 @@ export class OmegaGateway {
                 hardware_measured_at: this._hardwareMeasuredAt,
                 runtime_evidence: this._runtimeEvidence,
                 work_resources: workResources(this._hardwareSnapshot,this._hardwareMeasuredAt),
+                maintenance: maintenanceStatus(),
                 accounting_url: this.config.swarmUrl + '/payments',
             });
+        });
+        this.app.post('/api/node/operator/maintenance', (req, res) => {
+            let window;
+            try {
+                window = parseMaintenance(req.body?.window);
+                if (window && window.ends_at <= Date.now()) throw new Error('invalid_maintenance_window');
+            } catch { return res.status(400).json({ error: 'invalid_maintenance_window' }); }
+            try { setMaintenance(window); }
+            catch { return res.status(503).json({ error: 'maintenance_storage_error' }); }
+            return res.json({ maintenance: maintenanceStatus() });
         });
         this.app.post('/api/node/operator/self-test', async (req, res) => {
             const model = req.body?.model;

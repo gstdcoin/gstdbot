@@ -219,7 +219,7 @@ describe('gateway free API key authorization', () => {
     });
     it('protects operator measurements, payout setup and model downloads before any side effect', async () => {
         const address = gatewayServer!.address() as {port:number};
-        for (const path of ['/api/ollama/catalog','/api/ollama/catalog/refresh','/api/node/reward-wallet','/api/node/operator','/api/node/operator/self-test','/api/node/payout-address','/api/ollama/models/pull','/api/check-update','/api/update']) {
+        for (const path of ['/api/ollama/catalog','/api/ollama/catalog/refresh','/api/node/reward-wallet','/api/node/operator','/api/node/operator/self-test','/api/node/operator/maintenance','/api/node/payout-address','/api/ollama/models/pull','/api/check-update','/api/update']) {
             const result = await postJson(address.port, {address: LINKED_WALLET,model:'llama3.2:3b'}, {}, path);
             expect(result.status).toBe(401);
         }

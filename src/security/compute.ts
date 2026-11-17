@@ -1,3 +1,5 @@
+import { maintenanceStatus } from '../lib/host-operations.js';
+
 /** Shared by HTTP inference and assigned platform work in this process. */
 let active=0;
 let maintenance=false;
@@ -10,12 +12,17 @@ export function computeLoad(){
 }
 export function computeCapacityAvailable(){
  const capacity=Math.max(1,Math.min(4,Math.trunc(Number(process.env.GSTD_MAX_INFERENCE_CONCURRENCY)||1)));
- return !maintenance&&active<capacity;
+ return !maintenance&&!maintenanceStatus().active&&active<capacity;
 }
 export async function withComputeSlot<T>(work:()=>Promise<T>):Promise<T>{
-    if(!computeCapacityAvailable())throw new ComputeCapacityError();
+    const release = acquireComputeSlot();
+    try{return await work();}finally{release();}
+}
+
+export function acquireComputeSlot(): () => void {
+    if (!computeCapacityAvailable()) throw new ComputeCapacityError();
     active++;
-    try{return await work();}finally{active--;}
+    return () => { active--; };
 }
 
 /** Block new node computations while an idle runtime model is being removed. */

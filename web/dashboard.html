@@ -14,6 +14,15 @@
 <section><header><div><h2 id="nodeName"></h2><span id="connection" class="pill"></span></div><div class="actions"><button id="refresh" data-i="refresh"></button><button id="logout" class="secondary" data-i="logout"></button></div></header>
 <p id="identity" class="address"></p><div class="metrics"><div class="metric"><span data-i="cpu"></span><strong id="cpu">—</strong></div><div class="metric"><span data-i="ram"></span><strong id="ram">—</strong></div><div class="metric"><span data-i="capacity"></span><strong id="capacity">—</strong></div><div class="metric"><span data-i="requests"></span><strong id="requests">—</strong></div></div><p id="system"></p><p id="hardwareEvidence" class="muted"></p><small data-i="statsHint"></small></section>
 <section><h2 data-i="readiness"></h2><p data-i="readinessHint"></p><ol id="readinessSteps" class="readiness"></ol><p id="nextAction" role="status"></p><p id="directRoute" class="muted"></p><p id="workerSummary" class="muted"></p><small data-i="workerHint"></small><p><a id="networkLink" href="https://app.gstdtoken.com/nodes" target="_blank" rel="noreferrer" data-i="networkStatus"></a></p></section>
+<section id="maintenanceSection"><h2 data-i="maintenanceTitle"></h2>
+<p data-i="maintenanceHint"></p>
+<div class="actions"><label><span data-i="maintenanceStart"></span> <input type="datetime-local" id="maintenanceStart"></label>
+<label><span data-i="maintenanceEnd"></span> <input type="datetime-local" id="maintenanceEnd"></label></div>
+<div class="actions"><button id="scheduleMaintenance" data-i="maintenanceSave"></button>
+<button id="clearMaintenance" class="secondary" data-i="maintenanceClear"></button></div>
+<p id="maintenanceResult" role="status"></p></section>
+<section><h2 data-i="reliabilityTitle"></h2><p data-i="reliabilityHint"></p>
+<p id="reliabilitySummary"></p><ol id="reliabilityHistory"></ol></section>
 <section id="selfTestSection"><h2 data-i="selfTestTitle"></h2><p data-i="selfTestHint"></p>
 <div class="actions"><label><span data-i="model"></span> <select id="selfTestModel"></select></label>
 <button id="runSelfTest" class="secondary" data-i="selfTestRun" disabled></button></div>
@@ -74,6 +83,24 @@ Object.assign(TEXT.en,{
  self_test_model_required:'Choose an installed local model.',self_test_local_only:'Self-test requires Ollama on this computer.',
  self_test_wait:'Wait 30 seconds before running another test.',self_test_runtime_failed:'Ollama did not return a completed response from the selected model.'
 });
+Object.assign(TEXT.ru,{
+ maintenanceTitle:'Плановое обслуживание',maintenanceHint:'В заданное время нода перестанет принимать новые задачи. Уже начатые задачи завершатся. Расписание использует местное время браузера.',
+ maintenanceStart:'Начало',maintenanceEnd:'Конец',maintenanceSave:'Запланировать',maintenanceClear:'Отменить',
+ maintenanceNone:'Расписание отсутствует.',maintenanceActive:'Приём задач приостановлен.',maintenanceDraining:'Нода завершает активную работу.',
+ invalid_maintenance_window:'Укажите корректный интервал до 7 дней.',maintenance_storage_error:'Хранилище расписания недоступно.',
+ reliabilityTitle:'История реальных задач',reliabilityHint:'Последние 200 полученных задач этой ноды. Отправка результата не означает принятие или выплату.',
+ reliabilityEmpty:'История пока пуста.',historyStorage:'История может быть неполной из-за ошибки записи.',
+ result_submitted:'Платформа подтвердила получение',inference_failed:'Сбой вычисления',submission_unconfirmed:'Получение результата не подтверждено',outcome_unknown:'Итог пока неизвестен'
+});
+Object.assign(TEXT.en,{
+ maintenanceTitle:'Scheduled maintenance',maintenanceHint:'The node stops taking new jobs during the window and lets admitted work finish. Times use the browser’s local timezone.',
+ maintenanceStart:'Start',maintenanceEnd:'End',maintenanceSave:'Schedule maintenance',maintenanceClear:'Clear schedule',
+ maintenanceNone:'No maintenance scheduled.',maintenanceActive:'New jobs are paused.',maintenanceDraining:'Active work is finishing.',
+ invalid_maintenance_window:'Enter a valid window of up to seven days.',maintenance_storage_error:'Maintenance schedule storage is unavailable.',
+ reliabilityTitle:'Real task history',reliabilityHint:'The last 200 assigned jobs on this node. A submitted result may still be awaiting buyer acceptance or payout.',
+ reliabilityEmpty:'No task history yet.',historyStorage:'A storage error may have left the history incomplete.',
+ result_submitted:'Submission acknowledged',inference_failed:'Inference failed',submission_unconfirmed:'Submission unconfirmed',outcome_unknown:'Outcome unknown'
+});
 Object.assign(TEXT.ru,{hfImportReview:'Модель из ссылки подготовлена. Войдите, проверьте репозиторий и совместимость. Скачивание начинается только вашей кнопкой.',hfImportDraft:'Черновик сохранён; модель из ссылки не подставлена.'});
 Object.assign(TEXT.en,{hfImportReview:'Model link prepared. Sign in, check the repository and compatibility. Downloads require your button press.',hfImportDraft:'Your draft was kept; the linked model was not inserted.'});
 Object.assign(TEXT.ru,{apply:'Обновить и перезапустить',updateConfirm:'Обновить исходники, проверить сборку и перезапустить эту ноду? Конфигурация и ключи сохраняются. Вычисления будут временно недоступны.',updateWorking:'Обновление выполняется. Установка и проверка сборки могут занять несколько минут. Не нажимайте повторно и не закрывайте страницу.'});
@@ -113,6 +140,36 @@ function renderHardwareEvidence(d){
 }
 function renderStatus(d){renderHardwareEvidence(d);el('nodeName').textContent=d.name||t('title');el('identity').textContent=d.node_id;el('connection').textContent=t(d.platform.registered?'registered':'offline');el('cpu').textContent=Math.round(d.cpu.usage)+'%';el('ram').textContent=bytes(d.ram.used)+' / '+bytes(d.ram.total);el('capacity').textContent=d.compute.active+' / '+d.compute.capacity;el('requests').textContent=String(d.requests);el('system').textContent=t('uptime')+': '+Math.floor(d.uptime/3600)+'h '+Math.floor(d.uptime/60%60)+'m · '+t('load')+': '+Number(d.cpu.load_1m).toFixed(2)+' · '+t('heartbeat')+': '+(d.platform.lastHeartbeat?new Date(d.platform.lastHeartbeat).toLocaleString(lang):'—');el('payout').textContent=rewardCurrent?.address||t('notLinked');el('identityWallet').textContent=t('identityAddress')+': '+(d.payout_address||t('noWallet'));el('version').textContent='GSTD '+d.version;el('login').classList.add('hidden');el('private').classList.remove('hidden');renderReadiness()}
 let selfTestBusy=false;
+function renderHostOperations(){
+ const d=lastStatus,m=d.maintenance,h=d.platform?.worker?.history;
+ if(m){
+  const date=value=>new Date(value).toLocaleString(lang),w=m.window;
+  const range=w?date(w.starts_at)+' — '+date(w.ends_at):'';
+  const draining=d.compute.active>0||d.platform?.worker?.busy;
+  el('maintenanceResult').textContent=m.storage_error?t('maintenance_storage_error'):m.active?
+   t(draining?'maintenanceDraining':'maintenanceActive')+' '+range:w&&Date.now()<w.ends_at?range:t('maintenanceNone');
+ }
+ if(!h)return;
+ const summary=h.total?[t('result_submitted')+' '+h.submitted,t('inference_failed')+' '+h.inference_failed,
+  t('submission_unconfirmed')+' '+h.submission_unconfirmed,t('outcome_unknown')+' '+h.outcome_unknown].join(' · '):t('reliabilityEmpty');
+ el('reliabilitySummary').textContent=summary+(h.storage_error?' · '+t('historyStorage'):'');
+ el('reliabilityHistory').replaceChildren(...h.recent.map(item=>{
+  const row=document.createElement('li');
+  row.textContent=new Date(item.at).toLocaleString(lang)+' · '+t(item.outcome)+' · '+(item.elapsed_ms/1000).toLocaleString(lang)+' s';
+  return row;
+ }));
+}
+async function updateMaintenance(window){
+ const buttons=[el('scheduleMaintenance'),el('clearMaintenance')];
+ buttons.forEach(button=>button.disabled=true);
+ try{await api('/api/node/operator/maintenance',{window});await status()}
+ catch(e){el('maintenanceResult').textContent=errorText(e)}
+ finally{buttons.forEach(button=>button.disabled=false)}
+}
+el('scheduleMaintenance').onclick=()=>updateMaintenance({
+ starts_at:new Date(el('maintenanceStart').value).getTime(),ends_at:new Date(el('maintenanceEnd').value).getTime()
+});
+el('clearMaintenance').onclick=()=>updateMaintenance(null);
 function renderSelfTestModels(){
  const select=el('selfTestModel'), previous=select.value;
  select.replaceChildren(...Array.from(installedIds,id=>new Option(id,id)));
@@ -135,6 +192,7 @@ el('runSelfTest').onclick=async()=>{
 function renderReadiness(){
  renderSelfTestModels();
  if(!lastStatus)return;
+ renderHostOperations();
  const d=lastStatus, p=d.platform||{}, stale=p.lastHeartbeat&&Date.now()-new Date(p.lastHeartbeat).getTime()>300000;
  const runtimeReady=localModels?.ollama_available&&installedIds.size>0;
  const computeReady=d.compute.available??d.compute.active<d.compute.capacity;
