@@ -42,4 +42,3 @@ test('ordinary globs, safe repetition, state and regular expression APIs remain 
     assert.equal(match.compileRe(match.parse('*.ts')).test('One.ts'), true);
     assert.equal(match.scan('src/**/*.ts').isGlob, true);
 });
-
