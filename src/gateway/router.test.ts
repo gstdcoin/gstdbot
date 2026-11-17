@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../lib/demand-tracker.js', () => ({ demandTracker: { record: vi.fn() } }));
 import { NeuralRouter } from './router.js';
-afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 const response = (body: unknown, status=200) => new Response(JSON.stringify(body), {status});
 describe('NeuralRouter canonical task queue', () => {
   it('submits the current payload contract and reads the accepted public result', async () => {
@@ -65,9 +65,11 @@ it.each(['unknown-model', 'openai/gpt-oss-20b', 'qwen/qwen3-32b'])(
 });
 
 it('accepts Ollama latest-tag expansion without replacing the requested model', async()=>{
+ vi.stubEnv('GSTD_INFERENCE_DEVICE','cpu');
  const request = vi.fn().mockResolvedValue(response({model:'custom:latest',message:{content:'answer'}}));
  vi.stubGlobal('fetch',request);
  await expect(new NeuralRouter('',false).route('custom',[{role:'user',content:'hello'}]))
   .resolves.toMatchObject({model:'custom:latest',content:'answer'});
  expect(JSON.parse(request.mock.calls[0][1].body).model).toBe('custom');
+ expect(JSON.parse(request.mock.calls[0][1].body).options).toMatchObject({num_gpu:0});
 });

@@ -142,6 +142,7 @@ describe('PlatformLink task delivery', () => {
     });
 
     it('uses the authenticated POST poll contract and submits successful results', async () => {
+        vi.stubEnv('GSTD_INFERENCE_DEVICE','cpu');
         const pl = makePL();
         (pl as any).registered = true;
         pl.setCapabilitiesProvider(() => ({
@@ -184,7 +185,7 @@ describe('PlatformLink task delivery', () => {
 
         const [, inferenceOptions] = fetchMock.mock.calls[1] as [string, RequestInit];
         expect(JSON.parse(String(inferenceOptions.body))).toMatchObject({
-            model: 'llama3.2:1b', keep_alive: -1, options: {num_ctx: 2048, num_predict: 12, temperature: 0},
+            model: 'llama3.2:1b', keep_alive: -1, options: {num_ctx: 1024, num_gpu: 0, num_predict: 12, temperature: 0},
             messages: [{ role: 'user', content: 'hello' }],
         });
         const [completionUrl, completionOptions] = fetchMock.mock.calls[2] as [string, RequestInit];

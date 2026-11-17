@@ -1,6 +1,6 @@
 import {sanitizeWorkResources,type WorkResources} from '../lib/work-resources.js';
 import { readTunnelUrl } from '../lib/tunnel-url.js';
-import {isCloudModel,localModelOptions} from '../lib/local-model-options.js';
+import {isCloudModel,localModelOptions,localRuntimeOptions} from '../lib/local-model-options.js';
 import {acquireComputeSlot,computeCapacityAvailable} from '../security/compute.js';
 import { runOllamaTask } from '../lib/ollama-worker.js';
 /**
@@ -487,7 +487,7 @@ export class PlatformLink extends EventEmitter {
             const inferenceStarted = Date.now();
             const aiData = await runOllamaTask(`${ollamaUrl}/api/chat`, JSON.stringify({
                     model, messages, ...localModelOptions(model), stream: false, keep_alive: -1,
-                    options: { num_ctx: Math.max(512, Math.min(8192, Number(process.env.GSTD_OLLAMA_CONTEXT) || 2048)),
+                    options: { ...localRuntimeOptions(),
                     ...(typeof maxTokens === 'number' && Number.isInteger(maxTokens) && maxTokens > 0
                         ? { num_predict: Math.min(maxTokens, 8192) } : { num_predict: 256 }),
                     ...(typeof temperature === 'number' && Number.isFinite(temperature)

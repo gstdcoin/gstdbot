@@ -8,7 +8,7 @@ import {huggingFaceCatalog,HuggingFaceLookupError} from '../lib/huggingface-mode
 import { httpsStatus, httpsHelperRequest, validateHttpsRequest } from '../lib/node-https.js';
 import {networkModels} from '../lib/network-models.js';
 import {setupTokenFor} from '../security/setup-token.js';
-import {isCloudModel} from '../lib/local-model-options.js';
+import {isCloudModel,localInferenceDevice,localModelOptions,localRuntimeOptions} from '../lib/local-model-options.js';
 import {modelCatalog,refreshModelCatalog,catalogHardware,compatibility} from '../lib/model-catalog.js';
 import {withComputeSlot,ComputeCapacityError,computeLoad,acquireComputeMaintenance} from '../security/compute.js';
 import { hashPin,verifyPin } from '../security/pin.js';
@@ -530,6 +530,7 @@ export class OmegaGateway {
                 payout_address: this.wallet?.getAddress() || null,
                 models: this._availableModels,
                 ollama: { available: this._ollamaAvailable, checked_at: this._ollamaCheckedAt },
+                inference_device: localInferenceDevice(),
                 hardware: this._hardwareSnapshot,
                 hardware_measured_at: this._hardwareMeasuredAt,
                 runtime_evidence: this._runtimeEvidence,
@@ -726,20 +727,43 @@ export class OmegaGateway {
             if (!messages?.length) return res.status(400).json({ error: 'messages required' });
             const ollamaUrl = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
             try {
-                const resp = await fetch(`${ollamaUrl}/v1/chat/completions`, {
-                    method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({ model, messages, stream: false, max_tokens, temperature, keep_alive: -1 }),
-                    signal:  AbortSignal.timeout(90_000),
+                const data: any = await withComputeSlot(async () => {
+                    const resp = await fetch(`${ollamaUrl}/api/chat`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            model, messages, ...localModelOptions(model), stream: false, keep_alive: -1,
+                            options: {
+                                ...localRuntimeOptions(),
+                                num_predict: Math.max(1, Math.min(8192, Math.trunc(Number(max_tokens) || 256))),
+                                ...(temperature === undefined ? {} : { temperature }),
+                            },
+                        }),
+                        signal: AbortSignal.timeout(90_000),
+                    });
+                    if (!resp.ok) {
+                        await resp.body?.cancel();
+                        throw Error('local_inference_unavailable');
+                    }
+                    return resp.json();
                 });
-                if (!resp.ok) { const t = await resp.text(); return res.status(502).json({ error: t }); }
-                const data: any = await resp.json();
-                // ─── Charge fee ────────────────────────────────
-                const tokens = data.usage?.completion_tokens || 0;
-                // Free/direct inference records usage, not monetary earnings.
-                res.json(data);
-            } catch (e: any) {
-                res.status(503).json({ error: e.message });
+                if (data?.done !== true || typeof data?.message?.content !== 'string' || !data.message.content.trim()
+                    || (data.model !== model && data.model !== model + ':latest')) {
+                    throw Error('invalid_local_inference_result');
+                }
+                const prompt = Number(data.prompt_eval_count) || 0;
+                const completion = Number(data.eval_count) || 0;
+                res.json({
+                    id: 'chatcmpl-' + uuid(), object: 'chat.completion',
+                    created: Math.floor(Date.now() / 1000), model: data.model,
+                    choices: [{
+                        index: 0, message: { role: 'assistant', content: data.message.content },
+                        finish_reason: data.done_reason === 'length' ? 'length' : 'stop',
+                    }],
+                    usage: { prompt_tokens: prompt, completion_tokens: completion, total_tokens: prompt + completion },
+                });
+            } catch (error) {
+                res.status(error instanceof ComputeCapacityError?429:503).json({ error: 'local_inference_unavailable' });
             }
         });
 
@@ -4636,7 +4660,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             const response = await fetch(`${ollamaUrl}/api/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model, messages: [{ role: 'user', content: 'hi' }], stream: false, options: {num_predict:1,num_ctx:2048}, keep_alive: -1 }),
+                body: JSON.stringify({ model, messages: [{ role: 'user', content: 'hi' }], stream: false, options: {...localRuntimeOptions(),num_predict:1}, keep_alive: -1 }),
                 signal: AbortSignal.timeout(90_000),
             });
             if (!response.ok) {
