@@ -38,13 +38,13 @@ Docker обновляется на машине: `git pull --ff-only`, `docker c
 Проверка среды без установки:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash -s -- --check
+(installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/1d2608ca147a8146199c3b72c8e5aeb365e8d79c/install.sh -o "$installer" && printf '%s  %s\n' c314582d0712ec9f9611cd3c86f18d1a54099d41f2a8fec2d37f7d315b323732 "$installer" | sha256sum -c - && bash "$installer" --check)
 ```
 
 Установка с автоматическим выбором небольшой стартовой модели:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
+(installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/1d2608ca147a8146199c3b72c8e5aeb365e8d79c/install.sh -o "$installer" && printf '%s  %s\n' c314582d0712ec9f9611cd3c86f18d1a54099d41f2a8fec2d37f7d315b323732 "$installer" | sha256sum -c - && bash "$installer")
 ```
 
 Вместо автоматического выбора доступны `--model=qwen3.5:0.8b` и `--no-model`. Основные цели — Linux x86-64/ARM64 и WSL2. 32-битные ARM и нативный Windows не поддерживаются этим Bash-установщиком; для Windows нужен WSL2. macOS — best-effort и не подтверждён чистой установкой. На неизвестном дистрибутиве заранее установите Node.js 20+, npm, git и curl. Отдельные CPU, GPU и драйверы требуют проверки Ollama. Поддержка буквально любого устройства не заявляется.
