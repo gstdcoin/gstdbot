@@ -43,6 +43,16 @@ Local blockchain/staking and synthetic RevenueEngine startup are disabled; payme
 
 `npm run eval:quality` runs four strict deterministic samples for each installed model, through the local gateway. Set GSTD_EVAL_URL for a different local port and GSTD_EVAL_OUTPUT for a report path. This is a smoke test, not proof of general answer quality. Both malformed structured output and timeouts fail the check.
 
+### Compare managed inference with Vast.ai
+
+Run `node scripts/inference-benchmark.cjs measure > report.json` from a shell that writes UTF-8. Supply existing OpenAI-compatible chat completion URLs using `GSTD_BENCH_URL` and `VAST_BENCH_URL`. Set `GSTD_BENCH_MODEL` and `VAST_BENCH_MODEL` to the exact endpoint model IDs. If an endpoint reports a different alias for the same artifact, set its corresponding `*_BENCH_REPORTED_MODEL`. Verify the deployed model revision and quantization on both endpoints and record them in `BENCH_MODEL_REVISION`. The runner verifies the model ID reported in the stream. The revision is operator-supplied.
+
+Set `GSTD_BENCH_KEY` and `VAST_BENCH_KEY` in the environment if the endpoints require bearer authentication. Use dedicated endpoints or an isolated billing window. The run sends four paired prompts per round, 10 rounds by default. Set `BENCH_ROUNDS` to 1–50. Run cold and warmed endpoints as separate experiments under the same client region and workload. Keep the endpoint, model revision, deployment configuration and test window comparable before making a public claim.
+
+Run `node scripts/inference-benchmark.cjs cost report.json GSTD_TOTAL_USD VAST_TOTAL_USD` with the two measured USD totals. Include charges for unsuccessful attempts and any startup, idle, storage and traffic charges incurred during the dedicated test window, using the same cost boundary on both sides. For GSTD-denominated charges, record the conversion rate and time separately. Leave the cost field unknown if the bill or an equivalent actual cost record is unavailable. A free request may still have an operator infrastructure cost.
+
+The report gives successful requests divided by all attempts, p95 time to the first content delta among successes, and total measured cost divided by successes. This latency is measured at the client. If the gateway buffers generation before sending content, the measurement includes that delay. Timeouts, incorrect answers and incomplete streams count as failures. The report contains no endpoint URLs, credentials, prompts or response text. These four acceptance prompts measure basic task completion at serial load.
+
 The old SwarmAgent assignment consumer is not started: it advertised retired storage/verification work and could upload peer responses to the central platform. The active compute consumer is the signed PlatformLink inference worker. libp2p transport/discovery remains research infrastructure; it is not evidence of independently verified peer execution or decentralized settlement. Operator-gated peer HTTP endpoints are not a working authenticated direct-gossip network. Do not remove their authentication to make discovery appear functional.
 
 ### Work availability
