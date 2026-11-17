@@ -55,8 +55,8 @@ import {
     signPeerRequest,
     type AttestorIdentity,
 } from '../p2p/identity.js';
-import { isApprovedUpdate, type UpdateManifest } from '../lib/platform-auth.js';
-import { updateApprovedNode, rollbackNodeUpdate } from '../lib/node-update.js';
+import { verifyUpdateManifest, isStaleCommand, type UpdateManifest } from '../lib/platform-auth.js';
+import { fastForwardNodeUpdate, rollbackNodeUpdate } from '../lib/node-update.js';
 import { isRegistered } from '../lib/model-registry.js';
 import { demandTracker } from '../lib/demand-tracker.js';
 
@@ -203,6 +203,23 @@ function requireNodeAuth(req: any, res: any): boolean {
         return false;
     }
     return true;
+}
+
+function checkUpdateManifest(
+    manifest: UpdateManifest | undefined,
+    enforced: boolean,
+): { ok: true } | { ok: false; status: 400 | 403; error: string } {
+    if (!manifest) {
+        if (enforced) return { ok: false, status: 403, error: 'Signed manifest required (PLATFORM_SIGNING_ENFORCED=true)' };
+        return { ok: true };
+    }
+    if (isStaleCommand(manifest.timestamp)) {
+        return { ok: false, status: 400, error: 'Update manifest timestamp is stale (±60s window)' };
+    }
+    if (!verifyUpdateManifest(manifest)) {
+        return { ok: false, status: 403, error: 'Update manifest signature invalid' };
+    }
+    return { ok: true };
 }
 
 async function requirePeerAuth(req: any, res: any, peerManager: PeerManager | null): Promise<boolean> {
@@ -613,13 +630,13 @@ export class OmegaGateway {
                 res.json({
                     update_available: localHash !== remoteHash,
                     current_version: currentVersion,
-                    signed_manifest_required: true,
+                    signed_manifest_required: process.env.PLATFORM_SIGNING_ENFORCED === 'true',
                     current_hash: localHash.slice(0, 8),
                     remote_hash: remoteHash.slice(0, 8),
                     commits_behind: behind,
                     branch,
                     changelog,
-                    update_url: 'https://github.com/gstdcoin/gstdbot#installation',
+                    update_url: 'https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh',
                 });
             } catch (e: any) {
                 // Fallback: check via platform API when git is not available
@@ -631,11 +648,11 @@ export class OmegaGateway {
                     });
                     if (resp.ok) {
                         const data = await resp.json() as any;
-                        res.json({...data,signed_manifest_required:true});
+                        res.json({...data,signed_manifest_required:process.env.PLATFORM_SIGNING_ENFORCED==='true'});
                         return;
                     }
                 } catch (_fallback) { }
-                res.json({ update_available: false, error: e.message, update_url: 'https://github.com/gstdcoin/gstdbot#installation' });
+                res.json({ update_available: false, error: e.message, update_url: 'https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh' });
             }
         });
 
@@ -644,7 +661,14 @@ export class OmegaGateway {
             if (computeLoad().active > 0) return res.status(409).json({error:'compute_busy'});
             // ── Manifest signature gate ───────────────────────────
             const manifest: UpdateManifest | undefined = req.body?.manifest;
-            if (!isApprovedUpdate(manifest, 'main')) return res.status(403).json({ success: false, error: 'Fresh signed release required' });
+            const enforced = process.env.PLATFORM_SIGNING_ENFORCED === 'true';
+            const mCheck = checkUpdateManifest(manifest, enforced);
+            if (!mCheck.ok) {
+                return res.status(mCheck.status).json({ success: false, error: mCheck.error });
+            }
+            if (!manifest) {
+                logActivity('Self-update requested without a signed manifest — permissive mode', 'warn');
+            }
             // ─────────────────────────────────────────────────────
             try {
                 const installDir = process.env.GSTD_INSTALL_DIR || require('os').homedir() + '/gstdbot';
@@ -652,7 +676,7 @@ export class OmegaGateway {
 
                 logActivity(`Starting self-update from origin/${branch}...`, 'info');
 
-                const update = await updateApprovedNode(installDir, branch, manifest);
+                const update = fastForwardNodeUpdate(installDir, branch, undefined, manifest?.commit);
                 const preUpdateHash = update.previousHash;
                 const pullOutput = update.output;
 
@@ -1576,7 +1600,7 @@ export class OmegaGateway {
                     const installDir = process.env.GSTD_INSTALL_DIR || join(require('os').homedir(), 'gstdbot');
                     const branch = getDefaultBranch(installDir);
                     const { execSync } = require('child_process');
-                    const update = await updateApprovedNode(installDir, branch);
+                    const update = fastForwardNodeUpdate(installDir, branch);
                     if (update.previousHash !== update.updatedHash) {
                         await sendReply(`📦 Update ${update.previousHash.slice(0, 8)} → ${update.updatedHash.slice(0, 8)}. Applying...`);
                         try {
@@ -1640,7 +1664,7 @@ export class OmegaGateway {
                     return;
                 }
                 if (component === 'core' || component === 'dashboard' || component === 'all') {
-                    const update = await updateApprovedNode(installDir, branch);
+                    const update = fastForwardNodeUpdate(installDir, branch);
                     if (component === 'core' || component === 'all') {
                         try {
                             execSync('npm ci --include=dev', { cwd: installDir, timeout: 120000 });
@@ -2088,7 +2112,7 @@ export class OmegaGateway {
                     try {
                         const cwd = join(__dirname, '../..');
                         const branch = getDefaultBranch(cwd);
-                        const update = await updateApprovedNode(cwd, branch);
+                        const update = fastForwardNodeUpdate(cwd, branch);
                         try {
                             execSync('npm ci --include=dev', { cwd, encoding: 'utf-8', timeout: 120000 });
                             execSync('npm run build', { cwd, encoding: 'utf-8', timeout: 60000 });
@@ -2134,11 +2158,18 @@ export class OmegaGateway {
             if (computeLoad().active > 0) return res.status(409).json({error:'compute_busy'});
             // ── Manifest signature gate ───────────────────────────
             const manifest: UpdateManifest | undefined = req.body?.manifest;
-            if (!isApprovedUpdate(manifest, 'main')) return res.status(403).json({ ok: false, error: 'Fresh signed release required' });
+            const enforced = process.env.PLATFORM_SIGNING_ENFORCED === 'true';
+            const mCheck = checkUpdateManifest(manifest, enforced);
+            if (!mCheck.ok) {
+                return res.status(mCheck.status).json({ ok: false, error: mCheck.error });
+            }
+            if (!manifest) {
+                logActivity('Update requested without a signed manifest — permissive mode', 'warn');
+            }
             // ─────────────────────────────────────────────────────
             try {
                 const cwd = join(__dirname, '../..');
-                const update = await updateApprovedNode(cwd, getDefaultBranch(cwd), manifest);
+                const update = fastForwardNodeUpdate(cwd, getDefaultBranch(cwd), undefined, manifest?.commit);
                 try {
                     execSync('npm ci --include=dev', { cwd, timeout: 120000, stdio: 'pipe' });
                     execSync('npm run build', { cwd, timeout: 60000, stdio: 'pipe' });
@@ -2979,7 +3010,7 @@ export class OmegaGateway {
                     execSync(`cp -r ${join(require('os').homedir(), '.config', 'gstdbot', 'telegram_link.json')} ${backupDir}/ 2>/dev/null || true`, { timeout: 5000 });
                 }
                 // Git pull + rebuild
-                const update = await updateApprovedNode(cwd, getDefaultBranch(cwd));
+                const update = fastForwardNodeUpdate(cwd, getDefaultBranch(cwd));
                 try {
                     execSync('npm ci --include=dev', { cwd, timeout: 120000, stdio: 'pipe' });
                     execSync('npm run build', { cwd, timeout: 60000, stdio: 'pipe' });
@@ -3008,7 +3039,7 @@ export class OmegaGateway {
             }
         });
 
-        this.app.post('/api/system/reset', async (req, res) => {
+        this.app.post('/api/system/reset', (req, res) => {
             if (!requireNodeAuth(req, res)) return;
             const { confirm } = req.body || {};
             if (confirm !== 'RESET_ALL_DATA') {
@@ -3021,7 +3052,7 @@ export class OmegaGateway {
                 execSync(`rm -rf ${configDir}`, { timeout: 5000 });
                 execSync(`mkdir -p ${configDir}`, { timeout: 5000 });
                 const cwd = join(__dirname, '../..');
-                const update = await updateApprovedNode(cwd, getDefaultBranch(cwd));
+                const update = fastForwardNodeUpdate(cwd, getDefaultBranch(cwd));
                 try {
                     execSync('npm ci --include=dev', { cwd, timeout: 120000, stdio: 'pipe' });
                     execSync('npm run build', { cwd, timeout: 60000, stdio: 'pipe' });
