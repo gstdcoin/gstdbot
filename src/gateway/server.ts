@@ -3,6 +3,8 @@ import {LoginAttemptLimiter} from '../security/login-limit.js';
 import {reviewHfImport} from '../lib/hf-import.js';
 import {workResources} from '../lib/work-resources.js';
 import {runtimeOffloadEvidence} from '../lib/hardware-discovery.js';
+import { maintenanceStatus, parseMaintenance, setMaintenance } from '../lib/host-operations.js';
+import {localSelfTestEndpoint, runHostSelfTest} from '../lib/host-self-test.js';
 import {modelDownloadGate,streamModelDownload,downloadDisconnect} from '../lib/model-download.js';
 import {huggingFaceCatalog,HuggingFaceLookupError} from '../lib/huggingface-models.js';
 import { httpsStatus, httpsHelperRequest, validateHttpsRequest } from '../lib/node-https.js';
@@ -10,7 +12,7 @@ import {networkModels} from '../lib/network-models.js';
 import {setupTokenFor} from '../security/setup-token.js';
 import {isCloudModel} from '../lib/local-model-options.js';
 import {modelCatalog,refreshModelCatalog,catalogHardware,compatibility} from '../lib/model-catalog.js';
-import {withComputeSlot,ComputeCapacityError,computeLoad,acquireComputeMaintenance} from '../security/compute.js';
+import {withComputeSlot,ComputeCapacityError,computeLoad,computeCapacityAvailable,acquireComputeMaintenance} from '../security/compute.js';
 import { hashPin,verifyPin } from '../security/pin.js';
 import { nodeSurface } from '../security/surface.js';
 /**
@@ -271,6 +273,7 @@ export class OmegaGateway {
     private sessions: SessionManager;
     private config: GatewayConfig;
     private _availableModels: string[] = [];
+    private nextHostSelfTestAt = 0;
     private _hardwareSnapshot: ReturnType<typeof catalogHardware> | null = null;
     private _hardwareMeasuredAt = 0;
     private _runtimeEvidence = runtimeOffloadEvidence(null);
@@ -521,7 +524,7 @@ export class OmegaGateway {
                 cpu: { cores: cpu.length, usage: currentCpuUsage, load_1m: loadavg()[0] },
                 ram: { total: totalmem(), free: freemem(), used: totalmem()-freemem() },
                 disk: getDiskUsage(),
-                compute: computeLoad(),
+                compute: { ...computeLoad(), available: computeCapacityAvailable() },
                 requests: this.metrics.totalRequests,
                 platform: this.platformLink.getStatus(),
                 payout_address: this.wallet?.getAddress() || null,
@@ -530,8 +533,49 @@ export class OmegaGateway {
                 hardware_measured_at: this._hardwareMeasuredAt,
                 runtime_evidence: this._runtimeEvidence,
                 work_resources: workResources(this._hardwareSnapshot,this._hardwareMeasuredAt),
+                maintenance: maintenanceStatus(),
                 accounting_url: this.config.swarmUrl + '/payments',
             });
+        });
+        this.app.post('/api/node/operator/maintenance', (req, res) => {
+            let window;
+            try {
+                window = parseMaintenance(req.body?.window);
+                if (window && window.ends_at <= Date.now()) throw new Error('invalid_maintenance_window');
+            } catch { return res.status(400).json({ error: 'invalid_maintenance_window' }); }
+            try { setMaintenance(window); }
+            catch { return res.status(503).json({ error: 'maintenance_storage_error' }); }
+            return res.json({ maintenance: maintenanceStatus() });
+        });
+        this.app.post('/api/node/operator/self-test', async (req, res) => {
+            const model = req.body?.model;
+            if (typeof model !== 'string' || !/^[a-z0-9:._/-]{1,160}$/i.test(model)
+                || model.toLowerCase() === 'auto' || isCloudModel(model)) {
+                return res.status(400).json({ error: 'self_test_model_required' });
+            }
+            const endpoint = localSelfTestEndpoint(process.env.OLLAMA_URL || 'http://127.0.0.1:11434');
+            if (!endpoint) return res.status(409).json({ error: 'self_test_local_only' });
+            const now = Date.now();
+            if (now < this.nextHostSelfTestAt) {
+                res.setHeader('Retry-After', String(Math.ceil((this.nextHostSelfTestAt - now) / 1000)));
+                return res.status(429).json({ error: 'self_test_wait' });
+            }
+            if (this.platformLink.getStatus().worker.busy) {
+                return res.status(409).json({ error: 'compute_busy' });
+            }
+            let release: () => void;
+            try { release = acquireComputeMaintenance(); }
+            catch { return res.status(409).json({ error: 'compute_busy' }); }
+            try {
+                const result = await runHostSelfTest(endpoint, model);
+                if (!result) return res.status(400).json({ error: 'self_test_model_required' });
+                return res.json(result);
+            } catch {
+                return res.status(502).json({ error: 'self_test_runtime_failed' });
+            } finally {
+                this.nextHostSelfTestAt = Date.now() + 30_000;
+                release();
+            }
         });
         this.app.get('/api/node/reward-wallet', async (_req,res)=>{
             try{res.json({payout:await this.platformLink.rewardWallet(),identity_wallet:this.wallet?.getAddress()||null});}

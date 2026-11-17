@@ -1,7 +1,12 @@
 import {keyPairFromSeed,signVerify} from '@ton/crypto';
 import {createHash} from 'node:crypto';
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { PlatformLink } from './platform-link.js';
+import { setMaintenance } from '../lib/host-operations.js';
+import { computeCapacityAvailable } from '../security/compute.js';
 
 function makePL(): PlatformLink {
     return new PlatformLink({
@@ -12,6 +17,7 @@ function makePL(): PlatformLink {
     });
 }
 
+beforeEach(() => vi.stubEnv('GSTD_CONFIG_DIR', mkdtempSync(join(tmpdir(), 'gstd-platform-link-'))));
 afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
@@ -171,6 +177,8 @@ describe('PlatformLink task delivery', () => {
 
         expect(fetchMock).toHaveBeenCalledTimes(3);
         expect(pl.getStatus().worker).toMatchObject({ resultsSubmitted: 1, lastErrorPhase: null, busy: false });
+        expect(pl.getStatus().worker.history).toMatchObject({ total: 1, submitted: 1, inference_failed: 0 });
+        expect(makePL().getStatus().worker.history).toMatchObject({ total: 1, submitted: 1 });
         expect(pl.getStatus().worker.lastResultSubmitted).not.toBeNull();
         const [pollUrl, pollOptions] = fetchMock.mock.calls[0] as [string, RequestInit];
         expect(pollUrl).toBe('http://localhost:9999/api/v1/tasks/poll');
@@ -196,6 +204,46 @@ describe('PlatformLink task delivery', () => {
             model: 'llama3.2:1b',
             latency_ms: expect.any(Number),
         });
+    });
+
+    it('finishes a task leased before maintenance starts and does not pull another', async () => {
+        const pl = makePL();
+        (pl as any).registered = true;
+        let resolvePoll!: (response: Response) => void;
+        const pending = new Promise<Response>(resolve => { resolvePoll = resolve; });
+        const fetchMock = vi.fn()
+            .mockReturnValueOnce(pending)
+            .mockResolvedValueOnce(Response.json({ model: 'llama3.2:1b', message: { content: 'answer' } }))
+            .mockResolvedValueOnce(Response.json({ ok: true }));
+        vi.stubGlobal('fetch', fetchMock);
+        const operation = (pl as any).pollAndProcess();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const now = Date.now();
+        setMaintenance({ starts_at: now, ends_at: now + 60_000 });
+        resolvePoll(Response.json({ task: { task_id: 'task-during-maintenance', model: 'llama3.2:1b', prompt: 'test' } }));
+        await operation;
+        expect(pl.getStatus().worker.history).toMatchObject({ submitted: 1 });
+        expect(computeCapacityAvailable()).toBe(false);
+        await (pl as any).pollAndProcess();
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        setMaintenance(null);
+        expect(computeCapacityAvailable()).toBe(true);
+    });
+
+    it('keeps unacknowledged task submissions in history and excludes verification probes', async () => {
+        const pl = makePL();
+        (pl as any).registered = true;
+        const task = { task_id: 'example', model: 'llama3.2:1b', prompt: 'test' };
+        vi.stubGlobal('fetch', vi.fn()
+            .mockResolvedValueOnce(Response.json({ task: { ...task, task_id: 'probe' }, source: 'probe' }))
+            .mockResolvedValueOnce(Response.json({ model: task.model, message: { content: 'answer' } }))
+            .mockResolvedValueOnce(Response.json({ ok: true }))
+            .mockResolvedValueOnce(Response.json({ task }))
+            .mockResolvedValueOnce(Response.json({ model: task.model, message: { content: 'answer' } }))
+            .mockResolvedValueOnce(Response.json({ ok: true, task_id: 'different' })));
+        await (pl as any).pollAndProcess();
+        await (pl as any).pollAndProcess();
+        expect(pl.getStatus().worker.history).toMatchObject({ total: 1, submitted: 0, submission_unconfirmed: 1 });
     });
 
     it('does not submit an empty inference result as a completed task', async () => {

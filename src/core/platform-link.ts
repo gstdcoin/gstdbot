@@ -1,7 +1,8 @@
 import {sanitizeWorkResources,type WorkResources} from '../lib/work-resources.js';
 import { readTunnelUrl } from '../lib/tunnel-url.js';
 import {isCloudModel,localModelOptions} from '../lib/local-model-options.js';
-import {withComputeSlot,computeCapacityAvailable} from '../security/compute.js';
+import {acquireComputeSlot,computeCapacityAvailable} from '../security/compute.js';
+import {maintenanceStatus, TaskHistory} from '../lib/host-operations.js';
 /**
  * ═══════════════════════════════════════════════════════════════
  * GSTD Node — Platform Link (Heartbeat + Registration)
@@ -81,6 +82,7 @@ export class PlatformLink extends EventEmitter {
     private lastTaskErrorPhase: string | null = null;
     private lastHeartbeatError: string | null = null;
     private lastHeartbeatErrorLog = 0;
+    private readonly taskHistory: TaskHistory;
 
     constructor(config: { platformUrl: string; nodeId: string; walletAddress: string; version: string }) {
         super();
@@ -88,6 +90,7 @@ export class PlatformLink extends EventEmitter {
         this.nodeId = config.nodeId;
         this.walletAddress = config.walletAddress;
         this.version = config.version;
+        this.taskHistory = new TaskHistory(config.nodeId);
     }
 
     /** Called once P2P mesh starts — so heartbeats include bootstrap-able peer data */
@@ -174,6 +177,7 @@ export class PlatformLink extends EventEmitter {
             const caps = this.capabilitiesProvider?.() || {};
             const tunnelUrl = this.readTunnelUrl() || process.env.GSTD_PUBLIC_URL || '';
             const models: string[] = (caps as any).models || [];
+            const maintenance = maintenanceStatus();
             const resp = await fetch(`${this.platformUrl}/api/v1/nodes/register`, {
                 method: 'POST',
                 headers: {
@@ -189,6 +193,8 @@ export class PlatformLink extends EventEmitter {
                     node_url:     tunnelUrl,
                     capabilities: models,
                     node_version: this.version,
+                    maintenance_window: maintenance.window,
+                    maintenance_storage_error: maintenance.storage_error,
                     node_pubkey:  this.nodePubkey || undefined,
                     specs: {
                         node_id: this.nodeId,
@@ -247,6 +253,7 @@ export class PlatformLink extends EventEmitter {
         const stats = this.statsCollector?.() || {};
         const caps  = this.capabilitiesProvider?.() || {};
         const models: string[] = (caps as any).models || [];
+        const maintenance = maintenanceStatus();
 
         // Read tunnel URL for locality-aware routing
         const tunnelUrl = this.readTunnelUrl() || process.env.GSTD_PUBLIC_URL || '';
@@ -265,6 +272,8 @@ export class PlatformLink extends EventEmitter {
                     wallet_address:  this.walletAddress,
                     node_name:       process.env.NODE_NAME || this.nodeId,
                     node_version:    this.version,
+                    maintenance_window: maintenance.window,
+                    maintenance_storage_error: maintenance.storage_error,
                     platform: process.platform, arch: process.arch,
                     ram_mb: Math.round(totalmem()/1024/1024),
                     ...this.workResources(),
@@ -411,8 +420,13 @@ export class PlatformLink extends EventEmitter {
 
     private async pollAndProcess() {
         if (this.tasksBusy || !this.registered || !computeCapacityAvailable()) return;
+        // Reserve before the pull so a task leased just before maintenance can finish.
+        let release: () => void;
+        try { release = acquireComputeSlot(); } catch { return; }
         this.tasksBusy = true;
         let phase = 'poll';
+        let taskId: string | undefined;
+        let assignedAt = 0;
         try {
             // The legacy Worker exposes GET polling; the current app uses POST.
             // Select explicitly rather than downgrading on auth/server errors.
@@ -453,8 +467,15 @@ export class PlatformLink extends EventEmitter {
             this.nextTaskPollMs = 5_000;
 
             const task = data.task;
+            const task_id: unknown = task.task_id;
+            if (typeof task_id !== 'string' || !task_id) return;
+            assignedAt = Date.now();
+            if (data.source !== 'probe') {
+                taskId = task_id;
+                this.taskHistory.record(task_id, assignedAt, 'outcome_unknown');
+            }
+            phase = 'inference';
             const payload = task.payload && typeof task.payload === 'object' ? task.payload : {};
-            const task_id: string = task.task_id;
             const requestedModel = payload.model ?? task.model;
             // Only an absent model or explicit auto opts into this node's configured default.
             const model = requestedModel == null || requestedModel === 'auto'
@@ -480,7 +501,6 @@ export class PlatformLink extends EventEmitter {
             const temperature = payload.temperature ?? task.temperature;
             phase = 'inference';
             const inferenceStarted = Date.now();
-            const aiData:any = await withComputeSlot(async()=>{
             const aiResp = await fetch(`${ollamaUrl}/api/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -496,8 +516,7 @@ export class PlatformLink extends EventEmitter {
                 signal: AbortSignal.timeout(90000),
             });
             if (!aiResp.ok) throw new Error(`Local inference failed: HTTP ${aiResp.status}`);
-            return await aiResp.json();
-            });
+            const aiData:any = await aiResp.json();
             // The worker queue must enforce the same exact-model contract as chat.
             const canonical = (id: string) => id.split('/').pop()!.includes(':') ? id : id + ':latest';
             if (typeof aiData?.model !== 'string' || canonical(aiData.model) !== canonical(model)) {
@@ -521,12 +540,18 @@ export class PlatformLink extends EventEmitter {
                 signal: AbortSignal.timeout(25000),
             });
             if (!completion.ok) throw new Error(`Task completion failed: HTTP ${completion.status}`);
+            const acknowledgement = await completion.json() as { ok?: unknown; task_id?: unknown };
+            if (acknowledgement?.ok !== true || (acknowledgement.task_id !== undefined && acknowledgement.task_id !== task_id)) {
+                throw new Error('Task completion acknowledgement did not match the assignment');
+            }
 
             this.lastTaskCompletion = new Date();
             this.taskResultsSubmitted++;
+            if (taskId) this.taskHistory.record(taskId, assignedAt, 'result_submitted');
             console.log(`  ✅ Task ${task_id} completed (${actualModel}, ${content.length} chars)`);
             this.emit('task:completed', { task_id, model: actualModel });
         } catch (err: any) {
+            if (taskId) this.taskHistory.record(taskId, assignedAt, phase === 'completion' ? 'submission_unconfirmed' : 'inference_failed');
             // Expose only the phase, never a prompt or upstream response body.
             this.lastTaskErrorPhase = phase;
             if (Date.now() - this.lastTaskErrorLog > 60_000) {
@@ -548,6 +573,7 @@ export class PlatformLink extends EventEmitter {
             this.emit('task:error', { error: err.message, nodeId: this.nodeId });
         } finally {
             this.tasksBusy = false;
+            release();
         }
     }
 
@@ -570,6 +596,7 @@ export class PlatformLink extends EventEmitter {
             nodeId: this.nodeId,
             publicUrl,
             worker: {
+                history: this.taskHistory.summary(),
                 enabled: this.taskLoopEnabled,
                 busy: this.tasksBusy,
                 lastPoll: this.lastTaskPoll?.toISOString() || null,
