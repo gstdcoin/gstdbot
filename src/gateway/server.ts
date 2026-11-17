@@ -274,6 +274,8 @@ export class OmegaGateway {
     private _hardwareSnapshot: ReturnType<typeof catalogHardware> | null = null;
     private _hardwareMeasuredAt = 0;
     private _runtimeEvidence = runtimeOffloadEvidence(null);
+    private _ollamaCheckedAt: number | null = null;
+    private _ollamaAvailable = false;
     private clients = new Map<string, WebSocket>();
     private appManager: AppManager;
     private peerManager: PeerManager | null = null;
@@ -504,6 +506,7 @@ export class OmegaGateway {
                     models: this._availableModels.length,
                     catalogModels: this.orchestrator?.getAvailableModels()?.length || 0,
                 },
+                ollama: { available: this._ollamaAvailable, checked_at: this._ollamaCheckedAt },
             });
         });
 
@@ -526,6 +529,7 @@ export class OmegaGateway {
                 platform: this.platformLink.getStatus(),
                 payout_address: this.wallet?.getAddress() || null,
                 models: this._availableModels,
+                ollama: { available: this._ollamaAvailable, checked_at: this._ollamaCheckedAt },
                 hardware: this._hardwareSnapshot,
                 hardware_measured_at: this._hardwareMeasuredAt,
                 runtime_evidence: this._runtimeEvidence,
@@ -3915,20 +3919,42 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
             console.log(`[Gateway] Client connected: ${clientId}`);
 
             const session = this.sessions.create(clientId);
+            let handlingMessage = false;
+            const send = (message: object) => {
+                if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
+            };
+            ws.on('error', () => {
+                logActivity('Gateway WebSocket transport error', 'warn');
+                ws.terminate();
+            });
 
-            ws.send(JSON.stringify({
+            send({
                 type: 'connected',
                 clientId,
                 sessionId: session.id,
-                models: ['auto', 'gstd-flash', 'gstd-pro', 'gstd-ultra', 'cocoon-auto'],
-            }));
+                models: this._availableModels.length ? ['auto', ...this._availableModels] : [],
+            });
 
             ws.on('message', async (data) => {
+                if (handlingMessage) {
+                    send({ type: 'error', message: 'message_in_progress' });
+                    return;
+                }
+                handlingMessage = true;
                 try {
                     const msg = JSON.parse(data.toString());
-                    await this.handleWSMessage(clientId, session, msg, ws);
-                } catch (err: any) {
-                    ws.send(JSON.stringify({ type: 'error', message: err.message }));
+                    if (!msg || typeof msg.type !== 'string'
+                        || (msg.type === 'chat' && (typeof msg.content !== 'string' || !msg.content.trim()
+                            || (msg.model != null && typeof msg.model !== 'string')))
+                        || (msg.type === 'command' && typeof msg.command !== 'string')) {
+                        send({ type: 'error', message: 'invalid_message' });
+                        return;
+                    }
+                    await this.handleWSMessage(session, msg, send);
+                } catch {
+                    send({ type: 'error', message: 'request_failed' });
+                } finally {
+                    handlingMessage = false;
                 }
             });
 
@@ -3940,7 +3966,7 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
         });
     }
 
-    private async handleWSMessage(clientId: string, session: Session, msg: any, ws: WebSocket): Promise<void> {
+    private async handleWSMessage(session: Session, msg: any, send: (message: object) => void): Promise<void> {
         switch (msg.type) {
             case 'chat': {
                 const messages = [
@@ -3949,40 +3975,41 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
                     { role: 'user' as const, content: msg.content },
                 ];
 
-                session.history.push({ role: 'user', content: msg.content });
-                if(session.history.length>40)session.history=session.history.slice(-40);
-
-                ws.send(JSON.stringify({ type: 'thinking', model: msg.model || 'auto' }));
+                send({ type: 'thinking', model: msg.model || 'auto' });
 
                 const result = await this.infer(msg.model || 'auto', messages);
                 this.metrics.totalRequests++;
                 this.updateMetrics(result);
 
-                session.history.push({ role: 'assistant', content: result.content });
+                session.history.push({ role: 'user', content: msg.content }, { role: 'assistant', content: result.content });
+                if(session.history.length>40)session.history=session.history.slice(-40);
 
-                ws.send(JSON.stringify({
+                send({
                     type: 'response',
                     content: result.content,
                     model: result.model,
                     tier: result.tier,
                     latencyMs: result.latencyMs,
-                }));
+                });
                 break;
             }
 
             case 'command': {
                 const response = this.handleCommand(msg.command, session);
-                ws.send(JSON.stringify({ type: 'command_response', ...response }));
+                send({ type: 'command_response', ...response });
                 break;
             }
 
             case 'skill_install': {
-                ws.send(JSON.stringify({type:'error',error:'feature_retired',message:'Arbitrary skill installation is not part of this compute profile.'}));
+                send({type:'error',error:'feature_retired',message:'Arbitrary skill installation is not part of this compute profile.'});
                 break;
             }
 
             case 'ping':
-                ws.send(JSON.stringify({ type: 'pong', ts: Date.now() }));
+                send({ type: 'pong', ts: Date.now() });
+                break;
+            default:
+                send({ type: 'error', message: 'unsupported_message' });
                 break;
         }
     }
@@ -4571,19 +4598,32 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
         this._hardwareSnapshot = null;
         this._hardwareMeasuredAt = 0;
         this._runtimeEvidence = runtimeOffloadEvidence(null);
+        const wasAvailable = this._ollamaAvailable;
         try {
             const r = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(3000) });
             if (!r.ok) throw Error('runtime_unavailable');
             const d: any = await r.json();
             if (!Array.isArray(d.models)) throw Error('invalid_runtime_models');
-            this._availableModels = d.models.map((m: any) => m.name as string).filter((m:string)=>!!m&&!isCloudModel(m));
+            this._availableModels = d.models.flatMap((entry: { name?: unknown } | null) =>
+                typeof entry?.name === 'string' && entry.name.trim() && !isCloudModel(entry.name) ? [entry.name] : []);
+            this._ollamaAvailable = true;
             this._hardwareSnapshot = catalogHardware();
             this._hardwareMeasuredAt = Date.now();
+        } catch {
+            this._availableModels = [];
+            this._ollamaAvailable = false;
+        } finally {
+            this._ollamaCheckedAt = Date.now();
+        }
+        if (wasAvailable !== this._ollamaAvailable) {
+            logActivity(this._ollamaAvailable ? 'Ollama model discovery is available' : 'Ollama model discovery is unavailable', this._ollamaAvailable ? 'info' : 'warn');
+        }
+        if (this._ollamaAvailable) {
             try {
                 const ps = await fetch(`${ollamaUrl}/api/ps`, { signal: AbortSignal.timeout(3000) });
                 if (ps.ok) this._runtimeEvidence = runtimeOffloadEvidence(await ps.json());
             } catch { /* Runtime allocation evidence is optional, never free VRAM. */ }
-        } catch { this._availableModels = []; }
+        }
     }
 
     private async _preWarmOllama(): Promise<void> {
@@ -4593,13 +4633,20 @@ const d=await r.json();ai.textContent=d.choices?.[0]?.message?.content||'No resp
         const model = this._availableModels.includes(preferred) ? preferred : this._availableModels[0];
         try {
             logActivity(`Pre-warming Ollama model: ${model}`, 'info');
-            await fetch(`${ollamaUrl}/api/chat`, {
+            const response = await fetch(`${ollamaUrl}/api/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ model, messages: [{ role: 'user', content: 'hi' }], stream: false, options: {num_predict:1,num_ctx:2048}, keep_alive: -1 }),
                 signal: AbortSignal.timeout(90_000),
             });
-            logActivity(`Ollama model ${model} pre-warmed and pinned`, 'success');
+            if (!response.ok) {
+                await response.body?.cancel().catch(() => {});
+                return;
+            }
+            const result = await response.json() as { done?: boolean } | null;
+            if (result?.done === true) {
+                logActivity(`Ollama model ${model} pre-warmed and pinned`, 'success');
+            }
         } catch (_) { /* warm-up is best-effort */ }
     }
 

@@ -89,7 +89,7 @@ src/
 ├── storage/ipfs.ts           ← IPFS integration [EXPERIMENTAL]
 ├── tools/quality-eval.ts     ← LLM quality evaluation
 ├── agent/agent.ts            ← Agent loop
-├── node-lite/index.ts        ← Lightweight standalone node
+├── node-lite/index.ts        ← Migration notice for the retired standalone node
 └── cli/index.ts              ← CLI tool
 ```
 
