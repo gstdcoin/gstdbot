@@ -14,6 +14,10 @@
 <section><header><div><h2 id="nodeName"></h2><span id="connection" class="pill"></span></div><div class="actions"><button id="refresh" data-i="refresh"></button><button id="logout" class="secondary" data-i="logout"></button></div></header>
 <p id="identity" class="address"></p><div class="metrics"><div class="metric"><span data-i="cpu"></span><strong id="cpu">—</strong></div><div class="metric"><span data-i="ram"></span><strong id="ram">—</strong></div><div class="metric"><span data-i="capacity"></span><strong id="capacity">—</strong></div><div class="metric"><span data-i="requests"></span><strong id="requests">—</strong></div></div><p id="system"></p><p id="hardwareEvidence" class="muted"></p><small data-i="statsHint"></small></section>
 <section><h2 data-i="readiness"></h2><p data-i="readinessHint"></p><ol id="readinessSteps" class="readiness"></ol><p id="nextAction" role="status"></p><p id="directRoute" class="muted"></p><p id="workerSummary" class="muted"></p><small data-i="workerHint"></small><p><a id="networkLink" href="https://app.gstdtoken.com/nodes" target="_blank" rel="noreferrer" data-i="networkStatus"></a></p></section>
+<section id="selfTestSection"><h2 data-i="selfTestTitle"></h2><p data-i="selfTestHint"></p>
+<div class="actions"><label><span data-i="model"></span> <select id="selfTestModel"></select></label>
+<button id="runSelfTest" class="secondary" data-i="selfTestRun" disabled></button></div>
+<p id="selfTestResult" role="status"></p></section>
 <div class="grid">
 <section id="walletSection"><h2 data-i="wallet"></h2><p data-i="walletHint"></p><p id="payout" class="address"></p><p id="identityWallet" class="muted address"></p><div id="walletForm"><label><span data-i="address"></span><input id="walletAddress" autocomplete="off" spellcheck="false" placeholder="UQ… / EQ… / 0:…"></label><label><input id="walletConsent" type="checkbox"> <span data-i="walletConsent"></span></label><button id="bind" data-i="bind" disabled></button></div><p><a href="https://app.gstdtoken.com/payments" target="_blank" rel="noreferrer" id="balanceLink" data-i="balance"></a></p><p><a id="pricingLink" href="https://app.gstdtoken.com/node-economics" target="_blank" rel="noreferrer" data-i="pricing"></a></p><small data-i="moneyHint"></small></section>
 <section id="updatesSection"><h2 data-i="updates"></h2><p id="version"></p><p data-i="updateHint"></p><button id="check" data-i="check"></button><pre id="updateInfo" role="status" aria-live="polite"></pre><div id="updateAction" class="hidden"><button id="apply" data-i="apply"></button></div><small data-i="containerHint"></small></section>
@@ -56,6 +60,20 @@ Object.assign(TEXT.ru,{"cancelDownload": "Остановить скачиван�
 Object.assign(TEXT.en,{"cancelDownload": "Stop download", "model_download_in_progress": "A model download is already active on this node. Wait or stop your download.", "model_download_failed": "Model download failed. Retry later; Ollama may reuse previously downloaded parts.", "model_download_incomplete": "Download did not finish. Installation is not confirmed; retry the download.", "model_download_cancelled": "Download stopped. No files or models were deleted; Ollama may reuse downloaded parts on retry.", "model_runtime_update_required": "This model requires an Ollama update. Installation is not confirmed.", "hf_file_unavailable": "The exact GGUF file is missing or unsupported. No different file was selected automatically."});
 Object.assign(TEXT.ru,{localTestQuestion:'Кратко представься и назови одну полезную задачу, с которой можешь помочь.'});
 Object.assign(TEXT.en,{localTestQuestion:'Briefly introduce yourself and name one useful task you can help with.'});
+Object.assign(TEXT.ru,{
+ selfTestTitle:'Самопроверка модели',selfTestRun:'Запустить проверку',
+ selfTestHint:'Запускает короткую задачу на выбранной модели в локальном Ollama. Активная работа должна завершиться.',
+ selfTestPass:'Ответ верный',selfTestFail:'Ответ не прошёл проверку',selfTestDuration:'Время запроса',selfTestSpeed:'токенов/с',
+ self_test_model_required:'Выберите установленную локальную модель.',self_test_local_only:'Проверка доступна для Ollama на этом компьютере.',
+ self_test_wait:'Повторите проверку через 30 секунд.',self_test_runtime_failed:'Ollama не вернул завершённый ответ выбранной модели.'
+});
+Object.assign(TEXT.en,{
+ selfTestTitle:'Model self-test',selfTestRun:'Run self-test',
+ selfTestHint:'Runs a short task on the selected model in local Ollama. Active work must finish first.',
+ selfTestPass:'Correct answer',selfTestFail:'Answer failed acceptance check',selfTestDuration:'Request time',selfTestSpeed:'tokens/s',
+ self_test_model_required:'Choose an installed local model.',self_test_local_only:'Self-test requires Ollama on this computer.',
+ self_test_wait:'Wait 30 seconds before running another test.',self_test_runtime_failed:'Ollama did not return a completed response from the selected model.'
+});
 Object.assign(TEXT.ru,{hfImportReview:'Модель из ссылки подготовлена. Войдите, проверьте репозиторий и совместимость. Скачивание начинается только вашей кнопкой.',hfImportDraft:'Черновик сохранён; модель из ссылки не подставлена.'});
 Object.assign(TEXT.en,{hfImportReview:'Model link prepared. Sign in, check the repository and compatibility. Downloads require your button press.',hfImportDraft:'Your draft was kept; the linked model was not inserted.'});
 Object.assign(TEXT.ru,{apply:'Обновить и перезапустить',updateConfirm:'Обновить исходники, проверить сборку и перезапустить эту ноду? Конфигурация и ключи сохраняются. Вычисления будут временно недоступны.',updateWorking:'Обновление выполняется. Установка и проверка сборки могут занять несколько минут. Не нажимайте повторно и не закрывайте страницу.'});
@@ -94,10 +112,32 @@ function renderHardwareEvidence(d){
  if(stale)parts.push(t('measurementStale'));parts.push(t('budgetHint'));el('hardwareEvidence').textContent=parts.join(' · ');
 }
 function renderStatus(d){renderHardwareEvidence(d);el('nodeName').textContent=d.name||t('title');el('identity').textContent=d.node_id;el('connection').textContent=t(d.platform.registered?'registered':'offline');el('cpu').textContent=Math.round(d.cpu.usage)+'%';el('ram').textContent=bytes(d.ram.used)+' / '+bytes(d.ram.total);el('capacity').textContent=d.compute.active+' / '+d.compute.capacity;el('requests').textContent=String(d.requests);el('system').textContent=t('uptime')+': '+Math.floor(d.uptime/3600)+'h '+Math.floor(d.uptime/60%60)+'m · '+t('load')+': '+Number(d.cpu.load_1m).toFixed(2)+' · '+t('heartbeat')+': '+(d.platform.lastHeartbeat?new Date(d.platform.lastHeartbeat).toLocaleString(lang):'—');el('payout').textContent=rewardCurrent?.address||t('notLinked');el('identityWallet').textContent=t('identityAddress')+': '+(d.payout_address||t('noWallet'));el('version').textContent='GSTD '+d.version;el('login').classList.add('hidden');el('private').classList.remove('hidden');renderReadiness()}
+let selfTestBusy=false;
+function renderSelfTestModels(){
+ const select=el('selfTestModel'), previous=select.value;
+ select.replaceChildren(...Array.from(installedIds,id=>new Option(id,id)));
+ if(installedIds.has(previous))select.value=previous;
+ el('runSelfTest').disabled=selfTestBusy||!select.value;
+}
+el('runSelfTest').onclick=async()=>{
+ const model=el('selfTestModel').value;
+ if(!model||selfTestBusy)return;
+ const result=el('selfTestResult');
+ selfTestBusy=true;el('runSelfTest').disabled=true;result.textContent=t('working');
+ try{
+  const data=await api('/api/node/operator/self-test',{model});
+  const parts=[data.model,t(data.passed?'selfTestPass':'selfTestFail'),t('selfTestDuration')+' '+(data.wall_ms/1000).toLocaleString(lang)+' s'];
+  if(data.output_tokens_per_second!==null)parts.push(data.output_tokens_per_second.toLocaleString(lang)+' '+t('selfTestSpeed'));
+  result.textContent=parts.join(' · ');
+ }catch(e){result.textContent=errorText(e)}
+ finally{selfTestBusy=false;renderSelfTestModels()}
+};
 function renderReadiness(){
+ renderSelfTestModels();
  if(!lastStatus)return;
  const d=lastStatus, p=d.platform||{}, stale=p.lastHeartbeat&&Date.now()-new Date(p.lastHeartbeat).getTime()>300000;
  const runtimeReady=localModels?.ollama_available&&installedIds.size>0;
+ const computeReady=d.compute.available??d.compute.active<d.compute.capacity;
  const linked=!!rewardCurrent?.address,w=p.worker;
  const workerReady=!!w?.enabled&&!!w.lastPoll&&!w.lastErrorPhase&&!(w.retryAt&&new Date(w.retryAt).getTime()>Date.now());
  const steps=[
@@ -105,7 +145,7 @@ function renderReadiness(){
   [t('stepRegistration'),!p.registered?t('registrationPending'):stale?t('registrationStale'):t('registrationReady'),!!p.registered&&!stale,null,null],
   [t('stepWallet'),!rewardLoaded?t('checking'):linked?t('walletReady'):t('walletNeeded')+' '+(d.payout_address?t('walletFallback'):''),linked,'#walletSection',t('openWallet')],
   [t('stepQueue'),!w?t('checking'):workerReady?t('queueReady'):w.lastErrorPhase?t('workerError')+': '+t('phase_'+w.lastErrorPhase):w.enabled?t('queueWaiting'):t('workerDisabled'),workerReady,null,null],
-  [t('stepCapacity'),d.compute.active<d.compute.capacity?t('capacityReady'):t('capacityBusy'),d.compute.active<d.compute.capacity,'#chatSection',t('testLocal')],
+  [t('stepCapacity'),computeReady?t('capacityReady'):t('capacityBusy'),computeReady,'#selfTestSection',t('testLocal')],
  ];
  el('readinessSteps').replaceChildren();
  for(const [title,detail,ready,href,label] of steps){const li=document.createElement('li'),strong=document.createElement('strong'),span=document.createElement('span');strong.textContent=title+' · ';span.textContent=detail;span.className=ready?'ready':'attention';li.append(strong,span);if(href&&!ready){const a=document.createElement('a');a.href=href;a.textContent=' '+label+' →';li.append(a)}el('readinessSteps').append(li)}

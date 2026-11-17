@@ -219,7 +219,7 @@ describe('gateway free API key authorization', () => {
     });
     it('protects operator measurements, payout setup and model downloads before any side effect', async () => {
         const address = gatewayServer!.address() as {port:number};
-        for (const path of ['/api/ollama/catalog','/api/ollama/catalog/refresh','/api/node/reward-wallet','/api/node/operator','/api/node/payout-address','/api/ollama/models/pull','/api/check-update','/api/update']) {
+        for (const path of ['/api/ollama/catalog','/api/ollama/catalog/refresh','/api/node/reward-wallet','/api/node/operator','/api/node/operator/self-test','/api/node/payout-address','/api/ollama/models/pull','/api/check-update','/api/update']) {
             const result = await postJson(address.port, {address: LINKED_WALLET,model:'llama3.2:3b'}, {}, path);
             expect(result.status).toBe(401);
         }
@@ -249,6 +249,49 @@ describe('gateway free API key authorization', () => {
         fetchMock.mockRejectedValue(new Error('Ollama offline'));
         const down = await postJson(address.port, {}, headers, '/api/ollama/models', 'GET');
         expect(down.body).toMatchObject({ollama_available:false,installed:[]});
+    });
+    it('runs the operator test on the exact installed local model and enforces the cooldown', async () => {
+        const { port } = gatewayServer!.address() as { port: number };
+        const login = await postJson(port, {pin:'83572914',setupToken:process.env.GSTD_DASHBOARD_SETUP_TOKEN}, {}, '/api/auth/setup');
+        const headers = {Authorization: 'Bearer ' + login.body.token};
+        const endpoint = '/api/node/operator/self-test';
+        vi.stubEnv('OLLAMA_URL', 'http://127.0.0.1:11434');
+        try {
+            expect((await postJson(port, {model:'gemma4:cloud'}, headers, endpoint)).status).toBe(400);
+            expect(fetchMock).not.toHaveBeenCalled();
+            fetchMock.mockResolvedValueOnce(Response.json({models:[{name:'llama3.2:3b'}]}));
+            const runtimeResult = Response.json({
+                model:'llama3.2:3b', done:true, done_reason:'stop',
+                message:{content:'45'}, eval_count:4, eval_duration:2e9,
+            });
+            let start!: () => void;
+            let finish!: (response: Response) => void;
+            const started = new Promise<void>(resolve => { start = resolve; });
+            const pending = new Promise<Response>(resolve => { finish = resolve; });
+            fetchMock.mockImplementationOnce(() => { start(); return pending; });
+            const operation = postJson(port, {model:'llama3.2:3b'}, headers, endpoint);
+            try {
+                await started;
+                expect((await postJson(port, {model:'llama3.2:3b'}, headers, endpoint)).status).toBe(409);
+                expect((await postJson(port, {}, headers, '/api/node/operator', 'GET')).body)
+                    .toMatchObject({compute:{available:false}});
+            } finally {
+                finish(runtimeResult);
+            }
+            const result = await operation;
+            expect(result.status).toBe(200);
+            expect(result.body).toMatchObject({model:'llama3.2:3b', passed:true, output_tokens_per_second:2});
+            expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+                'http://127.0.0.1:11434/api/tags',
+                'http://127.0.0.1:11434/api/chat',
+            ]);
+            expect((await postJson(port, {model:'llama3.2:3b'}, headers, endpoint)).status).toBe(429);
+            expect((await postJson(port, {}, headers, '/api/node/operator', 'GET')).body)
+                .toMatchObject({compute:{available:true}});
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        } finally {
+            vi.unstubAllEnvs();
+        }
     });
     it('keeps model download progress intact when an upstream JSON record spans chunks', async () => {
         const address = gatewayServer!.address() as {port:number};

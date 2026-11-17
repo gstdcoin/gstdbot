@@ -87,7 +87,7 @@ The private `GET /api/node/model-directory` endpoint supplies cached network mod
 
 ## Installation checks
 
-Use the root `install.sh` as the canonical entry point; `scripts/install.sh` delegates to it. `--check` performs read-only platform checks. Fresh installs may be pinned to an immutable full commit SHA with `GSTD_INSTALL_REF`; this applies to cloning a new checkout, not rewriting an existing installation.
+Use the verified root `install.sh` described in the README. `--check` performs read-only platform checks. Both fresh installs and updates verify the platform-signed immutable release before running package scripts. The repository's isolated installer smoke test pins its fixture commit separately.
 
 The installer uses Node.js for configuration, includes build dependencies even when `NODE_ENV=production`, preserves existing configuration fields and refuses malformed JSON. Systemd is selected only when its manager is present; otherwise PM2 is installed in the current user's `~/.local` prefix. Reboot startup still depends on the operating system's init/user-session setup. Prefer a dedicated unprivileged operator account for a real compute node.
 
@@ -103,6 +103,8 @@ CI's fresh-source-installer check clones the exact public GitHub commit in a dis
 Счётчик отправленных результатов относится только к фоновой очереди после запуска. Он не включает прямые запросы чата и не является балансом, доказательством принятия или начисления. Оплаченную принятую работу и награды проверяйте в [«Баланс и награды»](https://app.gstdtoken.com/ru/payments?from=node). Для внутреннего баланса платформы перевод подписывает владелец кошелька обеспечения. Отдельный [mainnet escrow · бета](https://app.gstdtoken.com/ru/escrow-mainnet) хранит средства задания в контрактах: получатель подписывает получение своей доли. Эти суммы не переходят во внутренний баланс. Реальный mainnet-цикл пока не подтверждён.
 
 The **Background work readiness** section shows Ollama, installed models, registration, reward recipient, the last successful task poll and compute capacity. A new node needs its public payout address before registration can finish. These checks reuse data already fetched and add no Cloudflare requests.
+
+**Model self-test** runs one short acceptance prompt on the selected installed model in loopback Ollama. It waits for the operator to start it and refuses to run while the node is processing work. The result shows whether the answer passed, elapsed request time and generation tokens per second when Ollama reports them. It makes no Cloudflare requests and earns no rewards. A pass covers this sample on this runtime. GPU allocation, external availability and payout readiness have their own checks.
 
 - **Outbound queue:** signed nodes pull tasks from funded campaigns without a public port. A successful poll confirms connectivity, not paid demand.
 - **Direct chat:** the platform calls the executor’s HTTPS endpoint. A configured address does not prove external reachability; check the registry. Never expose Ollama directly.
