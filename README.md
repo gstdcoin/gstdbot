@@ -1,12 +1,18 @@
 # GSTD compute node
 
+[![CI](https://github.com/gstdcoin/gstdbot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gstdcoin/gstdbot/actions/workflows/ci.yml)
+
+[Project map / Карта проекта](https://github.com/gstdcoin/ai/blob/main/docs/INDEX.md) · [Release evidence](https://github.com/gstdcoin/ai/blob/main/docs/READINESS.md) · [Repository maintenance](https://github.com/gstdcoin/ai/blob/main/docs/REPOSITORY_MAINTENANCE.md)
+
+Default branch: `main`.
+
 **Русский:** это программа вычислительной ноды, а Telegram-бот работает в репозитории ai. [Карта проекта и инструкции](https://github.com/gstdcoin/ai/blob/main/docs/INDEX.md).
 
 Share AI compute, earn GSTD from funded accepted work, and use those credits on other nodes.
 
 [Start here / Начните здесь](https://github.com/gstdcoin/ai/blob/main/docs/START_HERE.md) · [Public step-by-step guide](https://gstdtoken.com/docs#get-started)
 
-**Current production profile:** local inference, authenticated operator controls, signed worker identity and 85/10/5 platform accounting. Platform-ledger withdrawals require the custody owner’s signature. The separate [mainnet escrow beta](https://app.gstdtoken.com/escrow-mainnet) uses per-job contracts and beneficiary-signed claims; it does not credit the ledger. A real mainnet payout is still unverified. Nodes hold no treasury keys. There is no guaranteed yield.
+**Supported compute profile:** local inference, authenticated operator controls, signed worker identity and 85/10/5 platform accounting. Platform-ledger withdrawals require the custody owner’s signature. The separate [mainnet escrow beta](https://app.gstdtoken.com/escrow-mainnet) uses per-job contracts and beneficiary-signed claims; it does not credit the ledger. A real mainnet payout is still unverified. Nodes hold no treasury keys. There is no guaranteed yield.
 
 - [Supported features and security boundaries](docs/COMPUTE_PROFILE.md)
 - [Platform payments](https://app.gstdtoken.com/payments)
@@ -44,3 +50,17 @@ The legacy unsigned task-push endpoint is retired (HTTP410). Current direct chat
 ## Independent operators and recovery
 
 [Powerful-node pilot / Подключение мощной ноды](docs/POWERFUL_NODE_PILOT.md) explains actual model availability, direct-chat HTTPS requirements and current payment limits. [Recovery verification](docs/RECOVERY_REHEARSAL.md) distinguishes offline restoration checks from an encrypted off-machine backup.
+
+## Source checks and release channels
+
+Use Node.js 22 and npm 11.13.0:
+
+```sh
+npm ci
+npm run build
+npm test
+```
+
+For a local CPU run, install Ollama and the selected model, then use `npm run start:cpu`; the defaults are qwen2.5:0.5b, one concurrent request and a 1,024-token context. See [the compute profile](docs/COMPUTE_PROFILE.md) for its limits.
+
+The main branch, the operator-approved signed manifest and an installed daemon are separate states. [Signed release operation](https://github.com/gstdcoin/ai/blob/main/docs/SIGNED_NODE_RELEASES.md) records the approved commit; newer source does not automatically become an approved binary or an owner-authorized daemon update. Installer hardening and host history/maintenance candidates remain in the [review queue](https://github.com/gstdcoin/ai/blob/main/docs/REPOSITORY_MAINTENANCE.md).
