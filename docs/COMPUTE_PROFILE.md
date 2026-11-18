@@ -1,5 +1,11 @@
 # GSTD compute profile
 
+## CPU launch
+
+Use Node.js 22 and npm 11.13.0 (`npm install --global npm@11.13.0`), then install dependencies with `npm ci`. Install Ollama, run `ollama pull qwen2.5:0.5b`, build the node with `npm run build`, then run `npm run start:cpu`. The startup command selects CPU inference with one concurrent task, a 1,024-token default context and the small model used in the execution checks. Supply a public payout address through the node's operator setup.
+
+`GSTD_INFERENCE_DEVICE=cpu` sets `num_gpu=0` in the worker, local chat, direct local API and warm-up requests. `auto` uses Ollama's device selection. The authenticated operator endpoint exposes `inference_device`. Advertised task resources continue to use measured CPU/RAM/disk budgets.
+
 A node is an AI compute worker, not a financial custodian or a general-purpose remote administration panel.
 
 ## Supported

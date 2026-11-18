@@ -2,6 +2,7 @@ import {keyPairFromSeed,signVerify} from '@ton/crypto';
 import {createHash} from 'node:crypto';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { PlatformLink } from './platform-link.js';
+import { computeLoad, withComputeSlot } from '../security/compute.js';
 
 function makePL(): PlatformLink {
     return new PlatformLink({
@@ -141,6 +142,7 @@ describe('PlatformLink task delivery', () => {
     });
 
     it('uses the authenticated POST poll contract and submits successful results', async () => {
+        vi.stubEnv('GSTD_INFERENCE_DEVICE','cpu');
         const pl = makePL();
         (pl as any).registered = true;
         pl.setCapabilitiesProvider(() => ({
@@ -162,7 +164,7 @@ describe('PlatformLink task delivery', () => {
                 },
             }), { status: 200 }))
             .mockResolvedValueOnce(new Response(JSON.stringify({
-                model: 'llama3.2:1b', message: { content: 'hello back' },
+                model: 'llama3.2:1b', done: true, message: { content: 'hello back' },
             }), { status: 200 }))
             .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
         vi.stubGlobal('fetch', fetchMock);
@@ -183,7 +185,7 @@ describe('PlatformLink task delivery', () => {
 
         const [, inferenceOptions] = fetchMock.mock.calls[1] as [string, RequestInit];
         expect(JSON.parse(String(inferenceOptions.body))).toMatchObject({
-            model: 'llama3.2:1b', keep_alive: -1, options: {num_ctx: 2048, num_predict: 12, temperature: 0},
+            model: 'llama3.2:1b', keep_alive: -1, options: {num_ctx: 1024, num_gpu: 0, num_predict: 12, temperature: 0},
             messages: [{ role: 'user', content: 'hello' }],
         });
         const [completionUrl, completionOptions] = fetchMock.mock.calls[2] as [string, RequestInit];
@@ -208,14 +210,46 @@ describe('PlatformLink task delivery', () => {
                 task: { task_id: 'task-2', payload: { prompt: 'hello' } },
             }), { status: 200 }))
             .mockResolvedValueOnce(new Response(JSON.stringify({
-                model: 'llama3.2:3b', message: { content: '' },
+                model: 'llama3.2:3b', done: true, message: { content: '' },
             }), { status: 200 }));
         vi.stubGlobal('fetch', fetchMock);
 
         await (pl as any).pollAndProcess();
 
-        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        expect(fetchMock.mock.calls[2][0]).toBe('http://localhost:9999/api/v1/tasks/fail');
         expect(taskError).toHaveBeenCalledOnce();
+    });
+
+    it('does not request work when local inference has occupied the slot', async () => {
+        const pl = makePL();
+        vi.stubEnv('GSTD_MAX_INFERENCE_CONCURRENCY', '1');
+        (pl as any).registered = true;
+        const request = vi.fn();
+        vi.stubGlobal('fetch', request);
+
+        await withComputeSlot(() => (pl as any).pollAndProcess());
+
+        expect(request).not.toHaveBeenCalled();
+        expect(computeLoad().active).toBe(0);
+    });
+
+    it('retries the same local model once after a transport failure', async () => {
+        const pl = makePL();
+        (pl as any).registered = true;
+        const request = vi.fn()
+            .mockResolvedValueOnce(Response.json({ task: { task_id: 'retry-task', payload: { prompt: 'hello', model: 'llama3.2:1b' } } }))
+            .mockRejectedValueOnce(new TypeError('connection lost'))
+            .mockResolvedValueOnce(Response.json({ model: 'llama3.2:1b', done: true, message: { content: 'hello back' } }))
+            .mockResolvedValueOnce(Response.json({ ok: true }));
+        vi.stubGlobal('fetch', request);
+
+        await (pl as any).pollAndProcess();
+
+        expect(request).toHaveBeenCalledTimes(4);
+        expect(request.mock.calls[1][1].body).toBe(request.mock.calls[2][1].body);
+        expect(request.mock.calls[1][1].signal).toBe(request.mock.calls[2][1].signal);
+        expect(request.mock.calls[3][0]).toContain('/tasks/complete');
     });
 });
 
@@ -267,13 +301,14 @@ describe('PlatformLink local compute failure', () => {
         const request = vi.fn()
             .mockResolvedValueOnce(new Response(JSON.stringify({task:{task_id:'failed-task',payload:{prompt:'hello'}}})))
             .mockResolvedValueOnce(new Response('model failed',{status:500}))
+            .mockResolvedValueOnce(Response.json({ok:true}))
             .mockResolvedValueOnce(new Response(JSON.stringify({task:null})));
         vi.stubGlobal('fetch',request);
         pl.startTaskLoop();
         await pl.wakeTaskLoop();
         expect((pl as any).taskBackoffUntil).toBe(0);
         await pl.wakeTaskLoop();
-        expect(request).toHaveBeenCalledTimes(3);
+        expect(request).toHaveBeenCalledTimes(4);
         await pl.stop();
     });
 });
@@ -336,10 +371,11 @@ describe('PlatformLink exact-model worker results', () => {
         const pl = makePL(); (pl as any).registered = true;
         const request = vi.fn()
             .mockResolvedValueOnce(new Response(JSON.stringify({ task: { task_id: 'fixture-exact', payload: { model: 'wanted:small', prompt: 'fixture' } } })))
-            .mockResolvedValueOnce(new Response(JSON.stringify({ model: returnedModel, message: { content: 'not an accepted exact answer' } })));
+            .mockResolvedValueOnce(new Response(JSON.stringify({ model: returnedModel, done: true, message: { content: 'not an accepted exact answer' } })));
         vi.stubGlobal('fetch', request);
         await (pl as any).pollAndProcess();
-        expect(request).toHaveBeenCalledTimes(2);
+        expect(request).toHaveBeenCalledTimes(3);
+        expect(request.mock.calls[2][0]).toContain('/tasks/fail');
         expect(pl.getStatus().worker).toMatchObject({ resultsSubmitted: 0, lastErrorPhase: 'inference' });
         expect(pl.getStatus().worker.lastResultSubmitted).toBeNull();
         expect(pl.getStatus().worker.lastPoll).not.toBeNull();
@@ -348,7 +384,7 @@ describe('PlatformLink exact-model worker results', () => {
         const pl = makePL(); (pl as any).registered = true;
         const request = vi.fn()
             .mockResolvedValueOnce(new Response(JSON.stringify({ task: { task_id: 'fixture-latest', payload: { model: 'wanted', prompt: 'fixture' } } })))
-            .mockResolvedValueOnce(new Response(JSON.stringify({ model: 'wanted:latest', message: { content: 'accepted exact answer' } })))
+            .mockResolvedValueOnce(new Response(JSON.stringify({ model: 'wanted:latest', done: true, message: { content: 'accepted exact answer' } })))
             .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })));
         vi.stubGlobal('fetch', request);
         await (pl as any).pollAndProcess();
@@ -376,7 +412,7 @@ describe('PlatformLink configured task default', () => {
         const pl = makePL(); (pl as any).registered = true;
         const request = vi.fn()
             .mockResolvedValueOnce(new Response(JSON.stringify({ task: { task_id: 'fixture-configured-default', payload: { model: requestedModel, prompt: 'fixture' } } })))
-            .mockResolvedValueOnce(new Response(JSON.stringify({ model: 'qwen2.5:0.5b', message: { content: 'configured answer' } })))
+            .mockResolvedValueOnce(new Response(JSON.stringify({ model: 'qwen2.5:0.5b', done: true, message: { content: 'configured answer' } })))
             .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })));
         vi.stubGlobal('fetch', request);
         await (pl as any).pollAndProcess();

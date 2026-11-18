@@ -12,10 +12,14 @@ export function computeCapacityAvailable(){
  const capacity=Math.max(1,Math.min(4,Math.trunc(Number(process.env.GSTD_MAX_INFERENCE_CONCURRENCY)||1)));
  return !maintenance&&active<capacity;
 }
-export async function withComputeSlot<T>(work:()=>Promise<T>):Promise<T>{
+export function acquireComputeSlot(): () => void {
     if(!computeCapacityAvailable())throw new ComputeCapacityError();
     active++;
-    try{return await work();}finally{active--;}
+    return () => { active--; };
+}
+export async function withComputeSlot<T>(work:()=>Promise<T>):Promise<T>{
+    const release = acquireComputeSlot();
+    try{return await work();}finally{release();}
 }
 
 /** Block new node computations while an idle runtime model is being removed. */

@@ -1,7 +1,8 @@
 import {sanitizeWorkResources,type WorkResources} from '../lib/work-resources.js';
 import { readTunnelUrl } from '../lib/tunnel-url.js';
-import {isCloudModel,localModelOptions} from '../lib/local-model-options.js';
-import {withComputeSlot,computeCapacityAvailable} from '../security/compute.js';
+import {isCloudModel,localModelOptions,localRuntimeOptions} from '../lib/local-model-options.js';
+import {acquireComputeSlot,computeCapacityAvailable} from '../security/compute.js';
+import { runOllamaTask } from '../lib/ollama-worker.js';
 /**
  * ═══════════════════════════════════════════════════════════════
  * GSTD Node — Platform Link (Heartbeat + Registration)
@@ -411,8 +412,11 @@ export class PlatformLink extends EventEmitter {
 
     private async pollAndProcess() {
         if (this.tasksBusy || !this.registered || !computeCapacityAvailable()) return;
+        // Reserve capacity before asking the platform to assign work.
+        const release = acquireComputeSlot();
         this.tasksBusy = true;
         let phase = 'poll';
+        let failedTaskId: string | undefined;
         try {
             // The legacy Worker exposes GET polling; the current app uses POST.
             // Select explicitly rather than downgrading on auth/server errors.
@@ -449,12 +453,14 @@ export class PlatformLink extends EventEmitter {
             this.lastTaskErrorPhase = null;
             this.taskPollFailures = 0;
             this.nextTaskPollMs = this.idlePollMs;
-            if (!data.task?.task_id) return;
+            if (typeof data.task?.task_id !== 'string' || !data.task.task_id) return;
             this.nextTaskPollMs = 5_000;
 
             const task = data.task;
             const payload = task.payload && typeof task.payload === 'object' ? task.payload : {};
             const task_id: string = task.task_id;
+            phase = 'inference';
+            if (data.source !== 'probe') failedTaskId = task_id;
             const requestedModel = payload.model ?? task.model;
             // Only an absent model or explicit auto opts into this node's configured default.
             const model = requestedModel == null || requestedModel === 'auto'
@@ -478,26 +484,16 @@ export class PlatformLink extends EventEmitter {
 
             const maxTokens = payload.max_tokens ?? task.max_tokens;
             const temperature = payload.temperature ?? task.temperature;
-            phase = 'inference';
             const inferenceStarted = Date.now();
-            const aiData:any = await withComputeSlot(async()=>{
-            const aiResp = await fetch(`${ollamaUrl}/api/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            const aiData = await runOllamaTask(`${ollamaUrl}/api/chat`, JSON.stringify({
                     model, messages, ...localModelOptions(model), stream: false, keep_alive: -1,
-                    options: { num_ctx: Math.max(512, Math.min(8192, Number(process.env.GSTD_OLLAMA_CONTEXT) || 2048)),
+                    options: { ...localRuntimeOptions(),
                     ...(typeof maxTokens === 'number' && Number.isInteger(maxTokens) && maxTokens > 0
                         ? { num_predict: Math.min(maxTokens, 8192) } : { num_predict: 256 }),
                     ...(typeof temperature === 'number' && Number.isFinite(temperature)
                         && temperature >= 0 && temperature <= 2 ? { temperature } : {}),
                     },
-                }),
-                signal: AbortSignal.timeout(90000),
-            });
-            if (!aiResp.ok) throw new Error(`Local inference failed: HTTP ${aiResp.status}`);
-            return await aiResp.json();
-            });
+            }));
             // The worker queue must enforce the same exact-model contract as chat.
             const canonical = (id: string) => id.split('/').pop()!.includes(':') ? id : id + ':latest';
             if (typeof aiData?.model !== 'string' || canonical(aiData.model) !== canonical(model)) {
@@ -526,14 +522,15 @@ export class PlatformLink extends EventEmitter {
             this.taskResultsSubmitted++;
             console.log(`  ✅ Task ${task_id} completed (${actualModel}, ${content.length} chars)`);
             this.emit('task:completed', { task_id, model: actualModel });
-        } catch (err: any) {
-            // Expose only the phase, never a prompt or upstream response body.
+        } catch {
+            // Upstream error text may include response data or endpoint details.
             this.lastTaskErrorPhase = phase;
             if (Date.now() - this.lastTaskErrorLog > 60_000) {
                 this.lastTaskErrorLog = Date.now();
-                console.warn(`[PlatformLink] Task poll or execution failed: ${err.message}`);
+                console.warn(`[PlatformLink] Task operation failed during ${phase}`);
             }
             if (phase === 'inference') {
+                if (failedTaskId) await this.reportTaskFailure(failedTaskId);
                 // Slow local compute is not a platform outage or a quota signal.
                 this.nextTaskPollMs = this.idlePollMs;
                 this.taskBackoffUntil = 0;
@@ -545,9 +542,28 @@ export class PlatformLink extends EventEmitter {
             );
             this.taskBackoffUntil = Date.now() + this.nextTaskPollMs;
             }
-            this.emit('task:error', { error: err.message, nodeId: this.nodeId });
+            this.emit('task:error', { error: `task_${phase}_failed`, nodeId: this.nodeId });
         } finally {
             this.tasksBusy = false;
+            release();
+        }
+    }
+
+    private async reportTaskFailure(taskId: string): Promise<void> {
+        try {
+            const response = await fetch(`${this.platformUrl}/api/v1/tasks/fail`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Wallet-Address': this.walletAddress,
+                    ...this.authHeaders(),
+                },
+                body: JSON.stringify({ task_id: taskId, node_id: this.nodeId, error: 'local_inference_failed' }),
+                signal: AbortSignal.timeout(5_000),
+            });
+            await response.body?.cancel();
+        } catch {
+            // An unconfirmed report cannot authorize settlement or resubmission.
         }
     }
 

@@ -83,6 +83,7 @@ describe('gateway free API key authorization', () => {
         if(previousConfigDir===undefined)delete process.env.GSTD_CONFIG_DIR;else process.env.GSTD_CONFIG_DIR=previousConfigDir;
         if(previousSetupToken===undefined)delete process.env.GSTD_DASHBOARD_SETUP_TOKEN;else process.env.GSTD_DASHBOARD_SETUP_TOKEN=previousSetupToken;
         vi.unstubAllGlobals();
+        vi.unstubAllEnvs();
         if (previousBotToken === undefined) delete process.env.TELEGRAM_BOT_TOKEN;
         else process.env.TELEGRAM_BOT_TOKEN = previousBotToken;
     });
@@ -249,6 +250,20 @@ describe('gateway free API key authorization', () => {
         fetchMock.mockRejectedValue(new Error('Ollama offline'));
         const down = await postJson(address.port, {}, headers, '/api/ollama/models', 'GET');
         expect(down.body).toMatchObject({ollama_available:false,installed:[]});
+    });
+    it('enforces CPU options through the authenticated direct inference endpoint',async()=>{
+        vi.stubEnv('GSTD_INFERENCE_DEVICE','cpu');
+        const address=gatewayServer!.address() as {port:number};
+        const login=await postJson(address.port,{pin:'83572914',setupToken:process.env.GSTD_DASHBOARD_SETUP_TOKEN},{},'/api/auth/setup');
+        const headers={Authorization:'Bearer '+login.body.token};
+        fetchMock.mockResolvedValue(Response.json({done:true,model:'qwen2.5:0.5b',message:{content:'5'},prompt_eval_count:8,eval_count:1}));
+        const response=await postJson(address.port,{model:'qwen2.5:0.5b',messages:[{role:'user',content:'2 + 3'}],max_tokens:8},headers,'/v1/ollama/completions');
+        expect(response.status).toBe(200);
+        expect(fetchMock.mock.calls[0][0]).toContain('/api/chat');
+        expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({options:{num_gpu:0,num_predict:8}});
+        expect(response.body).toMatchObject({object:'chat.completion',choices:[{message:{role:'assistant',content:'5'}}],usage:{total_tokens:9}});
+        const report=await postJson(address.port,{},headers,'/api/node/operator','GET');
+        expect(report.body.inference_device).toBe('cpu');
     });
     it('keeps model download progress intact when an upstream JSON record spans chunks', async () => {
         const address = gatewayServer!.address() as {port:number};

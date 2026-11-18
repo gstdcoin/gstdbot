@@ -9,12 +9,15 @@
   },
   "scripts": {
     "build": "tsc",
+    "prebuild": "npm run check:matcher",
+    "check:matcher": "node scripts/check-picomatch.cjs && node --test scripts/picomatch-security.cjs",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
+    "start:cpu": "node scripts/start-cpu.cjs",
     "gateway": "tsx src/gateway/server.ts",
     "gateway:watch": "tsx watch src/gateway/server.ts",
     "lint": "eslint src/ --ext .ts",
-    "test": "vitest run",
+    "test": "npm run check:matcher && vitest run",
     "test:sovereign": "vitest run src/sovereign tests/sovereign --testTimeout=180000",
     "sovereign": "tsx src/sovereign/cli.ts",
     "sovereign:mcp": "tsx src/sovereign/mcp.ts",
@@ -91,6 +94,8 @@
     "zod": "^4.6.7"
   },
   "overrides": {
+    "picomatch": "$picomatch",
+    "minimatch@>=7.0.0 <11.0.1": "11.0.1",
     "@ston-fi/omniston-sdk": {
       "ws": "^8.18.0"
     },
@@ -102,6 +107,7 @@
     "undici@>=7.0.0 <8.0.0": "^7.30.1"
   },
   "devDependencies": {
+    "picomatch": "file:vendor/picomatch",
     "@types/express": "^4.17.25",
     "@types/node": "^20.19.37",
     "@types/uuid": "^9.0.8",
@@ -114,5 +120,6 @@
     "typescript": "^5.9.3",
     "vitest": "^4.1.12",
     "wrangler": "^4.127.1"
-  }
+  },
+  "packageManager": "npm@11.13.0"
 }

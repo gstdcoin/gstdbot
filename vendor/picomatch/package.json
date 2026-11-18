@@ -1,0 +1,19 @@
+{
+  "name": "@gstdcoin/picomatch",
+  "version": "4.0.7-gstd.1",
+  "description": "GSTD hardened Picomatch fork with bounded repeated extglobs",
+  "license": "MIT",
+  "main": "index.js",
+  "engines": {
+    "node": ">=12"
+  },
+  "files": [
+    "index.js",
+    "posix.js",
+    "lib"
+  ],
+  "upstream": {
+    "name": "picomatch",
+    "version": "4.0.7"
+  }
+}
