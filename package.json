@@ -1,6 +1,6 @@
 {
   "name": "gstdbot",
-  "version": "3.7.2",
+  "version": "3.7.3",
   "description": "GSTD compute node: local-first AI, authenticated operator controls and funded-work accounting.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

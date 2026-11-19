@@ -17,7 +17,7 @@ import { readFileSync, writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { logActivity } from '../gateway/server.js';
 import { platformHealth } from '../lib/platform-health.js';
-import { fastForwardNodeUpdate, rollbackNodeUpdate } from '../lib/node-update.js';
+import { updateApprovedNode, rollbackNodeUpdate } from '../lib/node-update.js';
 import type { NodeConfig } from '../index.js';
 import type { NodeWallet } from '../wallet/manager.js';
 import type { CollectiveMemory } from '../memory/collective.js';
@@ -479,7 +479,7 @@ export class SwarmAgent {
 
             logActivity('⬆️ Starting safe auto-update...', 'info');
 
-            const update = fastForwardNodeUpdate(installDir, 'main');
+            const update = await updateApprovedNode(installDir, 'main');
             const snapshot = update.previousHash;
             const remote = update.updatedHash;
             if (snapshot === remote) {
@@ -885,14 +885,14 @@ export class SwarmAgent {
         for (const entry of pending) {
             const submitted = await this.apiCall(entry.endpoint, entry.payload);
             if (submitted) {
-                this.recordTaskEarning({ reward_gstd: entry.payload.reward_gstd, type: entry.taskType } as SwarmTask, entry.taskId);
+                this.recordTaskEarning(submitted, entry.taskType, entry.taskId);
             } else {
                 stillPending.push(entry);
             }
         }
 
         if (stillPending.length !== pending.length) {
-            logActivity(`Retried pending task reports: ${pending.length - stillPending.length} succeeded (reward now counted), ${stillPending.length} still pending`, 'success');
+            logActivity(`Retried pending task reports: ${pending.length - stillPending.length} delivered, ${stillPending.length} still pending`, 'success');
         }
         try {
             writeFileSync(PENDING_TASK_REPORTS_FILE, JSON.stringify(stillPending, null, 2), 'utf-8');
@@ -902,16 +902,13 @@ export class SwarmAgent {
     /** Records a task's reward as verified-earned. Only ever called once the
      *  platform has actually confirmed the /tasks/complete report, whether
      *  immediately or via the retry queue above. */
-    private recordTaskEarning(task: SwarmTask, taskId: string): void {
-        // Tasks submitted without an explicit reward_gstd (e.g. via the
-        // generic /api/v1/tasks/submit endpoint) arrive as undefined --
-        // `+= undefined` would silently poison totalEarnedGstd to NaN for
-        // the rest of the process's lifetime. Treat as zero instead.
-        const rewardGstd = typeof task.reward_gstd === 'number' && !isNaN(task.reward_gstd) ? task.reward_gstd : 0;
+    private recordTaskEarning(completion: { reward_gstd?: number; acceptance_pending?: boolean; duplicate?: boolean }, taskType: string, taskId: string): void {
+        const rewardGstd = completion.reward_gstd;
+        if (completion.acceptance_pending || completion.duplicate || typeof rewardGstd !== 'number' || !Number.isFinite(rewardGstd) || rewardGstd <= 0) return;
 
         this.stats.totalEarnedGstd += rewardGstd;
-        logActivity(`${this.stats.tierIcon} Task ${taskId.slice(0, 8)} confirmed by platform → +${rewardGstd} GSTD (${task.type}) [total: ${this.stats.tasksCompleted}]`, 'success');
-        this.wallet.recordVerifiedEarning(rewardGstd, task.type as any, `Task ${task.type}: ${taskId.slice(0, 8)}`, taskId);
+        logActivity(`${this.stats.tierIcon} Task ${taskId.slice(0, 8)} confirmed by platform → +${rewardGstd} GSTD (${taskType}) [total: ${this.stats.tasksCompleted}]`, 'success');
+        this.wallet.recordVerifiedEarning(rewardGstd, taskType as any, `Task ${taskType}: ${taskId.slice(0, 8)}`, taskId);
     }
 
     /** Co-executor side: a peer asked us to independently compute the same
@@ -1058,7 +1055,7 @@ export class SwarmAgent {
             this.stats.tasksByType[task.type] = (this.stats.tasksByType[task.type] || 0) + 1;
 
             if (reported) {
-                this.recordTaskEarning(task, taskId);
+                this.recordTaskEarning(reported, task.type, taskId);
             } else {
                 this.queuePendingTaskReport('/tasks/complete', completionPayload, task.type, taskId);
                 logActivity(`Task ${taskId.slice(0, 8)} completed but platform unreachable — queued for retry, reward not yet counted`, 'info');

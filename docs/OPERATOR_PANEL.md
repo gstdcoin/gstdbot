@@ -38,13 +38,13 @@ Docker обновляется на машине: `git pull --ff-only`, `docker c
 Проверка среды без установки:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash -s -- --check
+(installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/1d2608ca147a8146199c3b72c8e5aeb365e8d79c/install.sh -o "$installer" && printf '%s  %s\n' c314582d0712ec9f9611cd3c86f18d1a54099d41f2a8fec2d37f7d315b323732 "$installer" | sha256sum -c - && bash "$installer" --check)
 ```
 
 Установка с автоматическим выбором небольшой стартовой модели:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
+(installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/1d2608ca147a8146199c3b72c8e5aeb365e8d79c/install.sh -o "$installer" && printf '%s  %s\n' c314582d0712ec9f9611cd3c86f18d1a54099d41f2a8fec2d37f7d315b323732 "$installer" | sha256sum -c - && bash "$installer")
 ```
 
 Вместо автоматического выбора доступны `--model=qwen3.5:0.8b` и `--no-model`. Основные цели — Linux x86-64/ARM64 и WSL2. 32-битные ARM и нативный Windows не поддерживаются этим Bash-установщиком; для Windows нужен WSL2. macOS — best-effort и не подтверждён чистой установкой. На неизвестном дистрибутиве заранее установите Node.js 20+, npm, git и curl. Отдельные CPU, GPU и драйверы требуют проверки Ollama. Поддержка буквально любого устройства не заявляется.
@@ -87,7 +87,7 @@ The private `GET /api/node/model-directory` endpoint supplies cached network mod
 
 ## Installation checks
 
-Use the root `install.sh` as the canonical entry point; `scripts/install.sh` delegates to it. `--check` performs read-only platform checks. Fresh installs may be pinned to an immutable full commit SHA with `GSTD_INSTALL_REF`; this applies to cloning a new checkout, not rewriting an existing installation.
+Use the verified root `install.sh` described in the README. `--check` performs read-only platform checks. Both fresh installs and updates verify the platform-signed immutable release before running package scripts. The repository's isolated installer smoke test pins its fixture commit separately.
 
 The installer uses Node.js for configuration, includes build dependencies even when `NODE_ENV=production`, preserves existing configuration fields and refuses malformed JSON. Systemd is selected only when its manager is present; otherwise PM2 is installed in the current user's `~/.local` prefix. Reboot startup still depends on the operating system's init/user-session setup. Prefer a dedicated unprivileged operator account for a real compute node.
 

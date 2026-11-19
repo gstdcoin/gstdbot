@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
 # GSTD Node OS — One-Command Installer v3.6
-# curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
+# Run the installer verified against the release instructions in README.md.
 #
 # ✅ Fully automatic — no interactive prompts
 # ✅ Idempotent — safe to re-run anytime
@@ -24,7 +24,7 @@ sudo() {
 }
 
 
-VERSION="3.7.0"
+VERSION="3.7.3"
 INSTALL_DIR="${GSTD_INSTALL_DIR:-$HOME/gstdbot}"
 CONFIG_DIR="$HOME/.config/gstdbot"
 STATE_FILE="$CONFIG_DIR/.install_state"
@@ -63,7 +63,7 @@ reset_step() {
 }
 
 update_existing_checkout() {
-    local branch="$1"
+    local approved_commit="$1"
     local current_hash target_hash
 
     if [ -n "$(git -C "$INSTALL_DIR" status --porcelain --untracked-files=no)" ]; then
@@ -71,12 +71,12 @@ update_existing_checkout() {
         return 1
     fi
 
-    git -C "$INSTALL_DIR" fetch --no-tags --quiet origin "$branch" 2>>"$LOG_FILE" || {
-        err "Failed to fetch updates from origin/$branch"
+    git -C "$INSTALL_DIR" fetch --no-tags --quiet origin "$approved_commit" 2>>"$LOG_FILE" || {
+        err "Failed to fetch the approved release"
         return 1
     }
     if [ "$(git -C "$INSTALL_DIR" rev-parse --is-shallow-repository)" = "true" ]; then
-        git -C "$INSTALL_DIR" fetch --unshallow --no-tags --quiet origin "$branch" 2>>"$LOG_FILE" || {
+        git -C "$INSTALL_DIR" fetch --unshallow --no-tags --quiet origin "$approved_commit" 2>>"$LOG_FILE" || {
             err "Failed to verify update history for this shallow checkout"
             return 1
         }
@@ -84,12 +84,16 @@ update_existing_checkout() {
 
     current_hash=$(git -C "$INSTALL_DIR" rev-parse HEAD)
     target_hash=$(git -C "$INSTALL_DIR" rev-parse FETCH_HEAD)
+    if [ "$target_hash" != "$approved_commit" ]; then
+        err "Fetched checkout does not match the approved release"
+        return 1
+    fi
     if [ "$current_hash" = "$target_hash" ]; then
         info "Already up to date (${current_hash:0:8})"
         return 0
     fi
     if ! git -C "$INSTALL_DIR" merge-base --is-ancestor "$current_hash" "$target_hash"; then
-        err "Local history diverges from origin/$branch; refusing to reset or overwrite it"
+        err "Local history diverges from the approved release; refusing to reset or overwrite it"
         return 1
     fi
     git -C "$INSTALL_DIR" merge --ff-only "$target_hash" >>"$LOG_FILE" 2>&1 || {
@@ -138,7 +142,7 @@ for arg in "$@"; do
         --help|-h)
             echo "GSTD Node OS Installer v${VERSION}"
             echo ""
-            echo "Usage: curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash"
+            echo "Usage: bash install.sh (verify the installer before running it)"
             echo "   or: bash install.sh [OPTIONS]"
             echo ""
             echo "Options:"
@@ -315,22 +319,50 @@ if ! command -v git &>/dev/null; then
     esac
 fi
 
-# Clone or update
+approved_commit() {
+    if [ "${GSTD_INSTALLER_SMOKE:-}" = 1 ] && [[ "${GSTD_INSTALL_REF:-}" =~ ^[a-f0-9]{40}$ ]]; then
+        printf '%s\n' "$GSTD_INSTALL_REF"
+        return
+    fi
+    node --input-type=module <<'JS'
+import { createHash, createPublicKey, verify } from 'node:crypto';
+const key = createPublicKey({
+    key: Buffer.from('302a300506032b657003210082a7b29cca0bff9cdd7ac285277af45287bce77066cf40548ca16ab34a63f30e', 'hex'),
+    format: 'der', type: 'spki',
+});
+const response = await fetch('https://app.gstdtoken.com/api/v1/nodes/update/manifest', {
+    redirect: 'error', signal: AbortSignal.timeout(5000), cache: 'no-store',
+});
+if (!response.ok) throw Error('Signed node release unavailable');
+const { manifest: m } = await response.json();
+if (!m || !/^[a-f0-9]{40}$/.test(m.commit) || m.branch !== 'main' || !/^\d+\.\d+\.\d+$/.test(m.version) ||
+    !Number.isSafeInteger(m.timestamp) || Math.abs(Date.now() - m.timestamp) > 60000 || !/^[a-f0-9]{128}$/.test(m.sig)) {
+    throw Error('Invalid or stale node release manifest');
+}
+const digest = createHash('sha256').update(`${m.commit}:${m.branch}:${m.version}:${m.timestamp}`).digest();
+if (!verify(null, digest, key, Buffer.from(m.sig, 'hex'))) throw Error('Invalid node release signature');
+process.stdout.write(m.commit);
+JS
+}
+
+# Verify the immutable release before checking out code or running package scripts.
+if ! target_commit=$(approved_commit); then
+    err "Could not verify a signed GSTD release"
+    exit 1
+fi
 if [ -d "$INSTALL_DIR/.git" ]; then
     info "Updating existing installation..."
-    update_existing_checkout main
+    update_existing_checkout "$target_commit"
 elif [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/package.json" ]; then
     err "Found $INSTALL_DIR without Git metadata; preserving it instead of deleting user data"
     err "Move or back up this directory manually, then rerun the installer"
     exit 1
 else
     info "Cloning from GitHub..."
-    git clone --depth 10 "$REPO_URL" "$INSTALL_DIR" 2>>"$LOG_FILE"
-    if [ -n "${GSTD_INSTALL_REF:-}" ]; then
-        [[ "$GSTD_INSTALL_REF" =~ ^[a-fA-F0-9]{40}$ ]] || { err "GSTD_INSTALL_REF must be a full commit SHA"; exit 2; }
-        git -C "$INSTALL_DIR" fetch --depth 1 origin "$GSTD_INSTALL_REF" >>"$LOG_FILE" 2>&1
-        git -C "$INSTALL_DIR" checkout --detach FETCH_HEAD >>"$LOG_FILE" 2>&1
-    fi
+    git clone --no-checkout --depth 1 "$REPO_URL" "$INSTALL_DIR" 2>>"$LOG_FILE"
+    git -C "$INSTALL_DIR" fetch --depth 1 origin "$target_commit" >>"$LOG_FILE" 2>&1
+    [ "$(git -C "$INSTALL_DIR" rev-parse FETCH_HEAD)" = "$target_commit" ] || { err "Fetched checkout does not match the approved release"; exit 1; }
+    git -C "$INSTALL_DIR" checkout --detach "$target_commit" >>"$LOG_FILE" 2>&1
     info "Cloned to $INSTALL_DIR"
 fi
 
@@ -674,7 +706,8 @@ if [ "\$(id -u)" != "0" ] && ! sudo -n true 2>/dev/null; then SYS_CMD="systemctl
 case "\$1" in
     update)
         echo "Updating GSTD Node..."
-        curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | GSTD_INSTALL_DIR="\$INSTALL_DIR" GSTD_PORT="${DASH_PORT}" bash
+        git -C "\$INSTALL_DIR" diff --quiet HEAD -- install.sh || exit 1
+        GSTD_INSTALL_DIR="\$INSTALL_DIR" GSTD_PORT="${DASH_PORT}" bash "\$INSTALL_DIR/install.sh"
         ;;
     rollback)
         echo "Rolling back to previous version..."
@@ -817,6 +850,6 @@ echo -e "  ${BOLD}First login — set your dashboard PIN in the browser${NC}"
 echo -e "    ${DIM}Forgot PIN? Run:${NC} rm ~/.config/gstdbot/dashboard_pin.hash && pm2 restart gstdbot"
 echo ""
 echo -e "  ${BOLD}Re-run anytime to update:${NC}"
-echo -e "    ${CYAN}curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash${NC}"
+echo -e "    ${CYAN}See the verified installation instructions in the GSTD node README.${NC}"
 echo -e "    ${DIM}Safe to re-run — updates and restarts automatically${NC}"
 echo ""
