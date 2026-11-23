@@ -1,3 +1,5 @@
+import { approvedUpdateManifest } from './lib/node-update-status.js';
+import { acquireComputeMaintenance } from './security/compute.js';
 import './core/platform-environment.js';
 // Promise.withResolvers ponyfill (Node 21+ API; DHT/ping libp2p services need it
 // transitively, but this codebase supports Node >=20 per package.json's engines
@@ -550,9 +552,12 @@ async function main(): Promise<void> {
     let shuttingDown = false;
     const checkAndUpdate = async () => {
         if (shuttingDown) return;
+        let releaseCompute: (() => void) | undefined;
         try {
             const installDir = config.installDir || join(homedir(), 'gstdbot');
-            const update = fastForwardNodeUpdate(installDir, 'main');
+            const manifest = await approvedUpdateManifest('main');
+            releaseCompute = acquireComputeMaintenance();
+            const update = fastForwardNodeUpdate(installDir, 'main', undefined, manifest.commit);
             const { previousHash: localHash, updatedHash: remoteHash } = update;
             if (localHash === remoteHash) return; // Already up to date
 
@@ -564,7 +569,7 @@ async function main(): Promise<void> {
             // ── STEP 3: Install deps + build check ─────────────────────
             try {
                 const { execSync } = require('child_process');
-                execSync('npm install --legacy-peer-deps --include=dev --quiet', { cwd: installDir, timeout: 180000 });
+                execSync('npm ci --include=dev --quiet', { cwd: installDir, timeout: 180000 });
 
                 // Build TypeScript → dist/ (required since pm2 runs dist/index.js)
                 execSync('node_modules/.bin/tsc --skipLibCheck', { cwd: installDir, timeout: 90000 });
@@ -597,7 +602,7 @@ async function main(): Promise<void> {
                 try {
                     rollbackNodeUpdate(installDir, snapshotRef);
                     const { execSync } = require('child_process');
-                    execSync('npm install --legacy-peer-deps --include=dev --quiet', { cwd: installDir, timeout: 120000 });
+                    execSync('npm ci --include=dev --quiet', { cwd: installDir, timeout: 120000 });
                     execSync('node_modules/.bin/tsc --skipLibCheck', { cwd: installDir, timeout: 90000 });
                     console.log(`  🔙 Rolled back to ${snapshotRef.slice(0,8)}. Node continues running.`);
                     logActivity(`Rollback complete. Running on ${snapshotRef.slice(0,8)}`, 'warn');
@@ -617,6 +622,8 @@ async function main(): Promise<void> {
             }
         } catch (e: any) {
             logActivity(`Automatic update check failed: ${e.message}`, 'warn');
+        } finally {
+            releaseCompute?.();
         }
     };
 
