@@ -612,13 +612,9 @@ export class OmegaGateway {
             if (computeLoad().active > 0) return res.status(409).json({error:'compute_busy'});
             // ── Manifest signature gate ───────────────────────────
             const manifest: UpdateManifest | undefined = req.body?.manifest;
-            const enforced = process.env.PLATFORM_SIGNING_ENFORCED === 'true';
-            const mCheck = checkUpdateManifest(manifest, enforced);
+            const mCheck = checkUpdateManifest(manifest, true);
             if (!mCheck.ok) {
                 return res.status(mCheck.status).json({ success: false, error: mCheck.error });
-            }
-            if (!manifest) {
-                logActivity('Self-update requested without a signed manifest — permissive mode', 'warn');
             }
             // ─────────────────────────────────────────────────────
             try {
@@ -2134,13 +2130,9 @@ export class OmegaGateway {
             if (computeLoad().active > 0) return res.status(409).json({error:'compute_busy'});
             // ── Manifest signature gate ───────────────────────────
             const manifest: UpdateManifest | undefined = req.body?.manifest;
-            const enforced = process.env.PLATFORM_SIGNING_ENFORCED === 'true';
-            const mCheck = checkUpdateManifest(manifest, enforced);
+            const mCheck = checkUpdateManifest(manifest, true);
             if (!mCheck.ok) {
                 return res.status(mCheck.status).json({ ok: false, error: mCheck.error });
-            }
-            if (!manifest) {
-                logActivity('Update requested without a signed manifest — permissive mode', 'warn');
             }
             // ─────────────────────────────────────────────────────
             try {

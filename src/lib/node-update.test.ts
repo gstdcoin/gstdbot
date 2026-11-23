@@ -13,7 +13,7 @@ describe('fastForwardNodeUpdate', () => {
             return '';
         });
 
-        expect(fastForwardNodeUpdate('node-dir', 'main', run)).toEqual({
+        expect(fastForwardNodeUpdate('node-dir', 'main', run, targetHash)).toEqual({
             previousHash: currentHash,
             updatedHash: targetHash,
             output: '',
@@ -25,7 +25,7 @@ describe('fastForwardNodeUpdate', () => {
     it('refuses to update when tracked local changes exist', () => {
         const run = vi.fn<GitRunner>(() => ' M src/local-change.ts');
 
-        expect(() => fastForwardNodeUpdate('node-dir', 'main', run))
+        expect(() => fastForwardNodeUpdate('node-dir', 'main', run, targetHash))
             .toThrow('Tracked local changes detected');
         expect(run).toHaveBeenCalledTimes(1);
     });
@@ -40,7 +40,7 @@ describe('fastForwardNodeUpdate', () => {
             return '';
         });
 
-        expect(() => fastForwardNodeUpdate('node-dir', 'main', run))
+        expect(() => fastForwardNodeUpdate('node-dir', 'main', run, targetHash))
             .toThrow('Local HEAD diverges from origin/main');
         expect(run).not.toHaveBeenCalledWith(['merge', '--ff-only', targetHash], 'node-dir');
     });
@@ -66,6 +66,11 @@ describe('rollbackNodeUpdate', () => {
 
 
 describe('signed update target', () => {
+    it('blocks legacy unsigned callers before reading or fetching Git state', () => {
+        const run = git();
+        expect(() => fastForwardNodeUpdate('node-dir', 'main', run)).toThrow('verified signed release is required');
+        expect(run).not.toHaveBeenCalled();
+    });
     it('does not fetch or rebuild when the signed target is already installed', () => {
         const run = git();
         expect(fastForwardNodeUpdate('node-dir', 'main', run, currentHash).updatedHash).toBe(currentHash);

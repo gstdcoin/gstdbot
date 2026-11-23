@@ -24,7 +24,7 @@ export function fastForwardNodeUpdate(
     run: GitRunner = runGit,
     expectedCommit?: string,
 ): NodeUpdateResult {
-    if (expectedCommit !== undefined && !isCommitHash(expectedCommit)) throw new Error('Invalid signed update commit');
+    if (!expectedCommit || !isCommitHash(expectedCommit)) throw new Error('A verified signed release is required; use the authenticated dashboard updater');
     const dirtyFiles = run(['status', '--porcelain', '--untracked-files=no'], installDir).trim();
     if (dirtyFiles) {
         throw new Error('Tracked local changes detected; refusing to overwrite node files');

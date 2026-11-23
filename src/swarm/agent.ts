@@ -1,3 +1,5 @@
+import { approvedUpdateManifest } from '../lib/node-update-status.js';
+import { acquireComputeMaintenance } from '../security/compute.js';
 import { readTunnelUrl } from '../lib/tunnel-url.js';
 /**
  * GSTD Node OS — Swarm Agent
@@ -460,6 +462,7 @@ export class SwarmAgent {
         }
         this.updateAttempted = true;
 
+        let releaseCompute: (() => void) | undefined;
         try {
             const { execSync } = require('child_process');
             const fs = require('fs');
@@ -479,7 +482,9 @@ export class SwarmAgent {
 
             logActivity('⬆️ Starting safe auto-update...', 'info');
 
-            const update = fastForwardNodeUpdate(installDir, 'main');
+            const manifest = await approvedUpdateManifest('main');
+            releaseCompute = acquireComputeMaintenance();
+            const update = fastForwardNodeUpdate(installDir, 'main', undefined, manifest.commit);
             const snapshot = update.previousHash;
             const remote = update.updatedHash;
             if (snapshot === remote) {
@@ -491,7 +496,7 @@ export class SwarmAgent {
             // Build TypeScript before restart so dist/ always matches the source.
             let buildError: any;
             try {
-                execSync('npm install --legacy-peer-deps --include=dev', { cwd: installDir, timeout: 120000 });
+                execSync('npm ci --include=dev', { cwd: installDir, timeout: 120000 });
                 execSync('./node_modules/.bin/tsc --skipLibCheck', { cwd: installDir, timeout: 90000 });
                 const entryPoint = installDir + '/dist/index.js';
                 if (!fs.existsSync(entryPoint)) {
@@ -506,7 +511,7 @@ export class SwarmAgent {
                 logActivity(`Update build failed (${buildError.message}) — rolling back to ${snapshot.slice(0, 12)}`, 'error');
                 try {
                     rollbackNodeUpdate(installDir, snapshot);
-                    execSync('npm install --legacy-peer-deps --include=dev', { cwd: installDir, timeout: 120000 });
+                    execSync('npm ci --include=dev', { cwd: installDir, timeout: 120000 });
                     execSync('./node_modules/.bin/tsc --skipLibCheck', { cwd: installDir, timeout: 90000 });
                     logActivity('Rollback complete — node continues on previous version', 'success');
                 } catch (rollbackError: any) {
@@ -527,6 +532,8 @@ export class SwarmAgent {
             process.exit(0);
         } catch (e: any) {
             logActivity(`Auto-update failed: ${e.message || 'unknown'} — run install.sh manually`, 'error');
+        } finally {
+            releaseCompute?.();
         }
     }
 
