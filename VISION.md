@@ -34,7 +34,7 @@ Result cached (shared Redis) → Hive Memory grows →
 Models improve → Network gets smarter → User gets better answers
 ```
 
-Every interaction makes the Swarm stronger. The Redis Knowledge Cache stores verified answers accessible by both the web chat (chat.gstdtoken.com) and the Telegram bot (@GstdAppBot). The SmartMix Collective Intelligence queries up to 7 expert models in parallel to synthesize consensus answers.
+Every interaction makes the Swarm stronger. The Redis Knowledge Cache stores verified answers accessible by both the web chat (chat.gstdtoken.xyz) and the Telegram bot (@GstdAppBot). The SmartMix Collective Intelligence queries up to 7 expert models in parallel to synthesize consensus answers.
 
 ### Collective Intelligence Architecture
 

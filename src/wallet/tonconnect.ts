@@ -119,9 +119,9 @@ export class TonConnectManager {
                     ],
                 } as any,
                 walletManifest: {
-                    url: 'https://gstdtoken.com',
+                    url: 'https://gstdtoken.xyz',
                     name: 'GSTD Node OS',
-                    iconUrl: 'https://gstdtoken.com/logogstd.png',
+                    iconUrl: 'https://gstdtoken.xyz/logogstd.png',
                 } as any,
                 storage: new MemoryStorageAdapter({}),
                 networks: {
@@ -182,7 +182,7 @@ export class TonConnectManager {
             logActivity(`TON Connect request from: ${dAppName}`, 'info');
             
             // For autonomous node mode: auto-approve trusted dApps
-            const trustedDapps = ['gstdtoken.com', 'gstd'];
+            const trustedDapps = ['gstdtoken.xyz', 'gstd'];
             const isTrusted = trustedDapps.some(d => 
                 dAppName.toLowerCase().includes(d) || 
                 event.dAppInfo?.url?.includes(d)

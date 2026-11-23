@@ -26,7 +26,7 @@ Direct node requests default to local inference. If it cannot answer, it does no
 A selected executor necessarily processes the plaintext question. We do not claim encrypted computation, a trusted execution environment, or immunity to a malicious operator. Platform payments retain response text for at most ten minutes for retry; the owner can delete it sooner. Financial receipts retain hashes and amounts.
 
 ## Real earnings
-Only the platform's funded, accepted work creates GSTD claims. Local fee estimates and usage counters do not mint balances. The split is 85/10/5, and moving earned credits into spendable credits charges no additional fee. Earned credits can pay for another node or request an owner-signed mainnet withdrawal in https://app.gstdtoken.com/payments.
+Only the platform's funded, accepted work creates GSTD claims. Local fee estimates and usage counters do not mint balances. The split is 85/10/5, and moving earned credits into spendable credits charges no additional fee. Earned credits can pay for another node or request an owner-signed mainnet withdrawal in https://app.gstdtoken.xyz/payments.
 
 No hourly reward, uptime multiplier, staking APY or guaranteed profitability is offered. Operators must account for hardware, electricity, bandwidth, token liquidity and demand. The current production setup has one physical node and centralized platform/custody dependencies; it is not unstoppable or fully decentralized. See CENTRAL_DEPENDENCIES.md.
 

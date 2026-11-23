@@ -1,7 +1,7 @@
 # Node 3.5.1 operational contract
 
-The supported platform API is `https://app.gstdtoken.com/api/v1`.
-`platform.gstdtoken.com` is a separate legacy deployment and is not the production registry.
+The supported platform API is `https://app.gstdtoken.xyz/api/v1`.
+`platform.gstdtoken.xyz` is a separate legacy deployment and is not the production registry.
 
 - Register with the operator wallet and persistent Ed25519 node identity.
 - Send signed heartbeats; the uptime reporter uses the same identity as the task client.

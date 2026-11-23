@@ -29,7 +29,7 @@ import type { AttestorIdentity } from './identity.js';
 // below points at the Pi bootstrap node:
 //   - Stable peerId derived from ~/.config/gstdbot/p2p-identity.json
 //     (persisted across restarts — see src/p2p/p2p-identity.ts)
-//   - Reachable at wss://node.gstdtoken.com via Cloudflare tunnel (port 443)
+//   - Reachable at wss://node.gstdtoken.xyz via Cloudflare tunnel (port 443)
 //     which proxies to the gateway HTTP server (port 8080) on this Pi.
 //   - TCP fallback: /ip4/<Pi-LAN-IP>/tcp/4001 (useful only on LAN)
 //
@@ -176,7 +176,7 @@ export interface P2PNodeConfig {
     announceIp?: string;       // external IP for nodes behind NAT
     privateKey?: any;          // stable Ed25519 PrivateKey (from loadOrCreateP2PIdentity)
     httpServer?: http.Server;  // attach libp2p WS transport to existing HTTP server (same port as gateway)
-    wsAnnounceHost?: string;   // public host for WS announce addr (e.g. "node.gstdtoken.com")
+    wsAnnounceHost?: string;   // public host for WS announce addr (e.g. "node.gstdtoken.xyz")
 }
 
 const DEFAULT_P2P_CONFIG: P2PNodeConfig = {
@@ -279,7 +279,7 @@ export class GstdP2PNode extends EventEmitter {
         // Always enable TCP on the P2P port (LAN + direct WAN).
         // WebSocket transport is added when an httpServer is provided so
         // that libp2p attaches to the EXISTING gateway HTTP server on port
-        // 8080 (tunneled through Cloudflare at node.gstdtoken.com) instead
+        // 8080 (tunneled through Cloudflare at node.gstdtoken.xyz) instead
         // of opening a new port. A separate port would require a new tunnel
         // hostname which needs Tunnel:Edit API permission we don't have.
         const transports: any[] = [tcp()];
@@ -301,7 +301,7 @@ export class GstdP2PNode extends EventEmitter {
                 listenAddrs.push('/ip4/0.0.0.0/tcp/0/ws'); // port 0 = use existing server, not a new bind
 
                 // Announce the WS address via the Cloudflare tunnel hostname so remote
-                // nodes can use it as a bootstrap addr: /dns4/node.gstdtoken.com/tcp/443/wss/p2p/{id}
+                // nodes can use it as a bootstrap addr: /dns4/node.gstdtoken.xyz/tcp/443/wss/p2p/{id}
                 const wsHost = this.config.wsAnnounceHost
                     || process.env.GSTD_P2P_WS_ANNOUNCE
                     || '';

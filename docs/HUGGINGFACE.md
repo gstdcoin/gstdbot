@@ -15,7 +15,7 @@ Model-file lists are cached for six hours; checks and errors are bounded to prot
 
 ## Open a model link in your own node
 
-Use [the GSTD model handoff](https://gstdtoken.com/local-model?hf_repo=bartowski%2FSmolLM2-135M-Instruct-GGUF&hf_file=SmolLM2-135M-Instruct-Q4_K_M.gguf) to review a public model and enter your own node address. This page does not scan your computer, contact a node automatically, keep its address or start a download. It opens the protected node panel only when you select **Open my node**.
+Use [the GSTD model handoff](https://gstdtoken.xyz/local-model?hf_repo=bartowski%2FSmolLM2-135M-Instruct-GGUF&hf_file=SmolLM2-135M-Instruct-Q4_K_M.gguf) to review a public model and enter your own node address. This page does not scan your computer, contact a node automatically, keep its address or start a download. It opens the protected node panel only when you select **Open my node**.
 
 The panel accepts `hf_repo` and optional `hf_file` query parameters on its root URL. After operator authentication it validates and prefills the repository/file form, then removes the query from the address bar. Existing drafts are kept. Checking the repository, downloading and inference remain separate manual actions. The exact file must exist in the bounded catalogue; there is no automatic substitute. Other query parameters are not forwarded. Use a current node version; older versions do not process this handoff.
 

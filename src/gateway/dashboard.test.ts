@@ -170,7 +170,7 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  expect(elements.get('readinessSteps')!.children).toHaveLength(5);
  expect(elements.get('nextAction')!.textContent).toContain('кошелёк');
  expect(elements.get('walletForm')!.classes.has('hidden')).toBe(false);
- expect(elements.get('paymentsLink')!.attributes.href).toBe('https://app.gstdtoken.com/ru/payments?from=node');
+ expect(elements.get('paymentsLink')!.attributes.href).toBe('https://app.gstdtoken.xyz/ru/payments?from=node');
  expect(elements.get('balanceLink')!.attributes.href).not.toContain(address);
  expect(elements.get('payout')!.textContent).toContain('ещё не привязан');
  elements.get('walletAddress')!.value=address;elements.get('walletConsent')!.checked=true;
@@ -189,9 +189,9 @@ it('renders the actual catalog and keeps personal-wallet linking visible on an e
  expect(fetcher.mock.calls.some(([path])=>path==='/v1/chat/completions')).toBe(false);
  elements.get('language')!.value='en';elements.get('language')!.onchange();
  await vi.waitFor(()=>expect(elements.get('model')!.value).toBe('remote:large'));
- expect(elements.get('platformChat')!.attributes.href).toBe('https://app.gstdtoken.com/chat?model=remote%3Alarge');
+ expect(elements.get('platformChat')!.attributes.href).toBe('https://app.gstdtoken.xyz/chat?model=remote%3Alarge');
  expect(elements.get('nextAction')!.textContent).toContain('Technically ready for background work');
- expect(elements.get('networkLink')!.attributes.href).toBe('https://app.gstdtoken.com/nodes');
+ expect(elements.get('networkLink')!.attributes.href).toBe('https://app.gstdtoken.xyz/nodes');
  // A missing local runtime must not erase a previously loaded remote choice.
  ollamaAvailable=false;await elements.get('modelsRefresh')!.onclick();
  expect(elements.get('model')!.value).toBe('remote:large');
@@ -204,17 +204,18 @@ it('requires one explicit update confirmation and shows progress or HTTP-200 fai
  const html=readFileSync('web/dashboard.html','utf8'),elements=new Map<string,Element>();
  for(const m of html.matchAll(/id="([^"]+)"/g))elements.set(m[1],new Element());
  const labels=[...html.matchAll(/data-i="([^"]+)"/g)].map(m=>{const e=new Element();e.dataset.i=m[1];return e;});
- let approved=false,finish:any,signedRequired:boolean|undefined=undefined;
+ let approved=false,finish:any,signedRequired:boolean|undefined=undefined,available=false;
  const fetcher=vi.fn(async(path:string,options?:any)=>{
-  if(path==='https://app.gstdtoken.com/api/v1/nodes/update/manifest')return{ok:true,status:200,json:async()=>({manifest:{commit:'a'.repeat(40),branch:'main',version:'3.7.1',timestamp:Date.now(),sig:'fixture-only'}})};
-  if(path==='/api/check-update')return{ok:true,status:200,json:async()=>({current_hash:'samehash',remote_hash:'samehash',update_available:false,signed_manifest_required:signedRequired})};
+  if(path==='/api/node/update/manifest')return{ok:true,status:200,json:async()=>({manifest:{commit:'a'.repeat(40),branch:'main',version:'3.7.1',timestamp:Date.now(),sig:'fixture-only'}})};
+  if(path==='/api/check-update')return{ok:true,status:200,json:async()=>({current_hash:'samehash',remote_hash:available?'newhash':'samehash',update_available:available,signed_manifest_required:signedRequired})};
   if(path==='/api/node/update'){if(signedRequired===false)expect(JSON.parse(options.body).manifest).toBeUndefined();else expect(JSON.parse(options.body).manifest.commit).toBe('a'.repeat(40));return new Promise(resolve=>{finish=resolve;});}
   throw Error('Unexpected request '+path);
  });
  const context:any={document:{documentElement:{lang:''},hidden:false,title:'',getElementById:(id:string)=>elements.get(id),querySelectorAll:()=>labels,createElement:()=>new Element()},navigator:{language:'en'},localStorage:storage({}),sessionStorage:storage({}),confirm:vi.fn(()=>approved),Option:class{constructor(public text:string,public value:string){}},fetch:fetcher,setInterval:()=>0,location:{search:'',pathname:'/'},URLSearchParams,console,TextDecoder,Set,Date,AbortController,AbortSignal};
  runInNewContext(html.split('<script>')[1].split('</script>')[0],context);
  expect(html).not.toContain('id="updateConsent"');
- await elements.get('check')!.onclick();expect(elements.get('apply')!.disabled).toBe(false);
+ await elements.get('check')!.onclick();expect(elements.get('apply')!.disabled).toBe(true);
+ available=true;await elements.get('check')!.onclick();expect(elements.get('apply')!.disabled).toBe(false);
  await elements.get('apply')!.onclick();expect(fetcher.mock.calls.filter(([p])=>p==='/api/node/update')).toHaveLength(0);
  approved=true;const operation=elements.get('apply')!.onclick();
  expect(elements.get('apply')!.disabled).toBe(true);expect(elements.get('updateInfo')!.textContent).toContain('Updating');
@@ -225,8 +226,8 @@ it('requires one explicit update confirmation and shows progress or HTTP-200 fai
  expect(elements.get('updateInfo')!.textContent).toContain('3.7.1');expect(elements.get('updateInfo')!.textContent).toContain('restarting');
  // A node explicitly configured for owner-PIN updates must not depend on the platform signer.
  signedRequired=false;elements.get('check')!.disabled=false;await elements.get('check')!.onclick();
- const prior=fetcher.mock.calls.filter(([p])=>p==='https://app.gstdtoken.com/api/v1/nodes/update/manifest').length;
+ const prior=fetcher.mock.calls.filter(([p])=>p==='https://app.gstdtoken.xyz/api/v1/nodes/update/manifest').length;
  const manual=elements.get('apply')!.onclick();await vi.waitFor(()=>expect(fetcher.mock.calls.filter(([p])=>p==='/api/node/update')).toHaveLength(3));
  finish({ok:true,status:200,json:async()=>({ok:true})});await manual;
- expect(fetcher.mock.calls.filter(([p])=>p==='https://app.gstdtoken.com/api/v1/nodes/update/manifest')).toHaveLength(prior);
+ expect(fetcher.mock.calls.filter(([p])=>p==='https://app.gstdtoken.xyz/api/v1/nodes/update/manifest')).toHaveLength(prior);
 });

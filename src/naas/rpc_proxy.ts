@@ -51,7 +51,7 @@ type BalanceCheckResult = { paid: true } | { paid: false; reason: 'insufficient_
 
 async function checkAndDeductBalance(apiKey: string, priceNano: number): Promise<BalanceCheckResult> {
     try {
-        const resp = await fetch('https://app.gstdtoken.com/api/v1/rpc/charge', {
+        const resp = await fetch('https://app.gstdtoken.xyz/api/v1/rpc/charge', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -168,7 +168,7 @@ export class GSTDRPCProxy {
 
         if (!apiKey) {
             res.writeHead(401);
-            res.end(JSON.stringify({ error: 'Missing X-GSTD-Key header. Get one at gstdtoken.com' }));
+            res.end(JSON.stringify({ error: 'Missing X-GSTD-Key header. Get one at gstdtoken.xyz' }));
             return;
         }
 
@@ -193,7 +193,7 @@ export class GSTDRPCProxy {
                 res.end(JSON.stringify({ error: 'Payment verification temporarily unavailable. Please try again shortly.' }));
             } else {
                 res.writeHead(402);
-                res.end(JSON.stringify({ error: 'Insufficient GSTD balance. Top up at gstdtoken.com' }));
+                res.end(JSON.stringify({ error: 'Insufficient GSTD balance. Top up at gstdtoken.xyz' }));
             }
             return;
         }
@@ -216,7 +216,7 @@ export class GSTDRPCProxy {
         this.server.listen(this.port, () => {
             logActivity(`🌐 GSTD Multi-Chain RPC Proxy listening on :${this.port}`, 'success');
             logActivity(`   Supported chains: ${Object.keys(CHAIN_PORTS).join(', ')}`);
-            logActivity(`   Docs: https://gstdtoken.com/rpc`);
+            logActivity(`   Docs: https://gstdtoken.xyz/rpc`);
         });
     }
 

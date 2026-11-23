@@ -17,7 +17,7 @@ import { platformHealth } from '../lib/platform-health.js';
 import { loadOrCreateAttestorIdentity, signPeerRequest } from '../p2p/identity.js';
 
 const HEARTBEAT_INTERVAL_MS = 4 * 60_000; // Stay well inside the platform's 10-minute node TTL
-const PLATFORM_URL = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
+const PLATFORM_URL = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.xyz';
 
 export interface ContainerStatus {
     name: string;

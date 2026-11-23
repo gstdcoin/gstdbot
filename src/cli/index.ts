@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import '../core/platform-environment.js';
 /** Compute-only CLI. Host tools, skill execution and implicit cloud agents are retired. */
 import { Command } from 'commander';
 import { createInterface } from 'readline';

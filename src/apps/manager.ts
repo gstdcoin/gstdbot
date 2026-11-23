@@ -962,7 +962,7 @@ const BUILTIN_APPS: AppManifest[] = [
 ];
 
 // ─── Community App Registry (fetched from platform) ─────────────
-const REGISTRY_URL = 'https://app.gstdtoken.com/api/v1/apps/registry';
+const REGISTRY_URL = 'https://app.gstdtoken.xyz/api/v1/apps/registry';
 
 // ─── App Manager ────────────────────────────────────────────────
 export class AppManager extends EventEmitter {

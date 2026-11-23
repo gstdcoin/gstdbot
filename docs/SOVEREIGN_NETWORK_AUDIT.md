@@ -62,7 +62,7 @@ Fixed during the round: `/sov/msg` and `/sov/sync` now register the sender as a 
 
 - **85/10/5 split:** present in `contracts/SettlementMaster.tact` source (`workerShare=85`, `treasuryShare=10`, `protocolShare=5`, owner-callable `UpdateShares`). The deployed `SettlementMasterV2` bytecode and its current shares were **not** verified.
 - **Hardware roles:** `suggestRoles` gives weak devices verify/relay roles; unit-level only. **Not run on a Raspberry Pi 4** — a Pi 4 run is a manual follow-up (`npm run sovereign -- --roles verify,relay`, check RAM/CPU and the same scenario with 1 Pi + 2 PCs).
-- **Live production** (last check): `gstdtoken.com` 200, `app.gstdtoken.com/api/v1/health` 200; 0 nodes online.
+- **Live production** (last check): `gstdtoken.xyz` 200, `app.gstdtoken.xyz/api/v1/health` 200; 0 nodes online.
 
 ## 5. Documented but not proven
 
@@ -90,7 +90,7 @@ Fixed during the round: `/sov/msg` and `/sov/sync` now register the sender as a 
 
 | Dependency | Used by | Status |
 |---|---|---|
-| app.gstdtoken.com platform API / heartbeat / task polling | `platform-link`, `swarm/agent`, `naas/uptime_daemon`, dashboard | CRITICAL for legacy runtime |
+| app.gstdtoken.xyz platform API / heartbeat / task polling | `platform-link`, `swarm/agent`, `naas/uptime_daemon`, dashboard | CRITICAL for legacy runtime |
 | Cloudflare Workers/KV/Pages | `ai` frontend/API, `web` | production hosting (free tier) |
 | Telegram Bot API | `channels/telegram.ts` | optional channel; bot token currently shared with the platform (rotate/split) |
 | TON RPC / toncenter | wallet, contracts | external, required for on-chain parts |

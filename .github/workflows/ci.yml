@@ -44,4 +44,4 @@ jobs:
         run: npm test --if-present
         env:
           NODE_ENV: test
-          GSTD_SWARM_URL: https://app.gstdtoken.com
+          GSTD_SWARM_URL: https://app.gstdtoken.xyz

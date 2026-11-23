@@ -1,5 +1,7 @@
 # GSTD compute node
 
+> Domain migration proposal: website `gstdtoken.xyz`, platform `app.gstdtoken.xyz`. DNS/HTTPS and Telegram cutover must be verified before announcing the new host as live. See [migration status](https://github.com/gstdcoin/ai/blob/main/docs/DOMAIN_MIGRATION.md).
+
 [![CI](https://github.com/gstdcoin/gstdbot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gstdcoin/gstdbot/actions/workflows/ci.yml)
 
 [Project map / Карта проекта](https://github.com/gstdcoin/ai/blob/main/docs/INDEX.md) · [Release evidence](https://github.com/gstdcoin/ai/blob/main/docs/READINESS.md) · [Repository maintenance](https://github.com/gstdcoin/ai/blob/main/docs/REPOSITORY_MAINTENANCE.md)
@@ -10,12 +12,12 @@ Default branch: `main`.
 
 Share AI compute, earn GSTD from funded accepted work, and use those credits on other nodes.
 
-[Start here / Начните здесь](https://github.com/gstdcoin/ai/blob/main/docs/START_HERE.md) · [Public step-by-step guide](https://gstdtoken.com/docs#get-started)
+[Start here / Начните здесь](https://github.com/gstdcoin/ai/blob/main/docs/START_HERE.md) · [Public step-by-step guide](https://gstdtoken.xyz/docs#get-started)
 
-**Supported compute profile:** local inference, authenticated operator controls, signed worker identity and 85/10/5 platform accounting. Platform-ledger withdrawals require the custody owner’s signature. The separate [mainnet escrow beta](https://app.gstdtoken.com/escrow-mainnet) uses per-job contracts and beneficiary-signed claims; it does not credit the ledger. A real mainnet payout is still unverified. Nodes hold no treasury keys. There is no guaranteed yield.
+**Supported compute profile:** local inference, authenticated operator controls, signed worker identity and 85/10/5 platform accounting. Platform-ledger withdrawals require the custody owner’s signature. The separate [mainnet escrow beta](https://app.gstdtoken.xyz/escrow-mainnet) uses per-job contracts and beneficiary-signed claims; it does not credit the ledger. A real mainnet payout is still unverified. Nodes hold no treasury keys. There is no guaranteed yield.
 
 - [Supported features and security boundaries](docs/COMPUTE_PROFILE.md)
-- [Platform payments](https://app.gstdtoken.com/payments)
+- [Platform payments](https://app.gstdtoken.xyz/payments)
 - [Deployment and central dependencies](CENTRAL_DEPENDENCIES.md)
 
 ```bash

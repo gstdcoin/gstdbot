@@ -22,7 +22,7 @@ it.each(['{broken', 'null', '[]', '"config"', '{}', '{"nodeId":42}', '{"nodeId":
     expect(readFileSync(file, 'utf8')).toBe(raw);
 });
 it('retains restored identity, settings and extensions without rewriting the file', () => {
-    const saved = { nodeId: 'original-node-id', nodeName: 'restored', swarm: { apiUrl: 'https://app.gstdtoken.com' }, extension: { custom: true } };
+    const saved = { nodeId: 'original-node-id', nodeName: 'restored', swarm: { apiUrl: 'https://app.gstdtoken.xyz' }, extension: { custom: true } };
     const raw = JSON.stringify(saved);
     const file = fixture(raw);
     expect(readSavedNodeConfig(file)).toEqual(saved);

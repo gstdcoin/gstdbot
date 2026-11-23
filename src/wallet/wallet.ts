@@ -22,7 +22,7 @@ export interface WalletBalance {
 
 const CONFIG_DIR = join(homedir(), '.config', 'gstdbot');
 const WALLET_FILE = join(CONFIG_DIR, 'wallet.json');
-const API_BASE = process.env.GSTD_API_URL || 'https://app.gstdtoken.com/api/v1';
+const API_BASE = process.env.GSTD_API_URL || 'https://app.gstdtoken.xyz/api/v1';
 
 export function walletExists(): boolean {
     return existsSync(WALLET_FILE);

@@ -24,7 +24,7 @@ src/
 │   └── quorum-coordinator.ts ← Collect 2-of-3 peer attestations for task results
 │
 ├── core/                     ← Node lifecycle and central connectivity
-│   ├── platform-link.ts      ← Heartbeat + command polling from app.gstdtoken.com
+│   ├── platform-link.ts      ← Heartbeat + command polling from app.gstdtoken.xyz
 │   ├── scheduler.ts          ← Task scheduling wrapper
 │   ├── event-bus.ts          ← Internal EventEmitter
 │   ├── usage-tracker.ts      ← Per-user request rate limiting
@@ -105,8 +105,8 @@ index.ts
   → load P2P identity (Ed25519 from ~/.config/gstdbot/p2p-identity.json)
   → start gateway HTTP server (port 8080)
   → start P2P node (libp2p, port 4001)
-  → start NaaS UptimeDaemon (register + heartbeat to app.gstdtoken.com)
-  → start SwarmAgent (poll app.gstdtoken.com for tasks)
+  → start NaaS UptimeDaemon (register + heartbeat to app.gstdtoken.xyz)
+  → start SwarmAgent (poll app.gstdtoken.xyz for tasks)
   → start PlatformLink (heartbeat loop)
   → start Telegram bot (optional)
   → schedule auto-update check (2 min, then hourly)
@@ -114,7 +114,7 @@ index.ts
 
 ### Task execution (current)
 ```
-app.gstdtoken.com  ←── external user or Telegram
+app.gstdtoken.xyz  ←── external user or Telegram
     ↓ task queued in KV
 SwarmAgent.pollTasks()   ← polls every 5s
     ↓ task received
@@ -124,14 +124,14 @@ SwarmAgent.executeTask()
 QuorumCoordinator        ← if co-executors configured
     ↓ collect 2-of-3 Ed25519 attestations
     ↓ quorum result
-app.gstdtoken.com  ← result reported
+app.gstdtoken.xyz  ← result reported
 ```
 
 ### P2P (current — separate from task flow)
 ```
 libp2p node
     ↓ mDNS (LAN) + Kademlia DHT (WAN)
-    ↓ connects to bootstrap peer at node.gstdtoken.com
+    ↓ connects to bootstrap peer at node.gstdtoken.xyz
     ↓ peer discovery
     ↓ (currently: peer identity + attestation only)
     ↓ no P2P task routing
@@ -148,8 +148,8 @@ libp2p node
   version: string;          // "3.5.0"
   installDir: string;       // ~/gstdbot
   walletAddress: string;    // TON address (payout only)
-  swarmUrl: string;         // app.gstdtoken.com
-  apiUrl: string;           // app.gstdtoken.com/api/v1
+  swarmUrl: string;         // app.gstdtoken.xyz
+  apiUrl: string;           // app.gstdtoken.xyz/api/v1
   enableTelegram: boolean;
   enableP2P: boolean;
   enableNaaS: boolean;
@@ -166,13 +166,13 @@ libp2p node
   enableMdns: boolean;
   privateKey?: PrivateKey;    // Ed25519 from p2p-identity.ts
   httpServer?: http.Server;   // attach WS to existing HTTP server
-  wsAnnounceHost?: string;    // e.g. node.gstdtoken.com
+  wsAnnounceHost?: string;    // e.g. node.gstdtoken.xyz
 }
 ```
 
 ### Bootstrap peers (hardcoded)
 ```
-/dns4/node.gstdtoken.com/tcp/443/wss/p2p/12D3KooWJwoerHaucUfo8rD6ycXCqdfAK4zhqUW3sYFXX8zJDTmF
+/dns4/node.gstdtoken.xyz/tcp/443/wss/p2p/12D3KooWJwoerHaucUfo8rD6ycXCqdfAK4zhqUW3sYFXX8zJDTmF
 ```
 
 ---

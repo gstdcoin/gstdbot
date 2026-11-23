@@ -57,7 +57,7 @@ update_github_node_url() {
 JSONEOF
 
   (cd "$GSTDAI_DIR" && git add node-url.txt nodes-registry.json && \
-    git -c user.email="bot@gstdtoken.com" -c user.name="GSTD Pi Node" \
+    git -c user.email="bot@gstdtoken.xyz" -c user.name="GSTD Pi Node" \
       commit -m "Update Pi node URL: $url" --no-gpg-sign && \
     git push origin main 2>&1 | tail -3) && log "GitHub node registry updated" \
     || log "GitHub update failed"
@@ -96,7 +96,7 @@ while true; do
     SEED_FILE="$GSTDAI_DIR/gstd-seed-peers.txt"
     echo "$TUNNEL_URL" > "$SEED_FILE"
     (cd "$GSTDAI_DIR" && git add gstd-seed-peers.txt && \
-      git -c user.email="bot@gstdtoken.com" -c user.name="GSTD Pi Node" \
+      git -c user.email="bot@gstdtoken.xyz" -c user.name="GSTD Pi Node" \
         commit -m "Update seed peer URL: $TUNNEL_URL" --no-gpg-sign && \
       git push origin main 2>&1 | tail -2) 2>/dev/null || true
     fi
