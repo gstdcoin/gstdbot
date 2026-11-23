@@ -9,6 +9,7 @@ export function migratePlatformEnvironment(env: Record<string, string | undefine
                 !['app.gstdtoken.com', 'platform.gstdtoken.com'].includes(url.hostname) || url.port ||
                 !['/', '/api/v1', '/api/v1/'].includes(url.pathname)) continue;
             url.hostname = 'app.gstdtoken.xyz';
+            url.pathname = key === 'GSTD_API_URL' ? '/api/v1' : '/';
             env[key] = url.toString().replace(/\/$/, '');
         } catch { /* Preserve explicit configuration for normal validation. */ }
     }
