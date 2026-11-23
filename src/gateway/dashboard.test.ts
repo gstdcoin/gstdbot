@@ -204,17 +204,18 @@ it('requires one explicit update confirmation and shows progress or HTTP-200 fai
  const html=readFileSync('web/dashboard.html','utf8'),elements=new Map<string,Element>();
  for(const m of html.matchAll(/id="([^"]+)"/g))elements.set(m[1],new Element());
  const labels=[...html.matchAll(/data-i="([^"]+)"/g)].map(m=>{const e=new Element();e.dataset.i=m[1];return e;});
- let approved=false,finish:any,signedRequired:boolean|undefined=undefined;
+ let approved=false,finish:any,signedRequired:boolean|undefined=undefined,available=false;
  const fetcher=vi.fn(async(path:string,options?:any)=>{
-  if(path==='https://app.gstdtoken.xyz/api/v1/nodes/update/manifest')return{ok:true,status:200,json:async()=>({manifest:{commit:'a'.repeat(40),branch:'main',version:'3.7.1',timestamp:Date.now(),sig:'fixture-only'}})};
-  if(path==='/api/check-update')return{ok:true,status:200,json:async()=>({current_hash:'samehash',remote_hash:'samehash',update_available:false,signed_manifest_required:signedRequired})};
+  if(path==='/api/node/update/manifest')return{ok:true,status:200,json:async()=>({manifest:{commit:'a'.repeat(40),branch:'main',version:'3.7.1',timestamp:Date.now(),sig:'fixture-only'}})};
+  if(path==='/api/check-update')return{ok:true,status:200,json:async()=>({current_hash:'samehash',remote_hash:available?'newhash':'samehash',update_available:available,signed_manifest_required:signedRequired})};
   if(path==='/api/node/update'){if(signedRequired===false)expect(JSON.parse(options.body).manifest).toBeUndefined();else expect(JSON.parse(options.body).manifest.commit).toBe('a'.repeat(40));return new Promise(resolve=>{finish=resolve;});}
   throw Error('Unexpected request '+path);
  });
  const context:any={document:{documentElement:{lang:''},hidden:false,title:'',getElementById:(id:string)=>elements.get(id),querySelectorAll:()=>labels,createElement:()=>new Element()},navigator:{language:'en'},localStorage:storage({}),sessionStorage:storage({}),confirm:vi.fn(()=>approved),Option:class{constructor(public text:string,public value:string){}},fetch:fetcher,setInterval:()=>0,location:{search:'',pathname:'/'},URLSearchParams,console,TextDecoder,Set,Date,AbortController,AbortSignal};
  runInNewContext(html.split('<script>')[1].split('</script>')[0],context);
  expect(html).not.toContain('id="updateConsent"');
- await elements.get('check')!.onclick();expect(elements.get('apply')!.disabled).toBe(false);
+ await elements.get('check')!.onclick();expect(elements.get('apply')!.disabled).toBe(true);
+ available=true;await elements.get('check')!.onclick();expect(elements.get('apply')!.disabled).toBe(false);
  await elements.get('apply')!.onclick();expect(fetcher.mock.calls.filter(([p])=>p==='/api/node/update')).toHaveLength(0);
  approved=true;const operation=elements.get('apply')!.onclick();
  expect(elements.get('apply')!.disabled).toBe(true);expect(elements.get('updateInfo')!.textContent).toContain('Updating');

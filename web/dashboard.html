@@ -146,7 +146,7 @@ el('httpsInstall').onclick=async()=>{
  }catch(e){el('httpsStatus').textContent=httpsError(e.message);el('httpsInstall').disabled=false}
 };
 
-el('check').onclick=async()=>{el('check').disabled=true;el('updateAction').classList.add('hidden');el('apply').disabled=true;try{update=await api('/api/check-update');if(update.error)throw Error(t('checkFailed'));el('updateInfo').textContent=(update.update_available?t('updateFound'):t('upToDate'))+'\n'+(update.current_hash||update.current_version||'')+' → '+(update.remote_hash||update.latest_version||'')+'\n'+(update.changelog||[]).join('\n');el('updateAction').classList.toggle('hidden',!update.current_hash);el('apply').disabled=!update.current_hash}catch(e){notice(errorText(e))}finally{el('check').disabled=false}};
+el('check').onclick=async()=>{el('check').disabled=true;el('updateAction').classList.add('hidden');el('apply').disabled=true;try{update=await api('/api/check-update');if(update.error)throw Error(t('checkFailed'));el('updateInfo').textContent=(update.update_available?t('updateFound'):t('upToDate'))+'\n'+(update.current_hash||update.current_version||'')+' → '+(update.remote_hash||update.latest_version||'')+'\n'+(update.changelog||[]).join('\n');el('updateAction').classList.toggle('hidden',!update.current_hash);el('apply').disabled=!update.current_hash||update.update_available!==true||update.can_apply===false}catch(e){notice(errorText(e))}finally{el('check').disabled=false}};
 el('apply').onclick=async()=>{
  if(el('apply').disabled||!confirm(t('updateConfirm')))return;
  el('apply').disabled=true;el('check').disabled=true;el('updateInfo').textContent=t('updateWorking');
@@ -154,14 +154,13 @@ el('apply').onclick=async()=>{
   let manifest;
   // An explicit local false preserves existing owner-PIN updates. Unknown/true stays signed.
   if(update?.signed_manifest_required!==false){
-   const published=await fetch('https://app.gstdtoken.xyz/api/v1/nodes/update/manifest',{credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(10000)});
-   let release;try{release=await published.json();}catch{throw Error('release_signing_unavailable');}
-   if(!published.ok||!release.manifest)throw Error(release.error||'release_signing_unavailable');
+   const release=await api('/api/node/update/manifest');
+   if(!release.manifest)throw Error('release_signing_unavailable');
    manifest=release.manifest;
   }
   const result=await api('/api/node/update',manifest?{manifest}:{});
   if(result.success!==true&&result.ok!==true)throw Error(result.error||result.message||t('failed'));
-  el('updateInfo').textContent=t('restarting')+'\n'+(result.new_version||'')+' '+(result.new_hash||'');
+  el('updateInfo').textContent=result.up_to_date?t('upToDate'):t('restarting')+'\n'+(result.new_version||'')+' '+(result.new_hash||'');
  }catch(e){el('updateInfo').textContent=errorText(e);el('apply').disabled=false;el('check').disabled=false;}
 };
 el('install').onclick=async()=>{

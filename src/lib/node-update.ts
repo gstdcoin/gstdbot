@@ -24,6 +24,7 @@ export function fastForwardNodeUpdate(
     run: GitRunner = runGit,
     expectedCommit?: string,
 ): NodeUpdateResult {
+    if (expectedCommit !== undefined && !isCommitHash(expectedCommit)) throw new Error('Invalid signed update commit');
     const dirtyFiles = run(['status', '--porcelain', '--untracked-files=no'], installDir).trim();
     if (dirtyFiles) {
         throw new Error('Tracked local changes detected; refusing to overwrite node files');
@@ -33,9 +34,14 @@ export function fastForwardNodeUpdate(
     const previousHash = run(['rev-parse', 'HEAD'], installDir).trim();
     if (!isCommitHash(previousHash)) throw new Error('Unable to determine current Git commit');
 
-    run(['fetch', '--no-tags', 'origin', branch], installDir);
+    if (expectedCommit?.toLowerCase() === previousHash.toLowerCase()) {
+        return { previousHash, updatedHash: previousHash, output: '' };
+    }
+
+    const targetRef = expectedCommit || branch;
+    run(['fetch', '--no-tags', 'origin', targetRef], installDir);
     if (run(['rev-parse', '--is-shallow-repository'], installDir).trim() === 'true') {
-        run(['fetch', '--unshallow', '--no-tags', 'origin', branch], installDir);
+        run(['fetch', '--unshallow', '--no-tags', 'origin', targetRef], installDir);
     }
 
     const targetHash = run(['rev-parse', 'FETCH_HEAD'], installDir).trim();

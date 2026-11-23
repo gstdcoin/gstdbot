@@ -1,3 +1,4 @@
+import './core/platform-environment.js';
 // Promise.withResolvers ponyfill (Node 21+ API; DHT/ping libp2p services need it
 // transitively, but this codebase supports Node >=20 per package.json's engines
 // field and install.sh's existing-install check -- polyfill rather than forcing

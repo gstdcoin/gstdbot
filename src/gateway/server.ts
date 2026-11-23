@@ -1,3 +1,4 @@
+import '../core/platform-environment.js';
 import {endpointProof} from '../lib/endpoint-proof.js';
 import {LoginAttemptLimiter} from '../security/login-limit.js';
 import {reviewHfImport} from '../lib/hf-import.js';
@@ -56,6 +57,7 @@ import {
 } from '../p2p/identity.js';
 import { verifyUpdateManifest, isStaleCommand, type UpdateManifest } from '../lib/platform-auth.js';
 import { fastForwardNodeUpdate, rollbackNodeUpdate } from '../lib/node-update.js';
+import { approvedUpdateManifest, signedNodeUpdateStatus } from '../lib/node-update-status.js';
 import { isRegistered } from '../lib/model-registry.js';
 import { demandTracker } from '../lib/demand-tracker.js';
 
@@ -581,51 +583,27 @@ export class OmegaGateway {
 
         // ─── Self-Update (OTA from dashboard) ────────────────────
 
-        this.app.get('/api/check-update', async (_req, res) => {
+        this.app.get('/api/check-update', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
             try {
-                const installDir = process.env.GSTD_INSTALL_DIR || require('os').homedir() + '/gstdbot';
+                const installDir = process.env.GSTD_INSTALL_DIR || join(__dirname, '../..');
                 const branch = getDefaultBranch(installDir);
-                execSync(`git fetch origin ${branch}`, { cwd: installDir, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'] });
-                const localHash = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf-8' }).trim();
-                const remoteHash = execSync(`git rev-parse origin/${branch}`, { cwd: installDir, encoding: 'utf-8' }).trim();
-                const behind = parseInt(execSync(`git rev-list HEAD..origin/${branch} --count`, { cwd: installDir, encoding: 'utf-8' }).trim()) || 0;
-                const currentVersion = require('../../package.json').version || 'unknown';
+                const version = JSON.parse(readFileSync(join(installDir, 'package.json'), 'utf8')).version || 'unknown';
+                res.json({ ...await signedNodeUpdateStatus(installDir, branch, version),
+                    signed_manifest_required: process.env.PLATFORM_SIGNING_ENFORCED === 'true' });
+            } catch {
+                res.status(503).json({ update_available: false, can_apply: false, error: 'release_check_unavailable' });
+            }
+        });
 
-                let changelog: string[] = [];
-                if (behind > 0) {
-                    try {
-                        changelog = execSync(`git log HEAD..origin/${branch} --oneline --no-decorate`, {
-                            cwd: installDir, encoding: 'utf-8', timeout: 5000,
-                        }).trim().split('\n').filter(Boolean);
-                    } catch (_e) { }
-                }
-
-                res.json({
-                    update_available: localHash !== remoteHash,
-                    current_version: currentVersion,
-                    signed_manifest_required: process.env.PLATFORM_SIGNING_ENFORCED === 'true',
-                    current_hash: localHash.slice(0, 8),
-                    remote_hash: remoteHash.slice(0, 8),
-                    commits_behind: behind,
-                    branch,
-                    changelog,
-                    update_url: 'https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh',
-                });
-            } catch (e: any) {
-                // Fallback: check via platform API when git is not available
-                try {
-                    const currentVersion = require('../../package.json').version || 'unknown';
-                    const apiUrl = process.env.GSTD_API_URL || 'https://app.gstdtoken.xyz/api/v1';
-                    const resp = await fetch(`${apiUrl}/nodes/update/check?version=${currentVersion}`, {
-                        signal: AbortSignal.timeout(5000),
-                    });
-                    if (resp.ok) {
-                        const data = await resp.json() as any;
-                        res.json({...data,signed_manifest_required:process.env.PLATFORM_SIGNING_ENFORCED==='true'});
-                        return;
-                    }
-                } catch (_fallback) { }
-                res.json({ update_available: false, error: e.message, update_url: 'https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh' });
+        this.app.get('/api/node/update/manifest', async (req, res) => {
+            if (!requireNodeAuth(req, res)) return;
+            res.setHeader('Cache-Control', 'no-store');
+            try {
+                const installDir = process.env.GSTD_INSTALL_DIR || join(__dirname, '../..');
+                res.json({ manifest: await approvedUpdateManifest(getDefaultBranch(installDir)) });
+            } catch {
+                res.status(503).json({ error: 'release_signing_unavailable' });
             }
         });
 
@@ -649,7 +627,9 @@ export class OmegaGateway {
 
                 logActivity(`Starting self-update from origin/${branch}...`, 'info');
 
+                if (manifest && manifest.branch !== branch) throw Error('Signed release branch does not match this installation');
                 const update = fastForwardNodeUpdate(installDir, branch, undefined, manifest?.commit);
+                if (update.previousHash === update.updatedHash) return res.json({ success: true, ok: true, up_to_date: true, message: 'Already at the approved release' });
                 const preUpdateHash = update.previousHash;
                 const pullOutput = update.output;
 
@@ -2165,7 +2145,10 @@ export class OmegaGateway {
             // ─────────────────────────────────────────────────────
             try {
                 const cwd = join(__dirname, '../..');
-                const update = fastForwardNodeUpdate(cwd, getDefaultBranch(cwd), undefined, manifest?.commit);
+                const branch = getDefaultBranch(cwd);
+                if (manifest && manifest.branch !== branch) throw Error('Signed release branch does not match this installation');
+                const update = fastForwardNodeUpdate(cwd, branch, undefined, manifest?.commit);
+                if (update.previousHash === update.updatedHash) return res.json({ ok: true, success: true, up_to_date: true, message: 'Already at the approved release' });
                 try {
                     execSync('npm ci --include=dev', { cwd, timeout: 120000, stdio: 'pipe' });
                     execSync('npm run build', { cwd, timeout: 60000, stdio: 'pipe' });
