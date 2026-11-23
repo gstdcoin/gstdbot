@@ -64,7 +64,7 @@ export class RemoteAccessManager {
 
         this.config = {
             enabled: process.env.GSTD_REMOTE !== 'false',
-            relayUrl: process.env.GSTD_RELAY_URL || 'wss://relay.gstdtoken.com/node',
+            relayUrl: process.env.GSTD_RELAY_URL || 'wss://relay.gstdtoken.xyz/node',
             torEnabled: process.env.GSTD_TOR === 'true',
             torOnion: null,
             wgEnabled: process.env.GSTD_WG === 'true',
@@ -239,7 +239,7 @@ export class RemoteAccessManager {
 
     // ─── Platform Relay (WebSocket tunnel) ───────────────────────
     // Allows remote access without port forwarding:
-    // User → relay.gstdtoken.com → WebSocket → your node
+    // User → relay.gstdtoken.xyz → WebSocket → your node
     private async connectRelay(): Promise<void> {
         try {
             const url = `${this.config.relayUrl}?node_id=${this.nodeId}`;
@@ -355,7 +355,7 @@ HiddenServicePort 443 127.0.0.1:8080
                 lan: { url: `http://localhost:8080`, status: 'active' },
                 relay: {
                     status: this.relayWs?.readyState === WebSocket.OPEN ? 'connected' : 'disconnected',
-                    url: `https://relay.gstdtoken.com/node/${this.nodeId}`,
+                    url: `https://relay.gstdtoken.xyz/node/${this.nodeId}`,
                 },
                 tor: this.config.torEnabled ? {
                     status: this.config.torOnion ? 'active' : 'pending',

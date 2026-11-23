@@ -178,7 +178,7 @@ async function loadConfig(): Promise<NodeConfig> {
         const configuredApiUrl = process.env.GSTD_API_URL || file.swarm?.apiUrl || defaults.swarm.apiUrl;
         const apiUrl = normalizeGstdApiUrl(configuredApiUrl);
         if (apiUrl !== configuredApiUrl) {
-            console.warn('[Config] Migrated the legacy platform API URL to app.gstdtoken.com');
+            console.warn('[Config] Migrated the legacy platform API URL to app.gstdtoken.xyz');
         }
         const merged = {
             ...defaults, ...file,
@@ -193,7 +193,7 @@ async function loadConfig(): Promise<NodeConfig> {
     }
     const apiUrl = normalizeGstdApiUrl(defaults.swarm.apiUrl);
     if (apiUrl !== defaults.swarm.apiUrl) {
-        console.warn('[Config] Migrated the legacy platform API URL to app.gstdtoken.com');
+        console.warn('[Config] Migrated the legacy platform API URL to app.gstdtoken.xyz');
     }
     defaults.swarm.apiUrl = apiUrl;
     return defaults;
@@ -275,7 +275,7 @@ async function main(): Promise<void> {
     const desiredPort = parseInt(process.env.GSTD_DASHBOARD_PORT || process.env.GSTD_API_PORT || '8080');
     const gateway = new OmegaGateway({
         apiPort: desiredPort,
-        swarmUrl: process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com',
+        swarmUrl: process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.xyz',
         cocoonEnabled: process.env.GSTD_COCOON_ENABLED !== 'false',
         sovereigntyMode: (process.env.GSTD_SOVEREIGNTY_MODE as any) || 'full',
         nodeId: config.nodeId,
@@ -341,7 +341,7 @@ async function main(): Promise<void> {
     let mobileNode: MobileNodeManager | null = null;
     if (config.mobileNode.enabled) {
         const telegramToken = process.env.TELEGRAM_BOT_TOKEN || '';
-        const apiUrl = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
+        const apiUrl = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.xyz';
         mobileNode = new MobileNodeManager({
             botToken: telegramToken,
             apiUrl: apiUrl.replace(/\/api\/v1$/, '') + '/api/v1',
@@ -411,7 +411,7 @@ async function main(): Promise<void> {
             console.log(`    ✓ P2P identity loaded (stable peerId)`);
         }
         // Derive the public announce host from GSTD_PUBLIC_URL env var if set,
-        // e.g. "https://node.gstdtoken.com" → "node.gstdtoken.com"
+        // e.g. "https://node.gstdtoken.xyz" → "node.gstdtoken.xyz"
         const publicUrlHost = (() => {
             try {
                 const u = process.env.GSTD_PUBLIC_URL || '';
@@ -426,7 +426,7 @@ async function main(): Promise<void> {
             version: config.version,
             ...(p2pIdentity && { privateKey: p2pIdentity.privateKey }),
             // Attach WS transport to the gateway HTTP server (same port, same tunnel).
-            // This lets remote nodes reach us at wss://node.gstdtoken.com without any
+            // This lets remote nodes reach us at wss://node.gstdtoken.xyz without any
             // new Cloudflare tunnel config.
             httpServer: gateway.getHttpServer(),
             wsAnnounceHost: publicUrlHost,

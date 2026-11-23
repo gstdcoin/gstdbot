@@ -19,7 +19,7 @@ const STARS_TIERS = [
     { stars: 50  },
     { stars: 200 },
 ];
-const TMA_URL = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.com/tma';
+const TMA_URL = process.env.GSTD_TMA_URL || 'https://app.gstdtoken.xyz/tma';
 const STON_URL = 'https://app.ston.fi/swap?from=TON&to=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO';
 const TON_RE   = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
 

@@ -28,5 +28,5 @@ it('prefers the installed configured/default model and never selects a cloud ent
 it('fails locally if no usable model exists without sending the prompt to another service',async()=>{
  const fetcher=vi.fn(async(_url:string)=>reply({models:[]}));vi.stubGlobal('fetch',fetcher);
  await expect(new NeuralRouter('',false).route('auto',[{role:'user',content:'private'}])).rejects.toThrow('requested_model_unavailable');
- expect(fetcher).toHaveBeenCalledTimes(1);expect(fetcher.mock.calls[0][0]).not.toContain('gstdtoken.com');
+ expect(fetcher).toHaveBeenCalledTimes(1);expect(fetcher.mock.calls[0][0]).not.toContain('gstdtoken.xyz');
 });

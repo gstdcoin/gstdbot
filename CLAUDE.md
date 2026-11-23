@@ -3,7 +3,7 @@
 ## Stack
 - **Language**: TypeScript (Node.js 20)
 - **P2P**: libp2p
-- **Platform API**: Registers/heartbeats through the Cloudflare-hosted Next.js API at `https://app.gstdtoken.com/api/v1/`
+- **Platform API**: Registers/heartbeats through the Cloudflare-hosted Next.js API at `https://app.gstdtoken.xyz/api/v1/`
 - **Docker**: Multi-arch (amd64 + arm64), published to GHCR as `ghcr.io/gstdcoin/gstd-node` (see CI/CD below — this contradicted itself with a stale Docker Hub claim until 2026-08-13; `goldenbit/gstd-node` on Docker Hub exists but was a one-off manual push from 2026-03, not kept current)
 
 ## Local Dev
@@ -15,7 +15,7 @@ npm run dev
 
 ## Key env vars
 ```
-GSTD_SWARM_URL=https://app.gstdtoken.com
+GSTD_SWARM_URL=https://app.gstdtoken.xyz
 GSTD_WALLET_ADDRESS=EQ...
 NODE_NAME=my-node
 ```
@@ -31,5 +31,5 @@ NODE_NAME=my-node
 4. Complete task + report earnings → `POST /api/v1/tasks/complete`
 
 ## DO NOT
-- Do not change GSTD_SWARM_URL to api.gstdtoken.com — that backend doesn't exist
+- Do not change GSTD_SWARM_URL to api.gstdtoken.xyz — that backend doesn't exist
 - Do not skip the heartbeat — nodes expire after 10 min without one

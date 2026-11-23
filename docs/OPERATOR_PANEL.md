@@ -23,7 +23,7 @@
 
 Адрес идентичности ноды показан отдельно и остаётся прежним. Привязка определяет получателя будущей принятой оплаченной работы; уже назначенные задания и ранее начисленные средства сохраняют прежнего получателя. Это не перевод старых балансов. Подмена адреса и повтор старой команды блокируются подписью и ревизией.
 
-Указание публичного адреса не доказывает владение кошельком. Для доступа к его балансу нужна авторизация на [платформе](https://app.gstdtoken.com/payments). Получение и вывод не удерживают дополнительную комиссию GSTD; газ TON оплачивает подписант выплаты. Только принятая оплаченная работа делится 85/10/5; локальный и бесплатный чат не создают токены.
+Указание публичного адреса не доказывает владение кошельком. Для доступа к его балансу нужна авторизация на [платформе](https://app.gstdtoken.xyz/payments). Получение и вывод не удерживают дополнительную комиссию GSTD; газ TON оплачивает подписант выплаты. Только принятая оплаченная работа делится 85/10/5; локальный и бесплатный чат не создают токены.
 
 ### Нагрузка и обновление
 
@@ -79,8 +79,8 @@ The chat selector includes advertised network models after this check. Selecting
 Exact model requests fail with `requested_model_unavailable` when unavailable or when an executor reports a different model. Select another model yourself to consent to using it. `auto` remains an explicit choice of the configured default.
 
 Public discovery APIs:
-- `https://app.gstdtoken.com/api/v1/models/available`: live models, node counts and catalogue prices.
-- `https://app.gstdtoken.com/api/v1/nodes/list`: public node IDs and their current URLs. Temporary tunnel URLs may change.
+- `https://app.gstdtoken.xyz/api/v1/models/available`: live models, node counts and catalogue prices.
+- `https://app.gstdtoken.xyz/api/v1/nodes/list`: public node IDs and their current URLs. Temporary tunnel URLs may change.
 - A node exposes `GET /v1/models` and `POST /v1/chat/completions`; operator controls require a PIN session.
 
 The private `GET /api/node/model-directory` endpoint supplies cached network model data to the dashboard. The reviewed installation catalogue is not a complete internet index. Manual Ollama names remain available; compatibility is unknown for unreviewed models. Hardware matching is an estimate, not a driver or performance guarantee.
@@ -100,14 +100,14 @@ CI's fresh-source-installer check clones the exact public GitHub commit in a dis
 - **Исходящая очередь:** подписанная нода забирает задания из профинансированных кампаний. Для этого публичный IP/туннель не обязателен. Свежая успешная проверка очереди подтверждает связь, но не наличие оплаченного заказа.
 - **Прямой чат:** платформа обращается к HTTPS-адресу исполнителя. Указанный адрес не доказывает внешнюю доступность: проверьте ноду в реестре и настройте защищённый маршрут по своей сетевой схеме. Не открывайте Ollama напрямую в интернет.
 
-Счётчик отправленных результатов относится только к фоновой очереди после запуска. Он не включает прямые запросы чата и не является балансом, доказательством принятия или начисления. Оплаченную принятую работу и награды проверяйте в [«Баланс и награды»](https://app.gstdtoken.com/ru/payments?from=node). Для внутреннего баланса платформы перевод подписывает владелец кошелька обеспечения. Отдельный [mainnet escrow · бета](https://app.gstdtoken.com/ru/escrow-mainnet) хранит средства задания в контрактах: получатель подписывает получение своей доли. Эти суммы не переходят во внутренний баланс. Реальный mainnet-цикл пока не подтверждён.
+Счётчик отправленных результатов относится только к фоновой очереди после запуска. Он не включает прямые запросы чата и не является балансом, доказательством принятия или начисления. Оплаченную принятую работу и награды проверяйте в [«Баланс и награды»](https://app.gstdtoken.xyz/ru/payments?from=node). Для внутреннего баланса платформы перевод подписывает владелец кошелька обеспечения. Отдельный [mainnet escrow · бета](https://app.gstdtoken.xyz/ru/escrow-mainnet) хранит средства задания в контрактах: получатель подписывает получение своей доли. Эти суммы не переходят во внутренний баланс. Реальный mainnet-цикл пока не подтверждён.
 
 The **Background work readiness** section shows Ollama, installed models, registration, reward recipient, the last successful task poll and compute capacity. A new node needs its public payout address before registration can finish. These checks reuse data already fetched and add no Cloudflare requests.
 
 - **Outbound queue:** signed nodes pull tasks from funded campaigns without a public port. A successful poll confirms connectivity, not paid demand.
 - **Direct chat:** the platform calls the executor’s HTTPS endpoint. A configured address does not prove external reachability; check the registry. Never expose Ollama directly.
 
-Submitted-result counters cover only this process’s background queue. They exclude direct chat requests and do not prove acceptance, paid work or a money balance. Check accepted paid work and rewards on the platform. Platform-ledger payouts require the custody owner’s signature. Separate [mainnet escrow beta](https://app.gstdtoken.com/escrow-mainnet) jobs keep funds in contracts and use beneficiary-signed claims; they do not credit the ledger. A real mainnet cycle is still unverified.
+Submitted-result counters cover only this process’s background queue. They exclude direct chat requests and do not prove acceptance, paid work or a money balance. Check accepted paid work and rewards on the platform. Platform-ledger payouts require the custody owner’s signature. Separate [mainnet escrow beta](https://app.gstdtoken.xyz/escrow-mainnet) jobs keep funds in contracts and use beneficiary-signed claims; they do not credit the ledger. A real mainnet cycle is still unverified.
 
 ## Восстановление вручную / Manual recovery gate
 

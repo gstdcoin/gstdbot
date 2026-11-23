@@ -3,7 +3,7 @@
 # RFC: P2P Task Routing + Fully On-Chain Settlement
 
 **Status:** Partially implemented in `gstdbot` and the `SettlementMaster.tact` source. The deployed SettlementMasterV2 bytecode has not been verified against the current source; do not assume this source fix is active on mainnet.
-**Scope:** Replace the centralized `app.gstdtoken.com` task queue and Redis reward ledger with peer-to-peer task routing and settlement that any node can trigger directly on TON — no backend in the trust path.
+**Scope:** Replace the centralized `app.gstdtoken.xyz` task queue and Redis reward ledger with peer-to-peer task routing and settlement that any node can trigger directly on TON — no backend in the trust path.
 **Constraint from the audit:** every claim below is scoped to what the code in `gstdbot`, `contracts`, and `ai` actually contains today (see prior research turn). Nothing here assumes unfinished code already works.
 
 ---

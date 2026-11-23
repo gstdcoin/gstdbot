@@ -102,7 +102,7 @@ describe('A-D, G, H: four independent processes, no central service', () => {
     });
 
     it('the sovereign module contains no hard dependency on Cloudflare, the platform API or Telegram', () => {
-        const forbidden = /gstdtoken\.com|cloudflare|workers\.dev|api\.telegram|app\.gstd/i;
+        const forbidden = /gstdtoken\.(?:com|xyz)|cloudflare|workers\.dev|api\.telegram|app\.gstd/i;
         for (const f of readdirSync(SRC).filter(f => f.endsWith('.ts') && !f.endsWith('.test.ts'))) {
             expect(readFileSync(join(SRC, f), 'utf-8'), f).not.toMatch(forbidden);
         }

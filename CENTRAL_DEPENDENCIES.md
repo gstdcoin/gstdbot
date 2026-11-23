@@ -1,6 +1,6 @@
 # GSTD — Central Platform Dependencies
 **Date:** 2026-08-28 (status note updated after the sovereign-core audit)  
-**Target:** app.gstdtoken.com → OPTIONAL by Phase 4
+**Target:** app.gstdtoken.xyz → OPTIONAL by Phase 4
 
 > **Status (verified against the code):** this file is a **migration plan**, not a description of the current behaviour.
 > - Only `GSTD_NAAS_ENABLED` is implemented (`src/index.ts`, `src/p2p/node.ts`). `GSTD_PLATFORM_ENABLED` and `GSTD_P2P_ROUTING` below are **proposed and not implemented**.
@@ -30,7 +30,7 @@ Classification:
 ## CRITICAL — Remove from Critical Path in Phase 4
 
 ### 1. `src/core/platform-link.ts` — heartbeat + command polling
-**Role:** The node continuously heartbeats to app.gstdtoken.com and polls for platform commands (update, restart, etc.)  
+**Role:** The node continuously heartbeats to app.gstdtoken.xyz and polls for platform commands (update, restart, etc.)  
 **Impact if offline:** Node still runs but loses ability to receive platform-signed commands. Already has 402/500 error handling.  
 **Phase 4 action:** Feature-flag with `GSTD_PLATFORM_ENABLED=false`; commands must be receivable via P2P instead.
 

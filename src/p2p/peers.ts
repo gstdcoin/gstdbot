@@ -162,7 +162,7 @@ export class PeerManager extends EventEmitter {
         if (this.getLivePeers().length === 0) {
             console.log('[Peers] No reachable seed peers — falling back to the configured platform registry');
             try {
-                const apiBase = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
+                const apiBase = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.xyz';
                 const resp = await fetch(`${apiBase}/api/v1/nodes/list`, { signal: AbortSignal.timeout(8000) });
                 if (resp.ok) {
                     const data: any = await resp.json();
